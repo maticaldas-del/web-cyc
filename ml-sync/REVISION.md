@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🔀 `franjas[:días][:MLA,…]`: ¿hay dos franjas buenas de precio? (28/10/2026, sólo lee; él: *"quizás un producto tiene dos o más franjas buenas… con tu estrategia quedaríamos en el 40% y nunca descubriríamos las otras"*)
+- **Qué es:** por publicación (línea junta de su stock, días medibles como las rayas: 3+ u. en Full, activa, sin picos de fecha), franjas de precio de 10% con la plata por día neta de las rayas. Busca un VALLE: una franja B que deja menos que la mejor más barata (A) y, más arriba, una C que deja tanto o más que A. Cada valle se compara con 60 corridas de ventas inventadas de una demanda de UNA franja (la que mejor ajusta, con los días dispares del producto): vale si es más marcado que en el 95%. Probado con ventas inventadas: una franja → 1-8% de valles; dos franjas de verdad → 73-100%; un corte de golpe (caja) → 0%.
+- **Dónde vive:** `ml-sync/sync.mjs`, bloque `franjas` (antes de `efectotecho`).
+- **Qué chequear:** que "por azar saldrían ~N" sea el 5% de las medidas; que un cambio del mercado entre semanas (un competidor que se va) no se lea como franja: cada caso dice en qué orden se midió y cómo estaba la caja.
+
 ### 🥊 Informe 12: "ML pide" un precio imposible (27/10/2026, auditoría del robot)
 - **Qué es:** ML devolvía $1.000 como precio para ganar la caja en 4 que venden mucho (Naipes Casino, Filtro, Crystal Rock, Cartas Españolas). El informe sólo lo marcaba si quedaba abajo del costo; ahora también marca ⚠️ "no es un precio posible" cuando ni cubre el cargo fijo de ML (~$1.230) más el costo.
 - **Dónde vive:** `ml-sync/sync.mjs`, `informe`, sección 12 (caja perdida en lo que vende).

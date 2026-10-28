@@ -19399,6 +19399,106 @@ async function main() {
       for (const f of filas.filter((f) => /sony/i.test(f.n))) console.log(`  ${f.m.toFixed(0)}% · ${f.f} · ${f.n.slice(0, 80)} · ${f.nv} vend. · vendidas ${f.vend == null ? '?' : f.vend} · ${f.ok ? 'pasó todo' : 'falta algo'}`);
       return;
     }
+    // ── ¿HAY VARIAS FRANJAS BUENAS DE PRECIO? (28/10/2026, él: "quizás un producto tiene dos o más franjas buenas. por ejemplo 40% 100% y
+    // 300%… con tu estrategia quedaríamos en el 40% y nunca descubriríamos las otras"). Sólo lee. Por publicación (con la línea junta de
+    // su stock): los días medibles (como las rayas: 3+ u. en Full, activa, sin los picos de fecha especial) en franjas de precio de 10%, con
+    // la plata por día NETA de las rayas. Busca VALLES: una franja B que deja menos plata por día que la mejor de las más baratas (A) y, más
+    // arriba, una C que deja tanta o más plata que A y más que B. Es el caso en que subir un escalón y volver al ver que pierde se queda en A
+    // y no descubre C. Con muchas franjas, por azar casi siempre aparece algún "valle" (probado: 7 de cada 10 con una demanda de una sola
+    // franja), así que cada valle se compara contra 60 corridas con ventas INVENTADAS de una demanda de una sola franja (la que mejor ajusta:
+    // baja pareja con el precio, con los días dispares que tiene el producto): vale si sale más marcado que en 57 de las 60 (95%).
+    // Probado con ventas inventadas: una sola franja da valle 1-8% de las veces; dos franjas de verdad, 73-100%; un corte de golpe (caja) 0%.
+    // Lo que NO separa: un cambio del mercado entre semanas (un competidor que se va) se ve igual que una franja; por eso cada caso dice
+    // en qué orden se midió y cómo estaba la caja.
+    // `franjas[:<días>][:<MLA>,…]` · sin MLA: todas las que vendieron 10+ en la ventana (120 días si no se dice) · con MLA: la tabla entera.
+    if (/^franjas(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).split(':').slice(1);
+      const DIAS = Math.max(30, Math.min(365, parseInt(partes.find((x) => /^\d+$/.test(x.trim())) || '') || 120));
+      const lista = partes.join(',').split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const DMIN = 5, ST_MIN = 3, SIMS = 60, SEG = 0.95;
+      const links = (await db.get('cyc/mllinks')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
+      const mono = await leerMonoPct(db); await cargarCajaReal(db);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const hoyK = dayKeyFromISO(Date.now());
+      const kDesde = new Date(Date.parse(hoyK.replace(/_/g, '-') + 'T12:00:00-03:00') - DIAS * 864e5 - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : (x < 0 ? '-' : '') + '$' + Math.abs(Math.round(x)).toLocaleString('es-AR');
+      const fK = (k) => k ? k.slice(8, 10) + '/' + k.slice(5, 7) : '?';
+      const uVen = {}; const t0 = Date.now() - DIAS * 864e5;
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t0) uVen[v.mla] = (uVen[v.mla] || 0) + (Number(v.qty) || 1); }
+      const sel = lista.length ? lista : Object.keys(links).filter((m) => { const e = links[m]; return e && e.prodId && pIdx[e.prodId] && !e.gemelaDe && !e.ignored && (uVen[m] || 0) >= 10; }).sort((a, b) => (uVen[b] || 0) - (uVen[a] || 0));
+      const LIN = {}; const lineaDe = async (m) => { if (!(m in LIN)) { try { LIN[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LIN[m] = null; } } return LIN[m]; };
+      // Una franja: días, unidades, margen sumado (sin la plata parada), la plata parada, precio promedio, fechas y cuántos días ganó la caja.
+      const armar = (dias) => { const B = {}; for (const x of dias) { const g = (B[x.bi] = B[x.bi] || { bi: x.bi, dias: 0, u: 0, m: 0, k: 0, sp: 0, desde: x.k, hasta: x.k, gana: 0, nc: 0 }); g.dias++; g.u += x.u; g.m += x.m; g.k += x.kap; g.sp += x.p; if (x.k < g.desde) g.desde = x.k; if (x.k > g.hasta) g.hasta = x.k; if (x.caja) { g.nc++; if (x.caja === 'winning') g.gana++; } }
+        const M = Object.values(B).filter((g) => g.dias >= DMIN).sort((a, b) => a.bi - b.bi);
+        for (const g of M) { g.p = g.sp / g.dias; g.pd = (g.m - g.k) / g.dias; g.r = g.u / g.dias; g.g1 = g.u > 0 ? g.m / g.u : null; }
+        const ref = M.filter((g) => g.u > 0);
+        for (const g of M) if (g.g1 == null) { const r0 = ref.reduce((a, h) => (!a || Math.abs(h.bi - g.bi) < Math.abs(a.bi - g.bi) ? h : a), null); g.g1 = r0 ? r0.g1 + (g.p - r0.p) * 0.7 : null; }
+        return M; };
+      // Con muchas ventas esperadas (λ > 200) la cuenta exacta se va a cero por redondeo: ahí va la curva normal.
+      const cdf = (k, lam) => { if (!(lam > 0)) return 1; if (lam <= 200) return poissonCdfF(k, lam); const z = (k + 0.5 - lam) / Math.sqrt(lam), t = 1 / (1 + 0.2316419 * Math.abs(z)); const q = 0.3989423 * Math.exp(-z * z / 2) * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z >= 0 ? 1 - q : q; };
+      // Qué tan raro sería que B vendiera tan poco si dejara lo mismo que A (con lo que deja cada unidad en B, cuántas tenía que vender).
+      const pPeor = (A, B) => { if (!(B.g1 > 0)) return A.pd > B.pd && A.pd > 0 ? 0 : 1; const lam = (A.pd * B.dias + B.k) / B.g1; return lam > 0 ? cdf(B.u, lam) : 1; };
+      // Qué tan raro sería que C vendiera tanto si dejara lo mismo que B.
+      const pMejor = (B, C) => { if (!(C.g1 > 0) || !(C.u > 0)) return 1; const lam = Math.max(1e-6, (B.pd * C.dias + C.k) / C.g1); return 1 - cdf(C.u - 1, lam); };
+      // El valle más marcado: A = la mejor franja abajo de B; C arriba de B con tanta o más plata que A. s = la menos rara de las dos rarezas.
+      const valle = (M) => { let best = null; for (let j = 1; j < M.length - 1; j++) { const A = M.slice(0, j).reduce((a, g) => (g.pd > a.pd ? g : a)); const pa = pPeor(A, M[j]); if (pa >= 0.5) continue; for (let l = j + 1; l < M.length; l++) { const C = M[l]; if (!(C.pd >= A.pd)) continue; const s = Math.max(pa, pMejor(M[j], C)); if (!best || s < best.s) best = { A, B: M[j], C, s }; } } return best; };
+      // Ventas inventadas: Poisson (Knuth; normal arriba de 30) con días dispares (gamma, Marsaglia-Tsang) como los del producto.
+      const gam = (k) => { if (k < 1) return gam(k + 1) * Math.pow(Math.random() || 1e-12, 1 / k); const d = k - 1 / 3, c = 1 / Math.sqrt(9 * d); for (;;) { let x, v; do { x = Math.sqrt(-2 * Math.log(Math.random() || 1e-12)) * Math.cos(2 * Math.PI * Math.random()); v = 1 + c * x; } while (v <= 0); v = v * v * v; const u = Math.random(); if (u < 1 - 0.0331 * x ** 4 || Math.log(u || 1e-12) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v; } };
+      const poi = (lam) => { if (!(lam > 0)) return 0; if (lam > 30) return Math.max(0, Math.round(lam + Math.sqrt(lam) * (Math.sqrt(-2 * Math.log(Math.random() || 1e-12)) * Math.cos(2 * Math.PI * Math.random())))); const L = Math.exp(-lam); let k = 0, p = 1; do { k++; p *= Math.random(); } while (p > L); return k - 1; };
+      // La demanda de UNA franja que mejor ajusta: ventas por día = a × precio^(−e) (e de 0 a 8) y cuánto más dispares son los días que el azar puro.
+      const ajuste = (dias) => { const pm = dias.reduce((a, x) => a + x.p, 0) / dias.length; const U = dias.reduce((a, x) => a + x.u, 0); let mejorE = null;
+        for (let e = 0; e <= 8.0001; e += 0.1) { const S = dias.reduce((a, x) => a + Math.pow(x.p / pm, -e), 0); const a0 = U / S; const ll = dias.reduce((s, x) => { const l = a0 * Math.pow(x.p / pm, -e); return s + (x.u > 0 ? x.u * Math.log(l) : 0) - l; }, 0); if (!mejorE || ll > mejorE.ll) mejorE = { e, a: a0, ll }; }
+        const G = {}; for (const x of dias) (G[x.bi] = G[x.bi] || []).push(x.u); let num = 0, den = 0;
+        for (const us of Object.values(G)) { if (us.length < 3) continue; const mu = us.reduce((a, b) => a + b, 0) / us.length; if (!(mu > 0)) continue; const va = us.reduce((a, b) => a + (b - mu) ** 2, 0) / (us.length - 1); num += (va - mu) * us.length; den += mu * mu * us.length; }
+        return { ...mejorE, pm, phi: den > 0 ? Math.max(0, num / den) : 0 }; };
+      const simDia = (aj, p) => { let l = aj.a * Math.pow(p / aj.pm, -aj.e); if (aj.phi > 0.01) l *= gam(1 / aj.phi) * aj.phi; return poi(l); };
+      console.log(`=== ¿HAY VARIAS FRANJAS BUENAS DE PRECIO? · últimos ${DIAS} días (desde el ${fK(kDesde)}) · ${sel.length} publicación(es) · franjas de 10%, 5+ días medibles (3+ u. en Full, activa, sin picos de fecha) ===`);
+      let nA = 0, n3 = 0, sinLinea = 0, sinCosto = 0; const hecho = new Set(), casos = [], casi = [];
+      for (const mla of sel) {
+        if (hecho.has(mla)) continue; hecho.add(mla);
+        const e = links[mla]; const pr = e && pIdx[e.prodId]; if (!pr) { console.log(`✗ ${mla}: sin ficha`); continue; }
+        let d = await lineaDe(mla); if (d == null) { sinLinea++; continue; }
+        const J = await lineaJuntaStock(links, pIdx, mla, d, lineaDe); d = J.d; for (const m of J.con) hecho.add(m);
+        const cta = String(e.cuenta || '').toLowerCase(); const cu = costoPesos(pr, 1, tc).costo; const imp = ((ML_EXTRA_PCT[cta] || 4) + mono) / 100; const cajaU = pdCajaExtraU(e.cuenta, pr, tc);
+        if (!(cu > 0)) { sinCosto++; continue; }
+        d = lineaConNetoEst(d, cu, imp); const fuera = diasFechaPico(d, kDesde, hoyK);
+        const dias = []; let pAnt = null;
+        for (const k of Object.keys(d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort()) {
+          const x = d[k]; if (!x || typeof x !== 'object') continue;
+          const pN = Number(x.p) > 0 ? Number(x.p) : pAnt;
+          let pl = pN || 0; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.uOwn) > 0 && Number(x.totOwn) > 0 ? Number(x.totOwn) / Number(x.uOwn) : Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) pl = pAnt; }
+          pAnt = pN;
+          if (k < kDesde || fuera.has(k) || (x.est && x.est !== 'active') || !(Number(x.st) >= ST_MIN) || !(pl > 0)) continue;
+          const uT = Number(x.u) || 0, totT = Number(x.tot) || 0;
+          dias.push({ k, p: pl, bi: Math.floor(Math.log(pl) / Math.log(1.1)), u: uT, caja: x.caja || null,
+            m: (Number(x.neto) || 0) - uT * cu - totT * imp - uT * (PD_TRABAJO_U + cajaU) - totT * PD_TOPE_PCT, kap: Math.max(0, Number(x.st) || 0) * cu * PD_CAPITAL_DIA });
+        }
+        nA++;
+        const M = armar(dias); const nom = `${String(pr.name || e.title || '').slice(0, 40)}${e.variant ? ' #' + e.variant : ''} (${e.cuenta || '?'})${J.con.length ? ' +' + J.con.length + ' mismo stock' : ''}`;
+        const tabla = () => M.map((g) => `      ${$(g.p).padStart(9)} · ${String(g.dias).padStart(3)} d (${fK(g.desde)}-${fK(g.hasta)}) · ${String(g.u).padStart(4)} u. (${g.r.toFixed(2)}/día) · ${$(g.g1)}/u · ${$(g.pd).padStart(8)}/día · ${g.g1 != null ? Math.round(g.g1 / (cu + g.p * imp) * 100) + '%≈' : ''}${g.nc ? ' · caja ' + Math.round(g.gana / g.nc * 100) + '%' : ''}`).join('\n');
+        if (M.length < 3) { if (lista.length) console.log(`\n· ${mla} · ${nom} · sólo ${M.length} franja(s) medidas: no se puede ver si hay dos\n${tabla()}`); continue; }
+        n3++;
+        const V = valle(M); const T = V ? V.s : 1;
+        const aj = ajuste(dias); const g1De = {}; for (const g of M) g1De[g.bi] = g.g1; let le = 0;
+        for (let s = 0; s < SIMS; s++) { const ds = dias.map((x) => { const u = simDia(aj, x.p); return { ...x, u, m: u * (g1De[x.bi] != null ? g1De[x.bi] : 0) }; }); const Vs = valle(armar(ds)); if ((Vs ? Vs.s : 1) <= T) le++; }
+        const seg = 1 - (1 + le) / (SIMS + 1);
+        const c = { mla, nom, V, M, tabla: tabla(), seg, e: aj.e, cu };
+        if (V && seg >= SEG) casos.push(c); else if (V && seg >= 0.85) casi.push(c);
+        else if (lista.length) console.log(`\n· ${mla} · ${nom} · ${M.length} franjas, ${V ? 'valle ' + Math.round(seg * 100) + '% seguro (no alcanza)' : 'sin valle: una sola franja buena'}\n${tabla()}`);
+      }
+      const espera = n3 * (1 - SEG);
+      console.log(`\nMedidas: ${nA} publicaciones (sin línea ${sinLinea}, sin costo ${sinCosto}) · con 3+ franjas medidas: ${n3}`);
+      console.log(`Con DOS FRANJAS BUENAS (valle, 95% seguro de que no es azar): ${casos.length}${n3 ? ' (' + Math.round(casos.length / n3 * 100) + '%)' : ''} · por azar saldrían ~${espera.toFixed(1)} · casi (85-95%): ${casi.length}`);
+      const linea = (c) => { const { A, B, C } = c.V; const ord = A.hasta < B.desde && B.hasta < C.desde ? 'en orden (subió A→B→C)' : C.hasta < B.desde ? 'C fue ANTES que B' : 'mezclado en el tiempo';
+        const bar = B.p < 33000 && C.p >= 33000 ? ' · C cruza la barrera de $33.000' : '';
+        const caja = B.nc && C.nc ? ` · caja: A ${A.nc ? Math.round(A.gana / A.nc * 100) + '%' : '?'} B ${Math.round(B.gana / B.nc * 100)}% C ${Math.round(C.gana / C.nc * 100)}%` : '';
+        return `${c.mla} · ${c.nom} · A ${$(A.p)} ${$(A.pd)}/día → B ${$(B.p)} ${$(B.pd)}/día → C ${$(C.p)} ${$(C.pd)}/día (+${$((C.pd - A.pd) * 30)}/mes contra A) · ${Math.round(c.seg * 100)}% seguro · ${ord}${bar}${caja} · costo ${$(c.cu)}`; };
+      for (const c of casos.sort((a, b) => (b.V.C.pd - b.V.A.pd) - (a.V.C.pd - a.V.A.pd))) console.log(`\n🔀 ${linea(c)}\n${c.tabla}`);
+      if (casi.length) { console.log('\n── CASI (85-95%) ──'); for (const c of casi) console.log(`🔸 ${linea(c)}${lista.length ? '\n' + c.tabla : ''}`); }
+      return;
+    }
     if (/^efectotecho(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const DIAS = Math.max(14, parseInt(String(process.env.BILLING_PROBE).split(':')[1]) || 56);
       const vp = (await db.get('cyc/ventaprod')) || {};
