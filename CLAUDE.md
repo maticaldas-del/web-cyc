@@ -98,7 +98,7 @@
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
   `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
 - **🎯 Objetivo: bajar hasta que desaparezcan el rojo y el naranja de 🧮 La Mezcla** (27/10, él: *"un objetivo debe ser bajar/desaparecer los naranjas/rojos"*): rojo = ventas abajo de 25%, naranja = 25-35% (de lo facturado). Cada decisión de precio, pedido, caja y compra se pesa contra esto: lo que vende abajo del 35% sube, se reemplaza o no se repone (sin romper sobra/stock antiguo). Se mira por semana en Métricas.
-- **El límite son los PESOS, el lugar en la Kangoo y el stock del mayorista** (27/10, él: *"nos quedamos sin stock, no porque no queremos comprar, sino porque no hay, no llegamos a tener los pesos suficientes, hay mercadería nueva mucho más atractiva y no tenemos pesos para todo"*; reemplaza el "la plata ya no es el límite" del 24/08). Liberar caja vale menos que el almacenamiento y el descarte.
+- **El límite hoy es CONSEGUIR mercadería** (28/10, él: *"últimamente hay mucho lugar en la kangoo, y pesos, pero en bs as cuesta conseguir producto, es probable que no tengan los proveedores"*; el 27/10 eran pesos, Kangoo y mayorista: *"nos quedamos sin stock, no porque no queremos comprar, sino porque no hay"*). Una unidad vendida barata no se repone; una que espera a un precio alto se vende después. Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
 ## 3 · REGLAS QUE NO SE ROMPEN
@@ -189,6 +189,7 @@
 - **Quién manda** (CEREBRO §0): lo que pide él para ese producto → dato dudoso no se toca → frenos duros → nunca abajo de 0% →
   **sin línea de techo no se baja** → arriba del 💰 no se baja sin 95% → lo nuevo no se baja sin 🏔️ → no pagar stock antiguo → escasez
   sube → sobra baja en escalera → 35% peor caso → buscar techo en todo lo demás.
+- **Datos suyos que no se vuelven a preguntar** (28/10): ML **no castiga** en las búsquedas una publicación que pasa muchos días sin vender · la competencia **no copia** nuestras subas (cada uno va por su cuenta). **Dos franjas buenas de precio** (`franjas`, 28/10): de 86 con 3+ precios medidos, 3 (el azar daría ~4): raro, pero existe (Cartas Poker Azul: $3.520 deja $1.268/día, $3.870 $467, $6.490 $2.162).
 - **Lo que vende menos de 1 por semana no sube** (4a del 23/10; 37a del 24/10: toda suba, no sólo 📈; freno en `decido`): queda 💰 #punto;
   afuera subir al 25% del peor caso, 🔥/⏳ con stock para menos de 100 días, o volver a un precio de los últimos 90 días. Las pruebas se juzgan a las 3 ventas esperadas.
   Bajar la lista de algo que ya buscó techo va como descuento con cualquier etiqueta (37a). Renovar el mismo descuento no es una baja (46a).
@@ -522,7 +523,7 @@
 | `gemela` · `gemelacrea:<MLA>=<precio>:go` · `gemelaenvio` · `gemelaenviocrea` · `gemelaalinear` | gemelas Premium y envío gratis |
 | `cupo` · `codigos[:palabra]` · `pasara`/`nomandar:<cuenta>:<palabras>[:go]` | cupo de Full, códigos de etiqueta, reparto por cuenta |
 | `ancla:<cuenta>=<pesos>;go` · `dispo` · `saldoml` · `cargargasto` · `vergastos[:mes]` · `cargosmes` · `cobromes` · `factarca` · `catmono` · `facarca` · `topeh` | plata y ARCA |
-| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` · `techodias` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia? ¿cuánto tarda cada prueba?) |
+| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` · `techodias` · `franjas[:días][:MLA]` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia? ¿cuánto tarda cada prueba? ¿hay dos franjas buenas?) |
 | `chequeo[:días]` · `alertas[:horas]` · `reglas` · `permisos` · `probarput:<MLA>` | chequeo, avisos, base, permisos de ML |
 | `tgaprobar:<núm>:go` · `tgchats` · `webpush` | Telegram y push |
 | `liquidando[:<MLA>][:go]` · `nomas:<MLA>:go` · `pausar:<busca>[!saca][:go]` | marcas sobre publicaciones |
