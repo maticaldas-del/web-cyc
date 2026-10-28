@@ -188,8 +188,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 4. **El revisor en contra (max)** ANTES de aplicar, igual que siempre: marca, no propone.
 5. Yo miro lo dudoso, lo que cambia más de 20% y lo que deshace una decisión de menos de 7 días.
 6. Pedidos y cajas como siempre (`decide_pedidos.py`, `decide_cajas.py`, revisados, `decido:archivo=…;go`). Juicios de precio,
-   `techo95;go`, **`techo95:buscando;go`** y `techo95:punto;go` (25/10: las 📈 que ya llegaron al umbral pasan a 🏔️ y arrancan la
-   escalera; desde el 27/10 a la noche la 🪜/💰 que vendió bajando del 🔴 queda 🏔️ en ese precio; la `TABLA` dice cuándo llega cada una),
+   `techo95;go` y **`techo95:buscando;go`** (25/10: las 📈 que ya llegaron al umbral pasan a 🏔️ y arrancan la escalera; desde el 27/10
+   a la noche la 🪜 que vendió bajando del 🔴 queda 🏔️ en ese precio; la `TABLA` dice cuándo llega cada una),
    **🔙 `vendiocaro`** (lo que quedó abajo del precio más caro que vendió vuelve ahí con su `decido` listo: la lista queda vacía), frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
 6b. **💳 Toda publicación con su Premium (21/10/2026, regla suya: *"quiero que todas las publicaciones tengan clásica y premium.
    puede que yo vaya creando publicaciones y queden sin premium"*).** Cada noche `gemela:todas` (ml-consulta, solo lee: cualquier

@@ -4737,7 +4737,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       let u = 0;
       for (let t = desde, i = 0; i < 32; t += 864e5, i++) {
         const k = kDia(t); const vd = await leerC('cyc/ventaprod/' + k, {}); if (vd == null) return (_v14 = null);
-        for (const v of Object.values(vd || {})) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts > desde && ts < ahora) u += Number(v.qty) || 1; }
+        for (const v of Object.values(vd || {})) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, d.mla, desde, ts) && ts < ahora) u += Number(v.qty) || 1; }
         if (k >= hoyK) break;
       }
       return (_v14 = { u, desde });
@@ -5220,6 +5220,11 @@ const TECHO_RITMO_MIN_SEMANA = 1;   // 4a del 23/10/2026: menos de 1 venta por s
 // el orden es 1º techo al 95% → 2º 💰. Lo que vende 1+ por semana (60 días con stock, con gemelas y hermanas) no queda en 💰 #punto
 // sin un techo medido: el 🔴 de las rayas (`cyc/rayas`, de la noche) o un 🏔️ de techo95 de los últimos 60 días. Lo que vende menos de
 // 1 por semana sí queda en 💰 (4a). → null si pasa · texto si frena. Salida: !chico con "EXCEPCIÓN: …" (en decido).
+// LA GEMELA TARDA EN SEGUIR A SU CLÁSICA (27/10/2026 a la noche, Naipes Casino: subí la Clásica a $7.290 a las 16:51, la Premium siguió
+// en $6.790 hasta que la alineó la hora de las 18:35, y una venta por la Premium a las 18:32 —al precio VIEJO— contó como "vendió a este
+// precio" y pedía otro +50%). Una venta de OTRA publicación del grupo (gemela, hermana de stock) cuenta recién 3 h después del cambio.
+const GEMELA_LAG_MS = 3 * 3600e3;
+const ventaCuentaDesde = (v, mla, desde, ts) => ts > desde && (String(v.mla) === String(mla) || ts > desde + GEMELA_LAG_MS);
 // ¿Vendió A ESTE PRECIO? (27/10/2026, él: "si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir").
 // Ventas (de ésta, sus hermanas de stock y sus gemelas) desde el último cambio de precio mío de más de 2% (`cyc/claudecambios`), en los
 // últimos 30 días. {uds, desde} · null = no se pudo leer (no se adivina).
@@ -5231,7 +5236,7 @@ async function vendioAEstePrecio(db, mla, links, prods) {
   let uds = 0;
   for (let t = desde, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
     let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
-    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts > desde) uds += Number(v.qty) || 1; }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts)) uds += Number(v.qty) || 1; }
   }
   return { uds, desde };
 }
@@ -5481,7 +5486,7 @@ async function detectarErrores(db, o = {}) {
       let primera = 0, uds = 0, sinLeer = false;
       for (let t = Math.max(tsU, ahora - 30 * 864e5), i = 0; i < 31 && t <= ahora + 864e5; t += 864e5, i++) {
         const vd = await ventasDia(dayKeyFromISO(t)); if (vd == null) { sinLeer = true; continue; }
-        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts > tsU) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
+        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, m, tsU, ts)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
       }
       if (!primera) { if (sinLeer) lanza.push({ mla: m, e, sinLeer: true }); else lzC.sinVenta++; continue; }
       // una suba de una hermana de stock cuenta: ML iguala sola el precio de las hermanas (27/10, Cartas Poker Envíos y Termómetro 4 botones)
@@ -19314,7 +19319,7 @@ async function main() {
       console.log(`=== MEZCLA DE LAS VENTAS · últimos ${DIAS} días · ${filas.length} renglones de venta (${sinCosto} sin costo, afuera) ===`);
       console.log(`TOTAL: facturado ${$(T.fac)} · ganancia ${$(T.gan)} · ${pct(T).toFixed(1)}% · deja ${$(T.gan / T.fac * 100)} cada $100 facturados · ${T.u} u.`);
       console.log('\n── POR TRAMO DE % (cada venta con su propio %) ──');
-      const tramos = [[-1e9, 0, 'pierde (abajo de 0%)'], [0, 25, '0 a 25%'], [25, 35, '25 a 35%'], [35, 50, '35 a 50%'], [50, 1e9, '50% o más']];
+      const tramos = [[-1e9, 0, 'pierde (abajo de 0%)'], [0, 25, '0 a 25%'], [25, 35, '25 a 35%'], [35, 50, '35 a 50%'], [50, 75, '50 a 75%'], [75, 100, '75 a 100%'], [100, 150, '100 a 150%'], [150, 1e9, '150% o más']];   // 27/10 a la noche: más tramos arriba (los precios subieron)
       for (const [a, b, n] of tramos) {
         const o = suma(filas.filter((x) => { const m = x.base > 0 ? x.gan / x.base * 100 : 0; return m >= a && m < b; }));
         console.log(`  ${n.padEnd(22)} facturado ${$(o.fac).padStart(13)} (${(o.fac / T.fac * 100).toFixed(1)}%) · ganancia ${$(o.gan).padStart(12)} (${(o.gan / T.gan * 100).toFixed(1)}%) · deja ${$(o.fac ? o.gan / o.fac * 100 : 0)} c/$100 · ${o.u} u.`);
@@ -19323,7 +19328,7 @@ async function main() {
       const porP = {}; for (const x of filas) { const o = porP[x.clave] || (porP[x.clave] = { nom: x.nom, var: x.var, pv: x.pv, fac: 0, gan: 0, base: 0, u: 0 }); o.fac += x.fac; o.gan += x.gan; o.base += x.base; o.u += x.u; }
       const P = Object.values(porP);
       console.log('\n── SI DEJARA DE REPONER LO QUE QUEDA ABAJO DE CADA VARA (producto × color, su promedio del período) ──');
-      for (const vara of [20, 25, 30, 35, 40]) {
+      for (const vara of [25, 30, 35, 40, 45, 50, 60]) {
         const fuera = P.filter((o) => pct(o) < vara), o = suma(fuera), pvF = fuera.filter((x) => x.pv);
         const opv = suma(pvF);
         console.log(`  vara ${vara}%: se van ${fuera.length} de ${P.length} · facturado ${$(o.fac)} (${(o.fac / T.fac * 100).toFixed(1)}%) · ganancia ${$(o.gan)} (${(o.gan / T.gan * 100).toFixed(1)}%) · de eso Paulvic: ${pvF.length} aromas, ${$(opv.fac)} facturado, ${$(opv.gan)} ganancia`);
@@ -19475,6 +19480,58 @@ async function main() {
       for (const f of filas.filter((f) => /sony/i.test(f.n))) console.log(`  ${f.m.toFixed(0)}% · ${f.f} · ${f.n.slice(0, 80)} · ${f.nv} vend. · vendidas ${f.vend == null ? '?' : f.vend} · ${f.ok ? 'pasó todo' : 'falta algo'}`);
       return;
     }
+    // ── ¿EL PISO DE 35% ESTÁ BIEN? (27/10/2026 a la noche, él: "analizá si ese 35% está bien o hay que aumentarlo más aún. tené en cuenta que
+    // al aumentar es probable que queden fuera varios productos y vendamos menos. y no lleguemos a llenar H"). Sólo lee. Cada Clásica activa
+    // con costo: el % AL PRECIO DE HOY (el que ve el comprador, `cyc/netopub`: costo + impuestos + envío en el divisor, como `pctGananciaVP`;
+    // y el peor caso con +2% de IIBB de otra provincia) y lo que vende por día con stock (desde el último cambio de precio con 7+ días; si no,
+    // 30 días), con eso la plata del mes a ese precio. Por franja de %, y qué se iría con un piso de 40, 45, 50, 60 o 75 (lo que ya no se
+    // repondría): cuántas, cuánto facturan y ganan por mes, y la plata parada en su stock.
+    if (/^piso(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const links = (await db.get('cyc/mllinks')) || {}; const np = (await db.get('cyc/netopub')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const cc = (await db.get('cyc/claudecambios')) || {};
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tc > 0)) { console.log('⚠️ sin dólar no se puede medir'); process.exit(1); }
+      const mono = await leerMonoPct(db);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const ahora = Date.now(), hoyK = dayKeyFromISO(ahora), k30 = dayKeyFromISO(ahora - 30 * 864e5);
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : (x < 0 ? '-' : '') + '$' + Math.abs(Math.round(x)).toLocaleString('es-AR');
+      const LIN = {}; const lineaDe = async (m) => { if (!(m in LIN)) { try { LIN[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LIN[m] = null; } } return LIN[m]; };
+      const ven = {}; for (const [k, ents] of Object.entries(vp)) { if (k.slice(0, 10) < k30) continue; for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.mla) continue; (ven[v.mla] = ven[v.mla] || []).push({ ts: Number(v.ts) || Date.parse(v.ts || '') || 0, q: Number(v.qty) || 1 }); } }
+      const filas = []; let sinCosto = 0, sinNeto = 0;
+      const hecho = new Set();
+      for (const [m, e] of Object.entries(links)) {
+        if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || '')) || hecho.has(m)) continue;
+        const pr = pIdx[e.prodId]; if (!pr) continue;
+        const n0 = np[m]; if (!n0 || !(Number(n0.precio) > 0) || !(Number(n0.neto) > 0)) { sinNeto++; continue; }
+        const cu = costoPesos(pr, 1, tc).costo; if (!(cu > 0)) { sinCosto++; continue; }
+        const cta = String(e.cuenta || '').toLowerCase(); const imp = ((ML_EXTRA_PCT[cta] || 4) + mono) / 100;
+        const P = Number(n0.precio), neto = Number(n0.neto), env = Number(n0.envio) || 0;
+        const gan = neto - cu - P * imp, pct = gan / (cu + P * imp + env) * 100;
+        const ganP = neto - cu - P * (imp + 0.02), pctP = ganP / (cu + P * (imp + 0.02) + env) * 100;
+        // el ritmo: ésta, su gemela y las de su stock, por día con stock (la línea junta)
+        let lin = await lineaDe(m); if (lin == null) continue;
+        const J = await lineaJuntaStock(links, pIdx, m, lin, lineaDe); for (const x of J.con) hecho.add(x);
+        const grupo = new Set([m, ...J.con, ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)]);
+        const ulC = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((a, c) => Math.max(a, Number(c.ts) || 0), 0);
+        const kCam = ulC > ahora - 30 * 864e5 ? dayKeyFromISO(ulC + 864e5) : '';
+        let d30 = 0, dHoy = 0, st = null; for (const k of Object.keys(J.d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k30 && k < hoyK).sort()) { const x = J.d[k]; if (x && x.st != null) st = Number(x.st) || 0; if (!diaConStock(x)) continue; d30++; if (kCam && k >= kCam) dHoy++; }
+        let u30 = 0, uHoy = 0; for (const g of grupo) for (const v of ven[g] || []) { u30 += v.q; if (ulC && v.ts > ulC) uHoy += v.q; }
+        const r = kCam && dHoy >= 7 ? uHoy / dHoy : d30 > 0 ? u30 / d30 : 0;
+        filas.push({ m, nom: String(pr.name || e.title || '').slice(0, 40), P, pct, pctP, gan, r, st: st || 0, cu, fac30: r * 30 * P, gan30: r * 30 * gan });
+      }
+      const suma = (xs) => xs.reduce((a, x) => ({ n: a.n + 1, u: a.u + x.r * 30, fac: a.fac + x.fac30, gan: a.gan + x.gan30, par: a.par + x.st * x.cu }), { n: 0, u: 0, fac: 0, gan: 0, par: 0 });
+      const T = suma(filas);
+      console.log(`=== ¿EL PISO DE 35% ESTÁ BIEN? · ${filas.length} Clásicas activas con costo y precio de hoy (sin neto ${sinNeto}, sin costo ${sinCosto}) · el mes al precio y ritmo de hoy ===`);
+      console.log(`TOTAL: ~${Math.round(T.u)} u./mes · facturan ${$(T.fac)}/mes · ganan ${$(T.gan)}/mes (${(T.gan / T.fac * 100).toFixed(1)} c/$100) · plata parada en su stock ${$(T.par)}`);
+      const band = [[-1e9, 0, 'pierde'], [0, 35, '0-35%'], [35, 50, '35-50%'], [50, 75, '50-75%'], [75, 100, '75-100%'], [100, 150, '100-150%'], [150, 200, '150-200%'], [200, 1e9, '200%+']];
+      console.log('\n── POR FRANJA DE % (normal · el peor caso da ~3-6 puntos menos) ──');
+      for (const [a, b, n] of band) { const o = suma(filas.filter((x) => x.pct >= a && x.pct < b)); console.log(`  ${n.padEnd(9)} ${String(o.n).padStart(4)} publ. · ${String(Math.round(o.u)).padStart(5)} u./mes · facturan ${$(o.fac).padStart(13)} (${(o.fac / T.fac * 100).toFixed(1)}%) · ganan ${$(o.gan).padStart(12)} (${(o.gan / T.gan * 100).toFixed(1)}%) · ${(o.fac ? o.gan / o.fac * 100 : 0).toFixed(1)} c/$100 · parada ${$(o.par)}`); }
+      console.log('\n── SI EL PISO FUERA… (peor caso; lo que queda abajo ya no se repondría) ──');
+      for (const vara of [35, 40, 45, 50, 60, 75]) { const o = suma(filas.filter((x) => x.pctP < vara)); console.log(`  ${String(vara).padStart(2)}%: quedan afuera ${o.n} · ${Math.round(o.u)} u./mes · facturan ${$(o.fac)} (${(o.fac / T.fac * 100).toFixed(1)}%) · ganan ${$(o.gan)} (${(o.gan / T.gan * 100).toFixed(1)}%) · plata parada ${$(o.par)}`); }
+      console.log('\n── LAS QUE MÁS GANAN ABAJO DEL 50% (peor caso) ──');
+      for (const x of filas.filter((x) => x.pctP < 50).sort((a, b) => b.gan30 - a.gan30).slice(0, 25)) console.log(`  ${x.m} · ${x.nom} · ${$(x.P)} · ${x.pctP.toFixed(0)}% peor (${x.pct.toFixed(0)}%) · ${(x.r * 30).toFixed(1)} u./mes · gana ${$(x.gan30)}/mes · stock ${x.st}`);
+      return;
+    }
     // ── 🔙 ABAJO DEL PRECIO MÁS CARO QUE VENDIÓ (27/10/2026 a la noche, él: "en la mayoría de los casos la franja que más da es la franja
     // alta de los precios… puede haber productos que buscando el mejor precio bajaron de precio de la venta más cara. eso quiero subirlos
     // al precio donde vendió más caro"). Sólo lee. Toda Clásica activa con techo ya medido (🔴 de las rayas o 🏔️ de techo95 de 60 días) y
@@ -19495,7 +19552,7 @@ async function main() {
       const LIN = {}; const lineaDe = async (m) => { if (!(m in LIN)) { try { LIN[m] = (await db.get('mlapi/linea/' + m)) || {}; } catch { LIN[m] = null; } } return LIN[m]; };
       const DESPUES = new Set(['punto', 'techook', 'volviendo', 'bajando', '']);
       const ORIGEN_OK = new Set(['techo', 'techook', 'punto', 'nuevo', 'volviendo']);
-      const out = [], noC = {}; const no = (r) => { noC[r] = (noC[r] || 0) + 1; };
+      const out = [], sinT = [], noC = {}; const no = (r) => { noC[r] = (noC[r] || 0) + 1; };
       let mirados = 0;
       for (const [m, e] of Object.entries(links)) {
         if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || e.hidden || ML_REVISION_NO_MIRAR.has(m) || !e.prodId || !pIdx[e.prodId]) continue;
@@ -19506,13 +19563,14 @@ async function main() {
         if (!DESPUES.has(ult)) { no(`está en ${ESTRATEGIAS[ult] || ult}`); continue; }
         if (ult === 'bajando') { const o = [...tl].reverse().find((t) => t !== 'bajando') || ''; if (!ORIGEN_OK.has(o)) { no(`🪜 que viene de ${ESTRATEGIAS[o] || o || 'nada'}`); continue; } }
         const conTecho = Number((ray[m] || {}).techo) > 0 || ks0.some((k) => techookDeTecho95(h[k]) && k > ahora - 60 * 864e5);
-        if (!conTecho) { no('sin techo medido (va por "si vende, sube")'); continue; }
         if (nos[m]) { no('marcada liquidando'); continue; }
         if (nob[m] && nob[m].congelado) { no('🧊 congelada'); continue; }
         const Pv = Number((np[m] || {}).precio) || 0; if (!(Pv > 0)) { no('sin precio de hoy'); continue; }
         const lin = await lineaDe(m); if (lin == null) { no('no pude leer su línea'); continue; }
         const R = precioMasCaroVendido(lin, h, hoyK);
         if (!R || !(Pv < R.p * 0.98)) { no(R ? 'ya está en (o arriba de) lo más caro que vendió' : 'sin ventas medibles en 60 días'); continue; }
+        // Sin techo medido no es "bajó de más después del techo": se muestra aparte (lo que vende 1+ por semana va a 📈 con +50%).
+        if (!conTecho) { no('sin techo medido (abajo de lo más caro que vendió: lista aparte)'); sinT.push({ m, e, ult, Pv, R }); continue; }
         // sobra y stock antiguo: con la línea junta (las del mismo stock), el stock de hoy contra el ritmo con stock de 60 días
         const J = await lineaJuntaStock(links, pIdx, m, lin, lineaDe);
         const ksJ = Object.keys(J.d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && J.d[k] && typeof J.d[k] === 'object').sort();
@@ -19535,6 +19593,8 @@ async function main() {
         if (x.desc) { const L = Number(x.desc.de) || 0; console.log(`   🏷️ tiene mi descuento a ${$(Number(x.desc.precio))}${L ? ' (lista ' + $(L) + ')' : ''}: ${L && x.obj >= L * 0.98 ? `salir del descuento deja ${$(L)} a la vista (lo más caro que vendió es ${$(x.R.p)}): entrarpromo:${x.m}=salir;go y, si hace falta, la lista` : `cambiar el descuento a ${$(x.obj)}: entrarpromo:${x.m}=salir;go y entrarpromo:${x.m}=${x.obj}@PRICE_DISCOUNT#punto|Vuelve al precio más caro que vendió (${$(x.R.p)} el ${fK(x.R.k)}) (regla del 27/10);go`}`); continue; }
         console.log(`   ▶️ decido:${x.m}=${x.obj}!vendiocaro${x.ban}#punto|Vuelve al precio más caro que vendió (${$(x.R.p)} el ${fK(x.R.k)}): bajó de más buscando el de más ganancia. Ahora se queda en el más alto que vende (regla del 27/10);go`);
       }
+      if (sinT.length) { console.log(`\n── SIN TECHO MEDIDO Y ABAJO DE LO MÁS CARO QUE VENDIÓ (${sinT.length}) · no es la lista de arriba: si vende 1+ por semana va a 📈 (+50%), si vende menos (4a) puede volver con !vendiocaro ──`);
+        for (const x of sinT) console.log(`· ${x.m} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 46)} · ${ESTRATEGIAS[x.ult] || 'sin estrategia'} · hoy ${$(x.Pv)} · vendió ${x.R.u} a ${$(x.R.p)} (la última el ${fK(x.R.k)})`); }
       console.log(`\n(no vuelven: ${Object.entries(noC).sort((a, b) => b[1] - a[1]).map(([r, n]) => `${n} ${r}`).join(' · ')})`);
       return;
     }
@@ -46825,7 +46885,7 @@ async function main() {
         for (let t = desde, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
           const k = dayKeyFromISO(t); if (!vdT9.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdT9.set(k, o); }
           const vd = vdT9.get(k); if (vd == null) return null;
-          for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts > desde) u += Number(v.qty) || 1; }
+          for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts)) u += Number(v.qty) || 1; }
         }
         return { u, desde, pv: Number((npT9[mla] || {}).precio) || 0 };
       };
