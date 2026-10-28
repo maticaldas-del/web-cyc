@@ -35,3 +35,5 @@ p17833581096736=0|SSD 1TB: el precio de ML quedó inflado y vendía 1 cada 3 mes
 p1779912656300=0|Pendrive Ultra Shift 128: se remató porque estuvo parado meses. No traer
 p17833581096732=0|Watch S5: no se trae más (decisión 5a de Matías del 22/10)
 p179218076128818=5|Waflera Atma Disney: es el mejor producto, deja más de 150% y vendió 1 por semana desde que llegó. Tener 5 (pido 4 y queda 1 en Full)
+p1785263851692#Pure Seduction=0|VS Pure Seduction: no vende hace más de 60 días y está en sobra (completa del 28/10). No se repone hasta que se venda lo que hay
+p1785263851692#Velvet Petals=0|VS Velvet Petals: no vende hace más de 60 días (completa del 28/10). No se repone hasta que vuelva a vender
