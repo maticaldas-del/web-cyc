@@ -2125,6 +2125,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 📥 Ver deudas: editar, frecuencia, vencimiento, costo/ganancia y fecha de cada pago (28/10/2026, él: "que se pueda editar, que ponga qué fecha se pagó la cuota, cuánto salió de costo y cuánto se le ganó y que se pueda elegir cada cuánto se paga… que se ponga en rojo cuando pasó el tiempo de pagar")
+- **Qué es:** ✏️ por deuda (mismo formulario, con etiquetas); `frec` sem/quin/men; `vence1` = primera cuota (o el día que paga si es sin cuotas; obligatorio con cuotas); `costo` → ganancia y %; 💵 Pagó pregunta la fecha y la guarda (`pagos/<ts>={f}`; los viejos `=1` usan el ts); la cuota que toca vence en `vence1 + pagadas × período` (mensual respeta fin de mes) y pasada sin pagar el renglón va en rojo y la tarjeta dice "⚠️ N atrasadas". 📋 Ver deudas baja directo a la solapa (antes subía al principio de la página).
+- **Dónde vive:** `CUOTA_FREC`, `_isoMas`, `cuotaVence`, `cuotaPagosFechas`, `renderCuotas`, `_cuotasLlenar`, `cuotasEditar`, `cuotasGuardar`, `cuotasPago`, `cuotasPanel` (index.html).
+- **Qué chequear:** editar una deuda con pagos conserva los pagos; bajar las cuotas por debajo de las pagadas pide confirmar; `_isoMas('2026-01-31','men',1)` = 28/02 (probado); las que carga el robot con `debencyc` no tienen vencimiento y nunca van en rojo.
+
 ### 📥 Lo que nos deben: solapa propia "Ver deudas" en el Arqueo (28/10/2026, él: "queda medio apretado todo" y "que estén tres pestañas dentro, finanzas, productos y ver deudas")
 - **Qué es:** la tarjeta muestra total, cuántas deudas y lo que falta cobrar + 📋 Ver deudas, que abre la solapa nueva **Ver deudas** (al lado de Finanzas y Productos) con ➕ Agregar y el formulario; **las deudas en lista, un renglón por deuda** (28/10, él: "en vez de cuadrados, rectángulos de izquierda a derecha"): nombre y cuotas a la izquierda, lo que falta, y los botones a la derecha (en el teléfono bajan abajo).
 - **Dónde vive:** `#tab-btn-deudas`, `#tab-deudas` (index.html) · `goTab` (lista de solapas con 'deudas') · `cuotasPanel` (lleva a la solapa), `renderCuotas` (también `#cuotas-resumen` y `#cuotas-total2`).
