@@ -3183,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.73';
+const APP_VERSION='27.74';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3196,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.74',f:'28/10',h:'20:20',c:[{n:1,t:'📋 Listas: los proveedores en un desplegable; el elegido muestra su dirección (abre el mapa). En Productos nuevos, ordenar por más % de ganancia, más rotación o ⭐ el que más vende y más gana'}]},
   {v:'27.73',f:'28/10',h:'20:10',c:[{n:1,t:'📄 "Verlo en la lista" en las listas copiadas de la web (Once): muestra la foto del mayorista grande, nombre, precio y un botón para buscarlo en su web'}]},
   {v:'27.72',f:'28/10',h:'19:55',c:[{n:1,t:'📍 Pedidos → Bs As → Listas de Tito: "Direcciones de los mayoristas", cada una abre el mapa'}]},
   {v:'27.71',f:'28/10',h:'19:40',c:[{n:1,t:'💰 Finanzas: al tocar una tarjeta lo primero son las casillas para cargar y el detalle va al final; en el teléfono se abre justo abajo de la tarjeta tocada'}]},
@@ -22850,6 +22851,11 @@ async function llDeshacer(k,id){
 function pesosArgWeb(s){let t=String(s||'').replace(/[^\d.,]/g,'');if(!t)return 0;
   if(t.includes(','))t=t.replace(/\./g,'').replace(',','.');else if(/\.\d{1,2}$/.test(t)&&(t.match(/\./g)||[]).length===1)t=t;else t=t.replace(/\./g,'');
   const v=Math.round(parseFloat(t));return isFinite(v)&&v>0?v:0;}
+function _listaProvSel(vis,sel){const provs=(state.mlconfig&&state.mlconfig.listasProv)||{};
+  const t=x=>{const q=provs[x];return (q.nombre||x)+(q.dan==null?` · ${q.n||0}`:` · ✅ ${q.dan}${q.pend>0?' · ⏳'+q.pend:''}`)+(q.dir?' · 📍':'');};
+  return `<select class="cal-select" style="font-size:.76rem;max-width:100%" onchange="_listaSel=this.value;_listaQ='';renderListas()">${vis.map(x=>`<option value="${x}"${x===sel?' selected':''}>${escHtml(t(x))}</option>`).join('')}</select>`;}
+function _listaOrdV(){try{return localStorage.getItem('cycListaOrd')||'pct';}catch(e){return 'pct';}}
+function listaSetOrd(v){try{localStorage.setItem('cycListaOrd',v);}catch(e){}renderListas();}
 async function renderListas(){
   const _enB=pedidoSection==='bsas';
   if(_enB&&_bsasVista!=='listas'){window._nipAbierto=false;const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';return;}
@@ -22889,8 +22895,10 @@ async function renderListas(){
   // 7.30 · UN SOLO BUSCADOR (21/10/2026, eligió la a): había dos (éste arriba, en todas las listas, y otro abajo de todo, sólo en la
   // lista abierta) que buscaban lo mismo con dos resultados distintos. Queda éste, arriba, también en la solapa Dai Nippon de Bs As.
   let cab=(_enB?'<div style="height:10px"></div>':'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en ${_enB?'las listas de Bs As':'TODAS las listas'}…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`+`
-    ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${visibles.map(_provBtn).join('')}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
+    ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${_listaProvSel(visibles,k)}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
+  // 📍 LA DIRECCIÓN DEL MAYORISTA ELEGIDO, AHÍ MISMO (28/10/2026, él: "que estén todos en un desplegable. al clickear que tenga la dirección ahí dentro").
+  if(v.dir)cab=cab.replace('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">',`<div style="font-size:.72rem;margin:-4px 0 10px">📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.dir)}" target="_blank" rel="noopener" style="color:var(--accent2)">${escHtml(v.dir)}</a> <span style="color:var(--muted)">· tocá para abrir el mapa</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">`);
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
   let cat=_listaCache[k];
   if(!cat){el.innerHTML=cab+`<div style="font-size:.72rem;color:var(--muted)">⏳ bajando la lista…</div>`;
@@ -22931,7 +22939,13 @@ async function renderListas(){
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(pc)}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}${_duda?' · <span style="color:var(--amber)">⚠️ hay una duda (tocá para verla)</span>':''}</div></div>
       <div style="text-align:right;flex:0 0 auto" onclick="if(event.target.tagName==='INPUT'){event.preventDefault();event.stopPropagation();}">${est}${uBox}</div></summary>
       <div style="padding:0 10px 8px 10px"><div style="color:var(--muted);font-size:.64rem;margin-top:4px;line-height:1.55">te sale <b style="color:var(--text)">${fmt(pc)}</b>${rec?` (${fmt(Number(e.p)||0)} + ${rec}%)`:''}${Number(e.pl)>0?` · lista ${fmt(Number(e.pl))} −${e.dto}%`:''}${e.mp?` · en ML ${fmt(e.mp)}${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor: precio que nadie más confirma</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:(_listaDa(e,k)?' · 🛒 vendidas en ML: falta mirarlas (entra igual · con menos de '+CAND_MIN_VENTAS+' se va)':'')}${e.ok?' · <span style="color:var(--green)">✓ mismo producto</span>':''}${_listaNoEsVale(e)?' · <span style="color:var(--red)">✗ otro producto</span>':e.noEs?' · <span style="color:var(--muted)" title="El chat de compras dijo que el catálogo de antes era otro producto; éste es otro catálogo y falta confirmarlo.">catálogo nuevo, falta confirmar</span>':''}${e.mt?` · <span title="el catálogo de ML contra el que se midió">"${escHtml(String(e.mt).slice(0,60))}"</span>`:''}${e.pAnt?` · antes ${fmt(e.pAnt)}`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${String(cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${e.rp?` <span style="color:${_listaOkVale(e)?'var(--muted)':'var(--amber)'}">· ${_listaOkVale(e)?'':'⚠️ '}${escHtml(String(e.rp).slice(0,80))}</span>`:''}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${e.sacado?`<button class="btn" style="font-size:.64rem;padding:3px 10px" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',false)">↩︎ volver a la lista</button>`:`<button class="btn" style="font-size:.64rem;padding:3px 10px;color:var(--red);border-color:var(--red)" onclick="listaSacar('${k}','${String(cod).replace(/'/g,"\\'")}',true)">✕ sacar producto</button>`}</div></div></details>`;};
-  const ord=(a,b)=>((b[1].m??-999)-(a[1].m??-999));
+  // ORDENAR (28/10/2026, él: "que tenga para ordenar en desplegable con más rotación, más % de ganancia y la estrella el que más vende/más ganancia").
+  const _oL=_listaOrdV();
+  const _gU=e=>{const m=Number(e.m),pc=_listaPuesto(k,e);return isFinite(m)&&m>0?pc*m/100:0;};
+  const ord=_oL==='rot'?(a,b)=>((Number(b[1].vend)||0)-(Number(a[1].vend)||0))||((b[1].m??-999)-(a[1].m??-999))
+    :_oL==='star'?(a,b)=>((Number(b[1].vend)||0)*_gU(b[1])-(Number(a[1].vend)||0)*_gU(a[1]))||((b[1].m??-999)-(a[1].m??-999))
+    :(a,b)=>((b[1].m??-999)-(a[1].m??-999));
+  if(_listaVista==='nuevos'){const _sel=`<div style="display:flex;align-items:center;gap:6px;margin:-4px 0 10px;font-size:.68rem;color:var(--muted)">Ordenar: <select class="cal-select" style="font-size:.72rem" onchange="listaSetOrd(this.value)">${[['pct','💹 Más % de ganancia'],['rot','🔄 Más rotación (más vendidos en ML)'],['star','⭐ El que más vende y más gana']].map(([v2,t])=>`<option value="${v2}"${_oL===v2?' selected':''}>${t}</option>`).join('')}</select></div>`;cab+=_sel;}
   // ── PEDIDO ──
   if(_listaVista==='hechos'){
     const A=_listaArmado(k).map(x=>({...x,e:cat[x.cod]||{n:x.cod}}));
@@ -23255,9 +23269,7 @@ function _renderPedidosIn(){
     const st=document.getElementById('bsas-subtabs');
     if(st){const nomL=bp.length===1?(pv[bp[0]].nombre||bp[0]):'Listas de Tito';
       const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
-      // 📍 LA DIRECCIÓN DE CADA MAYORISTA (28/10/2026, él: "poner la dirección de cada mayorista para que Tito la vea"): `lista:<prov>|dir=…;go`.
-      const dirs=bp.filter(k=>pv[k]&&pv[k].dir).map(k=>`<div style="padding:3px 0;border-top:1px solid var(--border)"><b>${escHtml(pv[k].nombre||k)}</b> · 📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pv[k].dir)}" target="_blank" rel="noopener" style="color:var(--accent2)">${escHtml(pv[k].dir)}</a></div>`).join('');
-      st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`+(_bsasVista==='listas'&&dirs?`<details style="margin:-4px 0 12px;font-size:.72rem"><summary style="cursor:pointer;color:var(--muted)">📍 Direcciones de los mayoristas (${bp.filter(k=>pv[k]&&pv[k].dir).length})</summary><div style="margin-top:4px">${dirs}</div></details>`:''):'';}
+      st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
     const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
     if(_bsasVista==='listas'){renderListas();return;}
     {const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';}
