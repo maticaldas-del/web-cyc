@@ -4801,7 +4801,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       let u = 0;
       for (let t = desde, i = 0; i < 32; t += 864e5, i++) {
         const k = kDia(t); const vd = await leerC('cyc/ventaprod/' + k, {}); if (vd == null) return (_v14 = null);
-        for (const v of Object.values(vd || {})) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, d.mla, desde, ts) && ts < ahora) u += Number(v.qty) || 1; }
+        for (const v of Object.values(vd || {})) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, d.mla, desde, ts, ulC && ulC.a > ulC.de ? ulC.de : 0) && ts < ahora) u += Number(v.qty) || 1; }
         if (k >= hoyK) break;
       }
       return (_v14 = { u, desde });
@@ -5318,19 +5318,26 @@ const TECHO_RITMO_MIN_SEMANA = 1;   // 4a del 23/10/2026: menos de 1 venta por s
 // en $6.790 hasta que la alineó la hora de las 18:35, y una venta por la Premium a las 18:32 —al precio VIEJO— contó como "vendió a este
 // precio" y pedía otro +50%). Una venta de OTRA publicación del grupo (gemela, hermana de stock) cuenta recién 3 h después del cambio.
 const GEMELA_LAG_MS = 3 * 3600e3;
-const ventaCuentaDesde = (v, mla, desde, ts) => ts > desde && (String(v.mla) === String(mla) || ts > desde + GEMELA_LAG_MS);
+// UNA COMPRA VIEJA PAGADA DESPUÉS DE LA SUBA (28/10/2026, Centímetro Rosa: subí a $6.790, y una compra de antes hecha a $3.990 se pagó a
+// las 05:29 de hoy; el detector y decido la tomaron como "vendió a $6.790" y la subieron otro +50% a $10.190). La venta de ESTA publicación
+// cuenta sólo si se cobró arriba del precio de antes de la suba (`viejo`, el `de` del último cambio para arriba): la hora no alcanza.
+const ventaAlPrecioViejo = (v, mla, viejo) => { if (!(viejo > 0) || String(v.mla) !== String(mla)) return false; const q = Number(v.qty) || 1, tot = Number(v.total) || 0; return tot > 0 && tot / q <= viejo * 1.01; };
+const ventaCuentaDesde = (v, mla, desde, ts, viejo = 0) => ts > desde && (String(v.mla) === String(mla) || ts > desde + GEMELA_LAG_MS) && !ventaAlPrecioViejo(v, mla, viejo);
 // ¿Vendió A ESTE PRECIO? (27/10/2026, él: "si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir").
 // Ventas (de ésta, sus hermanas de stock y sus gemelas) desde el último cambio de precio mío de más de 2% (`cyc/claudecambios`), en los
 // últimos 30 días. {uds, desde} · null = no se pudo leer (no se adivina).
 async function vendioAEstePrecio(db, mla, links, prods) {
   let cc = null; try { cc = (await db.get('cyc/claudecambios')) || {}; } catch { return null; }
   const ahora = Date.now();
-  const desde = Math.max(ahora - 30 * 864e5, ...Object.values(cc).filter((c) => c && String(c.mla) === mla && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).map((c) => Number(c.ts) || 0));
+  const camM = Object.values(cc).filter((c) => c && String(c.mla) === mla && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02);
+  const ulM = camM.reduce((mx, c) => (!mx || Number(c.ts) > Number(mx.ts) ? c : mx), null);
+  const desde = Math.max(ahora - 30 * 864e5, ...camM.map((c) => Number(c.ts) || 0));
+  const viejo = ulM && Number(ulM.a) > Number(ulM.de) ? Number(ulM.de) : 0;
   const grupo = [mla, ...hermanasStockDe(links, prods, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)];
   let uds = 0;
   for (let t = desde, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
     let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
-    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts)) uds += Number(v.qty) || 1; }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts, viejo)) uds += Number(v.qty) || 1; }
   }
   return { uds, desde };
 }
@@ -5577,13 +5584,13 @@ async function detectarErrores(db, o = {}) {
       // sabemos que no es techo"; eligió la a): vale para TODA prueba 📈 (#techo), no sólo 🆕. Se cuenta desde el último cambio de precio
       // (la venta tiene que ser A ESTE precio) y se frena sólo cuando techo95 ya dice "deja de convenir" con su certeza (🟠).
       if (!['nuevo', 'techo'].includes(ult) || !tsU) continue;
-      { const ultCambio = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((mx, c) => Math.max(mx, Number(c.ts) || 0), 0); if (ultCambio > tsU) tsU = ultCambio; }
+      let viejoU = 0; { const ulc = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((mx, c) => (!mx || Number(c.ts) > Number(mx.ts) ? c : mx), null); if (ulc && Number(ulc.ts) > tsU) tsU = Number(ulc.ts); if (ulc && Number(ulc.a) > Number(ulc.de)) viejoU = Number(ulc.de); }
       lzC.nuevo++; if (!/^active/.test(String(e.status || ''))) { lzC.inact++; continue; }   // activa = con stock en Full (sin stock ML la pausa)
       const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
       let primera = 0, uds = 0, sinLeer = false;
       for (let t = Math.max(tsU, ahora - 30 * 864e5), i = 0; i < 31 && t <= ahora + 864e5; t += 864e5, i++) {
         const vd = await ventasDia(dayKeyFromISO(t)); if (vd == null) { sinLeer = true; continue; }
-        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, m, tsU, ts)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
+        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, m, tsU, ts, viejoU)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
       }
       if (!primera) { if (sinLeer) lanza.push({ mla: m, e, sinLeer: true }); else lzC.sinVenta++; continue; }
       // una suba de una hermana de stock cuenta: ML iguala sola el precio de las hermanas (27/10, Cartas Poker Envíos y Termómetro 4 botones)
@@ -47189,13 +47196,16 @@ async function main() {
         if (ccT9 === false) return null;
         const ahora = Date.now(), pc = pcT9[mla];
         const tPc = pc && Number(pc.ts) > 0 && Number(pc.ts) < ahora && promoClaudeVigente(pc, ahora).vig ? Number(pc.ts) : 0;
-        const desde = Math.max(ahora - 30 * 864e5, tPc, ...Object.values(ccT9).filter((c) => c && String(c.mla) === mla && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).map((c) => Number(c.ts) || 0));
+        const camT = Object.values(ccT9).filter((c) => c && String(c.mla) === mla && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02);
+        const desde = Math.max(ahora - 30 * 864e5, tPc, ...camT.map((c) => Number(c.ts) || 0));
+        const ulT = camT.reduce((mx, c) => (!mx || Number(c.ts) > Number(mx.ts) ? c : mx), null);
+        const viejoT = ulT && Number(ulT.ts) >= desde && Number(ulT.a) > Number(ulT.de) ? Number(ulT.de) : 0;   // compra vieja pagada después de la suba (28/10)
         const grupo = new Set([mla, ...hermanasStockDe(links, pIdx, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)]);
         let u = 0;
         for (let t = desde, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
           const k = dayKeyFromISO(t); if (!vdT9.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdT9.set(k, o); }
           const vd = vdT9.get(k); if (vd == null) return null;
-          for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts)) u += Number(v.qty) || 1; }
+          for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.has(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts, viejoT)) u += Number(v.qty) || 1; }
         }
         return { u, desde, pv: Number((npT9[mla] || {}).precio) || 0 };
       };

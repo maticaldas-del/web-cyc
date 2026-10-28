@@ -855,6 +855,15 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   primera alineación no deje ninguna gemela en "ML no contestó" por error (si son muchas, el mínimo de $3.000 está mal) · `publicar` sin go
   en la próxima llegada.
 
+- **📈 "Vendió a este precio": una compra vieja pagada después de la suba ya no cuenta (28/10/2026).** Qué es: el Centímetro Rosa se subió
+  a $6.790; una compra de antes, hecha a $3.990, se pagó a las 05:29 del 28/10 y el detector `errores` (📈🆕) y `decido …!vendio` la
+  contaron como "vendió a $6.790" → otro +50% a $10.190 (lo encontró el ayudante de ventas de la vuelta de las 9:52). Ahora la venta de
+  ESA publicación cuenta sólo si se cobró arriba del precio de antes de la última suba (`ventaAlPrecioViejo`, total ÷ unidades). Dónde
+  vive: `ventaCuentaDesde(…, viejo)` en `sync.mjs`, en los cuatro lugares que la usan (detector 📈🆕, `vendioAEstePrecio` de `decido
+  !vendio`, F14 `vendioDesdeCambio` en `frenosBajas`, `vendioHoyT` de `techo95`). Las gemelas y hermanas siguen con la espera de 3 h.
+  Qué chequear: que `errores` no vuelva a listar una 📈 por una venta al precio viejo · que F14 no frene una baja por una compra vieja ·
+  que una venta real a la prueba (precio nuevo) siga contando (Naipes Casino 28/10 09:04 a $7.290).
+
 ## 2 · PLATA (martes)
 ### 📥 "Lo que nos deben" = la suma de una lista de deudas (28/10/2026, v27.47; él: *"que deben a cyc esté sólo en la parte de ahí arriba… y que en la parte de abajo estén las cosas que la compongan… agregar una deuda a cyc, nombre y monto y si es con cuotas o no"*)
 - **Qué es:** la casilla a mano de abajo se sacó; en la tarjeta de arriba va la lista (nombre, monto en pesos, con o sin cuotas, 💵 Pagó / Pagó una cuota, ↩︎, 🗑️) y ➕ Agregar deuda a CYC. `deben_cyc` lo escribe la web = lo que falta cobrar ÷ dólar de hoy (patrimonio y cierres sin cambios). Lo escrito a mano (US$ 2.380) pasó UNA vez a la deuda `m_manual` en pesos al dólar de ese momento (`_migrado`). Se arregló que `cyc/debencuotas` no se leía al abrir la web (v27.46 mostraba la lista vacía al recargar). `debencyc` del robot: `+N` agrega una deuda a la lista; `-N`/`N` se niegan (los pagos van en la web).
