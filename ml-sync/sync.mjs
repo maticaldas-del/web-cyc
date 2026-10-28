@@ -19532,6 +19532,34 @@ async function main() {
       for (const x of filas.filter((x) => x.pctP < 50).sort((a, b) => b.gan30 - a.gan30).slice(0, 25)) console.log(`  ${x.m} · ${x.nom} · ${$(x.P)} · ${x.pctP.toFixed(0)}% peor (${x.pct.toFixed(0)}%) · ${(x.r * 30).toFixed(1)} u./mes · gana ${$(x.gan30)}/mes · stock ${x.st}`);
       return;
     }
+    // ── ¿LO QUE SE COMPRÓ COMO CANDIDATO DEJA LO QUE DECÍA? (27/10/2026 a la noche, para analizar el piso de 35%). Sólo lee. Cada candidato
+    // de Paraguay ya comprado (`prodId`): el % con que se midió (contra el precio de ML de la competencia) contra el % que dejaron de verdad sus
+    // ventas de 60 días (vendido solo, como `mezcla`) y el % al precio de hoy (`cyc/netopub`). Por tramo del % del candidato.
+    if (/^pisocand(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const links = (await db.get('cyc/mllinks')) || {}; const np = (await db.get('cyc/netopub')) || {};
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; const mono = await leerMonoPct(db);
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const k60 = dayKeyFromISO(Date.now() - 60 * 864e5);
+      const real = {}; for (const [k, ents] of Object.entries(vp)) { if (k.slice(0, 10) < k60) continue; for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !(v.costo > 0) || !v.prodId) continue;
+        const imp = (v.total || 0) * (mlExtraPct(v.cuenta) + mono) / 100; const o = (real[v.prodId] = real[v.prodId] || { gan: 0, base: 0, u: 0, fac: 0 }); o.gan += (v.neto || 0) - v.costo - imp; o.base += v.costo + imp; o.u += Number(v.qty) || 1; o.fac += v.total || 0; } }
+      const filas = [];
+      for (const c of Object.values(cands)) {
+        if (!c || !c.prodId || c.margen == null || !isFinite(Number(c.margen))) continue; const pr = pIdx[c.prodId]; if (!pr) continue;
+        const r = real[c.prodId]; const pctR = r && r.base > 0 ? r.gan / r.base * 100 : null;
+        let pctH = null; { const ms = Object.entries(links).filter(([m, e]) => e && e.prodId === c.prodId && !e.gemelaDe && !e.ignored && np[m] && Number(np[m].neto) > 0);
+          if (ms.length && tc > 0) { const [m, e] = ms[0]; const n0 = np[m]; const cu = costoPesos(pr, 1, tc).costo; const imp = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + mono) / 100; if (cu > 0) pctH = (Number(n0.neto) - cu - Number(n0.precio) * imp) / (cu + Number(n0.precio) * imp + (Number(n0.envio) || 0)) * 100; } }
+        filas.push({ nom: String(c.nombre || pr.name || '').slice(0, 44), mc: Number(c.margen), pctR, pctH, u: r ? r.u : 0, gan: r ? r.gan : 0, fac: r ? r.fac : 0 });
+      }
+      const med = (xs) => { const a = xs.filter((x) => x != null && isFinite(x)).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
+      console.log(`=== LO QUE SE COMPRÓ COMO CANDIDATO · ${filas.length} con ficha · el % medido al comprarlo contra el que deja de verdad ===`);
+      for (const [lo, hi] of [[-1e9, 25], [25, 35], [35, 50], [50, 80], [80, 1e9]]) { const g = filas.filter((x) => x.mc >= lo && x.mc < hi); if (!g.length) continue;
+        const conV = g.filter((x) => x.pctR != null); const U = conV.reduce((a, x) => a + x.u, 0), G = conV.reduce((a, x) => a + x.gan, 0), F = conV.reduce((a, x) => a + x.fac, 0);
+        console.log(`  candidato ${lo < -1e8 ? '<25' : lo + (hi > 1e8 ? '+' : '-' + hi)}%: ${g.length} · con ventas en 60 d ${conV.length} (${U} u., ganaron $${Math.round(G).toLocaleString('es-AR')}, $${F ? (G / F * 100).toFixed(0) : 0} c/$100) · mediana del % real ${med(conV.map((x) => x.pctR))?.toFixed(0) ?? '—'}% · al precio de hoy ${med(g.map((x) => x.pctH))?.toFixed(0) ?? '—'}% · quedaron abajo del 35% hoy: ${g.filter((x) => x.pctH != null && x.pctH < 35).length}`); }
+      console.log('\n(detalle: candidato % · real 60 d % · hoy % · unidades)');
+      for (const x of filas.sort((a, b) => a.mc - b.mc)) console.log(`  ${x.mc.toFixed(0).padStart(4)}% → ${x.pctR == null ? '  —' : x.pctR.toFixed(0).padStart(4) + '%'} → ${x.pctH == null ? '  —' : x.pctH.toFixed(0).padStart(4) + '%'} · ${String(x.u).padStart(3)} u. · ${x.nom}`);
+      return;
+    }
     // ── 🔙 ABAJO DEL PRECIO MÁS CARO QUE VENDIÓ (27/10/2026 a la noche, él: "en la mayoría de los casos la franja que más da es la franja
     // alta de los precios… puede haber productos que buscando el mejor precio bajaron de precio de la venta más cara. eso quiero subirlos
     // al precio donde vendió más caro"). Sólo lee. Toda Clásica activa con techo ya medido (🔴 de las rayas o 🏔️ de techo95 de 60 días) y
