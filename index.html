@@ -3168,7 +3168,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.61';
+const APP_VERSION='27.62';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3181,6 +3181,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.62',f:'28/10',h:'18:50',c:[{n:1,t:'📥 Ver deudas: una deuda sin cuotas se puede guardar en $0 (cuenta corriente que se mueve sólo con ➕ Suma deuda / ➖ Devolvió)'}]},
   {v:'27.61',f:'28/10',h:'18:40',c:[{n:1,t:'📋 Listas: si el proveedor tiene foto del producto, se ve al lado de la de ML (la cargan los mayoristas del Once)'}]},
   {v:'27.60',f:'28/10',h:'18:15',c:[{n:2,t:'📥 Ver deudas: ya no se borra nada (sin 🗑️). Las pagadas se ponen en verde y bajan a ✅ Pagadas, de a 6 por página. Mercadería y Deuda Perfumería quedan siempre arriba (📌, en verde si están al día). Cada producto dejado en una perfumería tiene su ✅ Pagó: queda en verde con la fecha y la cuenta sigue con lo demás'}]},
   {v:'27.59',f:'28/10',h:'17:55',c:[{n:1,t:'🛍️ Mercadería dejada en las perfumerías (Soares, Sarmiento, Ceballos): cada producto que se deja aparece en la historia con dónde quedó, lo que paga la perfumería, lo que nos costó y la ganancia en verde. Esa ganancia se ve sólo ahí, no se suma a la de ML'}]},
@@ -6956,7 +6957,7 @@ function cuotasRestaPesos(){return cuotasLista().reduce((s,d)=>s+d.resta,0);}
 function _isoDe(ts){const t=new Date(Number(ts));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';}
 // La historia entera de una deuda, la más nueva arriba: cómo empezó, cada cuota pagada y cada movimiento.
 function cuotaHistoria(d){const H=[];
-  H.push({f:d.fecha0||_isoDe(d.ts),ts:Number(d.ts)||0,m:d.monto,txt:d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial'});
+  if(d.monto>0)H.push({f:d.fecha0||_isoDe(d.ts),ts:Number(d.ts)||0,m:d.monto,txt:d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial'});
   const ps=Object.entries(d.pagos||{}).sort((a,b)=>Number(a[0])-Number(b[0]));
   ps.forEach(([k,v],i)=>H.push({f:(v&&v.f)||_isoDe(k),ts:Number(k),m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n}`:'pagó todo'}));
   for(let i=ps.length;i<d.pagadas;i++)H.push({f:'',ts:0,m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n} (sin fecha)`:'pagó todo (sin fecha)'});
@@ -7102,7 +7103,7 @@ function cuotasEditar(id){const d=cuotasLista().find(x=>x.id===id);if(d)_cuotasL
 function _cuotasN(){return document.getElementById('cq_concuotas').checked?(parseInt(document.getElementById('cq_n').value,10)||0):1;}
 function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN(),sg=document.getElementById('cq_singan').checked,c=sg?0:(parseMoney(document.getElementById('cq_costo').value)||0);
   const fq=document.getElementById('cq_frec').value,cd=parseInt(document.getElementById('cq_dias').value,10)||0,fr=fq==='dias'?(cd?`cada ${cd} días`:'¿cada cuántos días?'):cuotaFrecTxt(fq),v=document.getElementById('cq_vence').value;
-  let t=!(m>0)?'Poné cuánto debe en total':n>1?`${n} cuotas de ${_pesos(m/n)} · ${fr} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;
+  let t=!(m>0)?(n>1?'Poné cuánto debe en total':'En $0: arranca sin deuda y se mueve con ➕ / ➖'):n>1?`${n} cuotas de ${_pesos(m/n)} · ${fr} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;
   if(m>0&&sg)t+=' · sin ganancia';
   if(m>0&&c>0)t+=` · ganancia ${_pesos(m-c)} (${Math.round((m-c)/m*100)}%)`;
   if(v&&n>1&&(fq!=='dias'||cd))t+=` · si paga a tiempo, la última el ${_isoDM(_isoMas(v,fq,n-1,cd))} (cada cuota vence a un período del pago anterior)`;
@@ -7110,7 +7111,8 @@ function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto'
 async function cuotasGuardar(){
   const g=i=>document.getElementById(i);const id0=g('cq_id').value,nom=g('cq_nom').value.trim(),monto=parseMoney(g('cq_monto').value)||0,n=_cuotasN(),sinGan=g('cq_singan').checked,costo=sinGan?0:(parseMoney(g('cq_costo').value)||0),vence=g('cq_vence').value||'',frec=g('cq_frec').value,cadaDias=parseInt(g('cq_dias').value,10)||0;
   if(n>1&&frec==='dias'&&!(cadaDias>0)){toast('Poné cada cuántos días paga','err');return;}
-  if(!nom||!(monto>0)||!(n>0)){toast('Falta el nombre, el monto o cuántas cuotas','err');return;}
+  // En $0 se puede guardar (28/10/2026, él: "no me deja guardar en 0"): una cuenta corriente sin cuotas arranca en 0 y se mueve con los movimientos.
+  if(!nom||!(monto>=0)||!(n>0)||(n>1&&!(monto>0))){toast(n>1?'Falta el nombre, el monto o cuántas cuotas':'Falta el nombre','err');return;}
   if(n>1&&!vence){toast('Poné cuándo vence la primera cuota (así avisa en rojo si se atrasa)','err');return;}
   const ya=id0?(state.debencuotas||{})[id0]:null;if(id0&&!ya){toast('No encuentro esa deuda','err');return;}
   const pag=ya?Math.min(n,Number(ya.pagadas)||0):0;
