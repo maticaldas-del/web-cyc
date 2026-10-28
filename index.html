@@ -319,7 +319,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
   .ht-grid .nav-card.ht-ped .nc-icon{display:none}
   .ht-ped-grid{gap:4px;margin-top:0}
   .ht-grid .nav-card.ht-fac .nc-icon,.ht-grid .nav-card.ht-fac #hv-fac{display:none}.ht-fac .ncfb{gap:2px!important;margin-top:2px!important}.ht-fac .ncfb>div{font-size:.52rem!important;gap:3px!important}.ht-fac .ncfb>div>span:nth-child(2){height:4px!important}
-  .ht-arq-grid{grid-template-columns:repeat(3,1fr)}.ht-arq-grid .ht-ped-b{padding:3px 0}
+  .ht-arq-grid{grid-template-columns:repeat(2,1fr)}.ht-arq-grid .ht-ped-b{padding:3px 0}
   .ht-ped-b{font-size:.85rem;padding:3px 0;border-radius:7px}
   .ht-ped-b span{display:none}
   .ht-rot>div:nth-child(2){display:none}
@@ -1118,13 +1118,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div id="nc-rot-score" class="ht-rot"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <!-- LAS TRES PUERTAS DEL ARQUEO EN INICIO (28/10/2026, él: "acá que estén tres pestañas dentro, finanzas, productos y ver deudas"),
+    <!-- LAS PUERTAS DEL ARQUEO EN INICIO (28/10/2026, él: "acá que estén tres pestañas dentro…"; después "sacar finanzas ya que al clickear arqueo se abre sola"),
          como las de Pedidos: cada botón entra directo a su solapa. -->
     <div class="nav-card nc1 ht ht-ped" onclick="goPage('inventario')" title="Finanzas, fichas de cada producto y lo que nos deben.">
       <span class="nc-icon">🧮</span>
       <div class="nc-title">Arqueo</div>
       <div class="ht-ped-grid ht-arq-grid">
-        <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('arqueo')" title="Finanzas">💵<span> Finanzas</span></button>
         <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('productos')" title="Productos">📦<span> Productos</span></button>
         <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('deudas')" title="Ver deudas">📥<span> Ver deudas</span></button>
       </div>
@@ -3166,7 +3165,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.56';
+const APP_VERSION='27.57';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3179,6 +3178,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.57',f:'28/10',h:'17:20',c:[{n:2,t:'📥 Ver deudas: tocá cualquier deuda y se despliega el detalle con TODA la historia (en verde lo que se suma, en rojo lo que devuelve, de a 6 por página). Ahí mismo: ➕ Suma deuda / ➖ Devolvió con monto, fecha y nota (para la deuda de la perfumería que se mueve todos los días). 💵 Pagó en las sin cuotas deja poner cuánto devolvió. 🧮 Inicio: la tarjeta Arqueo deja sólo 📦 Productos y 📥 Ver deudas (tocando la tarjeta ya se abre Finanzas)'}]},
   {v:'27.56',f:'28/10',h:'16:55',c:[{n:1,t:'🧾 Inicio: la tarjeta de Facturas muestra una barrita por cuenta con cuán llena va contra el tope de H (lleno = facturado hoy, clarito = a dónde llega al cierre de ARCA; rojo si se pasa, ámbar desde 85%)'}]},
   {v:'27.55',f:'28/10',h:'16:40',c:[{n:1,t:'🧮 Inicio: la tarjeta de Arqueo tiene tres botones (💵 Finanzas · 📦 Productos · 📥 Ver deudas) que entran directo, como Pedidos. Y en Ver deudas se puede marcar una deuda "sin ganancia" (préstamo o algo que nos devuelven al costo)'}]},
   {v:'27.54',f:'28/10',h:'16:25',c:[{n:2,t:'📥 Ver deudas: ✏️ editar cada deuda · cada cuánto paga (semanal, cada 15 días o mensual) y cuándo vence · cuánto nos costó y cuánto se le gana · cada pago guarda su fecha (te la pregunta al tocar 💵 Pagó) · en ROJO la que se atrasó. Y 📋 Ver deudas ahora te lleva directo a la lista'}]},
@@ -6936,8 +6936,22 @@ async function saveFin(key,val){
 // patrimonio y a cada cierre como antes. Lo que estaba escrito a mano (US$) pasó a ser una deuda más, en pesos al cambio del día.
 const _escC=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const _pesos=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-AR');
-function cuotasLista(){return Object.entries(state.debencuotas||{}).filter(([,d])=>d&&typeof d==='object'&&d.nom).map(([id,d])=>{const n=Math.max(1,Number(d.n)||1),monto=Number(d.monto)>0?Number(d.monto):(Number(d.cuota)||0)*n;return{id,...d,n,monto,cuota:monto/n,pagadas:Math.min(n,Number(d.pagadas)||0)};}).sort((a,b)=>((a.pagadas>=a.n)-(b.pagadas>=b.n))||(Number(b.ts)||0)-(Number(a.ts)||0));}
-function cuotasRestaPesos(){return cuotasLista().reduce((s,d)=>s+Math.max(0,d.monto-d.pagadas*d.cuota),0);}
+// MOVIMIENTOS (28/10/2026, él con "Deuda Perfumería": "le prestamos plata por poco tiempo y nos van devolviendo, todos los días se mueve,
+// quiero que haya un registro de todos los movimientos"): `movs/<ts>` = {m (+ suma deuda / − devolvió), f (AAAA-MM-DD), nota}. Lo que falta =
+// monto − cuotas pagadas + Σ movimientos (nunca menos de 0).
+function cuotaMovsSuma(d){return Object.values(d.movs||{}).reduce((s,x)=>s+(Number(x&&x.m)||0),0);}
+function cuotasLista(){return Object.entries(state.debencuotas||{}).filter(([,d])=>d&&typeof d==='object'&&d.nom).map(([id,d])=>{const n=Math.max(1,Number(d.n)||1),monto=Number(d.monto)>0?Number(d.monto):(Number(d.cuota)||0)*n,pagadas=Math.min(n,Number(d.pagadas)||0),cuota=monto/n;
+    const resta=Math.max(0,monto-pagadas*cuota+cuotaMovsSuma(d));return{id,...d,n,monto,cuota,pagadas,resta,fin:resta<=0.5};}).sort((a,b)=>(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0));}
+function cuotasRestaPesos(){return cuotasLista().reduce((s,d)=>s+d.resta,0);}
+function _isoDe(ts){const t=new Date(Number(ts));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';}
+// La historia entera de una deuda, la más nueva arriba: cómo empezó, cada cuota pagada y cada movimiento.
+function cuotaHistoria(d){const H=[];
+  H.push({f:d.fecha0||_isoDe(d.ts),ts:Number(d.ts)||0,m:d.monto,txt:d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial'});
+  const ps=Object.entries(d.pagos||{}).sort((a,b)=>Number(a[0])-Number(b[0]));
+  ps.forEach(([k,v],i)=>H.push({f:(v&&v.f)||_isoDe(k),ts:Number(k),m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n}`:'pagó todo'}));
+  for(let i=ps.length;i<d.pagadas;i++)H.push({f:'',ts:0,m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n} (sin fecha)`:'pagó todo (sin fecha)'});
+  Object.entries(d.movs||{}).forEach(([k,v])=>{if(v&&Number(v.m))H.push({f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:v.nota||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k});});
+  return H.sort((a,b)=>String(b.f).localeCompare(String(a.f))||b.ts-a.ts);}
 let _debenMig=false;
 async function cuotasSync(){
   if(!state._debenListo||document.getElementById('fin-view-sel')?.value)return;   // sin las deudas leídas, o mirando un cierre, no se toca nada
@@ -6962,28 +6976,77 @@ function _isoDM(f){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})/);retur
 function _isoMas(f,frec,k){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return null;const d=new Date(+m[1],+m[2]-1,+m[3],12);const F=CUOTA_FREC[frec]||CUOTA_FREC.men;
   if(F.m){const dia=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+F.m*k);const ult=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(dia,ult));}else d.setDate(d.getDate()+F.d*k);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function cuotaVence(d){if(d.pagadas>=d.n||!d.vence1)return null;return d.n>1?_isoMas(d.vence1,d.frec,d.pagadas):d.vence1;}
+function cuotaVence(d){if(d.fin||d.pagadas>=d.n||!d.vence1)return null;return d.n>1?_isoMas(d.vence1,d.frec,d.pagadas):d.vence1;}
 function cuotaPagosFechas(d){return Object.entries(d.pagos||{}).map(([k,v])=>(v&&v.f)?v.f:(()=>{const t=new Date(Number(k));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';})()).filter(Boolean).sort();}
 function renderCuotas(){
   const el=document.getElementById('cuotas-lista');if(!el)return;
-  const L=cuotasLista(),abiertas=L.filter(d=>d.pagadas<d.n).length,hoy=_isoHoy(),venc=L.filter(d=>{const v=cuotaVence(d);return v&&v<hoy;}).length;
+  const L=cuotasLista(),abiertas=L.filter(d=>!d.fin).length,hoy=_isoHoy(),venc=L.filter(d=>{const v=cuotaVence(d);return v&&v<hoy;}).length;
   const t2=document.getElementById('cuotas-total2');if(t2)t2.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} sin terminar de pagar · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>${venc?` · <b style="color:var(--red)">${venc} atrasada${venc===1?'':'s'}</b>`:''}`:'';
   const rs=document.getElementById('cuotas-resumen');if(rs)rs.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>${venc?` · <b style="color:var(--red)">⚠️ ${venc} atrasada${venc===1?'':'s'}</b>`:''}`:'Ninguna deuda cargada.';
   if(!L.length){el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">Ninguna deuda cargada.</div>';return;}
   // EN LISTA (28/10/2026, él: "en vez de cuadrados, rectángulos de izquierda a derecha"): un renglón por deuda.
-  el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+L.map(d=>{const fin=d.pagadas>=d.n,resta=Math.max(0,d.monto-d.pagadas*d.cuota),cq=d.n>1;
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+L.map(d=>{const fin=d.fin,resta=d.resta,cq=d.n>1,ab=window._cuotaAbierta===d.id;
     const v=cuotaVence(d),atr=v&&v<hoy,fr=(CUOTA_FREC[d.frec]||CUOTA_FREC.men).t,costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
     const fechas=cuotaPagosFechas(d);
     const lin1=fin?'✅ pagada':cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:`sin cuotas · total ${_pesos(d.monto)}`;
     const lin2=[
       d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${d.monto>0?` (${Math.round(gan/d.monto*100)}%)`:''}`:'',
       fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
-    return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid ${atr?'var(--red)':'var(--border)'};${atr?'background:rgba(239,68,68,.08);':''}border-radius:var(--r);padding:8px 12px;${fin?'opacity:.6':''}">
-      <div style="flex:1 1 220px;min-width:0"><b style="font-size:.8rem;word-break:break-word">${_escC(d.nom)}</b>
+    const nMov=Object.keys(d.movs||{}).length;
+    return `<div style="border:1px solid ${atr?'var(--red)':ab?'var(--border2)':'var(--border)'};${atr?'background:rgba(239,68,68,.08);':''}border-radius:var(--r);${fin&&!ab?'opacity:.6':''}">
+      <div onclick="cuotaToggle('${d.id}')" style="cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px" title="Tocá para ver el detalle y la historia">
+      <div style="flex:1 1 220px;min-width:0"><b style="font-size:.8rem;word-break:break-word">${ab?'▾':'▸'} ${_escC(d.nom)}</b>${nMov?` <span style="font-size:.62rem;color:var(--muted)">· ${nMov} movimiento${nMov===1?'':'s'}</span>`:''}
         <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${lin1}</div>${lin2?`<div style="font-size:.66rem;color:var(--muted);margin-top:2px">${lin2}</div>`:''}</div>
       <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem;${atr?'color:var(--red)':''}">${_pesos(resta)}</b>${fin?'':v?`<div style="font-size:.66rem;margin-top:2px;color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></div>`:`<div style="font-size:.62rem;margin-top:2px;color:var(--amber)">sin fecha · ✏️</div>`}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasEditar('${d.id}')" title="Editar">✏️</button><button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')+'</div>'
+      <div style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">${fin?'':cq?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:`<button class="btn" style="font-size:.7rem" onclick="cuotaMovAbrir('${d.id}',-1)">💵 Pagó</button>`}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasEditar('${d.id}')" title="Editar">✏️</button><button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>
+      ${ab?cuotaDetalleHTML(d):''}</div>`;}).join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`;
+}
+// EL DESPLEGABLE DE CADA DEUDA (28/10/2026, él: "al clickear cualquier tarjeta quiero que se abra un desplegable con el detalle de la deuda e
+// historia de todo… cada vez que se sume deuda aparezca en verde y cuando se resta rojo… máximo 6, el resto por página 1, 2, 3").
+const CUOTA_POR_PAG=6;
+function cuotaToggle(id){window._cuotaAbierta=window._cuotaAbierta===id?null:id;window._cuotaPag=1;renderCuotas();}
+function cuotaPagina(n){window._cuotaPag=n;renderCuotas();}
+function cuotaDetalleHTML(d){
+  const H=cuotaHistoria(d),pags=Math.max(1,Math.ceil(H.length/CUOTA_POR_PAG)),pg=Math.min(pags,Math.max(1,window._cuotaPag||1));
+  const sum=H.filter(x=>x.m>0).reduce((s,x)=>s+x.m,0),res=H.filter(x=>x.m<0).reduce((s,x)=>s-x.m,0);
+  const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:.7rem">
+      <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
+      <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}</span>
+      <b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>
+      ${x.mov?`<button class="btn" style="font-size:.6rem;padding:2px 6px" onclick="event.stopPropagation();cuotaMovBorrar('${d.id}','${x.mov}')" title="Borrar este movimiento">✕</button>`:''}</div>`).join('');
+  const nav=pags>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${Array.from({length:pags},(_,i)=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${i+1===pg?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="event.stopPropagation();cuotaPagina(${i+1})">${i+1}</button>`).join('')}</div>`:'';
+  return `<div onclick="event.stopPropagation()" style="padding:4px 12px 12px;border-top:1px dashed var(--border)">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);margin:6px 0">
+      <span>se sumó <b style="color:var(--green)">${_pesos(sum)}</b></span><span>devolvió <b style="color:var(--red)">${_pesos(res)}</b></span><span>falta <b style="color:var(--text)">${_pesos(d.resta)}</b></span>
+      ${d.quien?`<span>cargada por ${_escC(d.quien)}</span>`:''}${d.editado?`<span>editada el ${_isoDM(_isoDe(d.editado))}</span>`:''}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0">
+      <input id="cmv_m_${d.id}" class="fin-input" type="text" inputmode="numeric" placeholder="$ monto" style="width:110px">
+      <input id="cmv_f_${d.id}" class="fin-input" type="date" value="${_isoHoy()}" style="width:150px;text-align:left">
+      <input id="cmv_n_${d.id}" class="fin-input" type="text" placeholder="nota (ej. compra 6 perfumes, tarjeta Mati)" style="flex:1 1 180px;text-align:left">
+      <button class="btn" style="font-size:.7rem;color:var(--green);border-color:rgba(34,197,94,.5)" onclick="cuotaMovGuardar('${d.id}',1)">➕ Suma deuda</button>
+      <button class="btn" style="font-size:.7rem;color:var(--red);border-color:rgba(239,68,68,.5)" onclick="cuotaMovGuardar('${d.id}',-1)">➖ Devolvió</button>
+    </div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:2px">Historia (${H.length} movimiento${H.length===1?'':'s'}${pags>1?` · página ${pg} de ${pags}`:''})</div>
+    ${filas}${nav}</div>`;
+}
+function cuotaMovAbrir(id,signo){window._cuotaAbierta=id;window._cuotaPag=1;renderCuotas();const d=cuotasLista().find(x=>x.id===id);
+  const m=document.getElementById('cmv_m_'+id);if(m){if(signo<0&&d)m.value=Math.round(d.resta);m.focus();m.select&&m.select();}}
+async function cuotaMovGuardar(id,signo){
+  const d=(state.debencuotas||{})[id];if(!d)return;const g=k=>document.getElementById('cmv_'+k+'_'+id);
+  const m=parseMoney(g('m').value)||0,f=g('f').value||_isoHoy(),nota=(g('n').value||'').trim().slice(0,120);
+  if(!(m>0)){toast('Poné el monto','err');return;}
+  const L=cuotasLista().find(x=>x.id===id);if(signo<0&&L&&m>L.resta+0.5&&!confirm(`Devolvió ${_pesos(m)} y sólo debía ${_pesos(L.resta)}. ¿Lo cargo igual? (queda en $0)`))return;
+  const k=String(Date.now()),mv={m:signo*Math.round(m),f,...(nota?{nota}:{}),quien:whoAmI||''};
+  try{await fbSet('debencuotas/'+id+'/movs/'+k,mv);d.movs={...(d.movs||{}),[k]:mv};}catch(e){toast('No se guardó: '+e.message,'err');return;}
+  window._cuotaPag=1;renderCuotas();cuotasSync();log(`${d.nom}: ${signo>0?'suma':'devolvió'} ${_pesos(m)}${nota?' · '+nota:''}`).catch(()=>{});
+  toast(`✓ ${d.nom}: ${signo>0?'+':'−'}${_pesos(m)}${signo<0?' · acordate de sumar la plata donde entró (efectivo o MP)':''}`);
+}
+async function cuotaMovBorrar(id,k){
+  const d=(state.debencuotas||{})[id];const mv=d&&d.movs&&d.movs[k];if(!mv)return;
+  if(!confirm(`¿Borrar el movimiento ${Number(mv.m)>0?'+':'−'}${_pesos(Math.abs(mv.m))}${mv.nota?' ('+mv.nota+')':''}?`))return;
+  try{await fbDel('debencuotas/'+id+'/movs/'+k);delete d.movs[k];}catch(e){toast('No se borró: '+e.message,'err');return;}
+  renderCuotas();cuotasSync();log(`${d.nom}: borré un movimiento de ${_pesos(mv.m)}`).catch(()=>{});
 }
 // 📋 Ver deudas de la tarjeta abre la solapa Ver deudas del Arqueo (28/10/2026).
 function cuotasPanel(){const b=document.getElementById('tab-btn-deudas');if(b)goTab('deudas',b);
@@ -7030,7 +7093,7 @@ async function cuotasPago(id,delta){
   toast(delta>0?`✓ ${d.nom}: ${n>1?`va ${p} de ${n}`:'pagada'}${p>=n&&n>1?' · ¡pagada entera!':''} · acordate de sumar la plata donde entró (efectivo o MP)`:`↩︎ ${d.nom}${n>1?`: ${p} de ${n}`:''}`);
 }
 async function cuotasBorrar(id){
-  const d=(state.debencuotas||{})[id];if(!d)return;const L=cuotasLista().find(x=>x.id===id);const falta=L?Math.max(0,L.monto-L.pagadas*L.cuota):0;
+  const d=(state.debencuotas||{})[id];if(!d)return;const L=cuotasLista().find(x=>x.id===id);const falta=L?L.resta:0;
   if(!confirm(`¿Borrar "${d.nom}"?${falta>0?` Todavía debe ${_pesos(falta)}: deja de contarse.`:''}`))return;
   try{await fbDel('debencuotas/'+id);delete state.debencuotas[id];}catch(e){toast('No se borró: '+e.message,'err');return;}
   renderCuotas();cuotasSync();log('Borré la deuda a CYC: '+d.nom).catch(()=>{});
