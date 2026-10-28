@@ -941,6 +941,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 📷 Listas: foto del proveedor (28/10/2026, pedido suyo por el chat del Once)
+- **Qué es:** `lista:` acepta `<producto>=<pesos>@<código>@<https://foto>` (o `@@<https://foto>` sin código) y la guarda en `f`; la tarjeta de la lista la muestra al lado de la de ML. PROMPT_ONCE lo explica; "precio mayorista" sin aclarar IVA se carga tal cual y se anota.
+- **Dónde vive:** `lista` (sync.mjs) · tarjeta de 📋 Listas (`fP` en index.html) · `ml-sync/PROMPT_ONCE.md`.
+- **Qué chequear:** una lista con foto se ve con dos fotos; una sin foto sigue igual; el código no se mezcla con la dirección.
 ### 🏙️ Listas del Once para Bs As (28/10/2026, él eligió la 1a)
 - **Qué es:** el prompt para que el chat de Chrome busque mayoristas del Once con catálogo con precios, los cargue como lista, los pase a Pedidos → Bs As y los mida; además Tito pide listas en persona. Nada nuevo en el robot: usa `lista:`, `|bsas` y `listamedir`.
 - **Dónde vive:** `ml-sync/PROMPT_ONCE.md` (se pega entero en el chat de Chrome).

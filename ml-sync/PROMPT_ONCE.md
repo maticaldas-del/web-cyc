@@ -25,6 +25,8 @@ PASO 2 · COPIAR LA LISTA DE CADA UNO (de a un mayorista)
      · Si dice "+IVA", sumale el 21% antes de cargarlo.
      · Si tiene precios por cantidad, usá el de la cantidad más chica que se pueda comprar.
      · Si el producto tiene código en la página, agregalo después de @.
+     · FOTO: si la página muestra la foto del producto, agregá la dirección de la imagen (empieza con https://) después del código con otro @:  <producto>=<pesos>@<código>@https://…/foto.jpg  (sin código: <producto>=<pesos>@@https://…). Si la dirección tiene ";" no la pongas.
+     · Si dice "precio mayorista" sin aclarar IVA, cargalo tal cual y anotalo en el resumen ("no aclara IVA").
  - Cargalo así, de a 100 productos por corrida como mucho:
      · Abrí https://github.com/maticaldas-del/web-cyc/actions/workflows/ml-consulta.yml (sesión de GitHub iniciada; si no, frená y avisame).
      · "Run workflow" → rama: claude/add-folder-78ysyb → en "comando" escribí UNA línea:

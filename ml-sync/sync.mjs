@@ -24539,12 +24539,15 @@ async function main() {
       for (const x of partes) {
         const i = x.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
         let izq = x.slice(0, i).trim(); const der = x.slice(i + 1).trim();
-        let cod = null; const mc = der.match(/@(.+)$/); const precioTxt = mc ? der.slice(0, mc.index) : der; if (mc) cod = mc[1].trim();
+        // FOTO DEL PROVEEDOR (28/10/2026, él a través del chat del Once: "cargar la foto de cada producto"): `<pesos>@<código>@<url https>`
+        // (o `<pesos>@@<url>` sin código). Se guarda en `f` y la web la muestra al lado de la de ML.
+        let foto = null; const mf = der.match(/@(https:\/\/\S+)$/); const der2 = mf ? der.slice(0, mf.index) : der; if (mf) foto = mf[1].slice(0, 400);
+        let cod = null; const mc = der2.match(/@(.*)$/); const precioTxt = mc ? der2.slice(0, mc.index) : der2; if (mc && mc[1].trim()) cod = mc[1].trim();
         const p = pesosArg(precioTxt);
         if (!izq || !(p > 0)) { malos.push(x); continue; }
         if (!cod) cod = izq.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80);
         cod = String(cod).replace(/[.#$\[\]\/]/g, '_');
-        filas.push({ cod, n: izq, p });
+        filas.push({ cod, n: izq, p, ...(foto ? { f: foto } : {}) });
       }
       if (malos.length) { console.log(`❌ ${malos.length} renglón(es) mal escritos (va <producto>=<pesos>). NO escribo ninguno:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
       const cat = (await db.get('mlapi/listas/' + provK)) || {};
@@ -24554,7 +24557,7 @@ async function main() {
         // la lista de Godrej decía "VN" y ML emparejó con otras marcas; con "Villeneuve" se busca bien).
         const _nomCambio = v && String(v.n || '') !== f.n;
         const _sinMed = _nomCambio ? { t: null, m: null, mi: null, mt: null, mp: null, mv: null, mf: null, sc: null, sv: null, rp: null, ok: null, okCat: null } : {};
-        upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ts: ahora, ...(v && Math.abs((Number(v.p) || 0) - f.p) >= 1 ? { pAnt: Number(v.p) || null } : {}) }; }
+        upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ...(f.f ? { f: f.f } : {}), ts: ahora, ...(v && Math.abs((Number(v.p) || 0) - f.p) >= 1 ? { pAnt: Number(v.p) || null } : {}) }; }
       console.log(`=== LISTA DE ${provNom.toUpperCase()} · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} productos · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · recargo del proveedor ${rec}%`);
       filas.slice(0, 15).forEach((f) => console.log(`  · ${f.n.slice(0, 70)} · ${money(f.p)}`));
