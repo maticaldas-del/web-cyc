@@ -91,7 +91,7 @@ está en su ficha): no se rehace el análisis de la venta vieja.
 ### Quién manda cuando dos chocan (de arriba gana)
 1. Lo que pide él para ESE producto · 2. dato dudoso = no se toca · 3. frenos duros (ML la frenó, variantes de una publicación
 todas o ninguna, techo $650.000, liquidando no se sube, releer de ML) · 4. nunca abajo de 0% · 4b. **sin línea de techo no se
-baja** (F7) · 4c. **arriba del 💰 no se baja sin 95%** (F8) · 5. **lo nuevo no se baja sin 🏔️** (F1) · 6. no llegar a pagar stock
+baja** (F7) · 4c. **arriba del 💰 no se baja sin 95%** (F8) · 4d. **lo que vendió a su precio no se baja** (F14) · 5. **lo nuevo no se baja sin 🏔️** (F1) · 6. no llegar a pagar stock
 antiguo · 7. escasez = sube · 8. sobra = baja en escalera · 9. 35% en el peor caso · 10. buscar el techo · 11. las formas
 (escalera, 90/990, barrera, 🤔). Una regla dura ("nunca", "sólo con 95%") gana siempre sobre la que parece dar más plata hoy.
 Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace nada esa vuelta y va a las decisiones de él.
@@ -118,11 +118,11 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 ### Techo (📈 → 🏔️)
 - **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba. Afuera: escasez,
   sobra (+90 d), lo que vende menos de 1 por semana (queda 💰 punto), liquidando, mis promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
-- 🔒 **Salto grande, nunca de a poco:** +30% como mínimo (mejor +40-50%). `decido` frena una suba `#techo` de menos de +30%, salvo
+- 🔒 **Salto grande, nunca de a poco:** **+50% cada vez que vende** (27/10 a la noche; antes +30%). `decido` frena una suba `#techo` de menos de +50%, salvo
   frenar en $32.990 por la barrera, el techo de $650.000, o `!chico` con "EXCEPCIÓN: …" (un techo ya visto).
 - **Cada escalón se mide antes del siguiente**, por certeza (Poisson sobre la plata por día: 3 esperadas y 0 ventas = 5% de azar ·
   6 y 0-1 = 2% · 10 y ≤2 = 0,3%). Nunca con un solo día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
-- **Funciona** (igual o más plata por día) → otro salto. **Sale mal** → 🔒 se baja en escalera **como DESCUENTO propio con el precio
+- **Vende** → otro salto (+50%). **No vende (🔴)** → 🔒 se baja en escalera hasta la PRIMERA VENTA y ahí se queda (F14) **como DESCUENTO propio con el precio
   tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|…`); `decido` frena bajar la LISTA de algo que ya probó techo salvo
   `!lista` con "EXCEPCIÓN: …". La primera baja 🪜 anota sola el precio que no rindió (`techofreno`).
 - **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (Persea).
@@ -152,8 +152,14 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   talón, 22/10). Única salida mía: corregir el precio de lo que NUNCA estuvo activo ni vendió, al activarlo (`!activar` +
   "EXCEPCIÓN: …").
 - 🔒 **F8 · arriba del 💰 no se baja sin 95%:** con el precio de hoy 2%+ arriba del 💰, se cuentan los días seguidos con stock a este
-  precio contra lo que tenía que vender para igualar la plata por día del 💰. Sin 95% se queda (estrategia 💰 `punto`, *buscando el de
-  más ganancia*); si deja más, la raya 💰 sube sola. Bandera `!sincerteza`.
+  precio contra lo que tenía que vender para igualar la plata por día del 💰. Sin 95% se queda (estrategia 💰 `punto`, *el más alto que
+  vende*); si deja más, la raya 💰 sube sola. Bandera `!sincerteza`.
+- 🔒 **F14 · lo que vendió a su precio no se baja** (27/10 a la noche, él: *"primero buscar techo, segundo buscar 1 venta y quedarse ahí…
+  normalmente siempre conviene mantener el precio más caro posible… 100 productos con pocas unidades que venden poco y ganan muchísimo"*):
+  una venta (ésta, su gemela o las de su stock) desde el último cambio del precio que ve el comprador, en 30 días, frena toda baja y
+  descuento. Sólo baja si sobra (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
+  90+ días), en los 15 días antes del stock antiguo, con remate autorizado o renovando el mismo descuento. **Una venta que entró bajando
+  del techo = el precio donde se queda**: no se propone bajarla para buscar más plata por día. Bandera `!sincerteza` (🔐 suya).
 - **Excepciones a los frenos, siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la pausó por el
   precio · lo pide él · la última unidad. "Ganar la caja" y "para ver si sale" NO son excepciones.
 - **Bajar algo que NO sobra** (salir de techo, escasez o lanzamiento) va como 💸 descuento con el precio de antes tachado, con su tag;
@@ -185,7 +191,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 
 ### Lanzamiento (🆕)
 - Arranca ~20% arriba del precio que se cree correcto (35%+ en el peor caso). **🆕 que vende → 📈 buscar techo en la misma vuelta
-  (+30%).** 🔒 No se baja (ni descuento, ni promo, ni lista, ni para ganar la caja) hasta que `techo95` diga 95% y anote 🏔️; ahí
+  (+50%).** 🔒 No se baja (ni descuento, ni promo, ni lista, ni para ganar la caja) hasta que `techo95` diga 95% y anote 🏔️; ahí
   escalones de ~5-8% como descuento propio con el arranque tachado. Si casi no lo ven (<1 visita/día), bajar no lo arregla: título,
   fotos, caja.
 
@@ -279,11 +285,12 @@ techofreno:<MLA>=<precio probado>|<motivo>;go
 | `!escalon` | zona muerta de la comisión | decido | no (decir por qué) |
 | `!sintecho` | F1 lo nuevo sin 🏔️ | decido, entrarpromo | 🔐 **suya** |
 | `!golpe` | F2/F3 escalón más grande o antes de tiempo | decido, entrarpromo | **sí** |
-| `!sincerteza` | F4 deshacer una suba sin 95% · F8 bajar arriba del 💰 sin 95% | decido, entrarpromo | 🔐 **suya** |
+| `!sincerteza` | F4 deshacer una suba sin 95% · F8 bajar arriba del 💰 sin 95% · F14 bajar algo que vendió a su precio | decido, entrarpromo | 🔐 **suya** |
 | `!bajopiso` | F5 abajo del 💰 | decido, entrarpromo | **sí** |
 | `!nosobra` | F6 descuento sin sobra | decido, entrarpromo | **sí** |
 | `!sinlinea` | F7 sin línea de techo | decido | 🔐 **suya** |
-| `!chico` | suba `#techo` de menos de +30% | decido | **sí** |
+| `!chico` | suba `#techo` de menos de +50% | decido | **sí** |
+| `!vendiocaro` | volver al precio más caro que vendió en 60 días (decido lo verifica en la línea; no lo frenan 4a ni el 50%) | decido | no |
 | `!lista` | bajar la LISTA de algo que ya probó techo | decido | **sí** |
 | `!bajocero` | abajo de 0% | entrarpromo | 🔐 **suya** |
 
@@ -301,7 +308,7 @@ los errores que él ya marcó; con `:go` (ml-sync) deshace lo ❌. Cada correcci
 freno.
 
 ### Tags válidos
-🔥 `escasez` · ⏳ `sinrepo` · 📈 `techo` (buscando techo, sube) · 💰 `punto` (buscando el de más ganancia) · 🪜 `bajando` · ↘️
+🔥 `escasez` · ⏳ `sinrepo` · 📈 `techo` (buscando techo, sube) · 💰 `punto` (el más alto que vende) · 🪜 `bajando` · ↘️
 `volviendo` (al normal) · ↗️ `desobra` · 📦 `sobra` · 💸 `descuento` (sólo nosotros) · 🏷️ `promo` (ML pone plata) · 📉 `liquidando` ·
 🧨 `remate` (sólo si él lo pide) · 🛡️ `excepcion` · 🆕 `nuevo` · 🎁 `fecha` · 🥊 `caja`.
 **No se usan a mano:** `techook` (lo anota `techo95`) · `sindecidir` / `agotado` (son lo que muestra la web cuando falta) · `gemela`

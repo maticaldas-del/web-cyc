@@ -61,6 +61,7 @@ al código; lo que es pensar queda acá, y una regla dura ("nunca", "sólo si") 
 | 4 | **Nunca abajo de 0%** (sólo él lo abre: `!bajocero`, sólo en `entrarpromo` y 🔐 con su "autorizo" por Telegram) | 🔒 F0 |
 | 4b | **SIN LÍNEA DE TECHO NO SE BAJA** (21/10/2026, él: *"nunca puede bajar si no hay línea de techo y si no hay línea de techo tiene que buscar techo hasta que esté 95% o más seguro de que ése es el techo"*). Línea = 🔴 de las rayas o 🏔️ de techo95. Sin línea: 📈 buscar techo (subir). Afuera sólo sobra, sin reposición, liquidando, remate y la salida de una escasez. **Pasados 15 días de la última suba deja de frenar y decide la plata por día (F4)**. **`!sinlinea` es 🔐 SÓLO SUYA (22/10): escribirla no alcanza, hace falta su "autorizo" por Telegram (ver 🔐 abajo); lo que vendieron OTRAS variantes o la familia NO alcanza nunca** (22/10, él con los Protectores de talón: *"si no encontró techo, ¿por qué bajó?"*). Única salida mía sin él: corregir el precio de una publicación que NUNCA estuvo activa ni vendió, al activarla (`!activar` + "EXCEPCIÓN: …"; lo verifica la línea de tiempo) (2a, 21/10: si no, lo que vende poco quedaba trabado) | 🔒 F7 · lista 🔎 |
 | 4c | **ARRIBA DEL 💰 NO SE BAJA SIN 95%** (21/10/2026, él con el Pendrive 8gb: *"antes de bajar tenés que estar 95% seguro o más que ese precio genera menos ganancia que la línea de ganancia. Si estás seguro volver a bajar en escalera (…) si ves que genera más dinero entonces subir la línea de más ganancia a ese precio"*). Con 🔴 encontrado y el precio arriba del 💰: días seguidos con stock al precio de hoy contra lo que tenía que vender para igualar la plata por día del 💰 (Poisson). Con 95% → otro escalón (al 💰 o al medio); sin 95% → se queda, estrategia 💰 `punto` (*buscando el de más ganancia*). Si deja más, la raya 💰 sube sola. Afuera lo mismo que F5 | 🔒 F8 |
+| 4d | **LO QUE VENDIÓ A SU PRECIO NO SE BAJA** (27/10/2026 a la noche, él: *"bajaría hasta que venda, una vez que vende, se queda ahí. no busca más abajo… normalmente siempre conviene mantener el precio más caro posible"*). Afuera: sobra (90+ días al ritmo de ese precio o de 60 días, o la unidad más vieja con 90+), cerca del stock antiguo, remate autorizado, renovar el mismo descuento | 🔒 F14 (salida sólo suya: 🔐 !sincerteza) |
 | 5 | **Lo nuevo no se baja sin 🏔️ al 95%** (primera tanda en Full de menos de 30 d, o 🆕 lanzamiento). Ganar la caja NO es excepción. `!sintecho` es 🔐 sólo suya | 🔒 F1 |
 | 6 | **No llegar a pagar stock antiguo** (120 d lo chico, 60 lo grande/Tenders; apuntar a ~100). **15 días antes: ganar la caja bajando hasta el 0% (al costo); si no se vende, se retira 3 días antes de pagar stock antiguo** (27/10, él: *"vende al costo antes de retirar. 3 días antes de pagar por stock retiramos"*) | 🧠 (la lista 💸 lo trae) |
 | 7 | **Escasez: se sube** para que dure hasta que vuelva a haber. "Escasez" siempre = el precio sube | 🧠 + la lista 📈 |
@@ -187,8 +188,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 4. **El revisor en contra (max)** ANTES de aplicar, igual que siempre: marca, no propone.
 5. Yo miro lo dudoso, lo que cambia más de 20% y lo que deshace una decisión de menos de 7 días.
 6. Pedidos y cajas como siempre (`decide_pedidos.py`, `decide_cajas.py`, revisados, `decido:archivo=…;go`). Juicios de precio,
-   `techo95;go` y **`techo95:buscando;go`** (25/10: las 📈 que ya llegaron al umbral pasan a 🏔️ y arrancan la escalera hacia el 💰 en la
-   misma vuelta; la `TABLA` dice cuándo llega cada una), frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
+   `techo95;go`, **`techo95:buscando;go`** y `techo95:punto;go` (25/10: las 📈 que ya llegaron al umbral pasan a 🏔️ y arrancan la
+   escalera; desde el 27/10 a la noche la 🪜/💰 que vendió bajando del 🔴 queda 🏔️ en ese precio; la `TABLA` dice cuándo llega cada una),
+   **🔙 `vendiocaro`** (lo que quedó abajo del precio más caro que vendió vuelve ahí con su `decido` listo: la lista queda vacía), frenos a reabrir. Nota con QUÉ MIRAR MAÑANA de cada una que miré (`decido:archivo=fichas_<fecha>;go`).
 6b. **💳 Toda publicación con su Premium (21/10/2026, regla suya: *"quiero que todas las publicaciones tengan clásica y premium.
    puede que yo vaya creando publicaciones y queden sin premium"*).** Cada noche `gemela:todas` (ml-consulta, solo lee: cualquier
    precio, activas o pausadas, SÓLO con stock en Full: *"no mirar todas las demás"*). Cada renglón con precio Premium medido se crea con `gemelacrea:<MLA>=<precio>:go`
@@ -213,8 +215,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 11. Los lunes: contar `notas/correcciones.md` de la semana contra la anterior.
 
 ===========================================================================================================================
-- **Si vende, no es techo: se vuelve a subir (27/10/2026, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a).** Toda prueba 📈/🆕 que vendió al precio de hoy sube +30% en la misma vuelta (`decido:<MLA>=<precio>!vendio#techo|…;go`; `decido` verifica la venta). Frena sólo en 🔴 **techo: no vende** (30 días sin vender ahí o más caro) o en 🟠 **deja de convenir** (vende, pero deja menos plata por día que el 💰, con la certeza de techo95). El 💰 (el que más plata deja) es otra cosa: es donde se queda el precio; el techo es dónde ya no se vende. La lista de `errores` (📈🆕 que vendieron y no subieron) tiene que quedar vacía.
-- **🆕 que vende → 📈 en la misma vuelta (21/10/2026, él con el Sony EX15AP Blanco: *"no se buscó techo? (…) hagamos que todas las publicaciones que se puedan busquen techo ya mismo, sacando las que ya estamos con descuento, sobrestock, bajando y todo eso"*).** Un lanzamiento que vendió al precio de hoy ya no baja: sube a buscar el techo (+30%). **También si la venta entró por su gemela o hermana** (23/10, el Masajeador vendió por la Premium y quedó quieto): se mira la estrategia de la Clásica. El detector `errores` lista al final las 🆕 que vendieron y no subieron, con el `decido` listo; esa lista tiene que quedar vacía. Y en cada vuelta, lo activo con stock que no está en ninguna estrategia que lo explique (descuento, promo, sobra, bajando, volviendo, escasez, sin reposición, 🥊, gemela, excepción) y vendió a su precio, busca techo.
+- **Si vende, no es techo: se vuelve a subir (27/10/2026, él: *"si se vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir… el techo es saber que no se vende a ese precio"*; eligió la a).** Toda prueba 📈/🆕 que vendió al precio de hoy sube **+50%** en la misma vuelta (27/10 a la noche, él: *"aumentar más % el precio. ya que así en vez de hacer 3 subidas, ya nos pasamos de todas las franjas"*; antes +30%; `decido:<MLA>=<precio>!vendio#techo|…;go`; `decido` verifica la venta). Frena sólo en 🔴 **techo: no vende** (30 días sin vender ahí o más caro) o en 🟠 **deja de convenir** (vende, pero deja menos plata por día que el 💰, con la certeza de techo95). El techo es dónde ya no se vende; bajando de ahí, el primer precio que vende es donde se queda (💰 "el más alto que vende", ver §4). La lista de `errores` (📈🆕 que vendieron y no subieron) tiene que quedar vacía.
+- **🆕 que vende → 📈 en la misma vuelta (21/10/2026, él con el Sony EX15AP Blanco: *"no se buscó techo? (…) hagamos que todas las publicaciones que se puedan busquen techo ya mismo, sacando las que ya estamos con descuento, sobrestock, bajando y todo eso"*).** Un lanzamiento que vendió al precio de hoy ya no baja: sube a buscar el techo (+50%). **También si la venta entró por su gemela o hermana** (23/10, el Masajeador vendió por la Premium y quedó quieto): se mira la estrategia de la Clásica. El detector `errores` lista al final las 🆕 que vendieron y no subieron, con el `decido` listo; esa lista tiene que quedar vacía. Y en cada vuelta, lo activo con stock que no está en ninguna estrategia que lo explique (descuento, promo, sobra, bajando, volviendo, escasez, sin reposición, 🥊, gemela, excepción) y vendió a su precio, busca techo.
 
 ## 2 · QUIÉN HACE QUÉ
 - El robot SÓLO junta datos. Yo decido todo. Él no marca nada a mano: me lo dice y lo hago por comando.
@@ -242,11 +244,18 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 4 · CÓMO SE ESCRIBE CADA DECISIÓN
 - **Todo precio lleva estrategia** (`#tag`); no existe "base". Sin estrategia = ⚪ para decidir; sin stock = ⏸️. 🔒 `decido`
   rechaza un precio sin estrategia; `!piso` solo = 🛡️ excepción.
-- **💰 DESPUÉS DEL TECHO SE BUSCA EL DE MÁS GANANCIA, EN ESCALERA (25/10/2026, él):** *"para mí tiene que ser prioridad buscar techo,
-  segundo, buscar el precio que más ganancia da (siempre sacando que está sacando stock). veo mucho escalera (que está bien, pero la estrategia
-  es buscar el mejor precio por ganancia CON escalera)"*. Con el 🔴 al 95% el objetivo de cada escalón es llegar al 💰 (el que más plata por día
-  dejó): cada escalón ≤15%, medido, y se para en el que más deja. Si el 💰 ya se conoce y está abajo, se va a él en escalera. La web muestra
-  esa escalera como 💰 "buscando el de más ganancia · Nº escalón" (el dato guardado sigue siendo `bajando`).
+- **💰 DESPUÉS DEL TECHO: BAJAR HASTA LA PRIMERA VENTA Y QUEDARSE AHÍ (27/10/2026 a la noche, él; reemplaza el "buscar el de más
+  ganancia" del 25/10):** *"primero buscar techo, segundo buscar 1 venta y quedarse ahí, tercero acá vienen muchas cosas, evaluar el stock
+  para no pagar, ver si estamos vendiendo muchísimo menos que antes entonces vale la pena bajar. pero normalmente siempre conviene mantener
+  el precio más caro posible. ya que tenemos mucha mercadería nueva para comprar, así que la idea se va en tener 100 productos con pocas
+  unidades que venden poco y ganan muchísimo"* y *"no buscar donde más plata da… hay que buscar mayor porcentaje"*.
+  1º 📈 techo: +50% con cada venta hasta que no vende (🔴). 2º 🪜 escalera desde el 🔴 (≤15%, uno cada 48 h, como descuento) y **en el
+  primer escalón que vende se queda** (🔒 F14: lo que vendió a su precio en los últimos 30 días no se baja; `techo95` le anota 🏔️). 3º
+  ahí se queda salvo que **sobre** (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
+  90+ días), se acerque el **stock antiguo** (los 15 días de ganar la caja) o pase **30 días sin vender** (vuelve a ser 🔴). No se baja
+  para buscar más plata por día. La web lo muestra 💰 "el más alto que vende" (el 🪜 de después del techo, "· Nº escalón").
+  **Lo que bajó de más antes de esta regla vuelve al precio más caro que vendió** (60 días, sin escasez ni fechas especiales): lista
+  🔙 `vendiocaro` en la completa, con el `decido:…!vendiocaro#punto` listo (decido verifica la venta en la línea de tiempo).
 - **Tags:** 🔥 `escasez` · ⏳ `sinrepo` · 📈 `techo` · 🏔️ `techook` (🔒 sólo lo anota `techo95` al 95%) · 🪜 `bajando` · ↘️
   `volviendo` · ↗️ `desobra` · 📦 `sobra` · 💸 `descuento` (sólo nosotros) · 🏷️ `promo` (ML pone plata; `entrarpromo` elige solo) ·
   📉 `liquidando` · 🧨 `remate` (sólo él) · 🛡️ `excepcion` · 🆕 `nuevo` · 🎁 `fecha` · 🥊 `caja`. (💳 `gemela` NO es estrategia, regla suya del 21/10: el robot la anota como dato y la Premium muestra la estrategia de su Clásica. 🏷️/💸 son estrategia sólo si los entramos nosotros; un cupón o promo que puso ML en una venta no cambia la estrategia del precio.)
@@ -301,24 +310,25 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Todo lo que vende sin techo conocido se prueba para arriba**, todas juntas. Afuera: escasez, sobra (+90 d), liquidando, mis
   promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
 - **Cómo:** 🔒 **siempre un salto grande, nunca de a poco** (21/10/2026, regla suya: *"cuando buscan techo siempre dar un salto
-  grande nunca ir subiendo de a poco. después cuando se encuentre el techo ahí sí bajar de a poco con descuentos"*): +30% como
-  mínimo, mejor +40-50% (ML deja hasta +100%; 🔒 más del doble pide `!salto`). `decido` frena una suba #techo de menos de +30% salvo
+  grande nunca ir subiendo de a poco. después cuando se encuentre el techo ahí sí bajar de a poco con descuentos"*): **+50% como
+  mínimo** (27/10 a la noche; antes +30%; ML deja hasta +100%; 🔒 más del doble pide `!salto`). `decido` frena una suba #techo de menos de +50% salvo
   $32.990 por la barrera, el techo de $650.000 o `!chico` con "EXCEPCIÓN: …". **Cada escalón se mide antes del
   siguiente**: por certeza (Poisson sobre la plata por día: 3 esperadas y 0 = 5% · 6 y 0-1 = 2% · 10 y ≤2 = 0,3%), nunca un solo
   día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
   **Una prueba de techo se mide en VENTAS ESPERADAS, no en días** (23/10, él: *"mientras más días buscando techo más días perdiendo
   ventas"*): al llegar a 3 esperadas a su ritmo de antes sale en 📈 PRUEBA CON RESPUESTA (`planilla`, `techodias`) y se decide en esa
-  vuelta (0 vendidas = 95% → escalera · con ventas manda la ganancia por día · si no alcanza, nota y vuelve a salir con 3 esperadas más).
+  vuelta (0 vendidas = 95% → escalera hasta la primera venta · con ventas no es techo: +50%, salvo 🟠 que se queda · si no alcanza, nota y vuelve a salir con 3 esperadas más).
   Lo que vende 1+/día se resuelve en 1-3 días; lo de menos de 1 por semana necesita ~2 meses.
   🔒 **A lo que vende menos de 1 por semana no se le busca techo subiendo** (4a del 23/10, él; 60 días, con gemelas y hermanas):
   queda en su precio como 💰 #punto, o baja en escalera si sobra. Freno en `decido` (salvo 🆕 lanzamiento que vendió, o !chico con
   "EXCEPCIÓN"). **Desde el 24/10 (37a) vale para TODA suba, no sólo la etiquetada 📈**: afuera sólo subir al 25% del peor caso, 🔥/⏳
   con el stock que no llega a 100 días a ese ritmo, o ↘️/↗️ volver a un precio que ya tuvo en 90 días. Y bajar la LISTA de algo que ya
   buscó techo va como descuento **con cualquier etiqueta** (salvo ↘️ volviendo de una escasez). Medido el 23/10: 31 de 34 lentos no vendieron ninguna al precio nuevo y juntos dejaban ~$12.500 menos por día.
-- **Si funciona** (igual o más plata por día) → otro salto. **Si sale mal** → 🔒 se baja en escalera **como DESCUENTO propio con el
+- **Si vende** → otro salto (+50%). **Si no vende (🔴)** → 🔒 se baja en escalera **como DESCUENTO propio con el
   precio tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando`; `decido` frena bajar la lista de algo que ya probó su techo
-  salvo `!lista` con "EXCEPCIÓN: …") (≤15% por escalón, uno cada 48 h),
-  nunca abajo del último que vendía ni del 💰 piso, y se anota `techofreno:<MLA>=<precio>|motivo;go`.
+  salvo `!lista` con "EXCEPCIÓN: …") (≤15% por escalón, uno cada 48 h), **y en el primer escalón que vende se queda** (🔒 F14, §4),
+  nunca abajo del 💰 piso, y se anota `techofreno:<MLA>=<precio>|motivo;go`. Si una suba frenó en 🟠 (vende, pero deja menos plata
+  por día que el 💰), no sube más y, como vende, se queda.
 - 🔒 **Una suba no se deshace por casualidad:** bajar del precio de una suba (5%+) de menos de 15 días pide 95% (Poisson sobre la plata
   por día) o las visitas a la mitad. Si no, se espera **15 días como mucho** (decisión suya 2b del 21/10: *"máximo 15 días de espera,
   después a"*): pasados los 15 días decide la plata por día de las dos ventanas — si la prueba deja igual o más, se queda (🔒 F4 no
@@ -343,7 +353,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   Paraguay ~16-17 d · Bs As ~1 semana + caja (salvo que Pedidos lo pida hace 10+ d sin que entre nada a la oficina: ahí ⏳) · sin
   reposición = sin fecha (⏳). Poco en Full pero la caja/oficina llega a tiempo = "🚚 cubierto", NO escasez.
 - Se mide con el **ritmo NORMAL** (no el de después de la suba) y con el de 7 días si se aceleró (⚡: 2+ u. y el doble del de 30 d).
-  Para COMPRAR manda el ritmo de antes de la suba.
+  Para COMPRAR manda el ritmo de antes de la suba POR ESCASEZ. **Una prueba de techo 📈 ya no** (27/10 a la noche): el precio alto se
+  queda, así que lo que vende a ese precio ES el ritmo (con el de antes salía escasez falsa y otra suba encima; web y robot iguales).
 - **"Escasez" = el precio SE SUBE en esa vuelta.** Si decido no subirlo, el tag no puede ser escasez.
 - **Primer salto** por el ritmo de ESA publicación: 3+/día ×4 · 1-3 ×3 · <1 ×2 · <1 cada 2 días ×1,5 (con `!salto`). Lo que ya falló
   más arriba (`notas/techo.md`), variantes, liquidando y mis promos: el precio que pienso, sin ×3/×4. Techo $650.000; la barrera se
@@ -375,6 +386,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   un precio que haya vendido abajo) el escalón es de ~8-10%; volver de una prueba de techo que no vendió AL PRECIO QUE SÍ VENDÍA (✓ de la
   línea) va de una aunque sea 10-15% (ej. Seagate 500GB $197.990 → $175.590: volvió a donde vendía, no fue un escalón a ciegas).
 - 🔒 **No abajo del 💰 piso** (F5) salvo 📦 sobra, ⏳ sinrepo, 📉 liquidando, 🧨 remate.
+- 🔒 **Lo que vendió a su precio no se baja** (F14, 27/10 a la noche): una venta (ésta, su gemela o las de su stock) desde el último
+  cambio del precio que ve el comprador, en 30 días, frena toda baja y descuento. Afuera: sobra (90+ días al ritmo de ese precio con 7+
+  días medidos, o al de 60 días, o la unidad más vieja con 90+), ⏳ con el stock por cumplir 4 meses, liquidando con sobra, los 15 días
+  antes del stock antiguo, remate autorizado y renovar el mismo descuento. Salida SÓLO SUYA: 🔐 `!sincerteza`.
 - **Sobra (📦):** más de 90 días de stock **en Full** al ritmo **con stock** (días en cero no cuentan), o sin ventas en 60 d. (La
   oficina no paga almacenamiento: se manda o no, pero no hace "sobra".) Lista **📦 SOBRA Y NO LO DECIDÍ** en la completa; lo
   llegado hace menos de 30 días va aparte (es lanzamiento).
@@ -435,7 +450,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - 💹 **ESTRATEGIA "GANAR MÁS POR CADA PESO FACTURADO" (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b).** El tope de H no deja facturar
 - 🎯 **Objetivo (27/10/2026, él): que desaparezcan el rojo (abajo de 25%) y el naranja (25-35%) de 🧮 La Mezcla.** Semana del 26/10 ya va 91% azul; antes 30-60% era rojo+naranja.
   más: sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que sale de ahí, en cada parte:
-  · 🔒 **reponer sigue en 25%; comprar algo NUEVO pide 35%; 30% si en ML vende 100+ con 2+ vendedores** (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
+  · 🔒 **desde el 24/10 TODO pide 35%: comprar, reponer, listas, Paulvic y el local** (él: *"no tenemos suficiente plata para todo, enfoquémonos en 35 o más"*; antes: reponer 25%, nuevo 35%, 30% con 100+ ventas) (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
   cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
   un reemplazo de 35%+ (de Paraguay o Listas) en `notas/para_mati.md`. Mientras el techo no esté buscado, se busca primero (no se corta de
   una). **Lo de 25-35% con el techo ya encontrado (🏔️) se sigue reponiendo** (22/10, eligió la a): se reemplaza de a poco sólo cuando
@@ -445,11 +460,14 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   deja 25%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
   sumado; sin costo no se pide; **el precio para el máximo = el de la ÚLTIMA venta** (23/10, él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*), sin pasar el de hoy y salteando la de escasez/sin reposición; nunca vendió → el precio de hoy. Máximo por color con `pvVars`
   (el precio que el color sostuvo 2+ semanas, nunca de escasez ni de la primera semana de techo).
+- 🏷️ **Al precio de hoy** (27/10 a la noche): con 7+ días con stock desde el último cambio de precio, Pedidos compra con lo que se
+  vende A ESE PRECIO (`HOY u/d` de `pedidostodo`); la suba de prueba de techo ya no pone de piso el ritmo de antes (la de escasez sí).
+  Con la estrategia nueva el precio alto se queda: comprar con el ritmo barato llenaba de stock que después hay que liquidar.
 - Navidad: en la completa del 14/11, medir lo que subió en Navidad 2025 (17-30/12) y pedirlo para 45 días.
 
 ## 15 · CAJAS
 - 37 días (30 de venta + 7 de viaje); 60 sólo en lo parejo sin prueba abierta (`notas/sin_estirar.txt`); nada pasa 90 días; lo
-  nuevo sale con el mínimo de 4. Una cuenta SIN publicación no recibe el mínimo si otra tiene stock de ese color; la que ya publica y
+  nuevo sale con el mínimo de 4. Con 7+ días con stock desde el último cambio de precio, al ritmo de ESE precio (`HOY`, 27/10 a la noche). Una cuenta SIN publicación no recibe el mínimo si otra tiene stock de ese color; la que ya publica y
   está en cero, sí. Respetar el cupo (lo vendido no devuelve cupo). Costo de la caja $17.310.
 - **Cupo de Full lleno con lo que no vende (21/10/2026, él con Ayelen en 0: *"retirar libera stock, pero es un poco de lío, lo mejor es vender"*):** con el cupo de una cuenta en 0 y mercadería que vende esperando en la oficina, lo lento que ocupa el Full de esa cuenta (Timer, cortapelo a pila, panel solar…) se empuja a VENDER (descuento propio o escalera, frenos de siempre) antes que retirarlo. Retirar sólo si vender no alcanza y él lo pide.
 - 💹 **Full abajo de $100.000 por mes (22/10/2026, 6a).** Octubre fueron $347.700 (retiros y descartes $221.600, stock antiguo

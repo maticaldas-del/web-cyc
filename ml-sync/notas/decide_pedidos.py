@@ -15,7 +15,10 @@ prods=[];grupo='';cur=None;esper={};nfichas=None;noEnt=[];cuentaOk=False;nDecidi
 # de la web). Un log viejo no lo trae: ahí lo agotado se sigue midiendo ÷180.
 def nor_de(t):
     m=re.search(r' · NOR (\d+)/(\d+) (\d+)/(\d+)@(\d+)',t or '')
-    return dict(u30=int(m.group(1)),d30=int(m.group(2)),u=int(m.group(3)),d=int(m.group(4)),w=int(m.group(5))) if m else None
+    if not m: return None
+    # `HOY u/d` (27/10/2026 a la noche): desde el último cambio del precio de lista, días con stock a precio normal y lo vendido.
+    h=re.search(r' · HOY (\d+)/(\d+)',t or '')
+    return dict(u30=int(m.group(1)),d30=int(m.group(2)),u=int(m.group(3)),d=int(m.group(4)),w=int(m.group(5)),hoyU=int(h.group(1)) if h else None,hoyD=int(h.group(2)) if h else None)
 def hist_de(t):
     mh=re.search(r' · hist ([\d.]+)d',t)
     return float(mh.group(1)) if mh else None
@@ -71,17 +74,27 @@ def ritmo(x,dcs=30):
     # compra y lo vendido barato por sobra no la agranda. 60 días; con menos de 14 días normales, 180; si tampoco, 365 (con 7+ días).
     # Con 3+ ventas en los últimos 30 días normales manda el más alto entre ése y el 80% del largo (como antes con v30/v60).
     nr=x.get('nor')
+    # 🏷️ AL PRECIO DE HOY (27/10/2026 a la noche, la estrategia nueva: buscar techo, bajar hasta la primera venta y quedarse; "la idea se va
+    # en tener 100 productos con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio,
+    # se compra con lo que se vende A ESE PRECIO. Antes una suba de prueba de techo (PRU) hacía comprar con el ritmo del precio barato.
+    # Una suba por escasez sigue con su regla (esos días no son de precio normal, así que no entran acá).
+    if nr and nr.get('hoyD') is not None and nr['hoyD']>=7:
+        tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
+        esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC)',x.get('cambios',''))]
+        if not (esc and min(esc)<=30):
+            return nr['hoyU']/nr['hoyD'],tiene,f"al precio de hoy vendió {nr['hoyU']} en {nr['hoyD']} días con stock (desde el último cambio de precio)"
     if nr and (nr['d']>=14 or (nr['w']==365 and nr['d']>=7)):
         tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
         rL=nr['u']/nr['d']; r=rL
         if nr['u30']>=3 and nr['d30']>=7: r=max(nr['u30']/nr['d30'],rL*0.8)
         base=f"a precio normal vendió {nr['u']} en {nr['d']} días con stock (últimos {nr['w']} d, sin contar escasez, sobra ni remate)"
         if r!=rL: base+=f" · {nr['u30']} en los últimos {nr['d30']}"
-        # 2a del 16/10 sigue: una suba de PRUEBA de techo (o de escasez) de los últimos 30 días frena las ventas → nunca menos que el ritmo de antes.
-        esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC|PRU)',x.get('cambios',''))]
+        # 2a del 16/10 sigue SÓLO para la escasez: una suba por escasez de los últimos 30 días frena las ventas → nunca menos que el ritmo de
+        # antes. La de PRUEBA de techo ya no (27/10/2026 a la noche): el precio no vuelve al de antes, se queda en el más alto que vende.
+        esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC)',x.get('cambios',''))]
         if esc and min(esc)<=30:
             rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
-            if rPre>r: r=rPre; base+=f" · subí el precio (escasez o prueba) hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
+            if rPre>r: r=rPre; base+=f" · subí el precio por escasez hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
         return r,tiene,base
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
@@ -103,11 +116,11 @@ def ritmo(x,dcs=30):
     # ESCASEZ (13/10/2026, él: "si subo por escasez se vende menos de lo normal; eso no debería achicar las unidades a
     # comprar"). Si en los últimos 30 días subí el precio POR ESCASEZ, las ventas de después no son el ritmo real:
     # manda el ritmo de antes (los 30 días previos, o el de 60 días), nunca uno más bajo.
-    # 2a (16/10/2026): también una suba de PRUEBA de techo (PRU) achica las ventas: manda el ritmo normal de antes.
-    esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC|PRU)',x.get('cambios',''))]
+    # 2a (16/10/2026) ya no vale para la PRUEBA de techo (27/10/2026 a la noche): el precio no vuelve al de antes. Sigue para la escasez.
+    esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC)',x.get('cambios',''))]
     if esc and min(esc)<=30:
         rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
-        if rPre>r: r=rPre; base+=f" · subí el precio (escasez o prueba) hace {min(esc)} d: uso el ritmo de antes ({R(x['v60']-x['v30'])} en los 30 d previos)"
+        if rPre>r: r=rPre; base+=f" · subí el precio por escasez hace {min(esc)} d: uso el ritmo de antes ({R(x['v60']-x['v30'])} en los 30 d previos)"
     return r,tiene,base
 # 45 DÍAS PARA LO DE BS AS QUE SE CORTA (16/10/2026, idea 1 del análisis, eligió la a): lo que se cortó 2+ veces en 60 días,
 # vende medio por día o más y deja 25%+ se compra para 45 días (con ~14 días de compra a Full, 30 no alcanzaba y se volvía a

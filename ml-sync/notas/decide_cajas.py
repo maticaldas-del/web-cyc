@@ -15,6 +15,9 @@ import os
 _SE=os.path.join(os.path.dirname(os.path.abspath(__file__)),'sin_estirar.txt')
 SIN_ESTIRAR=[l.strip().lower() for l in open(_SE)] if os.path.exists(_SE) else None
 SIN_ESTIRAR=[x for x in SIN_ESTIRAR if x and not x.startswith('#')] if SIN_ESTIRAR is not None else None
+def hoy_de(t):
+    h=re.search(r' · HOY (\d+)/(\d+)',t or '')
+    return (int(h.group(1)),int(h.group(2))) if h else None
 def parejo(v30,v60,dcs):
     # "vendió todas las semanas de los últimos 2 meses": el log no trae semanas, así que se pide lo que lo aproxima:
     # 4+ en 30 días (una por semana), 8+ en 60, stock casi todo el mes y los dos meses parecidos (ni subiendo ni cayendo).
@@ -26,7 +29,11 @@ def dias_de(nombre,v30,v60,dcs):
     if parejo(v30,v60,dcs): return T_LARGO,'vende parejo hace 2 meses'
     return T,''
 AB={'Ad':'Adriana','Lu':'Luciana','Ay':'Ayelen','Ma':'Matias'}
-def r_de(v30,v60,v180,tiene,dcs=30):
+def r_de(v30,v60,v180,tiene,dcs=30,hoy=None):
+    # 🏷️ AL PRECIO DE HOY (27/10/2026 a la noche, la estrategia nueva: buscar techo, bajar hasta la primera venta y quedarse; "100 productos
+    # con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio (`HOY u/d` de
+    # pedidostodo), se manda con lo que se vende A ESE PRECIO. Si no, después de una suba se mandaban 37 días al ritmo del precio barato.
+    if hoy and hoy[1]>=7: return hoy[0]/hoy[1],f"al precio de hoy vende {hoy[0]} en {hoy[1]} días con stock (desde el último cambio de precio)"
     d=max(7,min(30,dcs))
     if v30>=3: return max(v30/d,v60/60*0.8),(f"vende {v30} en {d} d con stock" if d<30 else f"vende {v30} en 30 d")
     if v60>=3: return v60/60,f"vendió {v60} en 60 d"
@@ -37,8 +44,8 @@ def r_de(v30,v60,v180,tiene,dcs=30):
     return 0,"no vende"
 PISO_CERO=4     # cuenta en cero que vende: mínimo para no quedar sin vender
 TOPE_LENTO=90   # lo que se manda nunca pasa los 90 días de venta (Full cobra a los 120 en lo chico). Eligió la a, 15/10/2026
-def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T):
-    t=full+cam; r,b=r_de(v30,v60,v180,t,dcs)
+def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T,hoy=None):
+    t=full+cam; r,b=r_de(v30,v60,v180,t,dcs,hoy)
     # NUEVO (nunca vendió en 180 d y no hay nada en Full ni en camino): no se sabe cuánto vende, va el mínimo
     # para que pueda arrancar. Antes daba "no vende" y no salía nada (15/10/2026, eligió la a).
     if v30==v60==v180==0 and t==0: return max(0,min(PISO_CERO,casa)),0,'nuevo: nunca vendió, va el mínimo para arrancar'
@@ -75,11 +82,11 @@ for l in L:
         nc=re.search(r' · neto \$(\d+) costo \$(\d+)',m.group(11))
         gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
-                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11));P.append(cur);continue
+                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),hoy=hoy_de(m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
-    if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8))))
+    if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8)),hoy=hoy_de(l)))
 print(f"leí {len(P)} de {esper} productos"+(' ✓' if len(P)==esper else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 # NO SE ESCRIBE NADA A MEDIAS (etapa 5, 20/10/2026): renglones que no entendí, grupos que no cierran, falta un grupo o la
 # línea final "CUENTA: … ✓" (el log se cortó o el comando se cayó) → no se arma cajas.txt.
@@ -130,7 +137,7 @@ for p in P:
                 fq,fm=FIJO[(p['id'],x['v'],c)]
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None)); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
-            q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D)
+            q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'))
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · hay {x['full']} en Full y {x['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}",
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(x['full']+x['cam'])==0,r=r,dias=((x['full']+x['cam'])/r if r>0 else None)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
@@ -139,7 +146,7 @@ for p in P:
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None))
     else:
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
-        q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D)
+        q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'))
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · hay {p['full']} en Full y {p['cam']} en camino · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}",
                         cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(p['full']+p['cam'])==0,r=r,dias=((p['full']+p['cam'])/r if r>0 else None)))
         if D==T_LARGO: largos.append(p['n'][:38])
