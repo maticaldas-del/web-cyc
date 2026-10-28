@@ -941,6 +941,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🏙️ Listas del Once para Bs As (28/10/2026, él eligió la 1a)
+- **Qué es:** el prompt para que el chat de Chrome busque mayoristas del Once con catálogo con precios, los cargue como lista, los pase a Pedidos → Bs As y los mida; además Tito pide listas en persona. Nada nuevo en el robot: usa `lista:`, `|bsas` y `listamedir`.
+- **Dónde vive:** `ml-sync/PROMPT_ONCE.md` (se pega entero en el chat de Chrome).
+- **Qué chequear:** después de la primera pasada, `lista` muestra los mayoristas nuevos con su fecha; en Pedidos → Bs As aparecen sus productos medidos; ninguno trae datos de personas; los "+IVA" se cargaron con el 21% sumado.
 ### 🌎 Los de afuera en la cuenta de los candidatos: PREPARADO Y POSTERGADO (28/10/2026, él: *"nono, dejá eso para después. lo de las internacionales"*)
 - **Qué es:** el cambio (los de afuera cuentan siempre con su precio +50%, `CAND_CALC_VER` 14) estuvo 25 minutos andando y se volvió atrás entero (commit 1e4d0b3 → revert b3406f1): sigue la regla del 16/10 (los de afuera sólo sin vendedores de acá, +20%). Se midieron 37 candidatos con la cuenta nueva: `correrCandidatos` ahora pone primeros en la fila a los de otra versión de la cuenta, así vuelven a la de siempre en la próxima vuelta de `ml-candidatos`. Ninguno se descartó por ella (los 7 descartados ya estaban abajo del piso); 2 quedaron en observación (Acqua Di Parma, Hermes Twilly) y se remiden. Lo medido para retomarlo: `valeinter`, `valeinter:py`, `valeinter:orden` (abajo) y la decisión en `notas/para_mati.md`.
 - **Dónde vive:** `ml-sync/sync.mjs` (orden de `correrCandidatos`; el cambio postergado está en el commit 1e4d0b3).

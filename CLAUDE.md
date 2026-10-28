@@ -18,6 +18,7 @@
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
 | `ml-sync/PROMPT_RUTINA_LOCAL.md` | la rutina DIARIA del chat de Chrome (26/10, él dice "rutina"): cupo de Full de las 4 · disponible de Mercado Pago de las 4 · repaso del Pedido del momento en Nissei → deja un mensaje `RUTINA <fecha>` en el 📬 buzón y yo lo cargo |
+| `ml-sync/PROMPT_ONCE.md` | lo que se le pega al chat de Chrome para buscar mayoristas del Once con precios en internet y cargar sus listas (28/10) |
 | `ml-sync/PROMPT_CAJAS.md` | lo que se le pega al chat de Chrome para armar las cajas "MANDALA YA" en ML (él dice "arrancá"; lee el panel, carga Planificación de envíos, no confirma) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
 | `ml-sync/notas/` | `para_mati.md` (dudas que esperan su respuesta) · `preguntas.md` (cada corrección suya vuelta pregunta general) · `correcciones.md` (cuántas veces me corrigió) · `techo.md` · `ideas.md` · `sin_estirar.txt` · `decide_pedidos.py` · `decide_cajas.py` · `pedidos.txt` · `juicios*.txt` · `listaweb_iscos.txt` |
@@ -312,6 +313,7 @@
   ritmo normal si hubo remate o prueba; **precio para el máximo de compra = el de la última venta**, aunque sea 1, sin pasar el de hoy ni
   contar escasez, sin reposición, sobra, liquidando ni remate (1a del 27/10); nunca vendió → el de hoy, 23/10; **por color** (27/10, él con las Sábanas Rojo: *"ese color se vendió a ese precio, no todos"*): cada color con venta propia usa la suya, topeada por el precio de hoy de SU publicación, y el del producto es el más bajo de los colores que vendieron) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
   Lo de la oficina o viajando a Full cubre lo decidido.
+  **Después de una suba de precio, en los primeros 7 días se sigue trayendo para 30 días con el ritmo de antes** (28/10, eligió 2b: se le propuso bajar a 15 y dijo que no; no volver a proponerlo).
 - **Pedidos se ordena por lo que SALVA cada $1** (27/10, él eligió 1a y *"que quede sólo esa"*): 💸 en riesgo (`riesgoComprar`) ÷ lo que cuesta la compra (`_pedDevuelve`); lo que todavía tiene stock queda abajo aunque deje mucho, lo que está en 0 sube. La ganancia que usa es **la del precio de hoy** cuando lleva 7+ días con stock desde el último cambio de precio (1a del 27/10); si no, la de 30 días. Medido en `sim.py`/`sim2.py`: gana ~$170-480 mil/mes contra ordenar por la plata total cuando faltan pesos.
 - Por color: un color agotado hace 30+ d pide con su ritmo viejo ("ritmo viejo"). Pedido a mano ya no existe (lo arma el panel/yo).
 - **Bs As:** el padre compra en persona (~1 semana, plata ~$3M, lugar en la Kangoo). Solapas 🏬 De siempre / 📋 Dai Nippon
@@ -411,6 +413,7 @@
   es anterior a `cyc/mlconfig/listasProv/<prov>/fecha`). **Preguntar si el precio es el que se paga o lista con descuento** y cargar el
   NETO (Iscos: "P. Lista" con −30%/−33,5%, `listadto`).
 - **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos;go`, `noWeb`).
+- **🏙️ Listas del Once** (28/10, él: *"bs as está muy desaprovechado… lo mejor es conseguir listas"*; eligió 1a): Tito pide la lista a cada mayorista donde compra (foto, PDF o WhatsApp; precio final o +IVA, y si da factura) y el chat de Chrome busca mayoristas del Once con catálogo con precios en internet y los carga (`ml-sync/PROMPT_ONCE.md`: `lista:` con fecha → `|bsas` → `listamedir`). Todo va a Pedidos → Bs As con la vara de 35%.
 - **Dai Nippon** (Bs As, lo trae Tito): **desde el 21/10 tiene casilla, 🧾 Pedido con mensaje de WhatsApp, Ya lo pedí y Llegó** como las otras.
 - **Pedido a una lista y la plata** (20/10 2b + 24/10 12a): pagado al pedir (💵 Ya lo pagué mientras viaja, `pagado:true`) → mercadería en camino en el Arqueo (`listaEnCaminoUSD`); sin pagar → al llegar es deuda hasta que se paga (`listaDeudaUSD`).
 - Mismas reglas que Paraguay: 25% + catálogo 2+ vendedores (o 🌟 sin competencia, 43a del 24/10) + **confirmado por mí** (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`,
