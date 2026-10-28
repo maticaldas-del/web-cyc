@@ -449,7 +449,9 @@ input.qty:focus{border-color:var(--accent2)}
 /* TARJETAS QUE SE ABREN (28/10/2026, él: "simplificar. clickear en la tarjeta y que se abra el detalle para ir rellenando. así con todos"). */
 .arq-toca{cursor:pointer;transition:border-color .15s}.arq-toca:hover{border-color:var(--border2)}.arq-toca.arq-on{border-color:var(--accent2)}
 .arq-flecha{font-size:.7em;color:var(--muted);margin-left:4px}.arq-alerta{margin-left:4px}
-.arq-plegada{display:none}.arq-plegada.arq-on{display:block}
+.arq-plegada,.arq-extra{display:none}.arq-plegada.arq-on,.arq-extra.arq-on{display:block}
+/* La tarjeta abierta ocupa todo el ancho y adentro tiene sus casillas (él: "que se abra el cuadrado con las cosas adentro para editar… sin scrolear"). */
+.bk-card.arq-on{grid-column:1/-1}.bk-card .arqueo-section{margin-top:12px;padding:12px 0 0;border:0;border-top:1px solid var(--border);border-radius:0;background:transparent}
 .arqueo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:14px;margin-bottom:16px}
 .arqueo-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
 .arqueo-section::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -1251,6 +1253,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="bk-lbl">Stock total <span class="arq-flecha" data-arqf="local">▸</span><span class="arq-alerta" data-arqa="local"></span></div>
         <div class="bk-val neutral" id="bk_stock_tot">$0</div>
         <div id="dbk_stock" style="margin-top:3px"></div>
+        <div class="arq-extra" data-arqx="local">
         <div style="font-size:.6rem;color:var(--muted);opacity:.7;margin-top:6px">La suma de los tres de abajo</div>
 
         <div style="border-top:1px solid var(--border2);margin:9px 0 8px"></div>
@@ -1276,12 +1279,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         </div>
         <div id="dbk_stock_ml" style="margin-top:3px"></div>
         <div id="bk_stock_ml_ctas" style="margin-top:7px"></div>
+        </div>
       </div>
       <div class="bk-card arq-toca" data-arq="efectivo" onclick="arqTarjeta(event,'efectivo')" title="Tocá para cargar efectivo y Mercado Pago"><div class="bk-lbl">Efectivo & Digital <span class="arq-flecha" data-arqf="efectivo">▸</span><span class="arq-alerta" data-arqa="efectivo"></span></div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
-      <div class="bk-card arq-toca" onclick="arqTarjeta(event,'deben')" title="Tocá para ver las deudas"><div class="bk-lbl">Lo que nos deben <span class="arq-flecha">▸</span></div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div>
+      <div class="bk-card arq-toca" data-arq="deben" onclick="arqTarjeta(event,'deben')" title="Tocá para ver las deudas"><div class="bk-lbl">Lo que nos deben <span class="arq-flecha" data-arqf="deben">▸</span></div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div>
         <!-- 📥 LAS DEUDAS QUE LO COMPONEN (28/10/2026): la lista vive abajo de las tarjetas, a lo ancho (él: "queda medio apretado todo… abrir un lugar nuevo") -->
-        <div id="cuotas-resumen" style="font-size:.7rem;color:var(--muted);margin-top:8px"></div>
-        <button class="btn" style="margin-top:6px;font-size:.72rem" onclick="cuotasPanel()" id="cuotas-btn">📋 Ver deudas</button></div>
+        <div class="arq-extra" data-arqx="deben"><div id="cuotas-resumen" style="font-size:.7rem;color:var(--muted);margin-top:8px"></div>
+        <button class="btn" style="margin-top:6px;font-size:.72rem" onclick="cuotasPanel()" id="cuotas-btn">📋 Ver deudas</button></div></div>
       <div class="bk-card arq-toca" data-arq="debemos" onclick="arqTarjeta(event,'debemos')" title="Tocá para cargar lo que debemos"><div class="bk-lbl">Lo que debemos <span class="arq-flecha" data-arqf="debemos">▸</span></div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
     </div>
     <!-- LA AGENDA DE LIBERACIONES (21/09/2026). Pedido suyo: "yo te voy a preguntar cuánto hay
@@ -3175,7 +3179,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.66';
+const APP_VERSION='27.67';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3188,6 +3192,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.67',f:'28/10',h:'19:05',c:[{n:2,t:'💰 Finanzas: las 4 tarjetas muestran sólo el número y cuánto cambió; tocás una y se abre ahí mismo, a lo ancho, con sus casillas adentro para cargar (sin bajar). "Se libera de ML" va adentro de Efectivo & Digital'}]},
   {v:'27.66',f:'28/10',h:'18:50',c:[{n:2,t:'💰 Finanzas más simple: las casillas para cargar quedan guardadas; tocás una tarjeta (Efectivo & Digital, Stock, Lo que debemos) y se abre su detalle para rellenar. ⚠️ en la tarjeta = hay un aviso adentro (dato viejo, etc.). Lo que nos deben abre Ver deudas'}]},
   {v:'27.65',f:'28/10',h:'18:35',c:[{n:1,t:'⚖️ Arqueo: se sacó "Corregir (ajuste ±)" — todo tiene que estar registrado (sólo reaparece si quedó un número cargado, para ponerlo en 0)'}]},
   {v:'27.64',f:'28/10',h:'18:20',c:[{n:1,t:'📥 Ver deudas más resumido: cada renglón dice sólo quién, % de ganancia y cuánto falta; qué se llevó, cuotas, fechas y los botones Pagó/Editar están adentro (tocando el renglón)'}]},
@@ -10513,12 +10518,15 @@ function renderAgenda(){
   if(det) det.addEventListener('toggle',()=>{ _agendaAbierta=det.open; });
 }
 // Una sola sección abierta a la vez; las casillas siguen existiendo escondidas (todo lo que las llena o las lee sigue igual).
-function arqTarjeta(ev,k){if(ev&&ev.target&&ev.target.closest&&ev.target.closest('button,a,input,select,textarea'))return;
-  if(k==='deben'){cuotasPanel();return;}
-  window._arqAbierta=window._arqAbierta===k?null:k;arqPintarAbierta();
-  if(window._arqAbierta){const el=document.getElementById('arq-sec-'+k);if(el)setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),30);}}
+function arqTarjeta(ev,k){const t=ev&&ev.target;if(t&&t.closest&&t.closest('button,a,input,select,textarea,label,.arq-extra,.arqueo-section'))return;
+  window._arqAbierta=window._arqAbierta===k?null:k;arqPintarAbierta();}
 function arqPintarAbierta(){const a=window._arqAbierta||null;
-  ['efectivo','local','debemos'].forEach(k=>{const on=a===k;const sec=document.getElementById('arq-sec-'+k);if(sec)sec.classList.toggle('arq-on',on);
+  ['efectivo','local','debemos','deben'].forEach(k=>{const on=a===k;const sec=document.getElementById('arq-sec-'+k);
+    // Las casillas viven ADENTRO de su tarjeta (se mueven una sola vez; los ids y lo que las llena no cambian).
+    const card=document.querySelector(`.bk-card[data-arq="${k}"]`);if(sec&&card&&sec.parentNode!==card)card.appendChild(sec);
+    // "Se libera de ML" va adentro de Efectivo & Digital (28/10/2026, él: "esto, dentro de efectivo digital"), al final de sus casillas.
+    if(k==='efectivo'&&sec){const ag=document.getElementById('arqueo-agenda');if(ag&&ag.parentNode!==sec){ag.style.margin='12px 0 0';sec.appendChild(ag);}}
+    if(sec)sec.classList.toggle('arq-on',on);document.querySelectorAll(`[data-arqx="${k}"]`).forEach(x=>x.classList.toggle('arq-on',on));
     document.querySelectorAll(`[data-arq="${k}"]`).forEach(c=>c.classList.toggle('arq-on',on));document.querySelectorAll(`[data-arqf="${k}"]`).forEach(f=>f.textContent=on?'▾':'▸');});
   // Un aviso de adentro (dato viejo, doble cuenta) se ve en la tarjeta aunque la sección esté cerrada.
   const vis=id=>{const e=document.getElementById(id);return !!(e&&e.style.display!=='none'&&e.textContent.trim());};
