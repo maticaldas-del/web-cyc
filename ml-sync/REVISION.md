@@ -917,6 +917,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🌎 Los de afuera en la cuenta de los candidatos: PREPARADO Y POSTERGADO (28/10/2026, él: *"nono, dejá eso para después. lo de las internacionales"*)
+- **Qué es:** el cambio (los de afuera cuentan siempre con su precio +50%, `CAND_CALC_VER` 14) estuvo 25 minutos andando y se volvió atrás entero (commit 1e4d0b3 → revert b3406f1): sigue la regla del 16/10 (los de afuera sólo sin vendedores de acá, +20%). Se midieron 37 candidatos con la cuenta nueva: `correrCandidatos` ahora pone primeros en la fila a los de otra versión de la cuenta, así vuelven a la de siempre en la próxima vuelta de `ml-candidatos`. Ninguno se descartó por ella (los 7 descartados ya estaban abajo del piso); 2 quedaron en observación (Acqua Di Parma, Hermes Twilly) y se remiden. Lo medido para retomarlo: `valeinter`, `valeinter:py`, `valeinter:orden` (abajo) y la decisión en `notas/para_mati.md`.
+- **Dónde vive:** `ml-sync/sync.mjs` (orden de `correrCandidatos`; el cambio postergado está en el commit 1e4d0b3).
+- **Qué chequear:** después de la próxima `ml-candidatos`, ningún candidato con `calcVer` 14.
+
 ### 🌎 `valeinter[:N]`: ¿cuánto más caro que el vendedor de afuera vendemos igual? (27/10/2026 a la noche, sólo lee; él con el Echo Spot: *"incluir ventas internacionales en guay para comparar… algo que internacional esté 150.000 quizás nosotros vendiendo a 200.000 en full lo vendemos igual, no lo sé bien qué % de diferencia puede haber"*)
 - **Qué es:** toda Clásica activa de catálogo cuyo catálogo tiene vendedores del exterior (`esOfertaDeAfuera`, la misma de los candidatos): nuestro precio a la vista contra el más barato de afuera y el de acá, quién gana la caja (¿la gana uno de afuera?) y lo vendido al precio de hoy (línea junta, 7+ días con stock; si no, 30 días). Resumen por tramo (+25%, +50%, +100%, +200%) y la mediana de cuánto más caras están las que venden 1+ por semana. Es el dato para elegir el premio del de afuera en la cuenta de los candidatos (`RECARGO_INTER`).
 - **Dónde vive:** `ml-sync/sync.mjs` (bloque `valeinter`, antes de `valefull`).

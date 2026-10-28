@@ -8,6 +8,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### Para después (él, 27/10 a la noche: "dejá eso para después. lo de las internacionales")
+- **🌎 Los de afuera en la comparación de Paraguay:** preparado y deshecho (commit 1e4d0b3). Medido el 28/10: el precio de ML del de afuera no trae el 21% de IVA que paga el comprador; donde hay varios vendedores de acá, están ~50% arriba del de afuera; nuestro Animale Sexy vende 1,9 por semana a +74% del de afuera; en 5 de 11 catálogos nuestros con uno de afuera la caja la gana él. De 250 de Para probar con 35%+, 22 tienen uno de afuera más barato: con +50% siguen 11 de 20, con +33% 6. Decisión cuando la retome: (a) +50% · (b) +33% (su ejemplo de $150.000 → $200.000). Ojo: en el pedido del momento, con el de afuera, el Adidas Dynamic Pulse (3 u.) daría −9% y el Risala Amalia (2 u.) −5%.
+
 ### Del 27/10 a la tarde (contestó 1 recordar · 2a · 3 pidió % · 4 pregunta · 5a · 6a · 7 ok · 8 "siempre es el precio" · 9 mirá la foto · 10 ok · Cortapelo/Panel)
 - **Hecho:** 1 recordatorio del reclamo F9 a las 14:30 · 2a costo fijo en pesos (124 fichas, meses cerrados congelados) · 5a gemela de envío de la Lupa x10 pausada · 9 contestadas metatarso "Ab" y mentonera · regla nueva: al costo 15 días antes del stock antiguo y retiro 3 días antes · botón 🧭 Estrategias · barra roja de Ganancia sin retiro · objetivo Mezcla.
 - **Para decidir (pasados en el chat el 27/10):** 3 Paulvic a $21.990 con su % · 4 Codera las 3 de $30.790 · 6 Separador x2 (no está en catálogo, la hermana sí) · 8 Hot 🔐 XEY9 · Ganancia del gráfico restando gastos · estrategias (pausados, volviendo, bajando, techo encontrado, lanzamiento) · plata por día con el costo real de la caja · score Listas vs Paulvic · plan de Claude.

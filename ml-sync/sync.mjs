@@ -12507,7 +12507,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
   // La medición más vieja primero: con el tope de consultas, así ninguno se queda sin medir días.
   // Empate (nunca medidos): primero los recién cargados (16/10/2026: los 36 de Elegancia quedaban detrás de ~960 del catálogo).
-  entradas.sort((x, y) => (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0) || (Number(y[1].ts) || 0) - (Number(x[1].ts) || 0));
+  // Antes que todo, los medidos con OTRA cuenta (`calcVer` ≠ CAND_CALC_VER, 28/10/2026): la cuenta con los de afuera se probó 25
+  // minutos y se postergó (él: "dejá eso para después"); los 37 medidos con ella eran los más recientes y quedaban últimos en la fila.
+  entradas.sort((x, y) => ((Number(x[1].calcVer) === CAND_CALC_VER) - (Number(y[1].calcVer) === CAND_CALC_VER)) || (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0) || (Number(y[1].ts) || 0) - (Number(x[1].ts) || 0));
   if (prueba) [].concat(prueba).forEach((x, i) => entradas.unshift(['__prueba' + i + '__', x]));
   const fin = (await db.get('cyc/finanzas')) || {};
   // Etapa 2 (20/10/2026): sin dólar NO se mide (antes un $1.500 inventado entraba en el costo de cada candidato y en su margen,
