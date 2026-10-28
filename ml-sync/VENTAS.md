@@ -154,7 +154,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 - 🔒 **F8 · arriba del 💰 no se baja sin 95%:** con el precio de hoy 2%+ arriba del 💰, se cuentan los días seguidos con stock a este
   precio contra lo que tenía que vender para igualar la plata por día del 💰. Sin 95% se queda (estrategia 💰 `punto`, *el más alto que
   vende*); si deja más, la raya 💰 sube sola. Bandera `!sincerteza`.
-- 🔒 **F14 · lo que vendió a su precio no se baja** (27/10 a la noche, él: *"primero buscar techo, segundo buscar 1 venta y quedarse ahí…
+- 🔒 **F14 · lo que vendió a su precio no se baja** (27/10 a la noche, él: *"primero buscar techo, segundo buscar 1 venta y quedarse ahí… · **vende muchísimo menos** (1a del 28/10: en ese escalón deja menos de la MITAD de la plata por día que el 💰, 95% seguro y 7+ días con stock → baja un escalón hacia el 💰, sin pasarlo)
   normalmente siempre conviene mantener el precio más caro posible… 100 productos con pocas unidades que venden poco y ganan muchísimo"*):
   una venta (ésta, su gemela o las de su stock) desde el último cambio del precio que ve el comprador, en 30 días, frena toda baja y
   descuento. Sólo baja si sobra (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
