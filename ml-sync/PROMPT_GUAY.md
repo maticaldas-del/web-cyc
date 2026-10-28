@@ -72,9 +72,8 @@ Desde el 24/10/2026 `faltaventas` trae también los de UN SOLO vendedor en ML: c
 Hay productos que tienen catálogo en ML pero hoy nadie los vende (nadie tiene stock). Para Matías son los mejores: no hay competencia.
 El robot no puede ver un precio ahí. Vos sí: correr `faltaprecio` (ml-consulta, sólo lee; `faltaprecio:300` para más) y, de cada
 renglón (fuente|proveedor|código|nombre|catálogo ML|costo), abrir https://www.mercadolibre.com.ar/p/<catálogo ML> con la sesión iniciada.
- · Si hay publicaciones sueltas del MISMO producto (misma marca, modelo, tamaño, color): el precio más barato de las nuevas. Las del
-   exterior (las que dicen "compra internacional") cuentan con su precio × 1,5 (28/10: al comprador le suman el 21% de IVA y espera
-   una semana): si la de afuera × 1,5 queda más barata que la más barata de acá, cargá ese número.
+ · Si hay publicaciones sueltas del MISMO producto (misma marca, modelo, tamaño, color): el precio más barato de las nuevas, sin las
+   del exterior (las que dicen "compra internacional").
  · Si no hay ninguna, el último precio que muestre la página del catálogo, si lo muestra.
  · Si no hay ningún precio a la vista: va "no" (no entra).
  · Si el catálogo de ML es OTRO producto (otro color, tamaño, versión, set): va "otro". El robot lo vuelve a buscar sin ese catálogo.

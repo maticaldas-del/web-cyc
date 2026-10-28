@@ -294,7 +294,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Venta barata ≠ remate:** remate sólo si estuvo parado de verdad (30+ d con stock vendiendo <1 por semana).
 - **Venta abajo del 35% con poco stock** → se sube en la misma vuelta. **Lo nuevo que vuela** se sube al toque.
 - **Lo que vuelve de agotado** se compara contra su último tramo con stock.
-- **Vendedores del exterior: cuentan siempre, con su precio +50%** (28/10, él: *"incluir ventas internacionales en guay para comparar… algo que internacional esté 150.000 quizás nosotros vendiendo a 200.000 en full lo vendemos igual"*; antes no se miraban salvo que no hubiera argentinos, +20%). El precio de ML del de afuera no trae el 21% de IVA que paga el comprador: +50% = ese IVA + ~25% por llegar mañana. Medido (`valeinter`): en 5 de 11 catálogos nuestros con uno de afuera la caja la gana él; donde hay varios de acá, están ~50% arriba del de afuera.
+- **Vendedores del exterior** no se miran salvo que no haya argentinos: ahí su precio +20%.
 - **Visitas que caen sin cambio de precio** → preguntas sin responder y descripción (lo arregla él, va a `notas/para_mati.md`).
 - **Pendrives de Matías como familia**: el de 32 es el conveniente; 8 y 16 (⏳) pueden quedar más caros a propósito.
 - **Juzgar resultados todos los días:** `supervisor:medir:go` + `juzgo:`; lo que perdió no vuelve por regla, se piensa. Nada en
