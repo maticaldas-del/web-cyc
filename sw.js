@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1024";
+const CACHE = "cyc-v1025";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -43,7 +43,10 @@ self.addEventListener("push", (e) => {
     tag: d.tag || "cyc",
     icon: "icon.svg",
     badge: "icon.svg",
-    vibrate: [200, 100, 200],
+    // 28/10/2026 (él: "el volumen de los avisos se escucha muy bajo"): la web NO puede elegir el volumen ni el sonido (usa el de las
+    // notificaciones del teléfono); lo que sí: vibrar más largo y que vuelva a sonar aunque haya otro aviso igual sin leer.
+    vibrate: [400, 150, 400, 150, 400],
+    renotify: true,
     data: { url: d.url || "./" },
   }));
 });

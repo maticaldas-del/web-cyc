@@ -87,6 +87,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Qué es:** botón "🔕 Desactivar en este teléfono" al lado de "Volver a anotar": pide confirmación, borra `cyc/pushsubs/<clave>` de ese teléfono y lo da de baja; el cartel de Inicio que invita a activarlo ya no aparece en ese teléfono (`cycPushNo`), hasta que vuelva a tocar Activar.
 - **Dónde vive:** `index.html` · `pushDesactivar`, `renderPush`.
 - **Qué chequear:** que "Teléfonos anotados" baje 1 y que los otros teléfonos sigan recibiendo.
+- **v27.44 (él: "el volumen de los avisos se escucha muy bajo"):** `sw.js` vibra [400,150,400,150,400] y `renotify:true` (vuelve a sonar con otro aviso del mismo tag). El volumen y el sonido los pone el teléfono: en Android es el "volumen de notificaciones" (aparte del de multimedia) y el sonido del canal de la app; en iPhone el de "Tonos y alertas".
 
 ### 💵 Pedidos: "lo que salva cada $1" (27/10/2026, v27.40, él eligió 1a)
 - **v27.42 (él eligió 1a: "¿tiene en cuenta el % que da ahora? hubo cambios grandes de precio"):** `pedGananciaNorm` usa las ventas DESDE el último cambio de precio de más de 2% (`_pedUltCambioPrecio`, sólo Clásicas, `cyc/claudecambios`) si fue hace 7-30 días y hubo 7+ días con stock desde ahí (`_pedDiasStockDesde`), llevadas a 30 días. Probado: 20 ventas viejas de $1.000 + 8 nuevas de $3.000 → sin cambio $44.000; cambio hace 10 d → $72.000; cambio hace 3 d → $44.000 (sigue la de 30 días).
