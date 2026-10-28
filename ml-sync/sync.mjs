@@ -25910,6 +25910,89 @@ async function main() {
       console.log('carga una persona, no el robot: donde falta, falta.');
       return;
     }
+    // `valeinter:orden` — ¿el primero que devuelve ML en los vendedores de un catálogo es el que gana la caja? Se mira en las nuestras (ahí
+    // `price_to_win` dice quién gana). Si siempre coincide, el orden sirve para saber quién gana en un catálogo donde no estamos.
+    // `valeinter:py[:N]` — los candidatos de Paraguay que hoy dan 35%+ (primero los de Para probar, después el catálogo de Nissei por %):
+    // cuántos tienen vendedores de afuera más baratos que el de acá contra el que se midieron, y cuánto daría cada uno si el de afuera
+    // contara con +20% (la regla de hoy, sólo sin vendedores de acá), +33% o +50%. Es lo que se le pasa para elegir el premio.
+    if (/^valeinter:(orden|py)(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _pz = String(process.env.BILLING_PROBE).split(':'); const modo = _pz[1];
+      const _esp = (ms) => new Promise((r) => setTimeout(r, ms));
+      const sids = {}; for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+      const $ = (x) => (x == null || !isFinite(x)) ? '—' : '$' + Math.round(x).toLocaleString('es-AR');
+      const toks = {};
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[label] = t.access_token; } catch { /* sigue */ } }
+      const tok0 = Object.values(toks)[0]; if (!tok0) { console.log('❌ No pude sacar token de ninguna cuenta.'); return; }
+      const getR = async (ruta, tk = tok0) => { for (const w of [0, 5000, 15000, 30000]) { if (w) await _esp(w); try { return await mlGet(ruta, tk); } catch (e) { const _m = String((e && e.message) || e); if (!(/429/.test(_m) || /not valid JSON|Unexpected token/.test(_m)) || w === 30000) throw e; } } };
+      if (modo === 'orden') {
+        const links = (await db.get('cyc/mllinks')) || {};
+        let n = 0, igual = 0, nos = 0; const dif = [];
+        for (const label of labels) { const tk = toks[label]; if (!tk) continue;
+          const ids = Object.entries(links).filter(([m, e]) => /^MLA\d+$/.test(m) && e && e.cuenta === label && e.prodId && !e.gemelaDe && !e.ignored && !e.hidden && /^active/.test(String(e.status || ''))).map(([m]) => m);
+          for (let k = 0; k < ids.length; k += 20) {
+            let arr; try { arr = await getR('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,status,catalog_product_id,listing_type_id', tk); } catch { continue; }
+            for (const row of (arr || [])) { const b = row && row.body; if (!b || !b.id || b.status !== 'active' || !b.catalog_product_id || b.listing_type_id === 'gold_pro') continue;
+              let ptw = null, it = null; try { ptw = await getR(`/items/${b.id}/price_to_win?version=v2`, tk); it = await getR(`/products/${b.catalog_product_id}/items`, tk); } catch { continue; } await _esp(120);
+              const res = (it && it.results) || []; if (!res.length || !ptw) continue;
+              const gan = ptw.status === 'winning' ? b.id : String((ptw.winner && (ptw.winner.item_id || ptw.winner.id)) || ''); if (!gan) continue;
+              n++; if (ptw.status === 'winning') nos++;
+              const pos = res.findIndex((o) => String(o.item_id) === gan);
+              if (pos === 0) igual++; else dif.push(`${b.id} · gana ${gan} · está ${pos < 0 ? 'fuera de la lista' : 'en el lugar ' + (pos + 1)} de ${res.length}`); } } }
+        console.log(`=== ¿EL PRIMERO DE LA LISTA DE VENDEDORES ES EL QUE GANA LA CAJA? · ${n} catálogos nuestros con dato (en ${nos} ganamos nosotros) ===`);
+        console.log(`   coincide en ${igual} de ${n}${n ? ' (' + Math.round(igual / n * 100) + '%)' : ''}`);
+        for (const x of dif.slice(0, 25)) console.log('   · ' + x);
+        return;
+      }
+      // ── modo py ──
+      const N = Math.max(1, Math.min(400, parseInt(_pz[2] || '', 10) || 150));
+      try { await cargarParamCompra(db); } catch { /* quedan los de siempre */ }
+      const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0; if (!(tc > 0)) { console.log('❌ No hay dólar cargado.'); return; }
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const feeCache = {};
+      const feeAt = async (price, lt, catx) => { const k = lt + '|' + catx + '|' + Math.round(price); if (feeCache[k] !== undefined) return feeCache[k]; let out = null;
+        try { const d = await getR(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${catx}`); const o = Array.isArray(d) ? d[0] : d; if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount; } catch { out = null; }
+        feeCache[k] = out; return out; };
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const pyc = (await db.get('mlapi/pycat')) || {};
+      const cola = [], vistos = new Set();
+      for (const [id, c] of Object.entries(cands)) { if (!c || c.no || !(Number(c.margen) >= 35) || !(Number(c.puestoUSD) > 0)) continue; const cat = (String(c.mlLink || '').match(/MLA\d+/) || [])[0]; if (!cat || vistos.has(cat)) continue; vistos.add(cat); cola.push({ de: 'Para probar', nom: c.nombre, cat, m: Number(c.margen), mp: Number(c.mlPrecio) || 0, puesto: Number(c.puestoUSD), cn: cuentaNuevoDe(c) }); }
+      const pyL = Object.values(pyc).filter((e) => e && e.mi && e.m != null && Number(e.m) >= 35 && Number(e.u) > 0 && !e.afu && !vistos.has(e.mi)).sort((a, b) => Number(b.m) - Number(a.m));
+      for (const e of pyL) { if (vistos.has(e.mi)) continue; vistos.add(e.mi); cola.push({ de: 'Nissei', nom: e.n, cat: e.mi, m: Number(e.m), mp: Number(e.mp) || 0, puesto: Math.round(Number(e.u) * RECARGO_PAR * 100) / 100, cn: cuentaNuevoDe({ nombre: e.n, mlTit: e.mt }) }); }
+      const toca = cola.slice(0, N);
+      const X = [0.20, 0.33, 0.50];
+      const filas = [], noC = {}; const no = (r) => { noC[r] = (noC[r] || 0) + 1; };
+      let conAfu = 0, conAfuBarato = 0, primeroAfu = 0;
+      for (const q of toca) {
+        let it = null; try { it = await getR(`/products/${q.cat}/items`); } catch (e2) { no(/404/.test(String(e2 && e2.message)) ? 'hoy nadie lo vende' : 'ML no contestó'); continue; } await _esp(200);
+        const res = ((it && it.results) || []).filter((o) => o && Number(o.price) > 0 && !sids[String(o.seller_id)]);
+        const afu = res.filter(esOfertaDeAfuera), aca = res.filter((o) => !esOfertaDeAfuera(o));
+        if (!afu.length) { no('sin vendedores de afuera'); continue; }
+        conAfu++;
+        if (!aca.length) { no('sólo de afuera (ya se mide contra ellos +20%)'); continue; }
+        const pr = (o) => Number(o.price) || 0;
+        const pi = precioAIgualar(aca); const domMin = pi ? pi.precio : 0; if (!(domMin > 0)) { no('sin precio de acá'); continue; }
+        const iMin = Math.min(...afu.map(pr)); const refA = afu.find((o) => pr(o) === iMin) || afu[0];
+        if (esOfertaDeAfuera(res[0] || {})) primeroAfu++;
+        if (!(iMin < domMin)) { no('el de afuera está más caro que el de acá'); continue; }
+        conAfuBarato++;
+        const catx = (pi.ref && pi.ref.category_id) || refA.category_id; if (!catx) { no('sin categoría'); continue; }
+        const mHoy = await cuentaCandidatoMejor(Math.min(domMin, TECHO_DURO), catx, q.puesto, tc, monoP, feeAt, (CUOTAS_PCT_ML[cuotasDeOferta(pi.ref)] || 0), q.cn);
+        const ms = [];
+        for (const x of X) { const ref = Math.min(domMin, iMin * (1 + x)); const refO = ref < domMin ? refA : pi.ref;
+          const r = await cuentaCandidatoMejor(Math.min(ref, TECHO_DURO), catx, q.puesto, tc, monoP, feeAt, (CUOTAS_PCT_ML[cuotasDeOferta(refO)] || 0), q.cn); ms.push(r ? r.margen : null); }
+        filas.push({ q, domMin, iMin, nA: afu.length, nC: aca.length, primero: esOfertaDeAfuera(res[0] || {}) ? 'afuera' : (esOfertaFull(res[0] || {}) ? 'acá con Full' : 'acá sin Full'), mHoy: mHoy ? mHoy.margen : null, ms, tagA: ((refA.shipping && refA.shipping.tags) || []).some((t) => /cbt_fulfil/i.test(String(t))) ? 'con depósito de ML afuera' : 'sin depósito' });
+      }
+      const f1 = (v) => v == null ? '—' : Math.round(v) + '%';
+      console.log(`=== 🌎 CANDIDATOS DE PARAGUAY CON VENDEDORES DE AFUERA MÁS BARATOS · miré ${toca.length} que hoy dan 35%+ (${toca.filter((q) => q.de === 'Para probar').length} de Para probar) ===`);
+      console.log(`   con vendedores de afuera: ${conAfu} · el de afuera más barato que el de acá: ${conAfuBarato} · el primero de la lista es de afuera en ${primeroAfu}`);
+      console.log('   (de acá = el más barato de acá, contra el que se mide hoy · afuera = el más barato de afuera, precio de ML sin impuestos de importación · % hoy → con el de afuera +20% / +33% / +50%)');
+      for (const f of filas.sort((a, b) => (a.iMin / a.domMin) - (b.iMin / b.domMin))) console.log(`${f.q.de === 'Para probar' ? '🧪' : '· '} ${String(f.q.nom || '').slice(0, 48)} · de acá ${$(f.domMin)} (${f.nC}) · afuera ${$(f.iMin)} (${f.nA}, ${f.tagA}) = ${Math.round((1 - f.iMin / f.domMin) * 100)}% más barato · primero en la lista: ${f.primero} · ${f1(f.mHoy)} → ${f.ms.map(f1).join(' / ')}`);
+      console.log('\n── CUÁNTOS SIGUEN DANDO 35% ──');
+      const base = filas.filter((f) => f.mHoy != null && f.mHoy >= 35);
+      X.forEach((x, i) => { const sig = base.filter((f) => f.ms[i] != null && f.ms[i] >= 35); console.log(`   con el de afuera +${Math.round(x * 100)}%: siguen ${sig.length} de ${base.length}${base.filter((f) => f.q.de === 'Para probar').length ? ` (de Para probar: ${sig.filter((f) => f.q.de === 'Para probar').length} de ${base.filter((f) => f.q.de === 'Para probar').length})` : ''}`); });
+      console.log(`\n(no entran: ${Object.entries(noC).sort((a, b) => b[1] - a[1]).map(([r, n]) => `${n} ${r}`).join(' · ')})`);
+      return;
+    }
     // ── 🌎 ¿CUÁNTO MÁS CARO QUE EL DE AFUERA SE VENDE IGUAL? (27/10/2026 a la noche, él con el Echo Spot: "incluir ventas internacionales en
     // guay para comparar… al mirar internacional no es mano a mano, tenemos algún beneficio nosotros no sé cuánto, pero por ejemplo algo que
     // internacional esté 150.000 quizás nosotros vendiendo a 200.000 en full lo vendemos igual"). Sólo lee. Toda Clásica activa de catálogo
