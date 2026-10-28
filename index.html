@@ -1266,10 +1266,18 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       </div>
       <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
       <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div>
-        <!-- 📥 LAS DEUDAS QUE LO COMPONEN (28/10/2026, él: "que deben a cyc esté sólo arriba y abajo las cosas que la compongan… agregar una deuda a cyc, nombre y monto y si es con cuotas o no") -->
-        <div id="cuotas-lista" style="margin-top:10px"></div>
-        <button class="btn" style="margin-top:8px;font-size:.72rem" onclick="cuotasForm()">➕ Agregar deuda a CYC</button>
-        <div id="cuotas-form" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:var(--r)">
+        <!-- 📥 LAS DEUDAS QUE LO COMPONEN (28/10/2026): la lista vive abajo de las tarjetas, a lo ancho (él: "queda medio apretado todo… abrir un lugar nuevo") -->
+        <div id="cuotas-resumen" style="font-size:.7rem;color:var(--muted);margin-top:8px"></div>
+        <button class="btn" style="margin-top:6px;font-size:.72rem" onclick="cuotasPanel()" id="cuotas-btn">📋 Ver deudas</button></div>
+      <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
+    </div>
+    <!-- 📥 LAS DEUDAS A CYC, A LO ANCHO (28/10/2026, él: "queda medio apretado todo. se puede como abrir un lugar nuevo") -->
+    <div id="cuotas-panel" style="display:none;margin:12px 0 14px;padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <b style="font-size:.85rem">📥 Lo que nos deben</b>
+        <div style="display:flex;gap:6px"><button class="btn" style="font-size:.72rem" onclick="cuotasForm()">➕ Agregar deuda a CYC</button><button class="btn" style="font-size:.72rem" onclick="cuotasPanel(false)">✕ Cerrar</button></div>
+      </div>
+      <div id="cuotas-form" style="display:none;margin-bottom:10px;padding:10px;border:1px solid var(--border);border-radius:var(--r);max-width:420px">
           <input id="cq_nom" class="fin-input" type="text" placeholder="Nombre (ej. Juan · auriculares)" style="width:100%;text-align:left;margin-bottom:6px">
           <input id="cq_monto" class="fin-input" type="text" inputmode="numeric" placeholder="$ total que debe" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
           <label style="display:flex;gap:6px;align-items:center;font-size:.72rem;margin-bottom:6px"><input type="checkbox" id="cq_concuotas" onchange="document.getElementById('cq_n').style.display=this.checked?'':'none';cuotasTotalVivo()"> En cuotas</label>
@@ -1277,8 +1285,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
           <div id="cq_total" style="font-size:.7rem;color:var(--muted);margin-bottom:6px"></div>
           <button class="btn" style="font-size:.72rem" onclick="cuotasGuardar()">💾 Guardar</button>
           <button class="btn" style="font-size:.72rem;margin-left:6px" onclick="document.getElementById('cuotas-form').style.display='none'">Cancelar</button>
-        </div></div>
-      <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
+      </div>
+      <div id="cuotas-lista"></div>
     </div>
     <!-- LA AGENDA DE LIBERACIONES (21/09/2026). Pedido suyo: "yo te voy a preguntar cuánto hay
          disponible, cuánto va a haber disponible mañana". La llena renderAgenda() leyendo de
@@ -3130,7 +3138,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.50';
+const APP_VERSION='27.51';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3143,6 +3151,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.51',f:'28/10',h:'15:40',c:[{n:1,t:'📥 Arqueo → Lo que nos deben: la tarjeta muestra sólo el total, cuántas deudas hay y lo que falta cobrar. 📋 Ver deudas abre la lista a lo ancho, abajo de las tarjetas, con ➕ Agregar, 💵 Pagó y 🗑️ más cómodos'}]},
   {v:'27.50',f:'28/10',h:'15:15',c:[{n:1,t:'↕️ Pedidos → Paraguay → 🔎 Buscar en todo comprasparaguay: ahora se puede ordenar lo que encuentra (por % de ganancia, primero los que pueden entrar al pedido, $ por unidad, precio en Paraguay o en ML, vendedores o nombre)'}]},
   {v:'27.49',f:'28/10',h:'14:41',c:[{n:2,t:'📈 La búsqueda de techo pide 95% de seguridad hasta el día 30 (antes el 7) y recién después baja hasta 70% el día 44 (lo que elegiste en la revisión del cerebro)'}]},
   {v:'27.48',f:'28/10',h:'05:08',c:[{n:1,t:'📏 Las rayas de precio no cuentan los días sin visitas (igual que el robot): un día que nadie vio la publicación no prueba que el precio esté alto'}]},
@@ -6910,16 +6919,21 @@ async function cuotasSync(){
 }
 function renderCuotas(){
   const el=document.getElementById('cuotas-lista');if(!el)return;
-  const L=cuotasLista();
+  const L=cuotasLista(),abiertas=L.filter(d=>d.pagadas<d.n).length;
+  if(!window._cuotasPanelIni){window._cuotasPanelIni=1;let v=null;try{v=localStorage.getItem('cuotasPanel');}catch(_){}if(v==='1'){const p=document.getElementById('cuotas-panel'),b=document.getElementById('cuotas-btn');if(p)p.style.display='block';if(b)b.textContent='✕ Cerrar deudas';}}
+  const rs=document.getElementById('cuotas-resumen');if(rs)rs.innerHTML=L.length?`${abiertas} deuda${abiertas===1?'':'s'} · falta cobrar <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>`:'Ninguna deuda cargada.';
   if(!L.length){el.innerHTML='<div style="font-size:.7rem;color:var(--muted)">Ninguna deuda cargada.</div>';return;}
-  el.innerHTML=L.map(d=>{const fin=d.pagadas>=d.n,resta=Math.max(0,d.monto-d.pagadas*d.cuota),cq=d.n>1;
-    return `<div style="border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:6px;${fin?'opacity:.6':''}">
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px">'+L.map(d=>{const fin=d.pagadas>=d.n,resta=Math.max(0,d.monto-d.pagadas*d.cuota),cq=d.n>1;
+    return `<div style="border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;${fin?'opacity:.6':''}">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:.8rem;word-break:break-word">${_escC(d.nom)}</b><span style="font-size:.72rem;white-space:nowrap">${cq?_pesos(d.cuota)+' × '+d.n:_pesos(d.monto)}</span></div>
       <div style="font-size:.7rem;color:var(--muted);margin:3px 0 6px">${fin?'✅ pagada':cq?`pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · falta ${_pesos(resta)} · total ${_pesos(d.monto)}`:'sin cuotas · falta '+_pesos(resta)}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')
-    +`<div style="font-size:.7rem;color:var(--muted)">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`;
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')+'</div>'
+    +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`;
 }
-function cuotasForm(){const f=document.getElementById('cuotas-form');f.style.display='block';['cq_nom','cq_monto','cq_n'].forEach(i=>document.getElementById(i).value='');document.getElementById('cq_concuotas').checked=false;document.getElementById('cq_n').style.display='none';cuotasTotalVivo();document.getElementById('cq_nom').focus();}
+// El panel a lo ancho: se abre con 📋 Ver deudas (queda abierto la próxima vez en este teléfono).
+function cuotasPanel(abrir){const p=document.getElementById('cuotas-panel');if(!p)return;const ab=abrir===undefined?p.style.display==='none':!!abrir;p.style.display=ab?'block':'none';
+  const b=document.getElementById('cuotas-btn');if(b)b.textContent=ab?'✕ Cerrar deudas':'📋 Ver deudas';try{localStorage.setItem('cuotasPanel',ab?'1':'0');}catch(_){}if(ab){renderCuotas();p.scrollIntoView({behavior:'smooth',block:'nearest'});}}
+function cuotasForm(){cuotasPanel(true);const f=document.getElementById('cuotas-form');f.style.display='block';['cq_nom','cq_monto','cq_n'].forEach(i=>document.getElementById(i).value='');document.getElementById('cq_concuotas').checked=false;document.getElementById('cq_n').style.display='none';cuotasTotalVivo();document.getElementById('cq_nom').focus();}
 function _cuotasN(){return document.getElementById('cq_concuotas').checked?(parseInt(document.getElementById('cq_n').value,10)||0):1;}
 function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN();document.getElementById('cq_total').textContent=!(m>0)?'Poné cuánto debe en total':n>1?`${n} cuotas de ${_pesos(m/n)} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;}
 async function cuotasGuardar(){
