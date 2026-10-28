@@ -39786,6 +39786,25 @@ async function main() {
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) console.log(`  ${id} · ${d.nom} · falta ${money(Math.round(saldo(d)))} · ${Object.keys(d.movs || {}).length} movimiento(s)`); return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
       const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...partesP] = resto.split('|');
+      // CUÁNTO NOS COSTÓ UNA DEUDA (28/10/2026, él con la Notebook Tati: "costo 330 dolares"): `=costo <N>[usd]` → `costo` en pesos (con usd,
+      // al dólar del Arqueo). Es el mismo campo que "Cuánto nos costó" del ✏️ de la web; la ganancia la calcula la web (monto − costo).
+      const mc = String(resto).trim().match(/^costo\s*\$?\s*([\d.,]+)\s*(usd|us\$|u\$s|dolares|dólares)?$/i);
+      if (mc) {
+        let cand0 = lista.filter(([id]) => id === quien);
+        if (!cand0.length) { const pal = _n(quien).split(' ').filter(Boolean); cand0 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cand0.length !== 1) { console.log(`❌ "${quien}" agarra ${cand0.length} deudas${cand0.length ? ': ' + cand0.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        const [id, d] = cand0[0]; const nC = parseFloat(mc[1].replace(/\./g, '').replace(',', '.')) || 0;
+        const tcC = mc[2] ? (parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0) : 1;
+        if (!(tcC > 0)) { console.log('❌ sin dólar cargado en el Arqueo: no puedo pasar los dólares a pesos.'); return; }
+        const costo = Math.round(nC * tcC); if (!(costo > 0)) { console.log('❌ costo en cero'); return; }
+        console.log(`=== COSTO DE "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+        console.log(`  costo ${money(costo)}${mc[2] ? ` (US$ ${nC} × dólar ${money(tcC)})` : ''} · antes ${Number(d.costo) > 0 ? money(Math.round(d.costo)) : '—'} · deuda ${money(Math.round(Number(d.monto) || 0))} → ganancia ${money(Math.round((Number(d.monto) || 0) - costo))}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch(`cyc/debencuotas/${id}`, { costo, sinGan: null });
+        const rc = await db.get(`cyc/debencuotas/${id}/costo`);
+        console.log(Number(rc) === costo ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        return;
+      }
       // MERCADERÍA DEJADA EN UNA PERFUMERÍA (28/10/2026, él: "mercadería que dejé en los negocios locales… dejé el xiaomi watch 5 lite en soares
       // (son tres perfumerías locales, soares, sarmiento y ceballos)… tenés el costo de lo que nos costó traerlo a la oficina, te digo cuánto nos
       // paga la perf y calculás ganancia… esa ganancia no anotar en ningún otro lado, que no se mezcle con lo de ML"): `|prod=<id o palabras>`
