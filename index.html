@@ -3168,7 +3168,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.60';
+const APP_VERSION='27.61';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3181,6 +3181,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.61',f:'28/10',h:'18:40',c:[{n:1,t:'📋 Listas: si el proveedor tiene foto del producto, se ve al lado de la de ML (la cargan los mayoristas del Once)'}]},
   {v:'27.60',f:'28/10',h:'18:15',c:[{n:2,t:'📥 Ver deudas: ya no se borra nada (sin 🗑️). Las pagadas se ponen en verde y bajan a ✅ Pagadas, de a 6 por página. Mercadería y Deuda Perfumería quedan siempre arriba (📌, en verde si están al día). Cada producto dejado en una perfumería tiene su ✅ Pagó: queda en verde con la fecha y la cuenta sigue con lo demás'}]},
   {v:'27.59',f:'28/10',h:'17:55',c:[{n:1,t:'🛍️ Mercadería dejada en las perfumerías (Soares, Sarmiento, Ceballos): cada producto que se deja aparece en la historia con dónde quedó, lo que paga la perfumería, lo que nos costó y la ganancia en verde. Esa ganancia se ve sólo ahí, no se suma a la de ML'}]},
   {v:'27.58',f:'28/10',h:'17:35',c:[{n:2,t:'📅 Deudas en cuotas: la próxima cuota vence siempre a un período del ÚLTIMO pago (una semana, un mes o cada X días después). Nueva opción "Cada X días" para elegir cuántos días'}]},
@@ -22843,6 +22844,7 @@ async function renderListas(){
     const _duda=_listaNoEsVale(e)||(!_listaOkVale(e)&&(Number(e.mv)===1||!!e.rp));
     return `<details class="lst-card" style="background:var(--surface);border:1px solid ${arm[cod]>0?'var(--blue)':'var(--border)'};border-radius:8px">
       <summary class="lst-sum" style="list-style:none;cursor:pointer;display:flex;gap:8px;align-items:center;padding:6px 8px">
+      ${(()=>{const fP=/^https:\/\//.test(e.f||'')?e.f:'';return fP?`<img src="${fP}" loading="lazy" title="foto del proveedor" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fP}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:'';})()}
       ${fML?`<img src="${fML}" loading="lazy" onclick="event.preventDefault();event.stopPropagation();_mostrarLightbox('${fML}','')" onerror="this.style.visibility='hidden'" style="width:44px;height:44px;object-fit:contain;background:#fff;border-radius:6px;cursor:zoom-in">`:''}
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><div style="font-weight:600">${escHtml(e.n)}${_listaVendHTML(e)}</div>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(pc)}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}${_duda?' · <span style="color:var(--amber)">⚠️ hay una duda (tocá para verla)</span>':''}</div></div>
