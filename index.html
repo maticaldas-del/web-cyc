@@ -3183,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.71';
+const APP_VERSION='27.72';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3196,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.72',f:'28/10',h:'19:55',c:[{n:1,t:'📍 Pedidos → Bs As → Listas de Tito: "Direcciones de los mayoristas", cada una abre el mapa'}]},
   {v:'27.71',f:'28/10',h:'19:40',c:[{n:1,t:'💰 Finanzas: al tocar una tarjeta lo primero son las casillas para cargar y el detalle va al final; en el teléfono se abre justo abajo de la tarjeta tocada'}]},
   {v:'27.70',f:'28/10',h:'19:30',c:[{n:1,t:'📥 Las deudas se ven directo al tocar "Lo que nos deben" (ya no hay pestaña aparte)'}]},
   {v:'27.69',f:'28/10',h:'19:20',c:[{n:1,t:'💰 Finanzas: las tarjetas quedan fijas arriba; la abierta se marca en celeste y su detalle se abre abajo, a lo ancho'}]},
@@ -23243,7 +23244,9 @@ function _renderPedidosIn(){
     const st=document.getElementById('bsas-subtabs');
     if(st){const nomL=bp.length===1?(pv[bp[0]].nombre||bp[0]):'Listas de Tito';
       const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
-      st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
+      // 📍 LA DIRECCIÓN DE CADA MAYORISTA (28/10/2026, él: "poner la dirección de cada mayorista para que Tito la vea"): `lista:<prov>|dir=…;go`.
+      const dirs=bp.filter(k=>pv[k]&&pv[k].dir).map(k=>`<div style="padding:3px 0;border-top:1px solid var(--border)"><b>${escHtml(pv[k].nombre||k)}</b> · 📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pv[k].dir)}" target="_blank" rel="noopener" style="color:var(--accent2)">${escHtml(pv[k].dir)}</a></div>`).join('');
+      st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`+(_bsasVista==='listas'&&dirs?`<details style="margin:-4px 0 12px;font-size:.72rem"><summary style="cursor:pointer;color:var(--muted)">📍 Direcciones de los mayoristas (${bp.filter(k=>pv[k]&&pv[k].dir).length})</summary><div style="margin-top:4px">${dirs}</div></details>`:''):'';}
     const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
     if(_bsasVista==='listas'){renderListas();return;}
     {const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';}
