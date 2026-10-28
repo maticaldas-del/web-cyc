@@ -106,7 +106,7 @@ Ganar la caja daba pérdida en todos (Tendedero −25%, Rose y Silver −10%, Co
 1. Lupa 60mm (hoy Pack x10 a $47.990, vende 1 por mes, ~$1.750 por lupa): suelta a ~$4.990 dejaría ~$1.300 c/u, y las lupas sueltas parecidas que tenemos venden 17-23 por mes. (a) sugerida: publicarla también suelta y probar 30 días · (b) dejar sólo el pack.
 2. Aer suelto como publicación APARTE del x6 (él 27/10: "pueden ser los dos, como el filtro x1 y x4"): suelto deja 35% recién desde ~$4.090 (costo $1.352 c/u + cargo fijo ~$1.230 por venta). Rosas, Berry, Lavanda y Jazmín sueltos se venden a $3.330-3.500 (10-13 vendedores, uno con Full a $3.468): ahí no da. Limón (1 vendedor a $4.690) y Brisa Marina (2 a $4.200-4.690) sí: a ~$4.490 dejaría ~45%. (a) sugerida: publicar suelto sólo Limón y Brisa Marina, sin tocar el x6 · (b) no.
 
-### Volver a subir en una prueba de techo (27/10, él: "si vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir")
+### ~~Volver a subir en una prueba de techo~~ RESUELTO 27/10 a la noche (él: "no. seguimos con la a como siempre", ya en CEREBRO) · (27/10, él: "si vende una vez a un precio que está buscando techo, ahí nomás tiene que volver a subir")
 1. (a) sugerida: volver a subir apenas haya 50% de que el precio nuevo deja igual o más plata por día que el anterior, mirándolo con cada venta (no esperar las 3 ventas esperadas) · (b) volver a subir con la primera venta, siempre. (Enchufe 2 patas: a $3.140 y a $3.490 vendió y igual deja menos que a $2.990.)
 
 
@@ -151,3 +151,11 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 6. Panel solar (5 u., sin ventas desde el 17/08, ya en descuento casi al costo): si se confirma que tienen ~127 días, pagan desde el 12/11 y desde fines de diciembre unos $3.250 cada una por mes. (a) sugerida: si el 09/11 no se vendieron, retirarlas (su regla: 3 días antes de pagar) · (b) dejarlas en ML pagando unos $350 cada una por mes hasta fines de diciembre.
 7. Centímetro Blanco: vendió a $7.290 buscando techo y por la regla del +50% subió a $10.990. Eso rompe la comparación del 03/11 que eligiste (la Rosa en catálogo contra las Blancas a precio parecido): la Rosa está a $6.790. (a) sugerida: medir el 03/11 por plata por día y no por unidades · (b) bajar la Rosa o subirla para que queden parecidas
 8. Batidora: 39 unidades (Blanco y negro) salieron del conteo sin entrar a Full; ayer figuraban 16 y 23 en camino y hoy 0. No se compra hasta aclarar qué pasó con esa caja. (a) sugerida: que el chat de Chrome mire en ML si esa caja está en proceso de ingreso · (b) marcarla con faltante
+
+### Revisión de las reglas del cerebro del 28/10 (6 decisiones, para cuando digas "resolvamos")
+1. **Con cuánta seguridad se cierra una prueba de techo:** hoy para BAJAR algo que vende se pide 95%, pero una prueba que no vende se da por techo con 95% hasta el día 7 y baja hasta 70% el día 21 (y a los 30 días sin vender, sí o sí). (a) sugerida: dejarlo así (el 95% es para bajar lo que vende) · (b) 95% siempre, también para cerrar la prueba.
+2. **Una prueba de techo que vendió pero le sobra stock a ese precio** (más de 90 días de stock, o la unidad más vieja con 90+): (a) sugerida: no se sube, primero sale lo que sobra · (b) se sube +50% igual.
+3. **ML pausa por el precio algo en escasez o sin reposición:** (a) sugerida: volver al último precio que ML aceptó sin pedirte · (b) pedirte autorización como hoy.
+4. **Barrera de $33.000:** algo en $32.990 abajo del 35%, ¿desde cuántos días en Full puede quedarse sin cruzar? (a) sugerida: 90 (igual que la regla del 35% hasta los 90 días) · (b) 100, como hoy.
+5. **🥊 Mantener la caja:** hoy lo puedo prender yo solo y pasa por encima de todos los frenos de esa publicación. (a) sugerida: que pida tu "autorizo" como las otras salidas tuyas · (b) dejarlo así (sólo lo prendo cuando lo pedís).
+6. **Gemela de envío gratis cuando la Clásica pasa los $33.000** (la Lupa x10, 27/10): (a) sugerida: pausarla siempre mientras la Clásica esté arriba de $33.000 (es la misma oferta dos veces) · (b) sólo en la Lupa.

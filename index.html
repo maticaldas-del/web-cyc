@@ -3130,7 +3130,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.47';
+const APP_VERSION='27.48';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3143,6 +3143,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.48',f:'28/10',h:'05:08',c:[{n:1,t:'📏 Las rayas de precio no cuentan los días sin visitas (igual que el robot): un día que nadie vio la publicación no prueba que el precio esté alto'}]},
   {v:'27.47',f:'28/10',h:'01:09',c:[{n:2,t:'📥 Lo que nos deben: ahora es la suma de una lista de deudas, en la tarjeta de arriba del Arqueo. ➕ Agregar deuda a CYC (nombre, monto y si es en cuotas), 💵 Pagó / Pagó una cuota (cuántas va), ↩︎ y 🗑️. Lo que estaba escrito a mano quedó como la primera deuda de la lista. Se arregló que la lista de cuotas no se leía al volver a abrir la web'}]},
   {v:'27.46',f:'28/10',h:'01:01',c:[{n:2,t:'💳 Arqueo → Lo que nos deben: ventas en cuotas. ➕ Nueva deuda (nombre, cuánto es cada cuota y cuántas), 💵 Pagó una cuota (dice cuántas va), ↩︎ deshacer y 🗑️. Lo que falta cobrar entra solo al patrimonio como "Deben en cuotas" (en dólares al cambio de hoy)'}]},
   {v:'27.45',f:'27/10',h:'22:30',c:[{n:3,t:'📈 Estrategia nueva de precios (la tuya del 27/10): buscando techo, cada vez que vende sube +50% (antes +30%). Cuando encuentra el techo baja en escalera y en el primer precio que vende SE QUEDA: el 💰 ahora dice "el más alto que vende" (no baja para buscar más plata por día; sólo si sobra stock, se acerca el stock antiguo o pasa 30 días sin vender).'},{n:2,t:'🔥 Escasez: una prueba de techo ya no usa el ritmo del precio barato (con el precio alto que se queda, lo que vende a ese precio ES el ritmo).'}]},
@@ -5089,6 +5090,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:8,t:'28/10 · 6 decisiones de reglas del cerebro',que:'seguridad para cerrar una prueba de techo · prueba que vendió con sobra · ML pausa algo en escasez · barrera $33.000 a los 90 o 100 días · 🥊 mantener la caja con tu autorizo · gemela de envío arriba de $33.000',pedi:'resolvamos las del cerebro'},
   {etapa:2,t:'27/10 · 6 decisiones de Plata',que:'saldos de MP en el registro público · congelar el mes cobrado · cuándo cargar el retiro · ventas sin factura después de 45 días · stock de Full no disponible · Valor de Stock de Resumen vs Arqueo',pedi:'resolvamos las de Plata'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
@@ -5127,7 +5129,7 @@ const REV_HIST={
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'},
      {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'}],
-  8:[{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'}],
+  8:[{f:'2026-10-28',t:'4 revisores en máximo (contradicciones, decisiones de la semana, frenos contra el código, correcciones): cerebro y VENTAS al día, ~15 frenos arreglados en el robot, 53 correcciones contadas; 4 decisiones a para_mati.'},{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'}],
 };
 // Las etapas en el orden en que van a tocar (20/10/2026): una por día, primero la que hace más que no se revisa (`revProxima`).
 function _revHoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -12045,7 +12047,7 @@ function lineaPintar(prodId){
       const r=L0=>L0.length?L0.reduce((a,k)=>a+(Number(_rayasDias[k].u)||0),0)/L0.length:0;const rF=r(enF),rN=r(kk.filter(k=>!_diaFechaRaya(k)));if(rF>0&&rF>=2*rN)enF.forEach(k=>o.add(k));return o;})();
     const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
       if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uOwn)>0&&Number(d.totOwn)>0?Number(d.totOwn)/Number(d.uOwn):Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
-    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&d.vis!=null))return;if(k<_kDesdeR||_fueraR.has(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&Number(d.vis)>0))return;/* revisión etapa 8 (28/10): un día con 0 visitas no mide el precio, igual que `rayasPrecioLinea` */if(k<_kDesdeR||_fueraR.has(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,dF:0,u:0,gan:0});g.dias++;g.dF+=_franjaMesW(k);g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
     // `rN`/`dF` (24/10/2026): las ventas por día "normal" y los días pesados por la franja del mes, igual que `rayasPrecioLinea`.
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,rN:g.dF>0?g.u/g.dF:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));

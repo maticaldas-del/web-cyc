@@ -23,7 +23,7 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 12. ¿El mismo producto está en otra cuenta, en otro tamaño o en otra fecha a un precio que no cierra con éste? [Iscos 19/10]
 13. ¿Hay plata por día NETA (trabajo, tope de H, capital parado) o sólo estoy mirando unidades? [18/10]
 14. ¿Esta decisión deshace una mía (o del otro chat) de menos de 7 días? ¿Qué cambió desde entonces?
-22. Si dos reglas tiran para lados distintos (ganar la caja / no bajar lo nuevo, vender / el 25%), ¿cuál es la DURA? La que dice "nunca" o "sólo con 95%" gana siempre, aunque la otra parezca dar más plata hoy. [Cuba Platinum 20/10]
+22. Si dos reglas tiran para lados distintos (ganar la caja / no bajar lo nuevo, vender / el 35%), ¿cuál es la DURA? La que dice "nunca" o "sólo con 95%" gana siempre, aunque la otra parezca dar más plata hoy. [Cuba Platinum 20/10]
 23. ¿El precio nuevo queda abajo del 💰 piso (el que más plata por día dejó)? Si el redondeo a 90/990 lo empuja abajo, se redondea PARA ARRIBA. Y una raya de techo, ¿está medida al 95% o es sólo una prueba corta? [Adaptador 8 en 1 21/10]
 
 ## Cajas y pedidos
@@ -41,9 +41,9 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 - (22/10, F9) ¿La venta que uso como prueba se cobró al precio que estoy juzgando? Mirar el precio cobrado de la orden, no el precio del día.
 - (22/10, Enchufe 3 patas) ¿El ritmo con el que se dice "escasez" es del precio de hoy o de un tramo viejo mucho más barato?
 - 24. (22/10, flete Paulvic) Si un monto que me dice se parece a uno que ya tengo (17.900 / 18.000), ¿es el mismo redondeado o uno más? Ante la duda, NO se suma: se toma como el mismo y se lo digo.
-- 25. (23/10, Masajeador) Si vendió una gemela o hermana, ¿qué estrategia tiene la CLÁSICA? Un 🆕 que vende por la Premium es un lanzamiento que vendió: sube +30% en la misma vuelta.
-24. ¿Lo que compro y lo que mido en ML traen la MISMA cantidad (1 contra pack de 2/3, par contra unidad)? Mirar la foto y los atributos, no sólo el título (23/10, Deco X60).
-25. Antes de publicar una marca grande (perfume de diseñador, ropa, relojes): ¿esa marca denuncia en ML? Ante la duda, preguntarle antes de crear (23/10, CK One).
+- 25. (23/10, Masajeador) Si vendió una gemela o hermana, ¿qué estrategia tiene la CLÁSICA? Un 🆕 que vende por la Premium es un lanzamiento que vendió: sube +50% en la misma vuelta (+30% antes del 27/10 a la noche).
+46. ¿Lo que compro y lo que mido en ML traen la MISMA cantidad (1 contra pack de 2/3, par contra unidad)? Mirar la foto y los atributos, no sólo el título (23/10, Deco X60).
+47. Antes de publicar una marca grande (perfume de diseñador, ropa, relojes): ¿esa marca denuncia en ML? Ante la duda, preguntarle antes de crear (23/10, CK One).
 26. ¿Esto que entró tiene ticket? Entonces se carga con su precio final (ficha + costo) sin preguntar, aunque se venda sólo en el local. Se pregunta sólo lo que no sé qué es (23/10, EX15LP / Joystick 7114209).
 27. Antes de pasarle una decisión: ¿ya la contestó? Buscar en `REVISION.md` y `HISTORIA.md` (el 23/10 le reenvié R1-R8, ya elegidas el 20/10, y en dos le sugerí lo contrario de lo que está bien) (24/10).
 28. ¿El código de Paraguay de la ficha es del MISMO color que lo que vendo? En comprasparaguay cada color tiene su código y casi siempre el mismo precio: un precio igual no prueba nada. Correr `pycodcolor` (24/10, Redmi Buds 6 Play negro con el código del azul).
@@ -61,6 +61,15 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 40. ¿Estoy escribiendo en castellano? Y lo que me manda para cargar (un ticket, una guía, un comprobante): ¿cargo SÓLO lo que me pidió, sin convertir en pregunta cada otro número del papel? (27/10, guía de Via Cargo)
 41. ¿Me pregunta si algo "llega al 35%"? Le doy las dos cuentas: con el costo de lo que ya tenemos Y con el costo de volver a comprarlo hoy (precio de Nissei/lista × recargo × dólar de hoy), y el precio al que tendría que venderse para dejar 35% repuesto (27/10, Seagate 500GB).
 42. ¿Este número de un producto con colores sale de UN color y lo estoy usando para todos? Cada color es su publicación y se juzga solo: precio de venta, máximo de compra, techo y ventas van por color (27/10, Sábanas Rojo).
-43. ¿Esta idea choca con el límite real que él ya dijo (los PESOS, el lugar en la Kangoo, el stock del mayorista)? Antes de proponer algo grande: medir la CAUSA, no sólo el tamaño, y cruzar cada número del modelo con lo pagado de verdad (27/10, el que retira como "fijo" cuando es ~10%).
+43. ¿Esta idea choca con el límite real que él ya dijo? (hoy: CONSEGUIR mercadería; el 27/10 a la noche dijo que hay pesos y lugar en la Kangoo, CLAUDE §2) Antes de proponer algo grande: medir la CAUSA, no sólo el tamaño, y cruzar cada número del modelo con lo pagado de verdad (27/10, el que retira como "fijo" cuando es ~10%).
 44. ¿Esta regla de buscar precio (o cualquier búsqueda de a pasos) se puede quedar en el primer "bueno" y no ver nunca uno mejor más lejos? ¿Qué precios no se probarían nunca con ella, y cuánto cuesta probarlos de vez en cuando? (27/10, dos franjas: Cartas Poker Azul).
-45. ¿El precio contra el que mido una compra es uno al que se vende de verdad? Si el de acá es uno solo (o pocos) y muy arriba del de afuera, ese precio no lo paga nadie: el de afuera cuenta con +50% y se mide contra el más barato de todos. Un margen de 100%+ en algo barato de Paraguay merece mirar quién lo vende y a cuánto (27/10, Echo Spot 132%).
+45. ¿El precio contra el que mido una compra es uno al que se vende de verdad? Si el de acá es uno solo (o pocos) y muy arriba del de afuera, ese precio no lo paga nadie. Por ahora el de afuera cuenta sólo si no hay ninguno de acá (+20%, 16/10): el arreglo con +50% lo dejó él para después. Un margen de 100%+ en algo barato de Paraguay → mirar quién lo vende y a cuánto, y decírselo (27/10, Echo Spot 132%).
+48. ¿Esta publicación tiene otra del mismo stock y color (👯)? Entonces mismo precio y misma estrategia, al precio MÁS CARO de las dos; si no es el mismo producto (variante mal vinculada), `fijarvar`/`vincular` (26-27/10, Cartas Poker y Centímetro Blanco).
+49. ¿Cerré algo que él pidió buscar o hacer? Se lo cuento en el chat con el resultado, aunque sea "no hay": anotarlo como hecho en `para_mati.md` no es contárselo (26/10, catálogos de pack: "nunca me dijiste más nada").
+50. ¿El número que le paso usa la vara de HOY (35% desde el 24/10)? Un informe del robot puede seguir contando con la de antes: cruzarlo con la regla antes de decirlo (26/10, "1.515 dejan 25%").
+51. ¿Este pendiente sigue abierto? Antes de pasarle algo de plata (pagar, cobrar, cargar), mirar el dato (`pvped:pago:ultimo`, el pedido, el ticket), no el renglón de una lista (27/10, Paulvic ya pagado).
+52. ¿Lo vi DIBUJADO con el CSS real de la página antes de decirle que está? Que el código lo arme no alcanza: una regla vieja puede esconderlo o una casilla cortarlo (26/10, el cuadro de la vuelta de Nissei · 21/10, el dólar de Inicio).
+53. Si junto cambios para ahorrar (esperar a que la base quede quieta), ¿tiene un máximo de espera? ¿Lo probé con escrituras seguidas, como cuando el robot escribe sin parar? (26/10, la web dejó de actualizar al instante)
+54. ¿Me mandó una foto y dice "esto"? Si hay dos lecturas, hago la que cubre todo lo que se ve en la foto (26/10, el renglón del buscador de Ventas).
+55. ¿Mi orden o puntaje tiene el dato para TODOS los renglones? Uno sin dato no va último: uso la nota que ya existe (⭐) o digo que falta (26/10, el Sony EX15C último: "parece joda").
+56. Con cupo chico, ¿lleno la caja para la MÁXIMA plata o para cubrir días? Y lo que la carga, ¿lee MI archivo o el de la madrugada? (26/10, caja de Ayelen: "siempre priorizamos ganar más, no cubrir stock")
