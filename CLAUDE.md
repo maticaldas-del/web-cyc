@@ -562,6 +562,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 - **Pedido Paraguay `py20261026` (en camino):** ticket cargado (US$ 553,95, 2 fotos). El Xion no vino ni se cobró. **Al llegar: el Dior
   J'adore 100 ml y el pendrive SanDisk Z430 128GB (agregados de Tito) van con `sololocal` (perfumería y local, él 26/10), no a ML.**
   Correo cargado el 27/10 ($28.000, 11,55 kg; el que retira $90.000 ya estaba): recargo real 10,7%.
+- **Pedido Paraguay `py20261028` (resto, en camino, pagado US$ 638,31 / $1.082.452):** al llegar, **Bad Boy Le Parfum 150 ml y 212 NYC Men 100 ml van con `sololocal`** (perfumería del local, él 28/10), no a ML. Falta: lo que cobró el que retira y el correo. Waflera Atma Disney y Pendrive Cruzer Blade 64gb: Nissei no tiene (28/10, marcados `py_sinstock`).
 - EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados. (Linternas COB, contador y Sancor: él 27/10 *"no nombrar más"*.)
 - **Almacenamiento** (24/10): ML no da la tarifa por unidad; sale de la factura de septiembre: almacenamiento común $47.735 en las 4 ÷ ~2.640 u. en Full ÷ 30 d ≈ **$0,60 por unidad por día** (cargado con `almactarifa`, chico = grande). El stock antiguo va aparte ($64.155 en sep). Rehacerlo con la factura de octubre (`cargosmes:2026_10`).
 - **Filtro de envíos internacionales** en candidatos: el campo existe (`international_delivery_mode`); escribirlo cuando aparezca uno.
