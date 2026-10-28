@@ -472,17 +472,19 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   (no van a Telegram). Reclamos que esperan su respuesta: recordárselo una vez por día como mucho.
 
 ## 14 · PEDIDOS
-- 💹 **ESTRATEGIA "GANAR MÁS POR CADA PESO FACTURADO" (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b).** El tope de H no deja facturar
-- 🎯 **Objetivo (27/10/2026, él): que desaparezcan el rojo (abajo de 25%) y el naranja (25-35%) de 🧮 La Mezcla.** Semana del 26/10 ya va 91% azul; antes 30-60% era rojo+naranja.
-  más: sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que sale de ahí, en cada parte:
-  · 🔒 **desde el 24/10 TODO pide 35%: comprar, reponer, listas, Paulvic y el local** (él: *"no tenemos suficiente plata para todo, enfoquémonos en 35 o más"*; antes: reponer 25%, nuevo 35%, 30% con 100+ ventas) (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
-  cerrada) sigue dejando menos de 25% NO se repone**: `decido:ped=u|0` con "Hola Tito!" y el motivo, y en la completa se le propone
-  un reemplazo de 35%+ (de Paraguay o Listas) en `notas/para_mati.md`. Mientras el techo no esté buscado, se busca primero (no se corta de
-  una). **Lo de 25-35% con el techo ya encontrado (🏔️) se sigue reponiendo** (22/10, eligió la a): se reemplaza de a poco sólo cuando
-  aparece algo nuevo de 35%+ que ocupe su lugar (mismo rubro o misma plata), y eso se le propone en `notas/para_mati.md`. Stock antiguo, escasez o algo recién llegado no cuentan como "abajo de 25%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
+- 💹 **ESTRATEGIA "GANAR MÁS POR CADA PESO FACTURADO" (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b).** Desde el 27/10 el límite no es
+  el tope de H ($54,6 M de lugar al 31/12, `topeh`) sino REPONER y conseguir mercadería (él: *"si vendemos mucho, no llegamos a reponer…
+  por eso es mejor defender la mercadería lo máximo"*): sube la ganancia lo que deja cada $100 facturados (meta $22; oct $19). Lo que
+  sale de ahí, en cada parte:
+  · 🔒 **desde el 24/10 TODO pide 35%: comprar, reponer, listas, Paulvic y el local** (él: *"no tenemos suficiente plata para todo, enfoquémonos en 35 o más"*; antes: reponer 25%, nuevo 35%, 30% con 100+ ventas; confirmado en la 2a del 28/10) (§16, §17; 23/10 1a, `varaCompra`: colchón de ~$52 M del tope de H hasta fin de año, nada nuevo a Matías; en febrero se vuelve a medir con los topes nuevos) · **2a: lo que con el techo ya buscado (🏔️ o prueba de techo
+  cerrada) deja menos de 35% NO se repone** (24/10, eligió la a): `decido:ped=u|0` con "Hola Tito!" y el motivo; al terminarse, la
+  publicación queda pausada (no se borra) y en la completa se le propone un reemplazo de 35%+ (de Paraguay o Listas) en
+  `notas/para_mati.md`. Mientras el techo no esté buscado, se busca primero (no se corta de una). Stock antiguo, escasez o algo recién
+  llegado no cuentan como "abajo de 35%" · **5a: Watch S5 y Redmi Pad 2 no se reponen más**
   (`decido:ped` u 0, 22/10) · lo caro de poco margen es lo primero a reemplazar (gasta mucho tope de H y deja poco).
+- 🎯 **Objetivo (27/10/2026, él): que desaparezcan el rojo (abajo de 25%) y el naranja (25-35%) de 🧮 La Mezcla.** Semana del 26/10 ya va 91% azul; antes 30-60% era rojo+naranja.
 - **Completos, todo el catálogo**, en la completa: objetivo 30 días; 45 en Bs As que se cortó 2+ veces en 60 d, vende 0,5+/día y
-  deja 25%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
+  deja 35%+, y en lo nuevo que vuela (1+/día la primera semana). Ritmo por día con stock (y por color); stock de las 4 cuentas
   sumado; sin costo no se pide; **el precio para el máximo = el de la ÚLTIMA venta** (23/10, él: *"si nunca vendió toma el % que decís vos. si ya vendió no importa si fue sólo 1 unidad. tomar ese %"*), sin pasar el de hoy y salteando la de escasez/sin reposición; nunca vendió → el precio de hoy. Máximo por color con `pvVars`
   (el precio que el color sostuvo 2+ semanas, nunca de escasez ni de la primera semana de techo).
 - 🏷️ **Al precio de hoy** (27/10 a la noche): con 7+ días con stock desde el último cambio de precio, Pedidos compra con lo que se
@@ -493,7 +495,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 ## 15 · CAJAS
 - 37 días (30 de venta + 7 de viaje); 60 sólo en lo parejo sin prueba abierta (`notas/sin_estirar.txt`); nada pasa 90 días; lo
   nuevo sale con el mínimo de 4. Con 7+ días con stock desde el último cambio de precio, al ritmo de ESE precio (`HOY`, 27/10 a la noche). Una cuenta SIN publicación no recibe el mínimo si otra tiene stock de ese color; la que ya publica y
-  está en cero, sí. Respetar el cupo (lo vendido no devuelve cupo). Costo de la caja $17.310.
+  está en cero, sí. Respetar el cupo (lo vendido no devuelve cupo). Costo de la caja: `cyc/mlconfig/costoCaja` (~$17.500, `cajacosto`).
 - **Cupo de Full lleno con lo que no vende (21/10/2026, él con Ayelen en 0: *"retirar libera stock, pero es un poco de lío, lo mejor es vender"*):** con el cupo de una cuenta en 0 y mercadería que vende esperando en la oficina, lo lento que ocupa el Full de esa cuenta (Timer, cortapelo a pila, panel solar…) se empuja a VENDER (descuento propio o escalera, frenos de siempre) antes que retirarlo. Retirar sólo si vender no alcanza y él lo pide.
 - 💹 **Full abajo de $100.000 por mes (22/10/2026, 6a).** Octubre fueron $347.700 (retiros y descartes $221.600, stock antiguo
   $64.000, almacenamiento $47.700, multa $14.200). No mandar de más (37 días), lo lento se vende con escalera ANTES de los 4 meses
@@ -504,18 +506,20 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 
 ## 16 · PARAGUAY
 - Pedidos de ~US$1.000 cada 2-3 semanas. Lo no urgente espera al próximo; lo que se corta antes de que llegue se pide igual.
-- Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia una vez por mes.
+- Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia en la pasada semanal de
+  los sábados 9:00 (24/10, eligió 1a 2a: probados primero + catálogo entero).
 - Para pedir: 🔒 **35%, la vara de compra (`CAND_VARA_COMPRA`, 22/10/2026, 1a)** — lo de 25-34% queda guardado y se sigue
   midiendo (el descarte del robot sigue en 25%) — **y** catálogo de ML con 2+ vendedores (o 1 vendedor con 100+ vendidas, o 🌟 sin competencia con el precio visto en ML por el chat: `svprecio`, 24/10/2026 1a 2a) **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`
   ok de ESE catálogo). 🔒 **Y al final las 100 vendidas (21/10/2026, regla suya):** sin el dato entra igual; cargado y abajo de 100
   queda afuera (`CAND_MIN_VENTAS`, web y robot). Las mira el chat de compras sólo de lo que pasó todo (`faltaventas`).
-- Cuántas de cada nuevo (decisión 4a del 21/10; las vendidas ya no se cargan): 🔒 barato (≤US$15 crudo) → 3 · caro (+US$60) → 1 ·
-  resto → 2 (`candMaxU`, botón 🪄 Llenar). Lo que vuela se repone en el pedido siguiente por sus ventas.
+- Cuántas de cada nuevo (26/10, él): 🔒 **hasta llegar a US$ 20 con el precio de la web, máximo 4** (US$ 21 → 1 · 19 → 2 · 9 → 3 ·
+  5 o menos → 4; `candMaxU`, robot `candMaxUBot`, botón 🪄 Llenar). Lo que vuela se repone en el pedido siguiente por sus ventas.
 - Ticket real obligatorio para cerrar (`compray:<fecha>|det=…|go`); gastos: dólares, retira, correo (monto y kilos); `adelanto=` y
   `cambio=` sólo cuando él avisa. Recargo: el medido de los pedidos (respaldo 20%).
 - Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y si no, la que **más lugar tiene contra el tope de H**
   (`repartopy`, 7a del 22/10), vínculo. Por ahora siempre las 4 cuentas en H (8b): ni 5ª cuenta ni K.
-- Dos proveedores (Nissei, Elegancia) y dos pedidos en Nissei (perfumería y resto).
+- Un proveedor, Nissei, con dos pedidos (perfumería y resto). Elegancia quedó apagada el 26/10 (él: *"eliminá elegancia. nunca se usa y
+  genera problemas"*); no volver a proponerla.
 
 ## 17 · LISTAS (otros proveedores)
 - Todas se miden contra ML, también Dai Nippon (que no tiene pedido: lo trae Tito). Para que "dé": 🔒 35% (vara de compra, 22/10) y catálogo con 2+ vendedores
@@ -558,7 +562,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Dinero que rinde en MP: lo revisa él en la app de cada cuenta.
 
 ## ✅ 21/10/2026 · LO QUE CAMBIÓ CON SUS 62 DECISIONES (todas (a), v25.75)
-- 🪜 al volver de un techo, no 🏔️ (1.1) · liquidando frena sólo subas (1.2) · la 🏔️ vence con la foto del mercado (1.3) · tags que vencen
+- 🪜 al volver de un techo (1.1; desde el 27/10 a la noche, la 🪜 que vende queda 🏔️ en ese precio, §completa 6) · liquidando frena sólo subas (1.2) · la 🏔️ vence con la foto del mercado (1.3) · tags que vencen
   (1.4) · compras con peor caso (1.5) · gemela y Clásica juntas, plata parada una vez (1.6/5.2) · estrategia liquidando/remate/sobra
   vigente = remate para Pedidos (5.1).
 

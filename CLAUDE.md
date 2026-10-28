@@ -93,7 +93,7 @@
 - **LA ESTRATEGIA PARA GANAR MÁS (22/10/2026, eligió 1a 2a 4a 5a 6a 7a 8b; la 3 quedó para después).** **El límite es REPONER, no el tope de H** (27/10, él: *"si vendemos mucho, no llegamos a reponer ni por plata ni por lugar en la camioneta ni porque el mayorista se queda sin stock, por eso es mejor defender la mercadería lo máximo… hay muchos productos que se le pueden ganar muchísimo y todavía no compramos… una vez encontrado el techo ahí los precios se bajan para quedar en el precio que más ganancias da"*; `topeh` 27/10: $54,6M de lugar al 31/12): lo que sube la ganancia es **cuánto deja cada $100 facturados** (oct: $19, meta $22;
   meta $1.200.000 c/u = ~37,3% de margen promedio). 1a **comprar algo nuevo pide 35%** (`CAND_VARA_COMPRA`, web y robot; Paraguay y
   Listas); ~~entrada con 30%~~ y ~~reponer en 25%~~: **desde el 24/10 TODO pide 35%** (comprar, reponer, Paulvic incluido, listas y el local; él: *"no tenemos suficiente plata para todo, enfoquémonos en 35 o más"*); lo de 25-34% queda guardado y se sigue midiendo ·
-  2a lo que queda abajo de 25% después de buscarle techo **no se repone** y le propongo un reemplazo · lo de **25-35% con el techo ya encontrado se sigue reponiendo** y se reemplaza de a poco sólo cuando aparece algo nuevo de 35%+ que ocupe su lugar (22/10, eligió la a) · 4a tarjeta 🧮 Mezcla en
+  2a lo que queda abajo de 35% después de buscarle techo **no se repone** (24/10; el "25-35% se sigue reponiendo" del 22/10 quedó sin efecto) y le propongo un reemplazo; al terminarse, la publicación queda pausada · 4a tarjeta 🧮 Mezcla en
   Métricas · 5a **Watch S5 y Redmi Pad 2 no se reponen más** · 6a **Full: meta menos de $100.000/mes; un retiro de Full sólo con su
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
   `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
@@ -142,7 +142,7 @@
   `nuevoprod` (costo 0 si falta, y decirlo: se ve como todo ganancia).
 - **Mis decisiones no vencen** (`SOLO_CLAUDE`): Pedidos, Armar caja y máximo de compra muestran sólo lo que decidí, con motivo; lo no
   decidido dice "sin decidir".
-- **El robot de precios** escribe con `decido` (y `entrarpromo`, `tag`), que pasan por los frenos `frenosBajas` (F1-F8). **Toda regla
+- **El robot de precios** escribe con `decido` (y `entrarpromo`, `tag`), que pasan por los frenos `frenosBajas` (F0-F14). **Toda regla
   nueva "nunca/siempre/sólo si" que se pueda medir va al código** como freno, y REEMPLAZA la de su tema en el CEREBRO.
 
 ### Las vueltas (tareas programadas que entran a esta sesión)
@@ -158,7 +158,7 @@
   escrito en la llamada** (22/10, 2a: rara/abajo del 35%/sin costo · sin estrategia con techo · escasez · lanzamiento que vendió ·
   prueba de techo con 7+ días); las ✓ normales se cierran sin leer ficha → aplicar lo que propone el ayudante (si no le hago caso, lo
   digo en el 🧠) → `ventasvistas:<ts>|esf=<nivel real>|<MLA>=<qué pasó y qué resolví>|…;go` (deja en cada venta su análisis 🔬:
-  gris si no cambió nada, color de la estrategia si cambió) → **al terminar, `bajastecho:1` y el detector `errores`, y deshacer en la
+  gris si no cambió nada, color de la estrategia si cambió) → **al terminar, el detector `errores` (reemplaza a `bajastecho:1`), y deshacer en la
   misma vuelta toda ❌ del día** (22/10, 3a: vuelve al precio de antes con `!chico` y "EXCEPCIÓN: vuelve al precio de antes").
 - Listas que tienen que quedar **vacías** al terminar la vuelta: 🚨 escasez que vendió después de mi decisión (`escasez`) · 🛡️ abajo
   del 35% en el peor caso · 📦 sobra sin decidir · 🔎 sin afinar · 📈 dice techo/escasez y no sube · 📈 prueba con respuesta (3 ventas esperadas, 23/10) · 👯 mismo producto y color con distinto precio o estrategia (26/10) (todas en `planilla`) · 📈🆕 prueba de techo o lanzamiento que vendió (también por su gemela) y no subió (en `errores`, 23/10; todo 📈 desde el 27/10) · 🔎 vendió ayer u hoy sin techo medido ni estrategia que explique no subir (en `errores`, 27/10) · 🔙 abajo del precio más caro que vendió en 60 días (`vendiocaro`, sólo la completa, 27/10 a la noche) · 🧐 revisión a fondo atrasada (`revfondo`, sólo la completa: todo producto con stock en Full y publicación activa con mi nota del 🧠 de menos de 2 días si está quieto o de 7 si vendió; 24/10, eligió la 3a).
@@ -187,11 +187,13 @@
 ## 5 · PRECIOS (resumen; manda `ml-sync/CEREBRO.md`)
 
 - **Quién manda** (CEREBRO §0): lo que pide él para ese producto → dato dudoso no se toca → frenos duros → nunca abajo de 0% →
-  **sin línea de techo no se baja** → arriba del 💰 no se baja sin 95% → lo nuevo no se baja sin 🏔️ → no pagar stock antiguo → escasez
-  sube → sobra baja en escalera → 35% peor caso → buscar techo en todo lo demás.
+  **sin línea de techo no se baja** → arriba del 💰 no se baja sin 95% → lo que vendió a su precio no se baja (F14) → lo nuevo no se
+  baja sin 🏔️ → no pagar stock antiguo (15 días antes: ganar la caja hasta 0%) → escasez sube (🔥/⏳ nunca bajan sin techo, F11) → sobra
+  baja en escalera → perfumes no abajo del 10% (F12) → 35% peor caso (abajo sólo con 90+ días, F13) → menos de 1/semana no sube · 1+/semana
+  no queda en 💰 sin 🔴 → buscar techo en todo lo demás.
 - **Datos suyos que no se vuelven a preguntar** (27/10 a la noche): ML **no castiga** en las búsquedas una publicación que pasa muchos días sin vender · la competencia **no copia** nuestras subas (cada uno va por su cuenta). **Dos franjas buenas de precio** (`franjas`, 27/10): de 86 con 3+ precios medidos, 3 (el azar daría ~4): raro, pero existe (Cartas Poker Azul: $3.520 deja $1.268/día, $3.870 $467, $6.490 $2.162).
 - **Lo que vende menos de 1 por semana no sube** (4a del 23/10; 37a del 24/10: toda suba, no sólo 📈; freno en `decido`): queda 💰 #punto;
-  afuera subir al 25% del peor caso, 🔥/⏳ con stock para menos de 100 días, o volver a un precio de los últimos 90 días. Las pruebas se juzgan a las 3 ventas esperadas.
+  afuera subir al 35% del peor caso, 🔥/⏳ con stock para menos de 100 días, o volver a un precio de los últimos 90 días. Las pruebas se juzgan a las 3 ventas esperadas.
   Bajar la lista de algo que ya buscó techo va como descuento con cualquier etiqueta (37a). Renovar el mismo descuento no es una baja (46a).
 - **El orden de todo precio** (27/10 a la noche, él; reemplaza el "buscar el de más ganancia" del 25/10: *"primero buscar techo, segundo buscar
   1 venta y quedarse ahí, tercero… evaluar el stock para no pagar, ver si estamos vendiendo muchísimo menos que antes entonces vale la pena
@@ -208,7 +210,7 @@
   techo (subir). Lo que vendieron otras variantes o la familia NO alcanza. Pasados 15 días de la última suba sin certeza, decide la
   plata por día (F4).
 - **🔐 Un aviso alcanza** (22/10, eligió las tres; CEREBRO §0c): **todos los caminos pasan por las mismas reglas** — `frenosBajas`
-  (F0-F9) juzga `decido`, `entrarpromo` y la puerta de `setPriceTo` (toda otra baja); las subas pasan por `frenosSuba`; F9: en escasez
+  (F0-F14) juzga `decido`, `entrarpromo` y la puerta de `setPriceTo` (toda otra baja); las subas pasan por `frenosSuba`; F9: en escasez
   nunca abajo del precio de antes de la escasez. **Las salidas que ya fallaron son SÓLO SUYAS:** `!sinlinea` `!sincerteza` `!sintecho`
   `!bajocero` y 🧨 `#remate` → sin su autorización no se hace: queda GUARDADO en `cyc/autoriza/<código>` (**no sale por Telegram ni vence**,
   24/10, él: *"que lo guarde y me lo mande por acá, en el aviso de las 12:30, y si no que lo siga guardando hasta que lo resolvemos"*); se
@@ -237,14 +239,14 @@
   nunca pasar 120. Bs As pasa a "no se consigue" cuando Pedidos lo pide hace 10+ días sin entrar nada a la oficina, o con el botón
   🚫 "No lo consigo" (`cyc/noconsigo/<prod>[/v/<color>]`); se cae solo al entrar mercadería.
 - **Lo que no vende al 35%** (24/10, eligió la a): no se repone y, al terminarse, la publicación queda pausada (no se borra).
-- **🌸 Perfumes: nunca abajo del 10%** (26/10, él: *"todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0% conviene pedirlo. intentemos venderlo mínimo al 10%. si está por pagar stock avisame y retiro"*; con los VS: *"menos del 10% nunca, antes retirarlos"*). Freno F12 (`esPerfumeNom`: perfume, body mist/splash, Victoria's Secret, Paulvic/Persea). **Salvo los 15 días antes de pagar stock antiguo: ahí sí hasta el 0%** (27/10, `antiguo15`). Si no sale al 10% y está a 20 días o menos de pagar stock antiguo → se le avisa en el chat (12:30) para que lo retire al local.
+- **🌸 Perfumes: nunca abajo del 10%** (26/10, él: *"todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0% conviene pedirlo. intentemos venderlo mínimo al 10%. si está por pagar stock avisame y retiro"*; con los VS: *"menos del 10% nunca, antes retirarlos"*). Freno F12 (`esPerfumeNom`: perfume, body mist/splash, Victoria's Secret, Paulvic/Persea). **Salvo los 15 días antes de pagar stock antiguo: ahí sí hasta el 0%** (27/10, `antiguo15`). Si a 3 días de pagar stock antiguo no se vendió → se le pide en el chat (12:30) que lo retire al local.
 - **15 días antes de pagar stock antiguo: ganar la caja hasta el 0% (al costo) y, si no se vende, se retira 3 días antes de pagar** (27/10, él: *"15 días antes de pagar stock siempre ganar caja hasta llegar al 0% de ganancia"* y *"vende al costo antes de retirar. 3 días antes de pagar por stock retiramos"*): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el precio baja al que gana la caja (sin catálogo: escalera) sin bajar del 0%; si a 3 días de pagar sigue sin venderse, se le pide el retiro (en el chat, 12:30). **Perfumes también hasta el 0%** (F12 se abre en esos 15 días).
-- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (27/10, 1a: con la unidad más vieja de menos de 90 días en Full, sólo hasta el 35%; F13 manda) (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
+- **Sobra** (+90 d de stock al ritmo con stock o sin ventas en 60 d) → escalera/descuento; con sobra no se busca techo. **Lo caro que no vende: a los 60 días sin vender, la escalera apunta al precio que GANA la caja de compra** (27/10, 1a: con la unidad más vieja de menos de 90 días en Full, sólo hasta el 35%; F13 manda) (26/10, él con los VS, Redmi Watch y Dalí: *"si llegan a 60 días de stock sí bajar los precios hasta estar en ganando"*; nunca abajo de 0%, perfumes 10% salvo los 15 días, F12; antes de eso no se baja sin techo y las 16 autorizaciones viejas del 23/10 quedaron en "no"). Stock antiguo: 120 d
   lo chico, 60 lo grande (Tenders); apuntar a vender antes de ~100. Bajar porque seguir igual perdía más = el cerebro ganó; lo que falta
-  para el 25% es error de origen (mandar/comprar de más).
+  para el 35% es error de origen (mandar/comprar de más).
 - **Estrategias (tags)** — todo precio tiene una (19/10, **no existe 🎯 base**; `decido` rechaza un precio sin estrategia): 📈 `techo`
   buscando · 🏔️ `techook` encontrado (sólo vía techo95) · 🪜 `bajando` · ↘️ `volviendo` al normal · ↗️ `desobra` · 🔥 `escasez` ·
-  ⏳ `sinrepo` · 📦 `sobra` · 🏷️ `promo` (ML pone) · 💸 `descuento` (sólo nosotros) · 🆕 `lanzamiento` · 💰 `punto` · 💳 `gemela` · 🧨 `remate`
+  ⏳ `sinrepo` · 📦 `sobra` · 🏷️ `promo` (ML pone) · 💸 `descuento` (sólo nosotros) · 🆕 `nuevo` (lanzamiento) · 💰 `punto` · 🧨 `remate`
   (sólo si lo pide él) · `liquidando` · 🛡️ excepción (`!piso`, `cyc/claudepiso`). ⚪ sin estrategia (decidir) · ⏸️ sin stock. "Volviendo"
   dura 7 días, después entra a 🔎. Cada chip dice "· de X". Cada venta muestra la estrategia que tenía (`cyc/estrategia/<MLA>/<ts>`).
 - **Lanzamiento (🆕)** (20/10; 23/10 él: *"buscá el precio más alto que podamos, que tenga sentido, quizás al de los competidores"*):
