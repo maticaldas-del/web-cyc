@@ -152,7 +152,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 7. Centímetro Blanco: vendió a $7.290 buscando techo y por la regla del +50% subió a $10.990. Eso rompe la comparación del 03/11 que eligiste (la Rosa en catálogo contra las Blancas a precio parecido): la Rosa está a $6.790. (a) sugerida: medir el 03/11 por plata por día y no por unidades · (b) bajar la Rosa o subirla para que queden parecidas
 8. Batidora: 39 unidades (Blanco y negro) salieron del conteo sin entrar a Full; ayer figuraban 16 y 23 en camino y hoy 0. No se compra hasta aclarar qué pasó con esa caja. (a) sugerida: que el chat de Chrome mire en ML si esa caja está en proceso de ingreso · (b) marcarla con faltante
 
-### Revisión de las reglas del cerebro del 28/10 (6 decisiones, para cuando digas "resolvamos")
+### ~~Revisión de las reglas del cerebro del 28/10~~ RESUELTAS el 28/10: 1 (ninguna: 95% hasta el día 30, después baja a 70%) 2b 3b (avisarle y lo arregla él) 4 (nunca: abajo del 35% sube ya, salvo liquidando) 5a 6a — aplicadas
 1. **Con cuánta seguridad se cierra una prueba de techo:** hoy para BAJAR algo que vende se pide 95%, pero una prueba que no vende se da por techo con 95% hasta el día 7 y baja hasta 70% el día 21 (y a los 30 días sin vender, sí o sí). (a) sugerida: dejarlo así (el 95% es para bajar lo que vende) · (b) 95% siempre, también para cerrar la prueba.
 2. **Una prueba de techo que vendió pero le sobra stock a ese precio** (más de 90 días de stock, o la unidad más vieja con 90+): (a) sugerida: no se sube, primero sale lo que sobra · (b) se sube +50% igual.
 3. **ML pausa por el precio algo en escasez o sin reposición:** (a) sugerida: volver al último precio que ML aceptó sin pedirte · (b) pedirte autorización como hoy.
