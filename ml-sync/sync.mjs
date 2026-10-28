@@ -39633,12 +39633,20 @@ async function main() {
       console.log(`=== LO QUE NOS DEBEN (Arqueo, en dólares) ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  US$ ${antes.toFixed(2)} → US$ ${despues.toFixed(2)}${nota ? ' · ' + nota : ''}`);
       if (despues < 0) { console.log('  ✗ quedaría negativo: no se escribe.'); return; }
+      // DESDE EL 28/10/2026 "LO QUE NOS DEBEN" ES LA SUMA DE UNA LISTA (cyc/debencuotas, la arma la web: él, "que deben a cyc esté sólo
+      // arriba y abajo las cosas que la compongan"). La web reescribe deben_cyc con esa suma: escribirlo acá se perdería. +N agrega una
+      // deuda más a la lista (en pesos al dólar de hoy); los pagos se marcan en la web (💵 Pagó). -N y N solo ya no van.
+      if (m[1] !== '+') { console.log('  ✗ desde el 28/10 los pagos se marcan en la web (Arqueo → Lo que nos deben → 💵 Pagó): no se escribe.'); return; }
+      const tcD = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      if (!(tcD > 0)) { console.log('  ✗ sin dólar cargado no sé cuántos pesos son: no se escribe.'); return; }
+      const itD = { nom: (nota || 'Deuda cargada desde el chat').slice(0, 80), monto: Math.round(n * tcD), n: 1, pagadas: 0, ts: Date.now(), quien: 'robot', usdAntes: n };
+      console.log(`  → deuda nueva en la lista: "${itD.nom}" · $${itD.monto.toLocaleString('es-AR')} (US$ ${n} al dólar ${tcD})`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
-      await db.set('cyc/finanzas/deben_cyc', despues);
-      await db.set('cyc/finanzas/_ts/deben_cyc', Date.now());
-      await db.set('cyc/debencyc/' + Date.now(), { antes, despues, mov: m[1] + m[2], nota: nota.slice(0, 200) });
-      const rel = parseFloat(await db.get('cyc/finanzas/deben_cyc')) || 0;
-      console.log(Math.abs(rel - despues) < 0.005 ? `  ✓ guardado y releído: US$ ${rel.toFixed(2)}` : `  ⚠️ releído US$ ${rel} (esperaba ${despues})`);
+      const idD = 'r' + Date.now();
+      await db.set('cyc/debencuotas/' + idD, itD);
+      await db.set('cyc/debencyc/' + Date.now(), { antes, despues, mov: m[1] + m[2], nota: nota.slice(0, 200), lista: idD });
+      const rel = (await db.get('cyc/debencuotas/' + idD)) || {};
+      console.log(rel.monto === itD.monto ? '  ✓ guardada y releída en la lista (el total lo rehace la web al abrirla)' : '  ⚠️ no la pude releer');
       return;
     }
     if (String(process.env.BILLING_PROBE || '') === 'capital') {

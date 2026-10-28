@@ -856,6 +856,11 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   en la próxima llegada.
 
 ## 2 · PLATA (martes)
+### 📥 "Lo que nos deben" = la suma de una lista de deudas (28/10/2026, v27.47; él: *"que deben a cyc esté sólo en la parte de ahí arriba… y que en la parte de abajo estén las cosas que la compongan… agregar una deuda a cyc, nombre y monto y si es con cuotas o no"*)
+- **Qué es:** la casilla a mano de abajo se sacó; en la tarjeta de arriba va la lista (nombre, monto en pesos, con o sin cuotas, 💵 Pagó / Pagó una cuota, ↩︎, 🗑️) y ➕ Agregar deuda a CYC. `deben_cyc` lo escribe la web = lo que falta cobrar ÷ dólar de hoy (patrimonio y cierres sin cambios). Lo escrito a mano (US$ 2.380) pasó UNA vez a la deuda `m_manual` en pesos al dólar de ese momento (`_migrado`). Se arregló que `cyc/debencuotas` no se leía al abrir la web (v27.46 mostraba la lista vacía al recargar). `debencyc` del robot: `+N` agrega una deuda a la lista; `-N`/`N` se niegan (los pagos van en la web).
+- **Dónde vive:** `index.html` (`cuotasSync`, `renderCuotas`, `cuotasGuardar`, tarjeta `bk_deben`), `ml-sync/sync.mjs` (`debencyc`).
+- **Qué chequear:** con la web abierta en dos aparatos, `m_manual` se crea una sola vez; el total de arriba = Falta cobrar ÷ dólar; mirando un cierre no se escribe nada.
+
 ### 💳 Ventas en cuotas en "Lo que nos deben" (28/10/2026, v27.46; él: *"vendemos producto a cuota… poner nombre de deuda, pesos y cuotas… que se pueda apretar un botón de pago una cuota y cuántas va"*)
 - **Qué es:** Arqueo → 📥 Lo que nos deben: ➕ Nueva deuda (nombre, $ por cuota × cuotas, muestra el total), 💵 Pagó una cuota (va N de M), ↩︎ deshacer, 🗑️ borrar. Lo que falta cobrar (en pesos) entra al patrimonio como el campo calculado `deben_cuotas` (dólares al cambio de hoy; se rehace solo si cambia el dólar), así también queda en cada cierre de mes.
 - **Dónde vive:** `index.html` (`cyc/debencuotas/<id>` = {nom, cuota, n, pagadas, ts, pagos}; `renderCuotas`, `cuotasSync`, `cuotasPago`; `deben_cuotas` en FIN_FIELDS; `debencuotas` en CYC_KEYS).
