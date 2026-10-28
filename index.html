@@ -302,6 +302,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .ht-ped-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;margin-top:2px}
 .ht-ped-b{font:inherit;font-size:.72rem;font-weight:700;padding:7px 6px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ht-ped-b:hover{border-color:var(--sel-bg)}
+.ht-arq-grid{grid-template-columns:1fr;gap:5px}.ht-arq-grid .ht-ped-b{padding:4px 6px}
 @media(max-width:900px){.ht-grid{grid-template-columns:repeat(3,1fr)!important}}
 @media(max-width:640px){
   .ht-grid{grid-template-columns:repeat(3,1fr)!important;gap:8px}
@@ -317,6 +318,7 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
   .ht-grid .ht-pc{display:none!important}
   .ht-grid .nav-card.ht-ped .nc-icon{display:none}
   .ht-ped-grid{gap:4px;margin-top:0}
+  .ht-arq-grid{grid-template-columns:repeat(3,1fr)}.ht-arq-grid .ht-ped-b{padding:3px 0}
   .ht-ped-b{font-size:.85rem;padding:3px 0;border-radius:7px}
   .ht-ped-b span{display:none}
   .ht-rot>div:nth-child(2){display:none}
@@ -1115,11 +1117,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div id="nc-rot-score" class="ht-rot"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc1 ht" onclick="goPage('inventario')" title="Finanzas, stock, cierres del mes y las fichas de cada producto.">
+    <!-- LAS TRES PUERTAS DEL ARQUEO EN INICIO (28/10/2026, él: "acá que estén tres pestañas dentro, finanzas, productos y ver deudas"),
+         como las de Pedidos: cada botón entra directo a su solapa. -->
+    <div class="nav-card nc1 ht ht-ped" onclick="goPage('inventario')" title="Finanzas, fichas de cada producto y lo que nos deben.">
       <span class="nc-icon">🧮</span>
       <div class="nc-title">Arqueo</div>
-      <div class="nc-desc">plata y fichas</div>
-      <span class="nc-arrow">→</span>
+      <div class="ht-ped-grid ht-arq-grid">
+        <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('arqueo')" title="Finanzas">💵<span> Finanzas</span></button>
+        <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('productos')" title="Productos">📦<span> Productos</span></button>
+        <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('deudas')" title="Ver deudas">📥<span> Ver deudas</span></button>
+      </div>
     </div>
     <div class="nav-card nc4 ht" onclick="goPage('metricas')" title="Ventas diarias por cuenta. Gráficos y análisis mensual.">
       <span class="nc-icon">📊</span>
@@ -1401,8 +1408,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
           <input id="cq_nom" class="fin-input" type="text"  placeholder="Nombre (ej. Juan · auriculares)" style="width:100%;text-align:left;margin:3px 0 6px">
           <label style="font-size:.7rem;color:var(--muted)">Total que debe (lo que se le vendió)</label>
           <input id="cq_monto" class="fin-input" type="text"  inputmode="numeric" placeholder="$ total que debe (lo que se le vendió)" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
-          <label style="font-size:.7rem;color:var(--muted)">Cuánto nos costó (opcional, para ver la ganancia)</label>
-          <input id="cq_costo" class="fin-input" type="text"  inputmode="numeric" placeholder="$ cuánto nos costó (opcional)" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()">
+          <label style="display:flex;gap:6px;align-items:center;font-size:.72rem;margin-bottom:6px"><input type="checkbox" id="cq_singan" onchange="cuotasVerCampos();cuotasTotalVivo()"> Sin ganancia (préstamo o algo que nos devuelven al costo)</label>
+          <div id="cq_costobox"><label style="font-size:.7rem;color:var(--muted)">Cuánto nos costó (opcional, para ver la ganancia)</label>
+          <input id="cq_costo" class="fin-input" type="text"  inputmode="numeric" placeholder="$ cuánto nos costó (opcional)" style="width:100%;margin-bottom:6px" oninput="cuotasTotalVivo()"></div>
           <label style="display:flex;gap:6px;align-items:center;font-size:.72rem;margin-bottom:6px"><input type="checkbox" id="cq_concuotas" onchange="cuotasVerCampos();cuotasTotalVivo()"> En cuotas</label>
           <div id="cq_cuotasbox" style="display:none">
             <label style="font-size:.7rem;color:var(--muted)">Cuántas cuotas</label>
@@ -3156,7 +3164,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.54';
+const APP_VERSION='27.55';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3169,6 +3177,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.55',f:'28/10',h:'16:40',c:[{n:1,t:'🧮 Inicio: la tarjeta de Arqueo tiene tres botones (💵 Finanzas · 📦 Productos · 📥 Ver deudas) que entran directo, como Pedidos. Y en Ver deudas se puede marcar una deuda "sin ganancia" (préstamo o algo que nos devuelven al costo)'}]},
   {v:'27.54',f:'28/10',h:'16:25',c:[{n:2,t:'📥 Ver deudas: ✏️ editar cada deuda · cada cuánto paga (semanal, cada 15 días o mensual) y cuándo vence · cuánto nos costó y cuánto se le gana · cada pago guarda su fecha (te la pregunta al tocar 💵 Pagó) · en ROJO la que se atrasó. Y 📋 Ver deudas ahora te lleva directo a la lista'}]},
   {v:'27.53',f:'28/10',h:'16:05',c:[{n:1,t:'📥 Ver deudas: ahora es una lista, un renglón por deuda (nombre y cuotas a la izquierda, lo que falta en el medio, botones a la derecha)'}]},
   {v:'27.52',f:'28/10',h:'15:55',c:[{n:1,t:'🧮 Arqueo tiene una tercera solapa: Ver deudas (al lado de Finanzas y Productos), con la lista de lo que nos deben, ➕ Agregar y 💵 Pagó. El botón 📋 Ver deudas de la tarjeta lleva ahí'}]},
@@ -6963,13 +6972,13 @@ function renderCuotas(){
     const v=cuotaVence(d),atr=v&&v<hoy,fr=(CUOTA_FREC[d.frec]||CUOTA_FREC.men).t,costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
     const fechas=cuotaPagosFechas(d);
     const lin1=fin?'✅ pagada':cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:`sin cuotas · total ${_pesos(d.monto)}`;
-    const lin2=[v?(atr?`<b style="color:var(--red)">⚠️ vencía el ${_isoDM(v)}</b>`:`${cq?'próxima cuota':'paga'} el ${_isoDM(v)}`):'',
-      costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${d.monto>0?` (${Math.round(gan/d.monto*100)}%)`:''}`:'',
+    const lin2=[
+      d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${d.monto>0?` (${Math.round(gan/d.monto*100)}%)`:''}`:'',
       fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
     return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px solid ${atr?'var(--red)':'var(--border)'};${atr?'background:rgba(239,68,68,.08);':''}border-radius:var(--r);padding:8px 12px;${fin?'opacity:.6':''}">
       <div style="flex:1 1 220px;min-width:0"><b style="font-size:.8rem;word-break:break-word">${_escC(d.nom)}</b>
         <div style="font-size:.7rem;color:var(--muted);margin-top:2px">${lin1}</div>${lin2?`<div style="font-size:.66rem;color:var(--muted);margin-top:2px">${lin2}</div>`:''}</div>
-      <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem;${atr?'color:var(--red)':''}">${_pesos(resta)}</b></div>
+      <div style="text-align:right;white-space:nowrap"><div style="font-size:.6rem;color:var(--muted)">falta</div><b style="font-size:.85rem;${atr?'color:var(--red)':''}">${_pesos(resta)}</b>${fin?'':v?`<div style="font-size:.66rem;margin-top:2px;color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></div>`:`<div style="font-size:.62rem;margin-top:2px;color:var(--amber)">sin fecha · ✏️</div>`}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${fin?'':`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',1)">💵 ${cq?'Pagó una cuota':'Pagó'}</button>`}${d.pagadas>0?`<button class="btn" style="font-size:.7rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.7rem" onclick="cuotasEditar('${d.id}')" title="Editar">✏️</button><button class="btn" style="font-size:.7rem" onclick="cuotasBorrar('${d.id}')">🗑️</button></div></div>`;}).join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`;
 }
@@ -6977,28 +6986,29 @@ function renderCuotas(){
 function cuotasPanel(){const b=document.getElementById('tab-btn-deudas');if(b)goTab('deudas',b);
   // Lleva a la lista, no al principio de la página (28/10/2026, él: "me lleva al inicio, no a las deudas… tengo que scrolear").
   const t=b&&b.closest('.tabs');setTimeout(()=>{(t||document.getElementById('tab-deudas'))?.scrollIntoView({behavior:'smooth',block:'start'});},30);}
-function cuotasVerCampos(){const c=document.getElementById('cq_concuotas').checked;document.getElementById('cq_cuotasbox').style.display=c?'':'none';document.getElementById('cq_vence_lbl').textContent=c?'Primera cuota vence el':'Tiene que pagar el (opcional)';}
+function cuotasVerCampos(){const c=document.getElementById('cq_concuotas').checked;document.getElementById('cq_costobox').style.display=document.getElementById('cq_singan').checked?'none':'';document.getElementById('cq_cuotasbox').style.display=c?'':'none';document.getElementById('cq_vence_lbl').textContent=c?'Primera cuota vence el':'Tiene que pagar el (opcional)';}
 function _cuotasLlenar(d){const g=i=>document.getElementById(i);g('cq_id').value=d?d.id:'';g('cq_titulo').textContent=d?'✏️ Editar deuda':'➕ Deuda nueva';
   g('cq_nom').value=d?d.nom:'';g('cq_monto').value=d?Math.round(d.monto):'';g('cq_costo').value=d&&Number(d.costo)>0?Math.round(d.costo):'';
-  g('cq_concuotas').checked=!!(d&&d.n>1);g('cq_n').value=d&&d.n>1?d.n:'';g('cq_frec').value=(d&&d.frec)||'men';g('cq_vence').value=(d&&d.vence1)||'';
+  g('cq_singan').checked=!!(d&&d.sinGan);g('cq_concuotas').checked=!!(d&&d.n>1);g('cq_n').value=d&&d.n>1?d.n:'';g('cq_frec').value=(d&&d.frec)||'men';g('cq_vence').value=(d&&d.vence1)||'';
   cuotasVerCampos();cuotasTotalVivo();g('cuotas-form').style.display='block';g('cq_nom').focus();g('cuotas-form').scrollIntoView({behavior:'smooth',block:'nearest'});}
 function cuotasForm(){cuotasPanel();_cuotasLlenar(null);}
 function cuotasEditar(id){const d=cuotasLista().find(x=>x.id===id);if(d)_cuotasLlenar(d);}
 function _cuotasN(){return document.getElementById('cq_concuotas').checked?(parseInt(document.getElementById('cq_n').value,10)||0):1;}
-function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN(),c=parseMoney(document.getElementById('cq_costo').value)||0;
+function cuotasTotalVivo(){const m=parseMoney(document.getElementById('cq_monto').value)||0,n=_cuotasN(),sg=document.getElementById('cq_singan').checked,c=sg?0:(parseMoney(document.getElementById('cq_costo').value)||0);
   const fr=(CUOTA_FREC[document.getElementById('cq_frec').value]||CUOTA_FREC.men).t,v=document.getElementById('cq_vence').value;
   let t=!(m>0)?'Poné cuánto debe en total':n>1?`${n} cuotas de ${_pesos(m/n)} · ${fr} · total ${_pesos(m)}`:document.getElementById('cq_concuotas').checked?'¿Cuántas cuotas?':`Sin cuotas: ${_pesos(m)}`;
+  if(m>0&&sg)t+=' · sin ganancia';
   if(m>0&&c>0)t+=` · ganancia ${_pesos(m-c)} (${Math.round((m-c)/m*100)}%)`;
   if(v&&n>1)t+=` · última cuota el ${_isoDM(_isoMas(v,document.getElementById('cq_frec').value,n-1))}`;
   document.getElementById('cq_total').textContent=t;}
 async function cuotasGuardar(){
-  const g=i=>document.getElementById(i);const id0=g('cq_id').value,nom=g('cq_nom').value.trim(),monto=parseMoney(g('cq_monto').value)||0,n=_cuotasN(),costo=parseMoney(g('cq_costo').value)||0,vence=g('cq_vence').value||'',frec=g('cq_frec').value;
+  const g=i=>document.getElementById(i);const id0=g('cq_id').value,nom=g('cq_nom').value.trim(),monto=parseMoney(g('cq_monto').value)||0,n=_cuotasN(),sinGan=g('cq_singan').checked,costo=sinGan?0:(parseMoney(g('cq_costo').value)||0),vence=g('cq_vence').value||'',frec=g('cq_frec').value;
   if(!nom||!(monto>0)||!(n>0)){toast('Falta el nombre, el monto o cuántas cuotas','err');return;}
   if(n>1&&!vence){toast('Poné cuándo vence la primera cuota (así avisa en rojo si se atrasa)','err');return;}
   const ya=id0?(state.debencuotas||{})[id0]:null;if(id0&&!ya){toast('No encuentro esa deuda','err');return;}
   const pag=ya?Math.min(n,Number(ya.pagadas)||0):0;
   if(ya&&(Number(ya.pagadas)||0)>n&&!confirm(`Ya pagó ${ya.pagadas} cuotas y ahora serían ${n}: queda pagada entera. ¿Sigo?`))return;
-  const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,vence1:vence||null,frec:n>1?frec:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
+  const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,sinGan:sinGan||null,vence1:vence||null,frec:n>1?frec:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
   if(ya)d.editado=Date.now();
   Object.keys(d).forEach(k=>{if(d[k]===null||d[k]===undefined)delete d[k];});
   try{await fbSet('debencuotas/'+id,d);state.debencuotas={...(state.debencuotas||{}),[id]:d};}catch(e){toast('No se guardó: '+e.message,'err');return;}
@@ -15023,6 +15033,11 @@ function renderVPRanking(){
 /* ═══════════ PEDIDOS ═══════════ */
 // Al entrar a Pedidos: SIEMPRE arrancar en la sección BS AS (antes arrancaba en "Prioridad" mezclado).
 // Desde Inicio, directo a una solapa de Pedidos (24/10/2026).
+function homeArqIr(t){
+  goPage('inventario');
+  const b=[...document.querySelectorAll('#page-inventario .tab')].find(x=>(x.getAttribute('onclick')||'').includes("'"+t+"'"));
+  if(b)goTab(t,b);
+}
 function homePedIr(sec){
   goPage('pedidos');
   const id={bsas:'tab-bsas-btn',paraguay:'tab-py-btn',paulvic:'tab-paulvic-btn',listas:'tab-listas-btn'}[sec];
