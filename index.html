@@ -451,7 +451,9 @@ input.qty:focus{border-color:var(--accent2)}
 .arq-flecha{font-size:.7em;color:var(--muted);margin-left:4px}.arq-alerta{margin-left:4px}
 .arq-plegada,.arq-extra{display:none}.arq-plegada.arq-on,.arq-extra.arq-on{display:block}
 /* La tarjeta abierta ocupa todo el ancho y adentro tiene sus casillas (él: "que se abra el cuadrado con las cosas adentro para editar… sin scrolear"). */
-.bk-card.arq-on{grid-column:1/-1}.bk-card .arqueo-section{margin-top:12px;padding:12px 0 0;border:0;border-top:1px solid var(--border);border-radius:0;background:transparent}
+.bk-card.arq-on{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2) inset;background:rgba(56,189,248,.06)}
+#arq-panel .arqueo-section{margin:0;padding:0;border:0;border-radius:0;background:transparent}#arq-panel .arqueo-section::before{display:none}
+#arq-panel .arq-extra{margin-bottom:10px}
 .arqueo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:14px;margin-bottom:16px}
 .arqueo-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
 .arqueo-section::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -1288,6 +1290,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <button class="btn" style="margin-top:6px;font-size:.72rem" onclick="cuotasPanel()" id="cuotas-btn">📋 Ver deudas</button></div></div>
       <div class="bk-card arq-toca" data-arq="debemos" onclick="arqTarjeta(event,'debemos')" title="Tocá para cargar lo que debemos"><div class="bk-lbl">Lo que debemos <span class="arq-flecha" data-arqf="debemos">▸</span></div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
     </div>
+    <!-- EL DETALLE DE LA TARJETA ABIERTA (28/10/2026, él: "los cuadrados se queden arriba y no se muevan. que se marque la tarjeta abierta"):
+         las tarjetas quedan fijas en su fila y lo de la abierta (sus casillas para cargar) se abre acá abajo, a lo ancho. -->
+    <div id="arq-panel" style="display:none;margin:-4px 0 16px;padding:14px 16px;background:var(--surface);border:1px solid var(--accent2);border-radius:var(--r)"></div>
     <!-- LA AGENDA DE LIBERACIONES (21/09/2026). Pedido suyo: "yo te voy a preguntar cuánto hay
          disponible, cuánto va a haber disponible mañana". La llena renderAgenda() leyendo de
          cyc/finanzas/agenda, que escribe el robot con el MISMO recorrido con el que calcula
@@ -3178,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.68';
+const APP_VERSION='27.69';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3191,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.69',f:'28/10',h:'19:20',c:[{n:1,t:'💰 Finanzas: las tarjetas quedan fijas arriba; la abierta se marca en celeste y su detalle se abre abajo, a lo ancho'}]},
   {v:'27.68',f:'28/10',h:'19:10',c:[{n:1,t:'💰 Finanzas: se sacó "Buscar producto"'}]},
   {v:'27.67',f:'28/10',h:'19:05',c:[{n:2,t:'💰 Finanzas: las 4 tarjetas muestran sólo el número y cuánto cambió; tocás una y se abre ahí mismo, a lo ancho, con sus casillas adentro para cargar (sin bajar). "Se libera de ML" va adentro de Efectivo & Digital'}]},
   {v:'27.66',f:'28/10',h:'18:50',c:[{n:2,t:'💰 Finanzas más simple: las casillas para cargar quedan guardadas; tocás una tarjeta (Efectivo & Digital, Stock, Lo que debemos) y se abre su detalle para rellenar. ⚠️ en la tarjeta = hay un aviso adentro (dato viejo, etc.). Lo que nos deben abre Ver deudas'}]},
@@ -10520,10 +10526,11 @@ function renderAgenda(){
 // Una sola sección abierta a la vez; las casillas siguen existiendo escondidas (todo lo que las llena o las lee sigue igual).
 function arqTarjeta(ev,k){const t=ev&&ev.target;if(t&&t.closest&&t.closest('button,a,input,select,textarea,label,.arq-extra,.arqueo-section'))return;
   window._arqAbierta=window._arqAbierta===k?null:k;arqPintarAbierta();}
-function arqPintarAbierta(){const a=window._arqAbierta||null;
+function arqPintarAbierta(){const a=window._arqAbierta||null;{const pan=document.getElementById('arq-panel');if(pan)pan.style.display=a?'block':'none';}
   ['efectivo','local','debemos','deben'].forEach(k=>{const on=a===k;const sec=document.getElementById('arq-sec-'+k);
-    // Las casillas viven ADENTRO de su tarjeta (se mueven una sola vez; los ids y lo que las llena no cambian).
-    const card=document.querySelector(`.bk-card[data-arq="${k}"]`);if(sec&&card&&sec.parentNode!==card)card.appendChild(sec);
+    // Las casillas y el detalle de cada tarjeta viven en el panel de abajo (se mueven una sola vez; los ids y lo que los llena no cambian).
+    const pan=document.getElementById('arq-panel');
+    if(pan){document.querySelectorAll(`[data-arqx="${k}"]`).forEach(x=>{if(x.parentNode!==pan)pan.appendChild(x);});if(sec&&sec.parentNode!==pan)pan.appendChild(sec);}
     // "Se libera de ML" va adentro de Efectivo & Digital (28/10/2026, él: "esto, dentro de efectivo digital"), al final de sus casillas.
     if(k==='efectivo'&&sec){const ag=document.getElementById('arqueo-agenda');if(ag&&ag.parentNode!==sec){ag.style.margin='12px 0 0';sec.appendChild(ag);}}
     if(sec)sec.classList.toggle('arq-on',on);document.querySelectorAll(`[data-arqx="${k}"]`).forEach(x=>x.classList.toggle('arq-on',on));
