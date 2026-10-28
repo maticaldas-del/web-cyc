@@ -446,6 +446,10 @@ input.qty:focus{border-color:var(--accent2)}
 .prod-item label{font-size:.68rem;color:var(--muted)}
 .prod-item input{width:120px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.72rem;padding:6px 10px;outline:none;text-align:right;transition:border .15s}
 .prod-item input:focus{border-color:var(--accent2)}
+/* TARJETAS QUE SE ABREN (28/10/2026, él: "simplificar. clickear en la tarjeta y que se abra el detalle para ir rellenando. así con todos"). */
+.arq-toca{cursor:pointer;transition:border-color .15s}.arq-toca:hover{border-color:var(--border2)}.arq-toca.arq-on{border-color:var(--accent2)}
+.arq-flecha{font-size:.7em;color:var(--muted);margin-left:4px}.arq-alerta{margin-left:4px}
+.arq-plegada{display:none}.arq-plegada.arq-on{display:block}
 .arqueo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:14px;margin-bottom:16px}
 .arqueo-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
 .arqueo-section::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
@@ -1243,8 +1247,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
            Ahora el TOTAL va arriba y grande —es el número que importa— y debajo, separados por
            líneas, los tres lugares donde está la mercadería, cada uno con su ícono y su variación.
            El orden es el del camino que hace la mercadería: casa → camión → ML. -->
-      <div class="bk-card">
-        <div class="bk-lbl">Stock total</div>
+      <div class="bk-card arq-toca" data-arq="local" onclick="arqTarjeta(event,'local')" title="Tocá para cargar la oficina y vendedores">
+        <div class="bk-lbl">Stock total <span class="arq-flecha" data-arqf="local">▸</span><span class="arq-alerta" data-arqa="local"></span></div>
         <div class="bk-val neutral" id="bk_stock_tot">$0</div>
         <div id="dbk_stock" style="margin-top:3px"></div>
         <div style="font-size:.6rem;color:var(--muted);opacity:.7;margin-top:6px">La suma de los tres de abajo</div>
@@ -1273,12 +1277,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div id="dbk_stock_ml" style="margin-top:3px"></div>
         <div id="bk_stock_ml_ctas" style="margin-top:7px"></div>
       </div>
-      <div class="bk-card"><div class="bk-lbl">Efectivo & Digital</div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
-      <div class="bk-card"><div class="bk-lbl">Lo que nos deben</div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div>
+      <div class="bk-card arq-toca" data-arq="efectivo" onclick="arqTarjeta(event,'efectivo')" title="Tocá para cargar efectivo y Mercado Pago"><div class="bk-lbl">Efectivo & Digital <span class="arq-flecha" data-arqf="efectivo">▸</span><span class="arq-alerta" data-arqa="efectivo"></span></div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
+      <div class="bk-card arq-toca" onclick="arqTarjeta(event,'deben')" title="Tocá para ver las deudas"><div class="bk-lbl">Lo que nos deben <span class="arq-flecha">▸</span></div><div class="bk-val pos" id="bk_deben">$0</div><div id="dbk_deben" style="margin-top:5px"></div>
         <!-- 📥 LAS DEUDAS QUE LO COMPONEN (28/10/2026): la lista vive abajo de las tarjetas, a lo ancho (él: "queda medio apretado todo… abrir un lugar nuevo") -->
         <div id="cuotas-resumen" style="font-size:.7rem;color:var(--muted);margin-top:8px"></div>
         <button class="btn" style="margin-top:6px;font-size:.72rem" onclick="cuotasPanel()" id="cuotas-btn">📋 Ver deudas</button></div>
-      <div class="bk-card"><div class="bk-lbl">Lo que debemos</div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
+      <div class="bk-card arq-toca" data-arq="debemos" onclick="arqTarjeta(event,'debemos')" title="Tocá para cargar lo que debemos"><div class="bk-lbl">Lo que debemos <span class="arq-flecha" data-arqf="debemos">▸</span></div><div class="bk-val neg" id="bk_deudas">$0</div><div id="dbk_deudas" style="margin-top:5px"></div></div>
     </div>
     <!-- LA AGENDA DE LIBERACIONES (21/09/2026). Pedido suyo: "yo te voy a preguntar cuánto hay
          disponible, cuánto va a haber disponible mañana". La llena renderAgenda() leyendo de
@@ -1297,7 +1301,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       </div>
     </div>
     <div class="arqueo-grid">
-      <div class="arqueo-section positivo">
+      <div class="arqueo-section positivo arq-plegada" id="arq-sec-efectivo">
         <h3>💵 Efectivo & Digital</h3>
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_efectivo"></span><span class="fin-label">Efectivo disponible</span><span id="db_efectivo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_efectivo" placeholder="US$ 0" onchange="saveFin('efectivo',this.value)"></div>
         <!-- DISPONIBLE EN ML, UNA CASILLA POR CUENTA.
@@ -1317,7 +1321,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="US$ 0" onchange="saveFin('mp_liq',this.value)"></div>
         <div id="vsr_linea" style="display:none;font-size:.68rem;margin:-2px 0 8px;line-height:1.4"></div>
       </div>
-      <div class="arqueo-section positivo">
+      <div class="arqueo-section positivo arq-plegada" id="arq-sec-local">
         <h3>🏢 Stock Local</h3>
         <!-- OFICINA CYC: solo el VALOR, sin unidades. Esa mercadería no es de ML —no se publica ni
              se manda a Full— así que contarla producto por producto no sirve para nada: no hay a
@@ -1333,7 +1337,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div id="ofi-doble-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.4"></div>
       </div>
       <!-- 📥 Lo que nos deben: desde el 28/10/2026 vive arriba, en su tarjeta (la suma de las deudas de abajo). -->
-      <div class="arqueo-section negativo">
+      <div class="arqueo-section negativo arq-plegada" id="arq-sec-debemos">
         <h3>📤 Lo que debemos</h3>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Tarjeta</span><span id="db_tarjeta"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_tarjeta" placeholder="US$ 0" onchange="saveFin('tarjeta',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Deuda de CYC</span><span id="db_deuda_cyc"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_deuda_cyc" placeholder="US$ 0" onchange="saveFin('deuda_cyc',this.value)"></div>
@@ -3171,7 +3175,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.65';
+const APP_VERSION='27.66';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3184,6 +3188,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.66',f:'28/10',h:'18:50',c:[{n:2,t:'💰 Finanzas más simple: las casillas para cargar quedan guardadas; tocás una tarjeta (Efectivo & Digital, Stock, Lo que debemos) y se abre su detalle para rellenar. ⚠️ en la tarjeta = hay un aviso adentro (dato viejo, etc.). Lo que nos deben abre Ver deudas'}]},
   {v:'27.65',f:'28/10',h:'18:35',c:[{n:1,t:'⚖️ Arqueo: se sacó "Corregir (ajuste ±)" — todo tiene que estar registrado (sólo reaparece si quedó un número cargado, para ponerlo en 0)'}]},
   {v:'27.64',f:'28/10',h:'18:20',c:[{n:1,t:'📥 Ver deudas más resumido: cada renglón dice sólo quién, % de ganancia y cuánto falta; qué se llevó, cuotas, fechas y los botones Pagó/Editar están adentro (tocando el renglón)'}]},
   {v:'27.63',f:'28/10',h:'18:05',c:[{n:1,t:'📥 Ver deudas: cada deuda dice quién y, abajo, qué se llevó (🛍️ se llevó: …); se edita con ✏️'}]},
@@ -6785,6 +6790,7 @@ function repHastaInfo(d){
 // que se mira la lista de meses de la pantalla. Las fechas y avisos son del número de HOY: no van.
 function _finMirandoCierre(){try{return !!document.getElementById('fin-view-sel')?.value||!!_arqViewYM;}catch(e){return false;}}
 function renderFinTs(){
+  setTimeout(()=>{try{arqPintarAbierta();}catch(_){}},0);
   const ts=(state.finanzas&&state.finanzas._ts)||{};
   const _cierre=_finMirandoCierre();
   Object.entries(FIN_TS_GRUPO).forEach(([k,grupo])=>{
@@ -10506,7 +10512,21 @@ function renderAgenda(){
   const det=document.getElementById('agenda-det');
   if(det) det.addEventListener('toggle',()=>{ _agendaAbierta=det.open; });
 }
+// Una sola sección abierta a la vez; las casillas siguen existiendo escondidas (todo lo que las llena o las lee sigue igual).
+function arqTarjeta(ev,k){if(ev&&ev.target&&ev.target.closest&&ev.target.closest('button,a,input,select,textarea'))return;
+  if(k==='deben'){cuotasPanel();return;}
+  window._arqAbierta=window._arqAbierta===k?null:k;arqPintarAbierta();
+  if(window._arqAbierta){const el=document.getElementById('arq-sec-'+k);if(el)setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),30);}}
+function arqPintarAbierta(){const a=window._arqAbierta||null;
+  ['efectivo','local','debemos'].forEach(k=>{const on=a===k;const sec=document.getElementById('arq-sec-'+k);if(sec)sec.classList.toggle('arq-on',on);
+    document.querySelectorAll(`[data-arq="${k}"]`).forEach(c=>c.classList.toggle('arq-on',on));document.querySelectorAll(`[data-arqf="${k}"]`).forEach(f=>f.textContent=on?'▾':'▸');});
+  // Un aviso de adentro (dato viejo, doble cuenta) se ve en la tarjeta aunque la sección esté cerrada.
+  const vis=id=>{const e=document.getElementById(id);return !!(e&&e.style.display!=='none'&&e.textContent.trim());};
+  const viejo=id=>{const e=document.getElementById(id);return !!(e&&e.textContent.trim()&&/amber/.test(e.style.color||''));};
+  const al={efectivo:vis('ancla_aviso')||vis('mp-disp-aviso')||['ts_efectivo','ts_mp_disp','ts_mp_liq'].some(viejo),local:vis('ofi-doble-aviso')};
+  Object.entries(al).forEach(([k,v])=>document.querySelectorAll(`[data-arqa="${k}"]`).forEach(x=>{x.textContent=v?'⚠️':'';x.title=v?'Hay un aviso adentro: tocá para verlo':'';}));}
 function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();}catch(_){}
+  setTimeout(()=>{try{arqPintarAbierta();}catch(_){}},0);
   // Si hay un snapshot seleccionado, usar sus finanzas temporalmente
   const selKey=document.getElementById('fin-view-sel')?.value;
   const viewSnap=selKey?state.snapshots[selKey]:null;
