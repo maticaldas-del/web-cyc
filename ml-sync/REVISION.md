@@ -856,6 +856,11 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   en la próxima llegada.
 
 ## 2 · PLATA (martes)
+### 💳 Ventas en cuotas en "Lo que nos deben" (28/10/2026, v27.46; él: *"vendemos producto a cuota… poner nombre de deuda, pesos y cuotas… que se pueda apretar un botón de pago una cuota y cuántas va"*)
+- **Qué es:** Arqueo → 📥 Lo que nos deben: ➕ Nueva deuda (nombre, $ por cuota × cuotas, muestra el total), 💵 Pagó una cuota (va N de M), ↩︎ deshacer, 🗑️ borrar. Lo que falta cobrar (en pesos) entra al patrimonio como el campo calculado `deben_cuotas` (dólares al cambio de hoy; se rehace solo si cambia el dólar), así también queda en cada cierre de mes.
+- **Dónde vive:** `index.html` (`cyc/debencuotas/<id>` = {nom, cuota, n, pagadas, ts, pagos}; `renderCuotas`, `cuotasSync`, `cuotasPago`; `deben_cuotas` en FIN_FIELDS; `debencuotas` en CYC_KEYS).
+- **Qué chequear:** al pagar una cuota la plata entra a mano en efectivo/MP (si no, el patrimonio baja de mentira); que los US$ de "Deben a CYC" escritos a mano no incluyan también estas ventas (se contaría dos veces); mirando un mes cerrado no se toca nada.
+
 ### ⚠️ Aviso de cerrar el mes: 7 días antes en ámbar, 3 días antes en rojo (27/10/2026, él: "que aparezca 7 días antes de que termine el mes en cuestión y 3 días antes que se ponga en rojo")
 - **Qué es:** antes salía fijo desde el día 25. Ahora sale cuando faltan 7 días contando hoy (ámbar, dice cuántos faltan) y se pone en rojo los últimos 3. Si el mes pasado (con ventas) quedó sin cerrar, sale en rojo hasta que se cierre.
 - **Dónde vive:** `checkCierrePendiente` (index.html), lee `state.snapshots`.
