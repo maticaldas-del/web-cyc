@@ -130,8 +130,8 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|…`); `decido` frena bajar la LISTA de algo que ya probó techo salvo
   `!lista` con "EXCEPCIÓN: …". La primera baja 🪜 anota sola el precio que no rindió (`techofreno`).
 - **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (Persea).
-- 🔒 **🏔️ techo encontrado sólo lo anota `techo95`** (`techo95:<MLA>;go`), con la certeza que pide ese día: 95% hasta el día 7 con
-  stock a ese precio, baja hasta 70% el día 21 (24/10, él: *"no tener 1 mes buscando techo"*); 30 días sin vender ahí = techo sí o sí.
+- 🔒 **🏔️ techo encontrado sólo lo anota `techo95`** (`techo95:<MLA>;go`), con la certeza que pide ese día: 95% hasta el día 30 con
+  stock a ese precio, baja hasta 70% el día 44 (28/10, él: *"alargar de 7 días a 30 y después sí bajar a 70%"*); 30 días sin vender ahí = techo sí o sí.
   `#techook` a mano lo rechaza el código.
 - **Las rayas** (días con 3+ u. en Full y con visitas; últimos 60 días, sin fechas especiales): 💰 **más plata** = el precio que más
   plata por día dejó de los que se probaron (5+ días con ventas; desde la primera venta hay uno provisorio, punteado, que es sólo para
@@ -200,7 +200,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   la reposición (↘️ #volviendo con 30+ días de stock). Con techo: −25% a las 12 h (3+/día) · −20% a las 24 h (1-3/día) · −15% a los 2-3
   días (<1/día). Si vende de más, otro escalón arriba. **Nunca abajo del precio normal** (F9). Con caja despachada: que la última unidad
   salga cerca del día 8.
-- Si ML la pausa por el precio → vuelve al último precio que aceptó.
+- Si ML la pausa por el precio → se le avisa en el chat y lo arregla él (28/10, 3b).
 - Al terminar: no volver a ciegas. Si a este precio deja igual o más plata por día que el normal, se queda; si no, se busca el medio.
 - Lista **🚨 escasez que vendió después de mi última decisión**: se vacía en la misma vuelta (subir o nota con motivo).
 - Escasez con unidades en la oficina → se decide la caja en la misma vuelta (`decido:caja:…`).
@@ -303,7 +303,7 @@ Cuentas: `adriana`, `luciana`, `ayelen`, `matias`. Las palabras tienen que agarr
 
 ### Techo
 ```
-techo95:<MLA>[,<MLA>…];go          (anota 🏔️ sólo si llega a la certeza del día: 95% hasta el día 7, 70% el día 21; sin ;go solo mide)
+techo95:<MLA>[,<MLA>…];go          (anota 🏔️ sólo si llega a la certeza del día: 95% hasta el día 30, 70% el día 44; sin ;go solo mide)
 techofreno:<MLA>=<precio probado>|<motivo>;go
 ```
 

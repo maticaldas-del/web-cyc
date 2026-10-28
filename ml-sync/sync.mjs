@@ -2631,6 +2631,7 @@ async function reputacionML(db, accounts, labels, DRY) {
   return out;
 }
 
+let _gemBarrera;   // cyc/gemelabarrera, leído una vez por corrida (6a del 28/10)
 async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, opt = {}) {
   const PISO = piso != null ? piso : 0.35;   // revisión etapa 8, 28/10/2026: 35% sin piso pasado (antes 30%)
   const fin = (await db.get('cyc/finanzas')) || {};
@@ -2741,6 +2742,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
         if (stockFull <= 0 && invFallo) { conteo.sinLeer++; sinLeerStock.push(`${(links[mla].title || b.title || mla).slice(0, 40)} · ${label}`); continue; }
         if (stockFull <= 0) { conteo.sinStock++; continue; }
         conteo.conStock++;
+        // 6a del 28/10/2026 (él): la gemela de envío gratis que pausé porque su Clásica está arriba de $33.000 no se activa sola (la vuelve a
+        // prender `alinearGemelasEnvio` cuando la Clásica baja de la barrera).
+        if (links[mla].gemelaTipo === 'envio') { if (_gemBarrera === undefined) { try { _gemBarrera = (await db.get('cyc/gemelabarrera')) || {}; } catch { _gemBarrera = null; } }
+          if (_gemBarrera == null || _gemBarrera[mla]) { noLlegan.push({ label, mla, nom: (links[mla].title || b.title || mla).slice(0, 40), stock: stockFull, precio: Number(b.price) || 0, why: _gemBarrera == null ? 'no pude leer las gemelas pausadas por la barrera: no la activo' : 'gemela de envío gratis pausada a propósito: su Clásica está arriba de $33.000 (6a del 28/10)' }); continue; } }
         // ── DE ACÁ PARA ABAJO: PAUSADA, EN FULL Y CON MERCADERÍA ADENTRO ──────────────────
         // Toda publicación que llega hasta este renglón termina activada o avisada. Ninguna se
         // va callada, porque cada una de éstas está pagando almacenamiento con el reloj del
@@ -4403,7 +4408,7 @@ function precioMasCaroVendido(lin, est, hoyK) {
 }
 // CUÁNTA SEGURIDAD HACE FALTA PARA DECIR "ES TECHO" (24/10/2026, él con el Cuba Gold: "la idea no es tener 1 mes el producto buscando
 // techo, la idea es vender y ganar… al pasar los días necesita menos % de seguridad para decidir que fue techo y al decidirlo que marque
-// se decidió techo al 70%"). Con pocos días se pide 95%; desde el día 7 con stock a ese precio baja de a poco hasta 70% el día 21, y de ahí
+// se decidió techo al 70%"). Con pocos días se pide 95%; desde el día 30 con stock a ese precio (28/10, antes 7) baja de a poco hasta 70% el día 44, y de ahí
 // no baja más. La misma cuenta en la web (`umbralTechoW`): si se toca una, la otra.
 // EL PRECIO DE HOY CONTRA EL 💰, UNA SOLA CUENTA (28/10/2026): la usan F8 (arriba del 💰 no se baja sin 95%), la salida de F14 "vende
 // muchísimo menos" y `techo95`. Los días seguidos con stock al precio de lista de hoy (`p0`; con un descuento visto, desde que entró,
@@ -4422,7 +4427,9 @@ function medirContraBest(lin, best, p0, p0v, hoyK, kDesde = '') {
 // la plata por día que el 💰 (95% seguro, 7+ días con stock ahí) no frena: baja un escalón (≤15%, F2) hacia el 💰, sin pasarlo.
 const F14_MENOS_DIAS = 7;
 const muchoMenosOk = (m) => !!m && m.d1 >= F14_MENOS_DIAS && m.segMitad >= 0.95;
-function umbralTecho(dias) { const d = Number(dias) || 0; return d <= 7 ? 0.95 : d >= 21 ? 0.70 : 0.95 - 0.25 * (d - 7) / 14; }
+// 28/10/2026 (él, decisión 1 de la revisión del cerebro: "alargar de 7 días a 30 y después sí bajar a 70%"): 95% hasta el día 30, baja derecho
+// hasta 70% el día 44 (la misma pendiente de antes, 14 días). Antes 95% hasta el 7 y 70% el 21. Copia en la web: `umbralTechoW`.
+function umbralTecho(dias) { const d = Number(dias) || 0; return d <= 30 ? 0.95 : d >= 44 ? 0.70 : 0.95 - 0.25 * (d - 30) / 14; }
 // 30 DÍAS SIN VENDER = TECHO, SÍ O SÍ (24/10/2026, él: "puede ser que nunca llegue al 70% de seguridad. entonces a los 30 días de no vender
 // sí o sí se marca como techo. ya que si no vendió en 30 días no vende, comenzar con la escalera"). Un precio (o cualquiera más caro) con 30+
 // días activa y con stock en Full (1 u. alcanza) sin ninguna venta es 🔴 techo aunque la cuenta de certeza no llegue. La misma regla en la web
@@ -4572,7 +4579,8 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1, cajaU = 0) {
 //    base, por la web o por otro comando, no vale) y vence 48 h después de su mensaje.
 // 4. El mismo renglón (misma publicación, misma bandera, mismo precio ±$10) la consume (`usada`). `autoriza` (solo lee) los lista.
 const BANDERAS_SUYAS = ['sinlinea', 'sincerteza', 'sintecho', 'bajocero', 'nobajar'];   // + la estrategia 🧨 #remate
-const BANDERA_QUE = { sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba, bajar arriba del 💰 sin 95% de certeza o bajar algo que vendió a su precio (F14)', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', nobajar: 'bajar una publicación que pediste no tocar (🔒)', sacanobajar: 'sacarle la marca 🔒 no bajar', remate: '🧨 rematar (estrategia remate)' };
+// 28/10/2026 (él, 5a de la revisión del cerebro): prender 🥊 mantener la caja (`ganarcaja`) también pide su "autorizo" (pasa por encima de los frenos).
+const BANDERA_QUE = { ganarcaja: 'prender 🥊 mantener la caja (baja sola cada hora hasta el piso, por encima de los frenos)', sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba, bajar arriba del 💰 sin 95% de certeza o bajar algo que vendió a su precio (F14)', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', nobajar: 'bajar una publicación que pediste no tocar (🔒)', sacanobajar: 'sacarle la marca 🔒 no bajar', remate: '🧨 rematar (estrategia remate)' };
 const AUT_VALE_MS = 48 * 3600e3, AUT_LETRAS = 'ACEFHJKMNPRTWXY34679';
 // 24/10/2026 (él): los pedidos ya no van por Telegram; se guardan hasta que él los resuelve en el chat (un año = "hasta que lo resolvemos").
 const AUT_POR_TELEGRAM = false, AUT_PED_GUARDA_MS = 365 * 864e5;
@@ -11523,6 +11531,7 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
   catch { console.log('📦 Gemelas de envío: no pude leer dólar/monotributo: no toco nada'); return out; }
   // Revisión etapa 1 (24/10): las marcas 🔒 (`cyc/nobajar`), como en `alinearGemelas`. Sin poder leerlas no se baja ninguna esta vuelta.
   let nobajG = null; try { nobajG = (await db.get('cyc/nobajar')) || {}; } catch { nobajG = null; console.log('📦 Gemelas de envío: no pude leer cyc/nobajar: esta vuelta no bajo ninguna gemela'); }
+  let gemBar = null; try { gemBar = (await db.get('cyc/gemelabarrera')) || {}; } catch { gemBar = null; console.log('📦 Gemelas de envío: no pude leer cyc/gemelabarrera: esta vuelta no pauso ni activo ninguna por la barrera'); }
   if (!(tc > 0) || !(monoPct > 0)) { console.log('📦 Gemelas de envío: sin dólar o monotributo: no toco nada'); return out; }
   const piso = PISO_DURO;
   const pIdx = {}; for (const p of (products || [])) pIdx[p.id] = p;
@@ -11538,6 +11547,28 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
       if (T.status === 'closed' || C.status === 'closed' || (T.variations || []).length || (C.variations || []).length) continue;
       if (T.listing_type_id !== 'gold_special' || C.listing_type_id !== 'gold_special') { out.fallas.push(`${k}: no son las dos Clásicas`); continue; }
       out.miradas++;
+      // ── 6a del 28/10/2026 (él, con la Lupa x10): con su Clásica en $33.000 o más, la Clásica ya tiene envío gratis y la de envío es la misma
+      // oferta dos veces: se PAUSA mientras la Clásica esté arriba (`cyc/gemelabarrera/<MLA>`) y se vuelve a activar cuando baja de la barrera.
+      if (C.status === 'active' && Math.round(C.price || 0) >= UMBRAL_ENVIO_GRATIS) {
+        if (T.status === 'active' && gemBar != null) {
+          if (DRY) { console.log(`   📦 (prueba) ${k}: la pausaría (su Clásica ${e.gemelaDe} está en $${Math.round(C.price).toLocaleString('es-AR')})`); continue; }
+          try { await db.set('cyc/gemelabarrera/' + k, { ts: Date.now(), c: Math.round(C.price || 0), de: e.gemelaDe });
+            const rp = await fetch(ML_API + '/items/' + k, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paused' }) });
+            const b2 = await mlGet('/items/' + k + '?attributes=id,status', tk);
+            if (rp.ok && b2 && b2.status === 'paused') { out.pausadasBarrera = (out.pausadasBarrera || 0) + 1; console.log(`   📦 ${k} pausada: su Clásica ${e.gemelaDe} está en $${Math.round(C.price).toLocaleString('es-AR')} (ya tiene envío gratis, 6a del 28/10) · releída ✓`); }
+            else out.fallas.push(`${k}: no quedó pausada (${rp.status}) — su Clásica está arriba de $33.000`);
+          } catch (er) { out.fallas.push(`${k}: no pude pausarla (${String(er.message || er).slice(0, 60)})`); }
+        }
+        continue;
+      }
+      if (T.status === 'paused' && gemBar && gemBar[k] && !DRY) {
+        try { const rp = await fetch(ML_API + '/items/' + k, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
+          const b2 = await mlGet('/items/' + k + '?attributes=id,status', tk);
+          if (rp.ok && b2 && b2.status === 'active') { await db.set('cyc/gemelabarrera/' + k, null); out.activadasBarrera = (out.activadasBarrera || 0) + 1; console.log(`   📦 ${k} activada otra vez: su Clásica bajó a $${Math.round(C.price || 0).toLocaleString('es-AR')} · releída ✓ (se re-precia en la próxima vuelta)`); }
+          else out.fallas.push(`${k}: su Clásica bajó de $33.000 pero no la pude activar (${rp.status}): queda pausada`);
+        } catch (er) { out.fallas.push(`${k}: no pude activarla (${String(er.message || er).slice(0, 60)})`); }
+        continue;
+      }
       // Revisión etapa 1 (24/10): sin el envío gratis no es una gemela de envío: no se re-precia (la cuenta resta un envío que no paga).
       if (!(T.shipping || {}).free_shipping) { out.fallas.push(`${k}: sin envío gratis: correr gemelaenvio:prender:${k}:go (no la re-precio hasta que lo tenga)`); continue; }
       const pT = Math.round(T.price || 0), pC = Math.round(C.price || 0);
@@ -25030,7 +25061,7 @@ async function main() {
         if (r.freno) console.log(`   la regla: ${String(r.freno).replace(/ Salida SÓLO SUYA.*$/, '').slice(0, 220)}`);
       }
       console.log(`\n▶️ AUTORIZADAS PARA CORRER (${listas.length})${listas.length ? ': el mismo renglón, por ml-sync, en la escritura de la vuelta' : ''}`);
-      for (const { r } of listas) console.log(r.linea ? `${r.tipo === 'entrarpromo' ? 'entrarpromo' : 'decido'}:${r.linea};go` : `(${r.mla}: no guardó el renglón: rearmarlo con ${money(r.precio)} y ${(r.banderas || []).map((b) => (b === 'remate' ? '#remate' : '!' + b)).join('')})`);
+      for (const { r } of listas) console.log(r.linea ? `${r.tipo === 'entrarpromo' ? 'entrarpromo' : r.tipo === 'ganarcaja' ? 'ganarcaja' : 'decido'}:${r.linea};go` : `(${r.mla}: no guardó el renglón: rearmarlo con ${money(r.precio)} y ${(r.banderas || []).map((b) => (b === 'remate' ? '#remate' : '!' + b)).join('')})`);
       return;
     }
     // BILLING_PROBE=bajastecho[:<días>] (21/10/2026, solo lee): mis bajas (`cyc/claudecambios` y descuentos de `cyc/promoclaude`) de
@@ -47285,7 +47316,7 @@ async function main() {
           if (!tabT.cc) tabT.cc = Object.values((await db.get('cyc/claudecambios')) || {});
           const nSub = tabT.cc.filter((c) => c && c.mla === mla && Number(c.a) > Number(c.de) && Number(c.ts) >= desdeTs - 10 * 60e3).length;
           // Cuándo llega a decidir si sigue sin vender a ese precio: el primer día en que la certeza (Poisson, mismo λ por día) pasa el umbral que
-          // baja con los días (95% hasta el día 7, 70% el 21), o el día 30 sin vender (techo sí o sí). Si vende, la fecha se corre.
+          // baja con los días (95% hasta el día 30, 70% el 44; 28/10), o el día 30 sin vender (techo sí o sí). Si vende, la fecha se corre.
           let fecha = null;
           if (EP && EP.dias > 0) { const lD = EP.lam / Math.max(1, EP.dias); for (let x = 0; x <= 60; x++) { const D = EP.dias + x; const sg = 1 - poissonCdfF(EP.u, lD * D); if (sg >= umbralTecho(D) || (EP.u === 0 && D >= TECHO_DIAS_SIN_VENTA)) { fecha = new Date(Date.now() + x * 864e5 - 3 * 3600e3).toISOString().slice(0, 10); break; } } }
           tabT.rows.push({ nom: String(pr.name || e.title || '').slice(0, 34) + (e.variant ? ' #' + e.variant : ''), cta: e.cuenta || '?', desde: desdeTs ? new Date(desdeTs - 3 * 3600e3).toISOString().slice(0, 10) : '?', nSub, p: EP ? EP.p : P0, u: EP ? EP.u : null, dias: EP ? EP.dias : null, seg: EP ? EP.seg : seg, umb: EP ? EP.umb : umbT, fecha, best: R.best ? R.best.p : null, falta, ok });
@@ -48440,7 +48471,7 @@ async function main() {
       // sirven, pero si se venden ahora por debajo del 35% no nos sirve como info. o sea que vayan a ser buen producto o que se descarte. no
       // que queden en el medio vendiendo al 30%"). Lo que en $32.990 queda abajo del 35% va a "para subir" (cruzando la barrera, `!cruza`),
       // salvo que la unidad más vieja tenga SOBRA_EDAD_MIN+ días en Full (o no sepa la edad): ahí se queda (devuelve los días, o '?').
-      const barreraCercaAntiguo = (e) => { if (lotesPl == null) return '?'; const d = edadViejaFull(e, '', lotesPl, {}); return d == null ? '' : d >= SOBRA_EDAD_MIN ? d : ''; };
+      const barreraCercaAntiguo = (e) => /* ya no se usa (28/10): queda por si se vuelve a pedir */ { if (lotesPl == null) return '?'; const d = edadViejaFull(e, '', lotesPl, {}); return d == null ? '' : d >= SOBRA_EDAD_MIN ? d : ''; };
       // CUÁNTAS QUEDAN AFUERA Y POR QUÉ (09/10/2026, revisión 9 · cerebro): nada se descarta callado.
       const fuera = { sinFicha: 0, fichaBorrada: 0, oculta: 0, cerradaGuardada: 0, cerradaML: 0, errorML: 0 }, sinFichaVivas = [];
       for (const [mla, e] of Object.entries(lk)) {
@@ -48566,7 +48597,7 @@ async function main() {
             // Mi promo cuenta como excepción sólo MIENTRAS dure (13/10/2026, revisión 9): vencida se juzga como cualquiera.
             const pcV = promoClaudeVigente(pClaude[mla], hoy);
             filas.push({ mla, cta, kSt: stDesc ? null : kSt, desde: (h.aprox === false && Number(h.desde) > 0) ? Number(h.desde) : 0, nom: String(e.title || p.name || '').slice(0, 42) + (e.variant ? ' #' + e.variant : ''), est: b.status + ((b.sub_status || []).length ? '(' + b.sub_status.join(',') + ')' : ''),
-              P, mg, g, mgP, mgPd, mgPdSin, meta, nota, st, stDesc, cajaU: pdCajaExtraU(cta, p, tc), exc: e.gemelaDe ? `💳 gemela (${e.gemelaTipo === 'envio' ? 'envío gratis' : 'Premium'}): la alinea el robot a su Clásica ${e.gemelaDe}` : b.status === 'under_review' ? 'ML la tiene en revisión: no deja cambiar el precio (se sube al liberarla)' : (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : (P >= 32900 && P < UMBRAL_ENVIO_GRATIS && meta && meta.barrera && barreraCercaAntiguo(e)) ? `frenada en la barrera de $33.000: la unidad más vieja tiene ${barreraCercaAntiguo(e)} días en Full, cerca de pagar stock antiguo` : '', pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, cu: costo, imp: m, gemelaDe: e.gemelaDe || '', caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
+              P, mg, g, mgP, mgPd, mgPdSin, meta, nota, st, stDesc, cajaU: pdCajaExtraU(cta, p, tc), exc: e.gemelaDe ? `💳 gemela (${e.gemelaTipo === 'envio' ? 'envío gratis' : 'Premium'}): la alinea el robot a su Clásica ${e.gemelaDe}` : b.status === 'under_review' ? 'ML la tiene en revisión: no deja cambiar el precio (se sube al liberarla)' : (nosub || {})[mla] ? 'liquidando' : (cPiso && cPiso[mla] && Math.abs((Number(cPiso[mla].a) || 0) - P) <= 10) ? 'la dejé así con !piso' : pcV.vig ? `en promo mía${pcV.hasta ? ' hasta ' + pcV.hasta : ''}` : '',   /* 28/10/2026 (él, 4 de la revisión del cerebro): "nunca, si está debajo del 35% aumentar ya. salvo que esté en liquidando": la barrera de $33.000 ya no excusa a la de 100+ días */ pcVen: pClaude[mla] && !pcV.vig ? (pcV.hasta || '?') : '', ...vv, cero: h.cero && st === 0 && !stDesc ? h.cero : null, tanda, cu: costo, imp: m, gemelaDe: e.gemelaDe || '', caja: e.caja || '', ptw: e.cajaPtw || null, var: (b.variations || []).length,
               cambio: a && a.ts ? `${f(a.de)}→${f(a.a)} hace ${Math.round((hoy - a.ts) / 864e5)} d${a.por ? ' (' + a.por + ')' : ''}` : '',
               escC, etq: String(e.etq || ''), salud: e.salud, catalogo: !!b.catalog_listing, sugP: Number(e.sugP) || null, sugMin: Number(e.sugMin) || null, sugTs: Number(e.sugTs) || 0,
               cajaPorCuotas: !!e.cajaPorCuotas, cajaGanP: Number(e.cajaGanP) || null, cajaGanPromo: Number(e.cajaGanPromo) || null, lt: b.listing_type_id || '' });
@@ -51033,6 +51064,11 @@ async function main() {
         const mla = m[1].toUpperCase(); const e = links[mla]; if (!e) { console.log(`${mla}: no está en el panel`); continue; }
         if (m[2] === '-') { console.log(`${mla}: ${GOg ? 'sacado' : 'lo sacaría (falta ;go)'}`); if (GOg) await db.set('cyc/ganacaja/' + mla, null); continue; }
         const piso = Number(m[2]); console.log(`${mla} · ${String(e.title || '').slice(0, 50)} · piso ${money(piso)} · caja hoy ${e.caja || '?'}${e.cajaPtw ? ' (pide ' + money(e.cajaPtw) + ')' : ''}${GOg ? '' : ' (falta ;go)'}`);
+        // 5a del 28/10 (él): sin su "autorizo" vigente para ESTA publicación y ESTE piso no se prende; se guarda el pedido para pasárselo en el chat.
+        if (GOg) { let autC = ''; try { const A = (await db.get('cyc/autoriza')) || {}; autC = (Object.entries(A).find(([c, r]) => !autNoVale(c, r, mla, 'ganarcaja', piso, Date.now(), false, 'ganarcaja')) || [''])[0]; } catch { autC = ''; }
+          if (!autC) { console.log(`   🔐 sin su autorización no se prende (5a del 28/10): lo guardo para pasárselo en el chat`);
+            await pedirAutorizaciones(db, [{ mla, a: piso, p0: Number(e.price) || 0, pideAut: ['ganarcaja'], regla: '🥊', frenoTxt: 'mantener la caja pasa por encima de los frenos de precio', motivoPedido: (m[3] || '').slice(0, 300) }], links, { aplicar: true, tipo: 'ganarcaja', renglon: () => `${mla}=${piso}|${String(m[3] || 'lo pidió él').replace(/[;|]/g, ',').slice(0, 150)}` }); continue; }
+          await _autUsar(db, autC, 'ganarcaja ' + mla); }
         if (GOg) { await db.set('cyc/ganacaja/' + mla, { piso, m: (m[3] || 'lo pidió él').slice(0, 200), desde: Date.now(), por: 'él' }); const r = await db.get('cyc/ganacaja/' + mla); console.log(r && Number(r.piso) === piso ? '   ✓ guardado y releído' : '   ✗ NO QUEDÓ'); }
       }
       return;

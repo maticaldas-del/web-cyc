@@ -3130,7 +3130,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.49';
+const APP_VERSION='27.50';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3143,7 +3143,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'27.49',f:'28/10',h:'15:15',c:[{n:1,t:'↕️ Pedidos → Paraguay → 🔎 Buscar en todo comprasparaguay: ahora se puede ordenar lo que encuentra (por % de ganancia, primero los que pueden entrar al pedido, $ por unidad, precio en Paraguay o en ML, vendedores o nombre)'}]},
+  {v:'27.50',f:'28/10',h:'15:15',c:[{n:1,t:'↕️ Pedidos → Paraguay → 🔎 Buscar en todo comprasparaguay: ahora se puede ordenar lo que encuentra (por % de ganancia, primero los que pueden entrar al pedido, $ por unidad, precio en Paraguay o en ML, vendedores o nombre)'}]},
+  {v:'27.49',f:'28/10',h:'14:41',c:[{n:2,t:'📈 La búsqueda de techo pide 95% de seguridad hasta el día 30 (antes el 7) y recién después baja hasta 70% el día 44 (lo que elegiste en la revisión del cerebro)'}]},
   {v:'27.48',f:'28/10',h:'05:08',c:[{n:1,t:'📏 Las rayas de precio no cuentan los días sin visitas (igual que el robot): un día que nadie vio la publicación no prueba que el precio esté alto'}]},
   {v:'27.47',f:'28/10',h:'01:09',c:[{n:2,t:'📥 Lo que nos deben: ahora es la suma de una lista de deudas, en la tarjeta de arriba del Arqueo. ➕ Agregar deuda a CYC (nombre, monto y si es en cuotas), 💵 Pagó / Pagó una cuota (cuántas va), ↩︎ y 🗑️. Lo que estaba escrito a mano quedó como la primera deuda de la lista. Se arregló que la lista de cuotas no se leía al volver a abrir la web'}]},
   {v:'27.46',f:'28/10',h:'01:01',c:[{n:2,t:'💳 Arqueo → Lo que nos deben: ventas en cuotas. ➕ Nueva deuda (nombre, cuánto es cada cuota y cuántas), 💵 Pagó una cuota (dice cuántas va), ↩︎ deshacer y 🗑️. Lo que falta cobrar entra solo al patrimonio como "Deben en cuotas" (en dólares al cambio de hoy)'}]},
@@ -5091,7 +5092,6 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {etapa:8,t:'28/10 · 6 decisiones de reglas del cerebro',que:'seguridad para cerrar una prueba de techo · prueba que vendió con sobra · ML pausa algo en escasez · barrera $33.000 a los 90 o 100 días · 🥊 mantener la caja con tu autorizo · gemela de envío arriba de $33.000',pedi:'resolvamos las del cerebro'},
   {etapa:2,t:'27/10 · 6 decisiones de Plata',que:'saldos de MP en el registro público · congelar el mes cobrado · cuándo cargar el retiro · ventas sin factura después de 45 días · stock de Full no disponible · Valor de Stock de Resumen vs Arqueo',pedi:'resolvamos las de Plata'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
@@ -5102,7 +5102,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-24',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-10-21'};
+const REV_HECHAS={1:'2026-10-24',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-10-28'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
   1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
@@ -5619,8 +5619,8 @@ function _fechasEspR(y){const nD=(yy,m,n)=>{const d=new Date(Date.UTC(yy,m,1));r
     {ts:Date.UTC(y,0,6,3),pre:7,regalo:1,nom:'Reyes'},{ts:Date.UTC(y,1,14,3),pre:10,regalo:1,nom:'San Valentín'},{ts:Date.UTC(y,6,20,3),pre:7,regalo:1,nom:'Día del Amigo'},{ts:cm,pre:2,dur:3,nom:'CyberMonday'},{ts:bf,pre:2,dur:4,nom:'Black Friday'},
     {ts:(()=>{const m1=new Date(Date.UTC(y,4,1)).getUTCDay();return Date.UTC(y,4,1+((1-m1+7)%7)+7,3);})(),pre:2,dur:3,nom:'Hot Sale'}];}
 // CUÁNTA SEGURIDAD HACE FALTA PARA DECIR "ES TECHO" (24/10/2026, él: "al pasar los días necesita menos % de seguridad para decidir"):
-// 95% hasta el día 7 con stock a ese precio, baja de a poco hasta 70% el día 21. Copia de `umbralTecho` (sync.mjs).
-function umbralTechoW(dias){const d=Number(dias)||0;return d<=7?0.95:d>=21?0.70:0.95-0.25*(d-7)/14;}
+// 95% hasta el día 30 con stock a ese precio (28/10, antes 7), baja de a poco hasta 70% el día 44. Copia de `umbralTecho` (sync.mjs).
+function umbralTechoW(dias){const d=Number(dias)||0;return d<=30?0.95:d>=44?0.70:0.95-0.25*(d-30)/14;} // 28/10: 95% hasta el día 30, 70% el 44 (él)
 // 30 días sin vender a un precio (o más caro) = 🔴 techo sí o sí (24/10/2026, él). Copia de TECHO_DIAS_SIN_VENTA del robot.
 const TECHO_DIAS_SIN_VENTA_W=30;
 const RAYAS_DIAS=60;   // los días que miden el 💰 y el 🔴: la misma constante en sync.mjs
@@ -12313,7 +12313,7 @@ function lineaPintar(prodId){
         // que "decide", se dice que se cortó y con cuánto.
         if(!R.techo&&ep){const _cort=_pHoy&&_pHoy<ep.p*0.98;
           _prNotas.push(_cort?`<span style="color:var(--amber)" title="La prueba de ${fmt(ep.p)} terminó antes de llegar a la seguridad que pide (${Math.round(ep.umb*100)}%): no quedó marcado como techo. Si vuelve a ese precio, la cuenta sigue.">📈 la prueba de ${fmt(ep.p)} se cortó: ${ep.dias!=null?ep.dias+' día'+(ep.dias===1?'':'s')+' medido'+(ep.dias===1?'':'s')+', ':''}<b>${Math.round(ep.seg*100)}%</b> seguro (pedía ${Math.round(ep.umb*100)}%)</span>`
-            :`<span style="color:#22c55e" title="Para decir que ${fmt(ep.p)} es techo hace falta ${Math.round(ep.umb*100)}% de seguridad: con pocos días se pide 95% y desde el día 7 con stock baja hasta 70% el día 21, así no queda un mes buscando.">📈 techo a ${fmt(ep.p)}: <b>${Math.round(ep.seg*100)}%</b> seguro · pide ${Math.round(ep.umb*100)}%${ep.dias!=null?` · lleva ${ep.dias} día${ep.dias===1?'':'s'} medido${ep.dias===1?'':'s'}`:''}${ep.lz?' · lanzamiento':''}</span>`);}}
+            :`<span style="color:#22c55e" title="Para decir que ${fmt(ep.p)} es techo hace falta ${Math.round(ep.umb*100)}% de seguridad: se pide 95% hasta el día 30 con stock y después baja hasta 70% el día 44 (él, 28/10).">📈 techo a ${fmt(ep.p)}: <b>${Math.round(ep.seg*100)}%</b> seguro · pide ${Math.round(ep.umb*100)}%${ep.dias!=null?` · lleva ${ep.dias} día${ep.dias===1?'':'s'} medido${ep.dias===1?'':'s'}`:''}${ep.lz?' · lanzamiento':''}</span>`);}}
       // 19/10, él: "el piso es un parámetro para decir no bajemos más que esto, excepto que haya un problema (…) quizás lo mejor es
       // unificarlas". Unificadas: el 💰 (el que más plata por día dejó) ES el piso: más abajo vende más pero deja menos.
       if(R.best&&R.best.aprox)_ray(R.best.p,'#eab308','4,3',`💰 más plata ${fmt(R.best.p)} · provisorio`,`💰 Piso PROVISORIO: ${fmt(R.best.p)} es, por ahora, el precio que más plata por día dejó (${fmt(Math.round(R.best.pd))} por día · ${R.best.u} vendida${R.best.u===1?'':'s'} en ${R.best.dias} día${R.best.dias===1?'':'s'} con stock). Son pocos días para estar seguro: se corrige con cada venta. No se baja de acá salvo un problema.`,-3);
