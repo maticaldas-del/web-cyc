@@ -5615,6 +5615,10 @@ async function detectarErrores(db, o = {}) {
       { const t9 = t95Det[m]; if (t9 && P > 0 && Number(t9.p) > 0 && Math.abs(Number(t9.p) - P) <= P * 0.02 && Number(t9.seg) >= (Number(t9.umb) || 0.95)) { lzC.convenir++; continue; } }
       if (P > 0 && P >= TECHO_DURO) { lzC.convenir++; continue; }
       if (cercaAntiguo(e)) { lzC.antiguo++; continue; }
+      // 1a del 28/10: una 🔥/⏳ con una suba que "NO rindió" vigente en la ficha (⛔, 30 días) YA tiene techo medido arriba: no se sube a ciegas
+      // (el Pendrive 8gb ⏳ a $23.990: subir a $26.990 no rindió). Sin poder leer la ficha, tampoco.
+      if (ult === 'escasez' || ult === 'sinrepo') { let l1 = null; try { l1 = String((await db.get('mlapi/ficha/' + m + '/linea1')) || ''); } catch { l1 = null; }
+        if (l1 === null || /no rindió/.test(l1)) { lzC.convenir++; continue; } }
       // 4a (27/10/2026 a la noche, la corrida de la estrategia nueva: las Sábanas 1½ "vendió ayer" y decido la frenó por 0,4 por semana): un 📈
       // que vende menos de 1 por semana no sube (decido lo frena); queda 💰 #punto. El 🆕 que vendió sí sube (decido no lo frena).
       if (ult === 'techo') { const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs != null && infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { lzC.lento = (lzC.lento || 0) + 1; continue; } }
