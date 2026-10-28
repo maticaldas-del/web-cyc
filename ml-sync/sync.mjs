@@ -77,7 +77,7 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
-const CONSULTA_ESCRIBE = new Set(['buzon', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -39765,6 +39765,40 @@ async function main() {
       await db.set('cyc/debencyc/' + Date.now(), { antes, despues, mov: m[1] + m[2], nota: nota.slice(0, 200), lista: idD });
       const rel = (await db.get('cyc/debencuotas/' + idD)) || {};
       console.log(rel.monto === itD.monto ? '  ✓ guardada y releída en la lista (el total lo rehace la web al abrirla)' : '  ⚠️ no la pude releer');
+      return;
+    }
+    // BILLING_PROBE=debenmov[:<id o nombre>=<+N|-N>[@AAAA-MM-DD]|<nota>][;go] · UN MOVIMIENTO EN UNA DEUDA A CYC (28/10/2026, él: "yo te voy a mandar
+    // por acá: agregar $70.000 deuda perfumería a cyc compra 6 perfumes ch tarjeta mati" y "cobré $70.000 de deuda de perfumería"). +N = nos
+    // deben más (verde en la web) · -N = devolvió (rojo). Va a `cyc/debencuotas/<id>/movs/<ts>` = {m, f, nota, quien:'robot'}; la web rehace
+    // el total de "Lo que nos deben" al abrirse. OJO: "deuda de CYC A la perfumería" es lo contrario (lo que debemos), NO va acá.
+    // Sin nada: lista las deudas con su saldo. La deuda: el id exacto o palabras que agarren UNA sola. Sin ;go sólo muestra.
+    if (/^debenmov(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('debenmov'.length).replace(/^:/, '');
+      const GO = /;go\s*$/i.test(raw); const cuerpo = raw.replace(/;go\s*$/i, '').trim();
+      const D = (await db.get('cyc/debencuotas')) || {};
+      const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const saldo = (d) => { const n = Math.max(1, Number(d.n) || 1), monto = Number(d.monto) || 0, pag = Math.min(n, Number(d.pagadas) || 0);
+        return Math.max(0, monto - pag * (monto / n) + Object.values(d.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0)); };
+      const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
+      if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) console.log(`  ${id} · ${d.nom} · falta ${money(Math.round(saldo(d)))} · ${Object.keys(d.movs || {}).length} movimiento(s)`); return; }
+      const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
+      const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...notaP] = resto.split('|');
+      const m = String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
+      if (!m) { console.log(`❌ "${numF}": va +N (suma deuda) o -N (devolvió), con signo. Ej. +70000 o -70000@2026-10-28`); return; }
+      const monto = Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!(monto > 0)) { console.log('❌ monto en cero'); return; }
+      const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), f = m[3] || hoyAR, nota = notaP.join('|').trim().slice(0, 120);
+      let cand = lista.filter(([id]) => id === quien);
+      if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+      if (cand.length !== 1) { console.log(`❌ "${quien}" agarra ${cand.length} deudas${cand.length ? ': ' + cand.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+      const [id, d] = cand[0]; const signo = m[1] === '+' ? 1 : -1, antes = saldo(d), despues = Math.max(0, antes + signo * monto);
+      console.log(`=== MOVIMIENTO EN "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+      console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
+      console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? '  ⚠️ devolvió más de lo que debía' : ''}`);
+      if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+      const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot' };
+      await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
+      const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
+      console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       return;
     }
     if (String(process.env.BILLING_PROBE || '') === 'capital') {
