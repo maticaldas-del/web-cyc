@@ -120,3 +120,8 @@ Hoy cuenta la última venta salvo 🔥 escasez, ⏳ sin reposición, remate y lo
 4. Si los pesos son el límite, cada peso al producto que más devuelve: de los $10,7M que pide Pedidos, con la mitad de la plata eligiendo por lo que devuelve cada peso se ganan ~$7,7M contra ~$5,9M repartiendo parejo. (a) mostrar en Pedidos "cada $1 vuelve con $X" y el orden para gastar la plata que hay · (b) no.
 
 ## 27/10 · Botón 💵 de Pedidos → eligió 1a: "lo que salva cada $1" (hecho, v27.40). El orden de siempre sigue por defecto.
+
+## 28/10 · ¿Dejar de buscar techo y buscar sólo el mejor precio? (pedido suyo: pros, contras y puntaje)
+Medido (efectotecho, 42 subas con 7+ días): 22 ganaron +$24.600/día · 14 perdieron −$8.900/día (13 dejaron de vender del todo) · 9 vendieron 30%+ menos unidades con igual o más plata (Naipes Casino 16,6→6,2 u/día, $4.238→$4.274).
+Puntajes: A como hoy (techo, "si vende sube") −2 · B sólo plata por día −2 · C mejor precio contando plata y stock +7.
+1. (a) C: a las ~3 ventas esperadas comparar plata por día y unidades contra el precio anterior; igual o más → sube; menos con 95% → vuelve un escalón; el 🔴 queda como dato · (b) seguir con A · (c) B.
