@@ -1341,8 +1341,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Tito</span><span id="db_dolares_tito"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_tito" placeholder="US$ 0" onchange="saveFin('dolares_tito',this.value)"></div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
-      <span class="fin-label" style="font-weight:600">⚖️ Corregir (ajuste ±)</span>
+    <!-- ⚖️ Corregir: SACADO (28/10/2026, él: "sacarlo, ya que la idea es que esté todo registrado"). Queda escondido; sólo aparece si
+         quedó un número cargado (para poder ponerlo en 0), porque ese número sigue contando en el patrimonio. -->
+    <div id="corregir-row" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--red);border-radius:var(--r)">
+      <span class="fin-label" style="font-weight:600">⚖️ Corregir (ajuste ±) · ponelo en 0</span>
       <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Suma o resta al patrimonio. Puede ser negativo. No cuenta como deuda ni como activo.</span>
       <span id="db_corregir"></span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="US$ 0" onchange="saveFin('corregir',this.value)" style="width:150px">
@@ -3169,7 +3171,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.64';
+const APP_VERSION='27.65';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3182,6 +3184,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.65',f:'28/10',h:'18:35',c:[{n:1,t:'⚖️ Arqueo: se sacó "Corregir (ajuste ±)" — todo tiene que estar registrado (sólo reaparece si quedó un número cargado, para ponerlo en 0)'}]},
   {v:'27.64',f:'28/10',h:'18:20',c:[{n:1,t:'📥 Ver deudas más resumido: cada renglón dice sólo quién, % de ganancia y cuánto falta; qué se llevó, cuotas, fechas y los botones Pagó/Editar están adentro (tocando el renglón)'}]},
   {v:'27.63',f:'28/10',h:'18:05',c:[{n:1,t:'📥 Ver deudas: cada deuda dice quién y, abajo, qué se llevó (🛍️ se llevó: …); se edita con ✏️'}]},
   {v:'27.62',f:'28/10',h:'18:50',c:[{n:1,t:'📥 Ver deudas: una deuda sin cuotas se puede guardar en $0 (cuenta corriente que se mueve sólo con ➕ Suma deuda / ➖ Devolvió)'}]},
@@ -7161,6 +7164,7 @@ function loadFinInputs(){
   // llenar las casillas con los números de HOY, y el cierre de agosto mostraba el efectivo de hoy.
   if(document.getElementById('fin-view-sel')?.value){renderFinTs();return;}
   // No pisar el campo que el usuario está editando en este momento (si no, se revierte lo que escribe).
+  {const cr=document.getElementById('corregir-row');if(cr)cr.style.display=(parseFloat(state.finanzas&&state.finanzas.corregir)||0)!==0?'flex':'none';}
   FIN_FIELDS.forEach(f=>{const inp=document.getElementById('f_'+f.k);if(inp&&document.activeElement!==inp){const raw=parseFloat(state.finanzas[f.k])||0;setMoneyVal(inp,(f.neutral||FIN_CON_SIGNO.has(f.k))?raw:Math.abs(raw));}});
   const tc=document.getElementById('f_tipo_cambio');if(tc&&document.activeElement!==tc)setMoneyVal(tc,state.finanzas['tipo_cambio']);
   const rm=document.getElementById('f_retiro_mes');if(rm&&document.activeElement!==rm)setMoneyVal(rm,(state.retiro_mes&&state.retiro_mes[_curYM()])||0);
