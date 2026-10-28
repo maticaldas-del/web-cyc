@@ -2129,6 +2129,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué es:** una barra por cuenta contra el tope de H: lleno = facturado oficial hoy, clarito = a dónde llega al cierre de ARCA (misma cuenta que la ⚖️, `parejoDatos`); % de hoy; rojo si al cierre se pasa, ámbar desde 85%. En el teléfono sin ícono y más finitas.
 - **Dónde vive:** `renderNcFacBarras` (la llama `renderNcFacAviso`), `#nc-fac-barras`, clase `ht-fac` (index.html).
 - **Qué chequear:** 390 y 1200 px dibujados el 28/10 sin desborde; los % coinciden con la tarjeta ⚖️ de Inicio.
+### ✅ Deudas: nada se borra, pagadas en verde con páginas, cuentas fijas y pago por producto (28/10/2026, él: "que no se borren esos productos ni ninguna deuda, que se pongan en verde… mercadería perfumería y deuda perfumería aunque estén pagas que se muestren en verde y no se guarden nunca")
+- **Qué es:** sin 🗑️ en las deudas ni ✕ en los movimientos (un error se corrige con otro movimiento). Arriba las activas + las 📌 fijas (`fija`; sin marca, las que dicen "perfumer"); las pagadas en verde abajo en ✅ Pagadas, de a 6 por página. Cada producto dejado tiene ✅ Pagó (`cuotaProdPago`: resta pu×u, marca `pagado` con la fecha, queda en verde); `debenmov:…=-N|prod=…` hace lo mismo desde el chat. Oficina: se resta sólo si él lo dice o se le pregunta (1a, 28/10).
+- **Dónde vive:** `cuotaFija`, `renderCuotas` (fila/act/pag), `cuotaDetalleHTML`, `cuotaProdPago`, checkbox `#cq_fija` (index.html) · `debenmov` (pagaDe/pagado, sync.mjs).
+- **Qué chequear:** dibujado el 28/10 a 1200 y 390 px con 8 pagadas (2 páginas), una fija en $0 en verde arriba y un producto pagado en verde.
+
 ### 🛍️ Mercadería dejada en las perfumerías del pueblo (28/10/2026, él: "dejé el xiaomi watch 5 lite en soares… calculás ganancia, ponela en verde, pero esa ganancia no anotar en ningún otro lado")
 - **Qué es:** `debenmov` acepta `|prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<n>`: el monto es lo que paga la perfumería por unidad × u; guarda `prod`, `prodNom`, `u`, `pu`, `costoU` (lo pagado puesto en la oficina = `costBaseUSD` × dólar, sin reclamos ni envío a Full) y `gan`. En Ver deudas el renglón dice qué, cuántas y dónde, con la ganancia en verde, y arriba "🛍️ ganancia de lo dejado" (sólo ahí).
 - **Dónde vive:** `debenmov` (sync.mjs) · `cuotaHistoria` y `cuotaDetalleHTML` (index.html).

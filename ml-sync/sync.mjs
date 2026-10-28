@@ -39817,9 +39817,16 @@ async function main() {
       if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / montoU * 100)}%)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
       console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? '  ⚠️ devolvió más de lo que debía' : ''}`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
-      const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
+      // Un pago CON producto (`=-N|prod=…[|local=…]`) marca pagado el producto dejado que corresponde (el más viejo sin pagar): queda en verde.
+      let pagaK = null;
+      if (signo < 0 && prodF) { const ab = Object.entries(d.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === prodF.id && !x.pagado && (!local || x.local === local)).sort((a, b) => Number(a[0]) - Number(b[0]));
+        if (ab.length) { pagaK = ab[0][0]; console.log(`  ✅ marca pagado: ${ab[0][1].prodNom}${ab[0][1].local ? ' (' + ab[0][1].local + ')' : ''} dejado el ${ab[0][1].f}`); } else console.log('  ⚠️ no encontré ese producto dejado sin pagar: se resta la plata igual, sin marcar ningún producto'); }
+      const k = String(Date.now()); const mv = signo < 0 && prodF
+        ? { m: -monto, f, nota: nota || `pagó ${prodF.name}`.slice(0, 120), quien: 'robot', ...(pagaK ? { pagaDe: pagaK } : {}) }
+        : { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
       await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
+      if (pagaK) await db.set(`cyc/debencuotas/${id}/movs/${pagaK}/pagado`, f);
       const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
       console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       return;
