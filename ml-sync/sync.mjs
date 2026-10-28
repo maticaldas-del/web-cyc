@@ -4389,6 +4389,23 @@ function precioMasCaroVendido(lin, est, hoyK) {
 // techo, la idea es vender y ganar… al pasar los días necesita menos % de seguridad para decidir que fue techo y al decidirlo que marque
 // se decidió techo al 70%"). Con pocos días se pide 95%; desde el día 7 con stock a ese precio baja de a poco hasta 70% el día 21, y de ahí
 // no baja más. La misma cuenta en la web (`umbralTechoW`): si se toca una, la otra.
+// EL PRECIO DE HOY CONTRA EL 💰, UNA SOLA CUENTA (28/10/2026): la usan F8 (arriba del 💰 no se baja sin 95%), la salida de F14 "vende
+// muchísimo menos" y `techo95`. Los días seguidos con stock al precio de lista de hoy (`p0`; con un descuento visto, desde que entró,
+// `kDesde`), las vendidas sin remate, y cuántas tenía que vender para dejar la misma plata por día que el 💰 (`lam`, con la franja del
+// mes) · `seg` = seguro de que deja MENOS · `segMitad` = seguro de que deja menos de la MITAD. null si no está arriba del 💰.
+function medirContraBest(lin, best, p0, p0v, hoyK, kDesde = '') {
+  if (!lin || !best || !(best.gu > 0) || !(p0v > best.p * 1.02) || !(p0 > 0)) return null;
+  const ks = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && lin[k] && typeof lin[k] === 'object').sort();
+  let d1 = 0, d1F = 0, u1 = 0;
+  for (let i = ks.length - 1; i >= 0; i--) { if (kDesde && ks[i] < kDesde) break; const x = lin[ks[i]]; const px = Number(x.p) || 0; if (!(px > 0) || Math.abs(px - p0) > p0 * 0.02) break; if (!diaConStock(x) || (x.est && x.est !== 'active')) continue; d1++; d1F += franjaDe(ks[i]); u1 += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); }
+  const gu1 = best.gu + (p0v - best.p) * 0.7;
+  const lam = (best.rN || best.r) * (best.gu / gu1) * (d1F || d1);
+  return { d1, u1, lam, seg: d1 > 0 ? 1 - poissonCdfF(u1, lam) : 0, segMitad: d1 > 0 ? 1 - poissonCdfF(u1, lam * 0.5) : 0 };
+}
+// 🪜 VENDE MUCHÍSIMO MENOS (1a del 28/10/2026, él eligió la a): bajando del techo, un escalón que vendió pero deja menos de la MITAD de
+// la plata por día que el 💰 (95% seguro, 7+ días con stock ahí) no frena: baja un escalón (≤15%, F2) hacia el 💰, sin pasarlo.
+const F14_MENOS_DIAS = 7;
+const muchoMenosOk = (m) => !!m && m.d1 >= F14_MENOS_DIAS && m.segMitad >= 0.95;
 function umbralTecho(dias) { const d = Number(dias) || 0; return d <= 7 ? 0.95 : d >= 21 ? 0.70 : 0.95 - 0.25 * (d - 7) / 14; }
 // 30 DÍAS SIN VENDER = TECHO, SÍ O SÍ (24/10/2026, él: "puede ser que nunca llegue al 70% de seguridad. entonces a los 30 días de no vender
 // sí o sí se marca como techo. ya que si no vendió en 30 días no vende, comenzar con la escalera"). Un precio (o cualquiera más caro) con 30+
@@ -4784,7 +4801,14 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const porQueNoActivar = exc(fz, 'activar') && !nuncaActiva ? (diaActiva ? ` (!activar no vale: estuvo activa o vendió el ${diaActiva.slice(8, 10)}/${diaActiva.slice(5, 7)})` : !(altaRef > 0) ? ' (!activar no vale: no sé cuándo se creó)' : ' (!activar no vale: se creó hace más de 90 días)') : '';
     const golpe = exc(fz, 'golpe');
     const maxB = enEscasez ? 0.25 : 0.15, baja = (p0v - a) / p0v, esEscalon = a < p0v * 0.995;
-    const ultSuba = camb.find((c) => !c.rev && c.a > c.de * 1.05);   // la última suba de 5%+ (una prueba de verdad; no una vuelta atrás del detector)
+    const ultSuba = camb.find((c) => !c.rev && c.a > c.de * 1.05);
+    // Con un descuento visto, los días al precio de hoy se cuentan desde que entró ese descuento (F8 y "vende muchísimo menos").
+    const kDesdeVisto = () => { if (!(p0v < p0 - 10)) return ''; const tE = (pc && Math.abs((Number(pc.precio) || 0) - p0v) <= 10 && Number(pc.ts) > 0 && Number(pc.ts) < ahora ? Number(pc.ts) : 0)
+      || Math.max(0, ...Object.entries(ph || {}).filter(([k, x]) => Number(k) > 0 && Number(k) < ahora && x && x.accion === 'entra' && Math.abs((Number(x.a) || 0) - p0v) <= 10).map(([k]) => Number(k)));
+      return tE > 0 ? kDia(tE) : ''; };
+    let _mm;
+    const muchoMenos = () => { if (_mm !== undefined) return _mm; const R = lin && cu > 0 ? rayasPrecioLinea(lin, cu, imp, hoyK, 1, xU) : null;
+      const m = R && R.best ? medirContraBest(lin, R.best, p0, p0v, hoyK, kDesdeVisto()) : null; return (_mm = m ? { ...m, best: R.best } : null); };   // la última suba de 5%+ (una prueba de verdad; no una vuelta atrás del detector)
     // Las reglas, con un juego de autorizaciones (para saber si lo ÚNICO que frena es una salida suya sin autorizar).
     // → null si pasa · { regla, txt, sinDato } si frena.
     const evaluar = async (autH) => {
@@ -4845,7 +4869,12 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         if (v14 == null) return { regla: 'F14', sinDato: true, txt: 'no pude leer las ventas desde el último cambio de precio: sin saber si vendió a este precio no bajo' };
         const sA = v14.u > 0 ? await sobraAca() : null;
         if (sA) d.f14 = `a este precio vendió ${sA.u} en ${sA.dd} días con stock: ${sA.st} u. alcanzan ~${sA.dias} días (más de 90 = sobra al precio de hoy, se puede bajar)`;
-        if (v14.u > 0 && !sA) return { regla: 'F14', txt: `vendió ${v14.u} a ${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} desde el ${kDia(v14.desde).slice(8, 10)}/${kDia(v14.desde).slice(5, 7)}: en el primer precio que vende se queda, no se baja para buscar más plata por día (regla suya del 27/10: "una vez que vende, se queda ahí"). Sigue bajando sólo si sobra (90+ días de stock al ritmo de este precio o de los últimos 60 días, o la unidad más vieja con 90+ días), a 15 días del stock antiguo o con 30 días sin vender a este precio. Salida SÓLO SUYA: 🔐 !sincerteza` };
+        const mm = v14.u > 0 && !sA ? muchoMenos() : null, mmOk = muchoMenosOk(mm);
+        if (mmOk) {
+          if (a < mm.best.p * 0.995) return { regla: 'F14', txt: `vende muchísimo menos a ${$(p0v)} (${mm.u1} en ${mm.d1} días con stock; para dejar la mitad de la plata por día que el 💰 tenía que vender ~${(mm.lam * 0.5).toFixed(1)}, ${Math.round(mm.segMitad * 100)}% seguro): baja un escalón HACIA el 💰 ${$(mm.best.p)}, sin pasarlo (1a del 28/10). El escalón llega hasta ${$(ceil90(mm.best.p))}` };
+          d.f14 = `vende muchísimo menos: a ${$(p0v)} vendió ${mm.u1} en ${mm.d1} días con stock y para dejar la MITAD de la plata por día que el 💰 ${$(mm.best.p)} tenía que vender ~${(mm.lam * 0.5).toFixed(1)} (${Math.round(mm.segMitad * 100)}% seguro): baja un escalón hacia el 💰 (1a del 28/10)`;
+        }
+        if (v14.u > 0 && !sA && !mmOk) return { regla: 'F14', txt: `vendió ${v14.u} a ${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} desde el ${kDia(v14.desde).slice(8, 10)}/${kDia(v14.desde).slice(5, 7)}: en el primer precio que vende se queda, no se baja para buscar más plata por día (regla suya del 27/10: "una vez que vende, se queda ahí"). Sigue bajando sólo si sobra (90+ días de stock al ritmo de este precio o de los últimos 60 días, o la unidad más vieja con 90+ días), a 15 días del stock antiguo o con 30 días sin vender a este precio, o si vende muchísimo menos (menos de la mitad de la plata por día que el 💰, 95% y 7+ días con stock${mm ? `; hoy: ${mm.u1} vendidas en ${mm.d1} días, ${Math.round(mm.segMitad * 100)}%` : ''}). Salida SÓLO SUYA: 🔐 !sincerteza` };
       }
       // ── F2 · escalera: tamaño del escalón
       if (!golpe && baja > maxB + 0.005) return { regla: 'F2', txt: `baja ${Math.round(baja * 100)}% de una vez (${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} → ${$(a)}): toda baja va en escalera, como mucho ${Math.round(maxB * 100)}% por escalón${enEscasez ? ' en escasez' : ''} (el escalón llega hasta ${$(ceil90(p0v * (1 - maxB)))}). Excepciones (precio mal puesto, stock antiguo con fecha encima, ML pausó por el precio, lo pide él, el envío de la barrera $33.000; la última unidad NO desde el 24/10): !golpe y "EXCEPCIÓN: …"` };
@@ -4915,14 +4944,8 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         // no es una baja (`esEscalon`, como F3). La línea guarda el precio de LISTA: con un descuento visto, los días se cuentan desde que
         // entró ese descuento (`cyc/promoclaude` o la historia de `cyc/promohist`).
         if (R8 && R8.best && R8.best.gu > 0 && p0v > R8.best.p * 1.02 && esEscalon) {
-          let kDesde = '';
-          if (p0v < p0 - 10) { const tE = (pc && Math.abs((Number(pc.precio) || 0) - p0v) <= 10 && Number(pc.ts) > 0 && Number(pc.ts) < ahora ? Number(pc.ts) : 0)
-            || Math.max(0, ...Object.entries(ph || {}).filter(([k, x]) => Number(k) > 0 && Number(k) < ahora && x && x.accion === 'entra' && Math.abs((Number(x.a) || 0) - p0v) <= 10).map(([k]) => Number(k)));
-            if (tE > 0) kDesde = kDia(tE); }
-          let d1 = 0, d1F = 0, u1 = 0;
-          for (let i = ks.length - 1; i >= 0; i--) { if (kDesde && ks[i] < kDesde) break; const x = lin[ks[i]]; const px = Number(x.p) || 0; if (!(px > 0) || Math.abs(px - p0) > p0 * 0.02) break; if (!diaConStock(x) || (x.est && x.est !== 'active')) continue; d1++; d1F += franjaDe(ks[i]); u1 += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); }
-          const gu1 = R8.best.gu + (p0v - R8.best.p) * 0.7;
-          const lam = (R8.best.rN || R8.best.r) * (R8.best.gu / gu1) * (d1F || d1), seg = d1 > 0 ? 1 - poissonCdfF(u1, lam) : 0;
+          const kDesde = kDesdeVisto();
+          const { d1, u1, lam, seg } = medirContraBest(lin, R8.best, p0, p0v, hoyK, kDesde);
           d.f8 = { best: R8.best.p, d1, u1, lam: +lam.toFixed(2), seg: +seg.toFixed(3) };
           if (seg < 0.95) return { regla: 'F8', txt: `${$(p0v)}${p0v !== p0 ? ' (lo que veía el comprador; lista ' + $(p0) + ')' : ''} está arriba del 💰 ${$(R8.best.p)} (el que más plata por día dejó) y no hay 95% de que deje menos: a ${$(p0v)} vendió ${u1} en ${d1} día${d1 === 1 ? '' : 's'} con stock; para dejar la misma plata por día que el 💰 tenía que vender ~${lam.toFixed(1)} (${Math.round(seg * 100)}% seguro de que deja menos). Se queda (💰 buscando el de más ganancia) hasta estar 95% seguro; si deja más, la línea 💰 sube a este precio. Salida SÓLO SUYA: 🔐 !sincerteza con su autorización (se la paso en el chat)` };
         }
@@ -47142,6 +47165,9 @@ async function main() {
           const bajando = !['techo', 'nuevo'].includes(tH) && Pv < R.techo.p * 0.98 && (!R.best || Pv >= R.best.p * 0.98);
           const enElTecho = !R.techo.por30 && Math.abs(Pv - R.techo.p) <= R.techo.p * 0.02 && Number(R.techo.seg) >= (R.techo.umb || 0.95);
           if (vh == null) falta += ' · no pude leer las ventas desde el último cambio (¿se queda?)';
+          else if (vh.u > 0 && bajando && R.best && (() => { const pcM = pcT9 && pcT9[mla]; const kM = pcM && Number(pcM.ts) > 0 && promoClaudeVigente(pcM, Date.now()).vig && Pv < P0 - 10 ? dayKeyFromISO(Number(pcM.ts)) : '';
+            const mM = medirContraBest(d, R.best, P0, Pv, hoyK, kM); if (!muchoMenosOk(mM)) return false;
+            falta = `vendió ${vh.u} a ${$(Pv)} pero vende muchísimo menos: ${mM.u1} en ${mM.d1} días con stock, para dejar la mitad de la plata por día que el 💰 ${$(R.best.p)} tenía que vender ~${(mM.lam * 0.5).toFixed(1)} (${Math.round(mM.segMitad * 100)}% seguro) → baja un escalón hacia el 💰 (1a del 28/10)`; return true; })()) { /* sigue la escalera */ }
           else if (vh.u > 0 && (bajando || enElTecho)) {
             falta = ''; if (!R.techo.por30) seg = R.techo.seg;
             txt += ` · vendió ${vh.u} a ${$(Pv)} desde el ${fK(dayKeyFromISO(vh.desde))}: ${bajando ? 'bajando del 🔴, en el primer precio que vende se queda' : 'vende en el 🟠 (deja menos plata por día que el 💰, no sube más) y como vende se queda'} (regla suya del 27/10)`;
