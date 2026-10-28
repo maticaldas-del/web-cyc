@@ -1295,8 +1295,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
          VA ACÁ, entre las cuatro tarjetas y el buscador: abajo de la conclusión y su detalle, y
          arriba de todo lo que se carga a mano (la regla del 26/08). -->
     <div id="arqueo-agenda" style="margin-bottom:14px"></div>
-    <input class="search-box" id="arqueo-search" type="search" placeholder="Buscar producto..." oninput="updateArqueo()">
-    <div id="arqueo-product-results"></div>
+    <!-- 🔍 Buscar producto: SACADO de Finanzas (28/10/2026, él). El código que lo llenaba se fija si existe. -->
     <div id="arqueo-missing-costs" style="margin-bottom:14px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div class="stitle" style="margin:0">Valores actuales <span id="arqueo-prev-label" style="font-size:.62rem;color:var(--muted);font-family:'DM Mono',monospace;font-weight:400;text-transform:none;letter-spacing:0"></span></div>
@@ -3179,7 +3178,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.67';
+const APP_VERSION='27.68';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3192,6 +3191,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.68',f:'28/10',h:'19:10',c:[{n:1,t:'💰 Finanzas: se sacó "Buscar producto"'}]},
   {v:'27.67',f:'28/10',h:'19:05',c:[{n:2,t:'💰 Finanzas: las 4 tarjetas muestran sólo el número y cuánto cambió; tocás una y se abre ahí mismo, a lo ancho, con sus casillas adentro para cargar (sin bajar). "Se libera de ML" va adentro de Efectivo & Digital'}]},
   {v:'27.66',f:'28/10',h:'18:50',c:[{n:2,t:'💰 Finanzas más simple: las casillas para cargar quedan guardadas; tocás una tarjeta (Efectivo & Digital, Stock, Lo que debemos) y se abre su detalle para rellenar. ⚠️ en la tarjeta = hay un aviso adentro (dato viejo, etc.). Lo que nos deben abre Ver deudas'}]},
   {v:'27.65',f:'28/10',h:'18:35',c:[{n:1,t:'⚖️ Arqueo: se sacó "Corregir (ajuste ±)" — todo tiene que estar registrado (sólo reaparece si quedó un número cargado, para ponerlo en 0)'}]},
