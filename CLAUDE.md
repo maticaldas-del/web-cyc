@@ -266,7 +266,7 @@
   vez no se toca; precio que deja poco se decide. `cargosventa:<MLA>:<días>` para el detalle.
 - **La caja de compra orienta, no decide** (12/10). Perdiendo y vendiendo bien no se baja. **Full vale ~19% de precio** contra un
   vendedor sin Full (rango 3-26,6%, medido 18 de 18); Flex compite como Full; contra otro con Full el premio es 0.
-- **Un solo vendedor en ML no vale como precio** (19/10). **Lo que sólo venden desde afuera** se mide contra ellos +20% (16/10).
+- **Un solo vendedor en ML no vale como precio** (19/10). **Los vendedores de afuera cuentan siempre, con su precio +50%** (28/10, él con el Echo Spot: *"incluir ventas internacionales en guay para comparar"*; antes se sacaban si había uno de acá): el precio de ML del de afuera no trae el 21% de IVA que paga el comprador, +50% = ese IVA + ~25% por llegar mañana. Se mide contra el más barato de todos (`ofertasParaMedir`, `RECARGO_INTER`); para "2+ vendedores" cuentan sólo los de acá. Medido con `valeinter` (de 20 de Para probar con uno de afuera más barato, siguen dando 35% 11).
 - **Cuotas Premium:** en algunas categorías `listing_prices` ya trae las cuotas (`enComision`); no contarlas dos veces. Premium sin
   cuotas medidas no se baja ni activa. **Dalí (`MLA1869295911`) queda Premium** (17/10, no volver a proponer).
   **En revisión de ML para siempre, no se miran más** (24/10, él: *"nunca se van a liberar"*): Dalí La Belle `MLA1869295385`, Galaxy A06 `MLA3528837100`,
@@ -527,7 +527,7 @@
 | `gemela` · `gemelacrea:<MLA>=<precio>:go` · `gemelaenvio` · `gemelaenviocrea` · `gemelaalinear` | gemelas Premium y envío gratis |
 | `cupo` · `codigos[:palabra]` · `pasara`/`nomandar:<cuenta>:<palabras>[:go]` | cupo de Full, códigos de etiqueta, reparto por cuenta |
 | `ancla:<cuenta>=<pesos>;go` · `dispo` · `saldoml` · `cargargasto` · `vergastos[:mes]` · `cargosmes` · `cobromes` · `factarca` · `catmono` · `facarca` · `topeh` | plata y ARCA |
-| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` · `techodias` · `franjas[:días][:MLA]` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia? ¿cuánto tarda cada prueba? ¿hay dos franjas buenas?) |
+| `cerebro`/`analizapromo:<días>:<palabras>` · `eventos` · `fechas` · `vistas` · `ventashora` · `efectotecho[:días]` · `techodias` · `franjas[:días][:MLA]` · `valeinter[:py[:N]\|:orden]` | promos, fechas, mediciones (¿las subas 📈 bajan ventas/ganancia? ¿cuánto tarda cada prueba? ¿hay dos franjas buenas?) |
 | `chequeo[:días]` · `alertas[:horas]` · `reglas` · `permisos` · `probarput:<MLA>` | chequeo, avisos, base, permisos de ML |
 | `tgaprobar:<núm>:go` · `tgchats` · `webpush` | Telegram y push |
 | `liquidando[:<MLA>][:go]` · `nomas:<MLA>:go` · `pausar:<busca>[!saca][:go]` | marcas sobre publicaciones |
@@ -561,7 +561,6 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   Correo cargado el 27/10 ($28.000, 11,55 kg; el que retira $90.000 ya estaba): recargo real 10,7%.
 - EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados. (Linternas COB, contador y Sancor: él 27/10 *"no nombrar más"*.)
 - **Almacenamiento** (24/10): ML no da la tarifa por unidad; sale de la factura de septiembre: almacenamiento común $47.735 en las 4 ÷ ~2.640 u. en Full ÷ 30 d ≈ **$0,60 por unidad por día** (cargado con `almactarifa`, chico = grande). El stock antiguo va aparte ($64.155 en sep). Rehacerlo con la factura de octubre (`cargosmes:2026_10`).
-- **Filtro de envíos internacionales** en candidatos: el campo existe (`international_delivery_mode`); escribirlo cuando aparezca uno.
 - **`anotarNetoWeb` no se llama desde ningún lado** (el margen sólo se recalcula de noche): o se enchufa o se borra. (ver HISTORIA)
 - **`enProceso`** (lo recibido-procesando en Full) no lo cuenta nadie al marcar una caja: hoy vale ~0, se mira si aparece una caja grande
   en revisión (`internal_process` en el stock actual).

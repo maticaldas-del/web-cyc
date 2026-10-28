@@ -11558,7 +11558,7 @@ const CAND_FRESCO_MS = 20 * 3600 * 1000;
 // entran al pedido. Un cambio en la fórmula cuenta igual que un campo nuevo, por cuarta vez.
 // QUINTA VEZ, 23/09/2026: el recargo de Paraguay pasó de 15% a 17%. Cambia el costo puesto de
 // TODOS los candidatos, o sea la cuenta: sin subir esto, los que dan se quedaban con el 15%.
-const CAND_CALC_VER = 13;   // 12: 06/10/2026, comisión siempre Clásica (Premium cobraba cuotas 2 veces), IIBB real, envío medido y cuotas vs sin cuotas · 13: 21/10/2026, peor caso (2% de retención de otra provincia, 1.5a)
+const CAND_CALC_VER = 14;   // 12: 06/10/2026, comisión siempre Clásica (Premium cobraba cuotas 2 veces), IIBB real, envío medido y cuotas vs sin cuotas · 13: 21/10/2026, peor caso (2% de retención de otra provincia, 1.5a) · 14: 28/10/2026, los de afuera cuentan siempre con +50% (SEXTA VEZ: un cambio en la fórmula cuenta igual que un campo nuevo)
 //    // 11: 04/10/2026, el robot ve solo si el que hay que igualar da cuotas (Premium o campaña `pcj`)
 // 10: 03/10/2026, se mide al techo de $650.000 si el competidor está más caro
 
@@ -11645,19 +11645,33 @@ function esOfertaDeAfuera(o) {
   return !!m && m !== 'none';
 }
 
-// ── SI SÓLO LO VENDEN DESDE AFUERA: SE MIDE CONTRA ELLOS + 20% (16/10/2026, regla suya) ──────
+// ── SI SÓLO LO VENDEN DESDE AFUERA: SE MIDE CONTRA ELLOS + 20% (16/10/2026, regla suya; la reemplaza la de abajo, 28/10) ──────
 // Él, con el Cabotine de Gres: *"compra internacional no hay que mirar (excepto que no haya otro
 // vendedor) ahí lo que hay que hacer a la compra internacional agregarle un % ya que la gente tiene
 // que esperar 10 días"*. Antes, sin vendedores argentinos el producto quedaba "sin dato" y no se
 // medía. Ahora se mide contra el de afuera con su precio subido `RECARGO_INTER` (20%: lo que vale
 // llegar mañana contra esperar ~10 días; mismo orden que el premio de Full medido, 3-26%).
-// Con aunque sea UN vendedor de acá, los de afuera se siguen sacando enteros, como antes.
-const RECARGO_INTER = 0.20;
+// ── DESDE EL 28/10/2026 LOS DE AFUERA CUENTAN SIEMPRE, CON +50% (27/10 a la noche, él con el Echo Spot: "incluir ventas
+// internacionales en guay para comparar… algo que internacional esté 150.000 quizás nosotros vendiendo a 200.000 en full lo vendemos
+// igual, no lo sé bien qué % de diferencia puede haber"). Hasta acá, con UN vendedor de acá los de afuera se sacaban enteros: el Echo
+// Spot daba 132% contra uno solo de acá a $482.599 sin Full, con el de afuera a $132.949. Medido con `valeinter` (28/10): de 250 de
+// Para probar que daban 35%+, 22 tenían uno de afuera más barato que el de acá (el Adidas Dynamic Pulse: el de acá a $209.999 y el de
+// afuera a $14.946, daba 336% y da −9%); en 5 de los 11 catálogos nuestros con uno de afuera la caja la gana el de afuera; y donde hay
+// varios vendedores de acá, están ~50% arriba del de afuera (Issey Miyake 14 vendedores +56%, Blackview R30 6 +42%, Bogart 4 +51%).
+// El precio que muestra ML del de afuera NO trae el 21% de IVA que paga el comprador (régimen puerta a puerta, hasta US$400): +50% =
+// ese 21% + ~25% por llegar mañana y sin trámite (lo que vale Full contra el que no lo tiene, 3-26,6%). Se mide contra el más barato de
+// TODOS: los de acá y los de afuera con su +50% (`_afuera` = su precio de ML). Para el "2+ vendedores" cuentan sólo los de acá
+// (`nVend`), salvo que sólo lo vendan los de afuera, como antes.
+const RECARGO_INTER = 0.50;
+// La categoría para la comisión: la de uno de acá si hay (la nuestra iría ahí); la del de afuera sólo si no hay otra.
+function catDeOfertas(ofs, ref) { return (ref && ref._afuera && ((ofs || []).find((o) => o && !o._afuera && o.category_id) || {}).category_id) || (ref && ref.category_id) || null; }
 function ofertasParaMedir(ofertas) {
   const afuera = (ofertas || []).filter(esOfertaDeAfuera);
   const aca = (ofertas || []).filter((o) => !esOfertaDeAfuera(o));
-  if (aca.length || !afuera.length) return { ofs: aca, afuera: afuera.length, soloAfuera: false };
-  return { ofs: afuera.map((o) => ({ ...o, price: Math.round((Number(o.price) || 0) * (1 + RECARGO_INTER)) })), afuera: afuera.length, soloAfuera: true };
+  const sube = (x) => (Number(x) > 0 ? Math.round(Number(x) * (1 + RECARGO_INTER)) : x);
+  const sub = afuera.map((o) => ({ ...o, price: sube(o.price), original_price: sube(o.original_price), _afuera: Number(o.price) || 0 }));
+  const soloAfuera = !aca.length && afuera.length > 0;
+  return { ofs: aca.concat(sub), afuera: afuera.length, aca: aca.length, nVend: soloAfuera ? afuera.length : aca.length, soloAfuera };
 }
 
 // ── FULL, FLEX Y CONTRA QUÉ PRECIO SE MIDE DE VERDAD (22/09/2026) ──────────────────────────
@@ -12417,7 +12431,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       if (!okB.length) { upd.sc = 1; upd.mt = resB[0] ? String(resB[0].name || '').slice(0, 120) : ''; upd.m = null; res.sinCat++;
         console.log(`  · sin catálogo exacto · ${e.n.slice(0, 60)}${resB[0] ? ` (lo más parecido: "${upd.mt.slice(0, 60)}" · ${duros(chequeoMismoProducto(e.n, upd.mt)).join(' · ').slice(0, 90)})` : ' (ML no trajo nada)'}`);
         if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
-      let prod = null, rpBlando = null, ofertas = [], pi = null, piAfuera = false;
+      let prod = null, rpBlando = null, ofertas = [], pi = null, piAfuera = false, nVend = 0;
       // CATÁLOGO PADRE SIN VENDEDORES (24/10/2026, él: "hay catálogos que nadie tiene stock"; medido con `catvacio`: el Xiaomi Sound
       // Outdoor daba "nadie lo vende" porque se miraba el catálogo PADRE, que agrupa los colores y nunca tiene vendedores, y sus hijos
       // tenían 18 y 13). Si un catálogo no tiene vendedores y tiene hijos, se prueban los hijos que pasan el chequeo de mismo producto
@@ -12425,19 +12439,18 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const _vis = okB.slice(0, 5), _hijosVistos = new Set(_vis.map(([x]) => String(x.id).toUpperCase()));
       for (let _iv = 0; _iv < _vis.length && _iv < 14; _iv++) { const [r, rr] = _vis[_iv];
         let ofs = [];
-        // LOS DE AFUERA, CON LA MISMA REGLA QUE `candidatos` (20/10/2026 · etapa 3). Acá se sacaban siempre, y si TODOS eran
-        // del exterior quedaba "en ML no lo vende nadie" y nunca pasaba a Para probar. Regla suya del 16/10: con algún vendedor
-        // de acá se sacan; si sólo lo venden de afuera, se mide contra ellos + 20% (`ofertasParaMedir`, la misma función).
-        let _soloAfuera = false;
-        try { await espera(250); const it = await mlGetR(`/products/${r.id}/items`); const _om = ofertasParaMedir((it && it.results) || []); ofs = _om.ofs; _soloAfuera = _om.soloAfuera; }
+        // LOS DE AFUERA, CON LA MISMA REGLA QUE `candidatos` (20/10/2026 · etapa 3; desde el 28/10 cuentan siempre, con +50%:
+        // `ofertasParaMedir`, la misma función). Para los "2+ vendedores" cuentan sólo los de acá (`_nV`), salvo que sólo lo vendan ellos.
+        let _soloAfuera = false, _nV = 0, _nA = 0;
+        try { await espera(250); const it = await mlGetR(`/products/${r.id}/items`); const _om = ofertasParaMedir((it && it.results) || []); ofs = _om.ofs; _soloAfuera = _om.soloAfuera; _nV = _om.nVend; _nA = _om.afuera; }
         catch (e2) { if (!/404/.test(String(e2.message || e2))) throw e2; ofs = []; }
         let p2 = precioAIgualar(ofs);
         // 🔤 ¿TIENE SENTIDO? (27/10/2026): un catálogo que se vende a más de 8 veces lo que cuesta en la lista es otro producto (el
         // Pincel Kolinsky de $19.153 contra un pincel de $1.604, el Otowil x6 sobres contra uno suelto). Se prueba el siguiente.
         if (esLista && !_fijo && p2 && p2.precio > 0 && Number(e.p) > 0 && p2.precio > 8 * Number(e.p)) { if (prueba) console.log(`      descarto ${r.id}: se vende a ${money(p2.precio)}, más de 8 veces lo que cuesta (${money(Number(e.p))})`); p2 = null; ofs = []; continue; }
-        if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${ofs.length} vendedor(es)${_soloAfuera ? ' (sólo de afuera: +' + Math.round(RECARGO_INTER * 100) + '%)' : ''}${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
+        if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${_soloAfuera ? _nA + ' vendedor(es), todos de afuera' : _nV + ' vendedor(es) de acá' + (_nA ? ' y ' + _nA + ' de afuera' : '')}${_nA ? ' (los de afuera +' + Math.round(RECARGO_INTER * 100) + '%)' : ''}${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
         if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
-        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = _soloAfuera; break; }
+        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = !!(p2.ref && p2.ref._afuera); nVend = _nV; break; }
         if (!ofs.length) {
           try { const full = (Array.isArray(r.children_ids) && r.children_ids.length) || r._leido ? r : await mlGetR(`/products/${r.id}`); let pos = _iv + 1;   // la búsqueda no trae los hijos: se pide el catálogo entero
             for (const h of ((full && full.children_ids) || []).slice(0, 8)) { const H = String(h).toUpperCase();
@@ -12457,17 +12470,17 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       { const pic = Array.isArray(prod.pictures) && prod.pictures[0]; const u = String((pic && (pic.secure_url || pic.url)) || '').replace(/^http:\/\//, 'https://');
         let h = ''; try { h = new URL(u).hostname.toLowerCase(); } catch { h = ''; } upd.mf = (h === 'mlstatic.com' || h.endsWith('.mlstatic.com')) ? u : null; }
       // 🌟 SIN COMPETENCIA (24/10/2026, 2a): sin vendedores en el catálogo pero con el precio que vio el chat en ML (`svp`).
-      if (!pi && svpVigente(e)) { try { const ofv = await ofertaVista(Number(e.svp), nB, mlGetR); if (ofv.length) { ofertas = ofv; pi = precioAIgualar(ofv); piAfuera = false; } } catch { /* sin categoría: queda sin vendedores */ } }
+      if (!pi && svpVigente(e)) { try { const ofv = await ofertaVista(Number(e.svp), nB, mlGetR); if (ofv.length) { ofertas = ofv; pi = precioAIgualar(ofv); piAfuera = false; nVend = 0; } } catch { /* sin categoría: queda sin vendedores */ } }
       if (!pi) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
-      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas[0] && ofertas[0]._vista ? 0 : ofertas.length; upd.svm = ofertas[0] && ofertas[0]._vista ? 1 : null; upd.afu = piAfuera ? 1 : null;   // 1 = medido contra los de afuera +20%
+      upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas[0] && ofertas[0]._vista ? 0 : nVend; upd.svm = ofertas[0] && ofertas[0]._vista ? 1 : null; upd.afu = piAfuera ? 1 : null;   // 1 = el más barato es uno de afuera: medido contra él +50% (28/10)
       upd.pp = pi.promoPct || null;   // 6.D5: el más barato está en promo (−N%): su precio puede volver a subir
       const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
       const puesto = esLista ? Math.round(Number(e.p) * (1 + (Number(opts.rec) || 0) / 100) / tc * 100) / 100 : Math.round(e.u * RECARGO_PAR * 100) / 100;
       const cn = cuentaNuevoDe({ nombre: e.n, mlTit: upd.mt });
-      const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), pi.ref.category_id, puesto, tc, monoP, feeAt, cuoPct, cn);
+      const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), catDeOfertas(ofertas, pi.ref), puesto, tc, monoP, feeAt, cuoPct, cn);
       if (!r) { res.err++; continue; }
       upd.m = Math.round(r.margen * 10) / 10; upd.cv = CAND_CALC_VER; res.medidos++;
-      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 sólo lo venden de afuera: medido contra ellos +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.pp ? ' · 🏷️ el más barato está en promo −' + upd.pp + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
+      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 el más barato es de afuera (' + money(Math.round(pi.ref._afuera)) + ' en ML, sin el IVA del comprador): medido contra él +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.pp ? ' · 🏷️ el más barato está en promo −' + upd.pp + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
       // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
@@ -12893,11 +12906,13 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // internacional a $31.093 y el más barato argentino está a $37.999.**
       // Si TODOS son de afuera no se inventa un precio: se dice y el producto no se mide, que es
       // lo mismo que se hace cuando el catálogo no tiene vendedores.
+      // DESDE EL 28/10/2026 CUENTAN SIEMPRE, CON +50% (`ofertasParaMedir`, ver ahí: el Echo Spot daba 132% contra uno solo de acá
+      // con el de afuera a menos de la mitad). Para los "2+ vendedores" cuentan sólo los de acá (`nVend`).
       const _om = ofertasParaMedir(ofertas);
-      if (_om.soloAfuera) console.log(`      → los ${ofertas.length} vendedores son del exterior: mido contra ellos con +${Math.round(RECARGO_INTER * 100)}% (el comprador espera ~10 días)`);
-      else if (_om.afuera) console.log(`      (saco ${_om.afuera} vendedor(es) del exterior: no es contra ésos que competimos)`);
+      if (_om.soloAfuera) console.log(`      → los ${ofertas.length} vendedores son del exterior: mido contra ellos con +${Math.round(RECARGO_INTER * 100)}% (21% de IVA que paga el comprador + llegar mañana)`);
+      else if (_om.afuera) console.log(`      (${_om.afuera} vendedor(es) del exterior: cuentan con su precio +${Math.round(RECARGO_INTER * 100)}% — 21% de IVA que paga el comprador + llegar mañana)`);
       ofertas = _om.ofs;
-      vendedores = ofertas.length;
+      vendedores = _om.nVend;
       if (ofertas[0] && ofertas[0]._vista) vendedores = 0;   // 🌟 sin competencia: el precio es el visto, no hay vendedores
       // EL PRECIO DE REFERENCIA ES EL MÁS BARATO **CON FULL**, no el más barato a secas
       // (22/09/2026 · ver `precioAIgualar`). Uno que manda a mano no obliga a igualarle el precio:
@@ -12908,7 +12923,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       _pi = precioAIgualar(ofertas);
       mlPrecio = _pi ? _pi.precio : 0;
       const ref = _pi ? _pi.ref : ofertas[0];
-      cat = ref && ref.category_id ? ref.category_id : null;
+      cat = catDeOfertas(ofertas, ref);
+      if (ref && ref._afuera) console.log(`      🌎 el más barato es de afuera: ${money(Math.round(ref._afuera))} en ML → mido contra ${money(Math.round(mlPrecio))} (+${Math.round(RECARGO_INTER * 100)}%)`);
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
       if (!cuoN) { const ca = cuotasDeOferta(ref); if (ca) { cuoAuto = ca; cuoPct = cuoPctDe(ca);
         console.log(`      💳 el que hay que igualar da cuotas sin interés (${ref.listing_type_id === 'gold_pro' ? 'es Premium' : 'campaña de cuotas de ML'}): cuento ${ca} cuotas = ${cuoPct}% del precio`); } }
@@ -12932,7 +12948,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       // Las VENTAS, en una sola consulta para todos los vendedores de esta ficha (ver arriba).
       // Si ML no contesta, quedan en null y la pantalla dice que no las sabe: un CERO acá se
       // leería como "no vende nada" y es la diferencia entre descartar un producto y no medirlo.
-      const idsOfertas = ofertas.map((o) => String(o.item_id || "")).filter((x) => /^MLA\d+$/.test(x));
+      const idsOfertas = ofertas.filter((o) => !o._afuera).map((o) => String(o.item_id || "")).filter((x) => /^MLA\d+$/.test(x));   // las ventas, sólo de los de acá (28/10: los de afuera ahora están en la lista)
       if (idsOfertas.length) {
         const ventasPorId = {};
         // EL CATCH VACÍO QUE HABÍA ACÁ ES EL ERROR ANOTADO SEIS VECES EN CLAUDE.md (19/09/2026).
@@ -13033,11 +13049,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       const iguales = [...vistos].filter(([, t]) => _esGemelo(c.nombre, mlTit, t));
       for (const [gid, gtit] of iguales.slice(0, 3)) {
         let ofG = [];
-        try { consultas++; const itG = await mlGet(`/products/${gid}/items`, tok); ofG = ((itG && itG.results) || []).filter((o) => !esOfertaDeAfuera(o)); } catch { ofG = []; }
+        try { consultas++; const itG = await mlGet(`/products/${gid}/items`, tok); ofG = ofertasParaMedir((itG && itG.results) || []).ofs; } catch { ofG = []; }
         if (!ofG.length) continue;
         const piG = precioAIgualar(ofG);
         if (!piG || !(piG.precio > 0) || piG.precio >= mlPrecio * 0.97) continue;
-        if (!gemelo || piG.precio < gemelo.precio) gemelo = { id: gid, tit: gtit.slice(0, 120), precio: Math.round(piG.precio), vend: ofG.length };
+        if (!gemelo || piG.precio < gemelo.precio) gemelo = { id: gid, tit: gtit.slice(0, 120), precio: Math.round(piG.precio), vend: ofG.filter((o) => !o._afuera).length };
       }
       if (vistos.size) console.log(`      (otros catálogos parecidos: ${vistos.size} · del mismo producto: ${iguales.length})`);
       // SÓLO AVISA, NO CAMBIA EL MARGEN: decidir que dos catálogos son el mismo por el título es el
@@ -13072,9 +13088,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
             for (const h of ((pp && pp.children_ids) || []).map((x) => String(x).toUpperCase()).filter((x) => x !== prodIdOC).slice(0, 10)) {
               let nomH = '', ofH = [];
               try { consultas++; const ph = await mlGet(`/products/${h}`, tok); nomH = String((ph && (ph.name || ph.title)) || '').slice(0, 80); } catch { /* sin nombre: va el código */ }
-              try { consultas++; const ih = await mlGet(`/products/${h}/items`, tok); ofH = ((ih && ih.results) || []).filter((o) => !esOfertaDeAfuera(o)); } catch { ofH = []; }
+              try { consultas++; const ih = await mlGet(`/products/${h}/items`, tok); ofH = ofertasParaMedir((ih && ih.results) || []).ofs; } catch { ofH = []; }
               const piH = ofH.length ? precioAIgualar(ofH) : null;
-              otrosColores.push({ id: h, nom: nomH || h, precio: piH && piH.precio > 0 ? Math.round(piH.precio) : null, vend: ofH.length, full: piH ? !!piH.hayFull : false });
+              otrosColores.push({ id: h, nom: nomH || h, precio: piH && piH.precio > 0 ? Math.round(piH.precio) : null, vend: ofH.filter((o) => !o._afuera).length, full: piH ? !!piH.hayFull : false });
             }
             otrosColores.sort((a, b) => (a.precio || 9e12) - (b.precio || 9e12));
             const bar = otrosColores.find((x) => x.precio > 0);
@@ -23866,7 +23882,7 @@ async function main() {
         const _omR = ofertasParaMedir(ofertas);
         const afuera = ofertas.filter(esOfertaDeAfuera);
         const aca = _omR.ofs;
-        if (_omR.soloAfuera) { reparos.push(`sólo lo venden desde el exterior: medido contra ellos +${Math.round(RECARGO_INTER * 100)}%`); console.log(`  🏷️ ⚠️ los ${ofertas.length} vendedores son del EXTERIOR: mido contra su precio +${Math.round(RECARGO_INTER * 100)}% (el comprador espera ~10 días).`); }
+        if (_omR.soloAfuera) { reparos.push(`sólo lo venden desde el exterior: medido contra ellos +${Math.round(RECARGO_INTER * 100)}%`); console.log(`  🏷️ ⚠️ los ${ofertas.length} vendedores son del EXTERIOR: mido contra su precio +${Math.round(RECARGO_INTER * 100)}% (21% de IVA que paga el comprador + llegar mañana).`); }
         // CONTRA QUIÉN SE MIDE: la MISMA función que usa el comando que decide la compra
         // (`precioAIgualar`). Con dos copias, el que revisa diría "está todo bien" midiendo contra
         // otro precio que el que decidió — que es todo el motivo por el que este comando existe.
@@ -23874,7 +23890,9 @@ async function main() {
         const mlPrecio = _piR ? _piR.precio : 0;
         const mlMax = _piR ? Math.round(_piR.max) : 0;
         const ref = _piR ? _piR.ref : aca[0];
-        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(_piR ? _piR.baratoTodos : mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${_omR.soloAfuera ? `${aca.length} vendedor(es), todos del exterior (precio +${Math.round(RECARGO_INTER * 100)}%)` : `${aca.length} vendedor(es) argentino(s)${afuera.length ? ` (saqué ${afuera.length} del exterior)` : ''}`}`);
+        console.log(`  🏷️ hoy en ML: ${mlMax > mlPrecio ? `de ${money(Math.round(_piR ? _piR.baratoTodos : mlPrecio))} a ${money(mlMax)}` : money(Math.round(mlPrecio))} · ${_omR.soloAfuera ? `${aca.length} vendedor(es), todos del exterior (precio +${Math.round(RECARGO_INTER * 100)}%)` : `${_omR.aca} vendedor(es) argentino(s)${afuera.length ? ` y ${afuera.length} del exterior (con su precio +${Math.round(RECARGO_INTER * 100)}%)` : ''}`}`);
+        // 🌎 28/10/2026: si el que pone el precio es uno de afuera, se dice (antes se sacaban y el margen salía contra el de acá, más caro).
+        if (ref && ref._afuera && !_omR.soloAfuera) { reparos.push(`el más barato es del exterior (${money(Math.round(ref._afuera))} en ML): medido contra él +${Math.round(RECARGO_INTER * 100)}%`); console.log(`     🌎 el más barato es del EXTERIOR: ${money(Math.round(ref._afuera))} en ML (sin el 21% de IVA que paga el comprador) → mido contra ${money(Math.round(mlPrecio))}.`); }
         console.log(`     cómo despachan: con Full ${_piR ? _piR.conFull : '?'}${_piR && _piR.conFlex ? ` · con Flex ${_piR.conFlex}` : ''} · a mano ${_piR ? _piR.sinFull - (_piR.conFlex || 0) : '?'}`);
         if (_piR && _piR.premioPct > 0) {
           reparos.push(`el más barato (${money(Math.round(_piR.baratoSinFull))}) no tiene Full: se mide contra ${money(Math.round(mlPrecio))}`);
@@ -23886,7 +23904,7 @@ async function main() {
         } else {
           console.log(`     el más barato con Full es la publicación ${ref && ref.item_id ? ref.item_id : '?'} — ése es el precio que tenés que igualar`);
         }
-        if (!_omR.soloAfuera && afuera.length && afuera.length >= aca.length) console.log('     ⚠️ hay tantos o más vendedores de afuera que argentinos: es un catálogo que manejan de afuera.');
+        if (!_omR.soloAfuera && afuera.length && afuera.length >= _omR.aca) console.log('     ⚠️ hay tantos o más vendedores de afuera que argentinos: es un catálogo que manejan de afuera.');
 
         // 5 · LAS VENTAS. Las carga el chat: ML contesta 403 de publicaciones ajenas (probado).
         // ── LAS VENTAS: +100 PARA EL PEDIDO DE HOY (19/09/2026) ──────────────────────
@@ -23910,7 +23928,7 @@ async function main() {
         // Misma cuenta que `candidatos`: Clásica, cuotas del que hay que igualar (o del chat), IIBB de la
         // cuenta donde iría y la mejor de las dos formas de pelear (06/10/2026).
         const _cuoR = Number(c.cuotasGan) >= 3 ? ({ 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 })[[3, 6, 9, 12].find((k) => Number(c.cuotasGan) <= k) || 12] : (CUOTAS_PCT_ML[cuotasDeOferta(ref)] || 0);
-        const r = await cuentaCandidatoMejor(Math.min(mlPrecio, TECHO_DURO), ref && ref.category_id, puesto, tc, monoP, feeAt, _cuoR, cuentaNuevoDe(c));   // techo $650.000 (03/10)
+        const r = await cuentaCandidatoMejor(Math.min(mlPrecio, TECHO_DURO), catDeOfertas(aca, ref), puesto, tc, monoP, feeAt, _cuoR, cuentaNuevoDe(c));   // techo $650.000 (03/10)
         if (!r) {
           frenos.push('ML no contestó la comisión a ese precio');
           console.log('  🧮 ❌ ML no me dijo cuánto cobra de comisión a ese precio. Sin eso no hay margen.');
@@ -26358,7 +26376,8 @@ async function main() {
       const _barato = _piG.precio;
       const _ofBarata = _piG.ref;
       console.log(`\n── A CUÁNTO SE VENDE HOY ──`);
-      console.log(_omG.soloAfuera ? `   ${_acaG.length} vendedor(es), todos del exterior (con +${Math.round(RECARGO_INTER * 100)}%)` : `   ${_acaG.length} vendedor(es) argentino(s)${_afueraG.length ? ` (y ${_afueraG.length} del exterior, que no cuentan)` : ''}`);
+      console.log(_omG.soloAfuera ? `   ${_acaG.length} vendedor(es), todos del exterior (con +${Math.round(RECARGO_INTER * 100)}%)` : `   ${_omG.aca} vendedor(es) argentino(s)${_afueraG.length ? ` y ${_afueraG.length} del exterior (cuentan con su precio +${Math.round(RECARGO_INTER * 100)}%: 21% de IVA que paga el comprador + llegar mañana)` : ''}`);
+      if (_ofBarata && _ofBarata._afuera) console.log(`   🌎 el más barato es del EXTERIOR: ${money(Math.round(_ofBarata._afuera))} en ML → se mide contra ${money(_barato)}`);
       console.log(`   del más barato ${money(_baratoTodos)} al más caro ${money(_caro)}`);
       console.log(`   con Full: ${_conFull.length}${_conFull.length ? ` · el más barato ${money(_baratoFull)}` : ''}`);
       console.log(`   sin Full: ${_sinFull.length}${_sinFull.length ? ` · el más barato ${money(Math.min.apply(null, _sinFull.map((o) => Number(o.price) || Infinity)))}` : ''}`);
@@ -26378,7 +26397,7 @@ async function main() {
       }
       // 3) la cuenta, con la comisión que ML cobra a ESE precio
       const _ltG = 'gold_special';   // nosotros vendemos en Clásica (06/10: la Premium traía las cuotas adentro)
-      const _catG = _ofBarata.category_id || prodG.category_id;
+      const _catG = catDeOfertas(_acaG, _ofBarata) || prodG.category_id;
       if (!_catG) { console.log('\n❌ ML no dice la categoría de esa publicación, así que no puedo pedirle la comisión.'); return; }
       // `cuentaCandidato` espera el costo en dólares por un tipo de cambio. Acá el costo YA viene
       // en pesos, así que se pasa con tc=1: no es un atajo, es la misma cuenta con las unidades
