@@ -39788,6 +39788,22 @@ async function main() {
       const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...partesP] = resto.split('|');
       // CUÁNTO NOS COSTÓ UNA DEUDA (28/10/2026, él con la Notebook Tati: "costo 330 dolares"): `=costo <N>[usd]` → `costo` en pesos (con usd,
       // al dólar del Arqueo). Es el mismo campo que "Cuánto nos costó" del ✏️ de la web; la ganancia la calcula la web (monto − costo).
+      // NOMBRE Y "QUÉ SE LLEVÓ" (28/10/2026, él: "cambiale el nombre. ponele Mari y adentro del detalle qué se llevó… así con todos"):
+      // `=nombre <texto>` cambia `nom` · `=det <texto>` cambia `det` (lo que se ve como "🛍️ se llevó: …"; `=det -` lo borra).
+      const mnd = String(resto).trim().match(/^(nombre|det)\s+(.+)$/i);
+      if (mnd) {
+        let cand1 = lista.filter(([id]) => id === quien);
+        if (!cand1.length) { const pal = _n(quien).split(' ').filter(Boolean); cand1 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
+        const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
+        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${d[campo] || '—'} → ${val || '—'}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
+        const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
+        console.log((rv || null) === val ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        return;
+      }
       const mc = String(resto).trim().match(/^costo\s*\$?\s*([\d.,]+)\s*(usd|us\$|u\$s|dolares|dólares)?$/i);
       if (mc) {
         let cand0 = lista.filter(([id]) => id === quien);
