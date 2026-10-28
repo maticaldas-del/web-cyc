@@ -123,8 +123,6 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
 
 ## 1 · CADA VUELTA, EN ESTE ORDEN
 
-> **⚠️ Los textos de las tareas programadas quedaron viejos (28/10):** la corta dice "techo con salto +30%", la completa "25% objetivo" y no nombra `vendiocaro`, el timbre dice que bajando "se decide si la escalera se frena". **Manda esto:** techo +50% con cada venta · bajando, en el primer escalón que vende se queda (F14) · 35% en el peor caso · en la completa `vendiocaro` tiene que quedar vacía. (Los prompts sólo se cambian desde la sesión de las vueltas: si leés esto ahí, actualizalos con `update_trigger` y borrá este aviso.)
-
 **Cortas (10:52 a 20:52, cada 2 h):**
 1. Leer este archivo y `notas/preguntas.md`.
 2. Lecturas en UNA ml-consulta (uno por renglón): `autoriza` · `planilla` · `escasez` · `raros` · `lupa` · `ventasraras:5` · `pausadas:25` · `analizapromo:7` · `preguntas`.
