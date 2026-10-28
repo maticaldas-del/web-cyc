@@ -1212,7 +1212,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
          comparar vaya adentro de finanzas". Quedan dos solapas; Inventario y Comparar son desplegables adentro. -->
     <button class="tab active" onclick="goTab('arqueo',this)">Finanzas</button>
     <button class="tab" onclick="goTab('productos',this)">Productos</button>
-    <button class="tab" id="tab-btn-deudas" onclick="goTab('deudas',this)">Ver deudas</button>
+    <button class="tab" id="tab-btn-deudas" style="display:none" onclick="goTab('deudas',this)">Ver deudas</button>
   </div>
 
   <!-- ARQUEO -->
@@ -3183,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.69';
+const APP_VERSION='27.70';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3196,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.70',f:'28/10',h:'19:30',c:[{n:1,t:'📥 Las deudas se ven directo al tocar "Lo que nos deben" (ya no hay pestaña aparte)'}]},
   {v:'27.69',f:'28/10',h:'19:20',c:[{n:1,t:'💰 Finanzas: las tarjetas quedan fijas arriba; la abierta se marca en celeste y su detalle se abre abajo, a lo ancho'}]},
   {v:'27.68',f:'28/10',h:'19:10',c:[{n:1,t:'💰 Finanzas: se sacó "Buscar producto"'}]},
   {v:'27.67',f:'28/10',h:'19:05',c:[{n:2,t:'💰 Finanzas: las 4 tarjetas muestran sólo el número y cuánto cambió; tocás una y se abre ahí mismo, a lo ancho, con sus casillas adentro para cargar (sin bajar). "Se libera de ML" va adentro de Efectivo & Digital'}]},
@@ -7123,9 +7124,11 @@ async function cuotaMovBorrar(id,k){
   renderCuotas();cuotasSync();log(`${d.nom}: borré un movimiento de ${_pesos(mv.m)}`).catch(()=>{});
 }
 // 📋 Ver deudas de la tarjeta abre la solapa Ver deudas del Arqueo (28/10/2026).
-function cuotasPanel(){const b=document.getElementById('tab-btn-deudas');if(b)goTab('deudas',b);
-  // Lleva a la lista, no al principio de la página (28/10/2026, él: "me lleva al inicio, no a las deudas… tengo que scrolear").
-  const t=b&&b.closest('.tabs');setTimeout(()=>{(t||document.getElementById('tab-deudas'))?.scrollIntoView({behavior:'smooth',block:'start'});},30);}
+// LAS DEUDAS VIVEN EN "LO QUE NOS DEBEN" (28/10/2026, él: "ver deudas quiero que esté al desplegar lo que nos deben. directo que se
+// muestren las filas"): abre Finanzas con esa tarjeta desplegada y baja hasta la lista.
+function cuotasPanel(){const b=[...document.querySelectorAll('#page-inventario .tab')].find(x=>(x.getAttribute('onclick')||'').includes("'arqueo'"));if(b)goTab('arqueo',b);
+  window._arqAbierta='deben';arqPintarAbierta();
+  setTimeout(()=>{document.getElementById('arq-panel')?.scrollIntoView({behavior:'smooth',block:'start'});},30);}
 function cuotasVerCampos(){const c=document.getElementById('cq_concuotas').checked;document.getElementById('cq_costobox').style.display=document.getElementById('cq_singan').checked?'none':'';document.getElementById('cq_cuotasbox').style.display=c?'':'none';document.getElementById('cq_vence_lbl').textContent=c?'Primera cuota vence el':'Tiene que pagar el (opcional)';}
 function _cuotasLlenar(d){const g=i=>document.getElementById(i);g('cq_id').value=d?d.id:'';g('cq_titulo').textContent=d?'✏️ Editar deuda':'➕ Deuda nueva';
   g('cq_nom').value=d?d.nom:'';g('cq_det').value=d&&d.det?d.det:'';g('cq_monto').value=d?Math.round(d.monto):'';g('cq_costo').value=d&&Number(d.costo)>0?Math.round(d.costo):'';
@@ -10532,6 +10535,11 @@ function arqPintarAbierta(){const a=window._arqAbierta||null;{const pan=document
     const pan=document.getElementById('arq-panel');
     if(pan){document.querySelectorAll(`[data-arqx="${k}"]`).forEach(x=>{if(x.parentNode!==pan)pan.appendChild(x);});if(sec&&sec.parentNode!==pan)pan.appendChild(sec);}
     // "Se libera de ML" va adentro de Efectivo & Digital (28/10/2026, él: "esto, dentro de efectivo digital"), al final de sus casillas.
+    if(k==='deben'){const cp=document.getElementById('cuotas-panel'),x=document.querySelector('[data-arqx="deben"]');
+      if(cp&&x&&cp.parentNode!==x){cp.style.margin='0';cp.style.border='0';cp.style.padding='0';cp.style.background='transparent';x.appendChild(cp);
+        ['cuotas-resumen','cuotas-btn'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});}
+      // Sólo al abrirla (no en cada repintada: cuotasSync puede volver a llamar a updateArqueo).
+      if(on&&!window._arqDebenYa){window._arqDebenYa=true;try{renderCuotas();cuotasSync();}catch(e){console.warn(e);}}else if(!on)window._arqDebenYa=false;}
     if(k==='efectivo'&&sec){const ag=document.getElementById('arqueo-agenda');if(ag&&ag.parentNode!==sec){ag.style.margin='12px 0 0';sec.appendChild(ag);}}
     if(sec)sec.classList.toggle('arq-on',on);document.querySelectorAll(`[data-arqx="${k}"]`).forEach(x=>x.classList.toggle('arq-on',on));
     document.querySelectorAll(`[data-arq="${k}"]`).forEach(c=>c.classList.toggle('arq-on',on));document.querySelectorAll(`[data-arqf="${k}"]`).forEach(f=>f.textContent=on?'▾':'▸');});
@@ -15195,7 +15203,7 @@ function renderVPRanking(){
 // Al entrar a Pedidos: SIEMPRE arrancar en la sección BS AS (antes arrancaba en "Prioridad" mezclado).
 // Desde Inicio, directo a una solapa de Pedidos (24/10/2026).
 function homeArqIr(t){
-  goPage('inventario');
+  goPage('inventario');if(t==='deudas'){cuotasPanel();return;}
   const b=[...document.querySelectorAll('#page-inventario .tab')].find(x=>(x.getAttribute('onclick')||'').includes("'"+t+"'"));
   if(b)goTab(t,b);
 }
