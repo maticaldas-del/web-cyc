@@ -1564,6 +1564,7 @@ porque la foto no podía pasar por el repo ni el registro (públicos). Ahora via
 privada en `mlapi/ticketllave`, nunca en el repo); yo cierro cada foto con la pública (AES-256-GCM + RSA-OAEP 3072) en
 `ml-sync/cifrado/<pedido>/*.enc` y `ticketsube:<pedido>;go` (ml-sync) la abre y la sube igual que el 📷 de la web
 (`mlapi/pyticketfoto/<id>/<ts>`, con huella `h` para no subirla dos veces) y anota `ticketFoto`. El registro sólo dice tamaños.
+- **La herramienta para cerrarla es `ml-sync/tools/cerrarticket.mjs`** (28/10/2026: con `tools/cifrar.mjs`, la de los comprobantes, `ticketsube` no la abría; la foto va como JPEG de menos de 1 MB).
 - **Qué chequear:** que la foto se vea en el detalle del pedido; que `ml-sync/cifrado` siga fuera de la web (`.assetsignore` tiene `ml-sync`);
   que nunca se imprima `priv` ni la imagen.
 
