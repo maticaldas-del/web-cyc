@@ -1259,28 +1259,39 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div style="font-size:.6rem;color:var(--muted);opacity:.7;margin-top:6px">El stock total es la suma de estos:</div>
 
         <div style="border-top:1px solid var(--border2);margin:9px 0 8px"></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-          <span class="bk-lbl" style="margin:0">🏠 En la oficina</span>
-          <span class="bk-val neutral" id="bk_stock_local" style="font-size:.78rem">$0</span>
+        <!-- 29/10/2026 (él: "esto es detalle. que vaya adentro de oficina local o oficina ml… que se abra al clickearlo. en la oficina hay
+             mercadería que se vendió/hubo en ML y mercadería que nunca estuvo en full"): la oficina se parte en dos, cada una con su detalle
+             que se abre al tocarla. Oficina ML = lo que tiene o tuvo publicación; Oficina Local = la Oficina CYC + lo que nunca estuvo en ML. -->
+        <span id="bk_stock_local" style="display:none">$0</span>
+        <div onclick="event.stopPropagation();arqDet('ofiml')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">🏠 Oficina ML <span data-arqdet="ofiml" style="opacity:.6">▸</span></span>
+          <span class="bk-val neutral" id="bk_ofi_ml" style="font-size:.78rem">$0</span>
         </div>
+        <div id="det_ofiml" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
+        <div style="border-top:1px solid var(--border);margin:8px 0"></div>
+        <div onclick="event.stopPropagation();arqDet('ofiloc')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">🏪 Oficina Local <span data-arqdet="ofiloc" style="opacity:.6">▸</span></span>
+          <span class="bk-val neutral" id="bk_ofi_local" style="font-size:.78rem">$0</span>
+        </div>
+        <div id="det_ofiloc" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
         <div id="dbk_stock_local" style="margin-top:3px"></div>
 
         <div id="bk_camino_wrap" style="display:none">
           <div style="border-top:1px solid var(--border);margin:8px 0"></div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-            <span class="bk-lbl" style="margin:0">🚚 En camino a Full</span>
+          <div onclick="event.stopPropagation();arqDet('camino')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <span class="bk-lbl" style="margin:0">🚚 En camino a Full <span data-arqdet="camino" style="opacity:.6">▸</span></span>
             <span class="bk-val neutral" id="bk_stock_camino" style="font-size:.78rem">$0</span>
           </div>
-          <div id="dbk_stock_camino" style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
+          <div id="det_camino" style="display:none"><div id="dbk_stock_camino" style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div></div>
         </div>
 
         <div style="border-top:1px solid var(--border);margin:8px 0"></div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-          <span class="bk-lbl" style="margin:0">📦 En ML (Full)</span>
+        <div onclick="event.stopPropagation();arqDet('ml')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <span class="bk-lbl" style="margin:0">📦 En ML (Full) <span data-arqdet="ml" style="opacity:.6">▸</span></span>
           <span class="bk-val neutral" id="bk_stock_ml" style="font-size:.78rem">$0</span>
         </div>
         <div id="dbk_stock_ml" style="margin-top:3px"></div>
-        <div id="bk_stock_ml_ctas" style="margin-top:7px"></div>
+        <div id="det_ml" style="display:none"><div id="bk_stock_ml_ctas" style="margin-top:7px"></div></div>
         </div>
       </div>
       <div class="bk-card arq-toca" data-arq="efectivo" onclick="arqTarjeta(event,'efectivo')" title="Tocá para cargar efectivo y Mercado Pago"><div class="bk-lbl">Efectivo & Digital <span class="arq-flecha" data-arqf="efectivo">▸</span><span class="arq-alerta" data-arqa="efectivo"></span></div><div class="bk-val pos" id="bk_efectivo">$0</div><div id="dbk_efectivo" style="margin-top:5px"></div></div>
@@ -3193,7 +3204,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.05';
+const APP_VERSION='28.06';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3217,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.06',f:'29/10',h:'19:00',c:[{n:2,t:'📊 Arqueo → Stock total: la oficina se separa en 🏠 Oficina ML (lo que tiene o tuvo publicación) y 🏪 Oficina Local (la Oficina CYC y lo que nunca estuvo en ML). El detalle de cada renglón (oficinas, en camino y Full por cuenta) se abre tocándolo.'}]},
   {v:'28.05',f:'29/10',h:'18:45',c:[{n:1,t:'📥 Lo que nos deben: PERFUMERÍA · Mercadería queda en Ventas a cobrar y PERFUMERÍA · MercadoPago pasa a Préstamos.'}]},
   {v:'28.04',f:'29/10',h:'18:35',c:[{n:1,t:'📥 Lo que nos deben: toda deuda con costo o ganancia va siempre a Ventas a cobrar (Mari estaba en Préstamos por error).'}]},
   {v:'28.03',f:'29/10',h:'18:20',c:[{n:2,t:'📥 Lo que nos deben en dos grupos: 🛒 Ventas a cobrar (con la ganancia total) y 💵 Préstamos (sin ganancia). Las ventas viejas sin costo dicen "costo sin cargar".'}]},
@@ -7164,6 +7176,10 @@ function cuotaVence(d){if(d.fin||d.pagadas>=d.n)return null;if(d.n<=1)return d.v
   const fs=cuotaPagosFechas(d);if(d.pagadas>0&&fs.length)return _isoMas(fs[fs.length-1],d.frec,1,d.cadaDias);
   return d.vence1?_isoMas(d.vence1,d.frec,d.pagadas,d.cadaDias):null;}
 function cuotaPagosFechas(d){return Object.entries(d.pagos||{}).map(([k,v])=>(v&&v.f)?v.f:(()=>{const t=new Date(Number(k));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';})()).filter(Boolean).sort();}
+// Abrir/cerrar el detalle de un renglón del Stock total (29/10/2026, él: "que se abra al clickearlo"); queda abierto al redibujar.
+function arqDet(k){const A=window._arqDetAb=window._arqDetAb||{};A[k]=!A[k];_arqDetPinta();}
+function _arqDetPinta(){const A=window._arqDetAb||{};for(const k of ['ofiml','ofiloc','camino','ml']){const d=document.getElementById('det_'+k);if(d)d.style.display=A[k]?'':'none';
+  document.querySelectorAll(`[data-arqdet="${k}"]`).forEach(x=>x.textContent=A[k]?'▾':'▸');}}
 function renderCuotas(){
   const el=document.getElementById('cuotas-lista');if(!el)return;
   const L=cuotasLista(),abiertas=L.filter(d=>!d.fin).length,hoy=_isoHoy(),venc=L.filter(d=>{const v=cuotaVence(d);return v&&v<hoy;}).length;
@@ -11007,6 +11023,26 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
   }
   const dbkLoc=document.getElementById('dbk_stock_local');
   if(dbkLoc)dbkLoc.innerHTML=prevLocalFin!==undefined?deltaBadge(stockLocalFin,prevLocalFin):'';
+  // 🏠 Oficina ML / 🏪 Oficina Local (29/10/2026): lo de la Oficina ML (Oficina_Mati) que tiene o tuvo publicación es de ML; lo que nunca tuvo
+  // publicación, la Oficina CYC (`of_viejo`) y lo de los vendedores van a la Local. Las dos suman lo mismo que antes (`stockLocalFin`).
+  try{const fv=state.finanzas||{},ofV=parseFloat(fv.of_viejo)||0,ofM=parseFloat(fv.of_mia)||0,vend=parseFloat(fv.vendedores)||0;
+    const conML=new Set();for(const e of Object.values(state.mllinks||{}))if(e&&e.prodId)conML.add(e.prodId);
+    const pr=(state.products||[]).map(p=>({p,u:stockOficina(p)})).filter(x=>x.u>0).map(x=>({...x,v:x.u*efectivoCostP(x.p),ml:conML.has(x.p.id)}));
+    const contado=pr.length>0&&!_arqViewYM;
+    const vML=contado?pr.filter(x=>x.ml).reduce((t,x)=>t+x.v,0):ofM, vNoML=contado?pr.filter(x=>!x.ml).reduce((t,x)=>t+x.v,0):0;
+    const vLoc=ofV+vend+vNoML+(contado?Math.max(0,ofM-vML-vNoML):0);
+    setCard('bk_ofi_ml',vML,'neutral');setCard('bk_ofi_local',vLoc,'neutral');
+    const _li=(arr)=>arr.sort((a,b)=>b.v-a.v).slice(0,12).map(x=>`<div style="display:flex;gap:6px"><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escC?_escC(x.p.name):x.p.name}</span><span style="white-space:nowrap">${fmtN(x.u)} u. · US$ ${fmtN(Math.round(x.v))}</span></div>`).join('');
+    const dM=document.getElementById('det_ofiml'),dL=document.getElementById('det_ofiloc');
+    const mlA=pr.filter(x=>x.ml),noA=pr.filter(x=>!x.ml);
+    if(dM)dM.innerHTML=contado?`${mlA.length} productos · ${fmtN(mlA.reduce((t,x)=>t+x.u,0))} u. (tienen o tuvieron publicación en ML)${_li(mlA)}${mlA.length>12?`<div>… y ${mlA.length-12} más (en Oficina ML → Contar lo que hay)</div>`:''}`:'cargada a mano (sin unidades contadas)';
+    if(dL){const OC=state.oficyc||{};const _uO=x=>x&&typeof x==='object'?Object.values(x.v||{}).reduce((a,b)=>a+(parseInt(b)||0),0)+(parseInt(x.t)||0):(parseInt(x)||0);
+      const nOC=Object.values(OC).filter(x=>_uO(x)>0).length,porU=(state.mlconfig||{}).oficycPorUnidades===true;
+      dL.innerHTML=`<div>Oficina CYC: US$ ${fmtN(Math.round(ofV))} ${porU?'(contada producto por producto)':`(a mano${nOC?` · van ${nOC} productos contados`:''})`}</div>`
+        +(vend>0?`<div>Vendedores: US$ ${fmtN(Math.round(vend))}</div>`:'')
+        +(noA.length?`<div style="margin-top:3px">Nunca estuvo en ML (${noA.length} productos, US$ ${fmtN(Math.round(vNoML))}):</div>${_li(noA)}`:'');}
+  }catch(e){console.warn('oficinas',e);}
+  _arqDetPinta();
   // Contra LO MISMO (etapa 2, 20/10/2026): el efectivo de hoy lleva lo vendido sin reporte y la deuda lleva
   // ARCA y el Paulvic; el cierre anterior los tiene guardados aparte (los viejos, sólo ARCA).
   const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0)+(Number(prev.vsrUSD)||0):null;
