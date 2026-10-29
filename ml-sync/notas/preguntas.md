@@ -75,3 +75,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 56. Con cupo chico, ¿lleno la caja para la MÁXIMA plata o para cubrir días? Y lo que la carga, ¿lee MI archivo o el de la madrugada? (26/10, caja de Ayelen: "siempre priorizamos ganar más, no cubrir stock")
 57. ¿La regla que voy a aplicar vale sólo para una etiqueta? Si el motivo de fondo ("sin techo medido") también vale para otras (🔥/⏳), ¿las cubre? (28/10, el Espejo 4" en escasez vendió y no subió).
 58. Antes de rearmar algo que la vuelta ya decidió (cajas, pedidos), ¿estoy pisando sus decisiones a mano? Comparo contra el archivo anterior y me quedo con las que tienen motivo propio (28/10, las 97 Cartas Casino).
+59. Cuando creo o publico algo, ¿la ficha quedó con el nombre EXACTO de su publicación de ML? (29/10, 23 fichas nuevas con el nombre de Paraguay).
