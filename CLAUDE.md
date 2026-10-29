@@ -85,7 +85,7 @@
 - **La mercadería no se mueve entre cuentas** (22/09): un producto nuevo queda en su cuenta para siempre. Orden para elegir dueña:
   1) la que ya lo publica · 2) **el rubro (perfumes → Adriana)** · 3) el equilibrio: **entre Ayelen y Luciana** (23/10, *"van en la de ayelen o luciana. dependiendo el cupo de monotributo"*), **la que más lugar tiene contra el tope de H**
   (proyección al cierre de la ventana de ARCA, entre las que llegan al 25%; `repartopy` y la tarjeta ⚖️ eligen entre Ayelen y Luciana, las otras sólo si ninguna llega; `lugarHPorCuenta`; 7a del 22/10) · y la actividad de ARCA. **Una sola cuenta por producto** (09/09; excepción Paulvic: Adriana + Persea en
-  Luciana). En la MISMA cuenta sí puede repetirse.
+  Luciana). En la MISMA cuenta sí puede repetirse. **P47 y P47 oreja de gato: sólo Ayelen** (29/10, él: *"en Matías y Adriana no van más"*; 13 cerradas con `cerrarpub`, quedan 6 activas de Matías con ~6 u. en Full que se cierran cuando se vacíen).
 - **Pedidos mira el stock de las 4 cuentas juntas** (C1, 29/09: si en total se vende 10/mes y hay 10 en otra cuenta, no se compra).
   **No volver a proponer calcularlo por cuenta.**
 - **Cobro del mes** (17/10): se cobra lo que dice "💸 cuánto cobrar" del mes cerrado (ganancia real de CYC ÷ 3, cada socio; ×2 =
@@ -570,6 +570,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
   Correo cargado el 27/10 ($28.000, 11,55 kg; el que retira $90.000 ya estaba). **28/10: la mercadería pasó de $822.899 a $908.478** (él: usó dólares que ya tenía en la billetera; los 553,95 al cripto del día, $1.640) → recargo real **20,7%** (antes daba 10,7%, mal).
 - **Pedido Paraguay `py20261028` (resto, en camino, pagado US$ 638,31 / $1.082.452):** al llegar, **Bad Boy Le Parfum 150 ml y 212 NYC Men 100 ml van con `sololocal`** (perfumería del local, él 28/10), no a ML; **el local se los devuelve a CYC: deuda cargada $247.588** (US$ 146 a $1.675,84 + su parte de comisiones; sin correo ni el que retira). Falta: lo que cobró el que retira y el correo. Waflera Atma Disney y Pendrive Cruzer Blade 64gb: Nissei no tiene (28/10, marcados `py_sinstock`).
 - EX15LP blanco publicado pausado en Ayelen (23/10, `MLA2230467989`, 2 u. sin etiqueta); Joystick PS5 7114209 = sólo local. **Piedra Gua Sha** (ficha sola) y Kit Jade vinculados. (Linternas COB, contador y Sancor: él 27/10 *"no nombrar más"*.)
+- **P47 en Matías (29/10):** 6 publicaciones activas con ~6 u. en Full (3 azul, 3 rojo): cuando Full llegue a 0, `cerrarpub:MLA1459816555,MLA1701523603,MLA1955025360,MLA2218538901,MLA2218602297,MLA4105733142:go`. MLA1447211187 (Luciana, inactiva) ML no deja cerrarla.
 - **Almacenamiento** (24/10): ML no da la tarifa por unidad; sale de la factura de septiembre: almacenamiento común $47.735 en las 4 ÷ ~2.640 u. en Full ÷ 30 d ≈ **$0,60 por unidad por día** (cargado con `almactarifa`, chico = grande). El stock antiguo va aparte ($64.155 en sep). Rehacerlo con la factura de octubre (`cargosmes:2026_10`).
 - **Filtro de envíos internacionales** en candidatos: el campo existe (`international_delivery_mode`); escribirlo cuando aparezca uno.
 - **`anotarNetoWeb` no se llama desde ningún lado** (el margen sólo se recalcula de noche): o se enchufa o se borra. (ver HISTORIA)
