@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🛍️ Mercadería a la perfumería = costo + 25% (29/10/2026, él: *"a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa"*)
+- **Qué es:** `debenmov:<deuda>=+25%|prod=<ficha>|local=<…>|u=N;go` → lo que paga c/u = costo de la ficha × 1,25 (sin costo cargado no escribe).
+- **Dónde vive:** `sync.mjs`, `debenmov` (`mPct`).
+- **Qué chequear:** que en Ver deudas el renglón diga el costo, lo que paga y la ganancia (20% de lo que paga = 25% sobre el costo).
+
 ### 🤖 Textos para el chat de Chrome en la web (29/10/2026, v27.92; él: *"vos podés pasar todos los prompts ahí en cyc no? más fácil. yo le digo lo que quiero que haga y listo"*)
 - **Qué es:** `prompts[:go]` copia cada `ml-sync/PROMPT_*.md` (el bloque entre ``` o el archivo entero) a `cyc/prompts`; la web los muestra en Mi oficina con 📋 Copiar y "Ver el texto". Corre cada noche en ml-daily.
 - **Dónde vive:** `sync.mjs` (`prompts`, en `CONSULTA_ESCRIBE`) · `ml-daily.yml` (paso "Textos para el chat de Chrome") · `index.html` (`renderPromptsCard`, `promptCopiar`, `prompts` en `CYC_KEYS`).
