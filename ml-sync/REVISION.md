@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🧲 Liquidación de lo que no se vende (29/10/2026, él eligió 1a 2a 3a)
+- **Qué es:** en `frenosBajas` F13: `liq30` = 25+ días con stock en los últimos 30 y 0 unidades vendidas → se puede bajar del 35% aunque la unidad más vieja tenga menos de 90 días, pero `bajoSemana` frena un segundo escalón abajo del 35% antes de 7 días. F0 (0%), F5/F7 (escalera ≤15%) y F12 (perfumes) siguen.
+- `liq30` también abre F7 (sin línea de techo: 30 días sin vender ya es 🔴), F4 (deshacer una suba: la suba fracasó) y F8 (arriba del 💰 sin 95%: 30 días sin vender ya lo dice). `liquidables` (robot) lista lo que entra con el escalón de la semana y el `entrarpromo` listo.
+- **Qué chequear:** algo que vendió 1 en 30 días NO entra; un perfume sin ventas igual frena en 10%; dos bajas en la misma semana abajo del 35% → la segunda frenada.
+
 ### 🪜 F14 · salida "vende muchísimo menos" (28/10/2026, él eligió la 1a; con el Filtro: *"si lo hubiéramos dejado al precio que vendió nos hubiéramos perdido muchísimas ventas y ganancia. habría que afinar"*)
 - **Qué es:** un escalón que vendió (F14) igual baja si deja menos de la MITAD de la plata por día que el 💰, con 95% de seguridad (Poisson con la franja del mes) y 7+ días con stock en ese precio (`F14_MENOS_DIAS`); baja hacia el 💰 sin pasarlo (≤15%, F2/F3 siguen). `techo95` no le anota 🏔️ a ese escalón. La cuenta contra el 💰 es UNA (`medirContraBest`): la usan F8, F14 y `techo95`.
 - **Dónde vive:** `ml-sync/sync.mjs` (`medirContraBest`, `muchoMenosOk`, F14 y F8 en `frenosBajas`, `techo95`).
@@ -865,6 +870,13 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   que una venta real a la prueba (precio nuevo) siga contando (Naipes Casino 28/10 09:04 a $7.290).
 
 ## 2 · PLATA (martes)
+### 🙈 Plata del 29/10 (eligió 1a 2a 3a 4a 5b 6)
+- **1a Saldos de MP fuera del registro:** `_MASCARA_PLATA` (sync.mjs, arriba) tapa todo monto en `ancla`/`dispo`/`saldoml`; `buzon` tapa el renglón `mp:`; `ancla:buzon=<ts>[;go]` toma los saldos del mensaje. Chequear: ninguna corrida de esos comandos muestra un monto; lo escrito en `cyc/finanzas/mp_*` es igual que antes.
+- **4a Ventas sin factura:** `facsync` ya no las saca a los 45 días; salen sólo con su factura o si la venta quedó cancelada en `cyc/ventaprod` de su día. Chequear: una sin factura de 50 días sigue en `cyc/facturas_sin`.
+- **6 Valor de Stock = Stock total:** el Resumen (`res-stock`) suma ML + Oficina CYC + Oficina Mati + vendedores + en camino, igual que el Arqueo; la comparación con el cierre anterior se arma igual. Chequear: los dos números iguales en pantalla.
+- **2a Mes cerrado congelado:** `congelarMes(ym)` (index.html) guarda el costo de cada venta en `cyc/costocongelado/<ym>/<id>` al cerrar (y octubre se congela solo al abrir el Arqueo); `efectivoCostoVP` y el robot (`armarCostoWeb`) lo usan. Chequear: cambiar el envío de un producto no mueve la ganancia de octubre; las cancelaciones sí (son hechos nuevos).
+- **3a** ya lo hace el cobro por crecimiento (lo que se movió después aparece en el cierre siguiente). **5b** queda afuera.
+
 ### 💸 Cobro por crecimiento (29/10/2026; él eligió 1a: *"cobrar lo que crece cyc dividido 3"*, sin promedio de meses)
 - **Qué es:** `_cobroCrec(ym)` (index.html): (patrimonio del cierre − el del anterior) × dólar del cierre + el retiro de ESE mes (el arqueo se hace después de retirar) − `cyc/cobro_corr/<ym>` {ars, nota} (lo viejo que se cargó tarde: no es crecimiento) ÷ 3. Tarjeta `arq-cobro-crec` abajo de "Cerrar el mes" (`renderCobroCrec`); desde el cierre de octubre es el retiro supuesto del mes siguiente (`_retiroTarjetaDe`). `cyc/cobro_corr` en `CYC_KEYS`.
 - **Retiro automático (29/10, él):** sin la casilla "Retiro cobrado este mes"; `_retiroMesVal(ym)` desde noviembre = `_retiroAuto` (2 × cobro del cierre anterior), `_retiroAutoGuardar` lo escribe en `cyc/retiro_mes` si cambió; Gastos lo muestra sin casilla; la tabla de meses sin cargar no los pide. Chequear: noviembre = $3.200.000; borrar y rehacer un cierre cambia el retiro del mes siguiente.
@@ -951,6 +963,14 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🏠 `ofi35`: lo de la oficina que no llega al 35% (29/10/2026; él: *"ni vs competidores en ML ni vs la venta más alta de los últimos 30 días… lo que no da lo bajo al local"*)
+- **Qué es:** UNA sola cuenta (se juntó con el `ofi35` del 24/10, que medía sólo al precio de hoy): por ficha con unidades en la Oficina Mati (con variantes suma los colores), el % del peor caso a la competencia (techo con Full de `cyc/techofull`), a la venta más cara de 30 días y al precio de hoy, con la comisión que pide ML a ESE precio, envío 0 abajo de $33.000 / peor de Full arriba, impuestos de la cuenta y 2% de retención. ❌ = ninguno de los dos primeros llega al piso. Saltea lo `soloLocal`.
+- **Qué chequear:** que una ficha con colores sume todas sus unidades; que el % de hoy dé parecido al de `unapub` de la misma publicación.
+
+### 🔎 Buscador de todo Bs As en Pedidos (29/10/2026; él: *"mi viejo… no encontró los aromatizantes Aer porque estaban en Nippon"*)
+- **Qué es:** `pedBsasBuscar` / `pedBsasIr` (index.html): caja a la derecha de 📋 Listas; busca en memoria en los pedidos de Bs As (sin Paulvic) y en las fichas de Bs As sin pedido, dice en qué solapa está (🏬 De siempre / 📋 lista) y al tocar lleva ahí con el nombre puesto en el buscador de esa solapa. `pedgrupo:<palabras>=siempre;go` (robot) pasa una ficha de una lista a 🏬 De siempre (como el botón de la tarjeta).
+- **Qué chequear:** con 2 letras ya muestra; a 360 px la caja baja a la segunda fila sin empujar las solapas; tocar un resultado de Dai Nippon abre esa solapa con la búsqueda.
+
 ### 🏷️ Nombre de ML en las fichas nuevas (29/10/2026; él: *"de todos en los últimos 30 días… cuando lo publicás en ML actualizar el nombre del producto en la web"*)
 - **Qué es:** `nombreml[:dias=N][:go]` ya no mira sólo Paraguay: toda ficha con id de los últimos 30 días (sin `nombreFijo`) toma el título de su publicación (o lo común de sus colores, o el catálogo). Corre cada noche en ml-daily (paso "Nombre de ML en las fichas nuevas"). `publicar` llama `nombreDeML` al crear.
 - **Qué chequear:** que ninguna ficha de más de 30 días cambie de nombre; que una ficha con variantes no tome el título de un solo color.

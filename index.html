@@ -1522,6 +1522,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <button class="tab ped-section-tab" id="tab-py-btn" onclick="setPedidoSection('paraguay',this)">🇵🇾 Paraguay</button>
     <button class="tab ped-section-tab" id="tab-paulvic-btn" onclick="setPedidoSection('paulvic',this)">🧴 Paulvic</button>
     <button class="tab ped-section-tab" id="tab-listas-btn" onclick="setPedidoSection('listas',this)">📋 Listas</button>
+    <!-- 🔎 BUSCADOR DE BS AS (29/10/2026, él: "mi viejo estaba mirando para comprar los aromatizantes Aer y no los encontró porque estaban
+         en Nippon, no donde siempre… un buscador a la derecha de Listas… sólo productos en Bs As"). Busca en las dos solapas de Bs As
+         (🏬 De siempre y las listas de Tito) con lo que ya está en memoria: no le pregunta nada a nadie, por eso es instantáneo. -->
+    <div style="position:relative;flex:1;min-width:170px;max-width:300px;margin-left:auto">
+      <input id="ped-bsas-todo" type="search" placeholder="🔎 Buscar en Bs As…" oninput="pedBsasBuscar(this.value)" onfocus="pedBsasBuscar(this.value)" autocomplete="off" style="width:100%;padding:7px 11px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)">
+      <div id="ped-bsas-todo-res" style="position:absolute;right:0;top:calc(100% + 4px);z-index:50;width:min(92vw,360px)"></div>
+    </div>
   </div>
 
   <!-- EL CARTEL DE "EN CAMINO A FULL" SE SACÓ DE ACÁ (18/09/2026). Decisión suya: *"sacar eso de
@@ -2549,7 +2556,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2603,7 +2610,8 @@ function startApp(){
     state.fact_cancel=d.fact_cancel||{};  // facturación de ventas canceladas/devueltas por cuenta y mes (para igualar a ML)
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
-    state.cobro_corr=d.cobro_corr||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
+    state.cobro_corr=d.cobro_corr||{};
+    state.costocongelado=d.costocongelado||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
     // EL NETO DE CADA PUBLICACIÓN, que escribe `netoweb` todas las noches. Existe para poder
@@ -3181,7 +3189,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.85';
+const APP_VERSION='27.89';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3194,6 +3202,10 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.89',f:'29/10',h:'13:16',c:[{n:2,t:'🔎 Pedidos: buscador a la derecha de Listas que busca en todo Bs As (De siempre y las listas de Tito) y te lleva a la solapa donde está'}]},
+  {v:'27.88',f:'29/10',h:'13:10',c:[{n:2,t:'🧊 Un mes cerrado queda congelado: el costo de cada venta es el que tenía al cerrarlo (un reclamo nuevo o un cambio de envío ya no cambian octubre)'}]},
+  {v:'27.87',f:'29/10',h:'13:09',c:[{n:2,t:'📊 Resumen: "Valor de Stock" ahora es el mismo número que el "Stock total" del Arqueo (suma Oficina CYC y vendedores, que antes faltaban)'}]},
+  {v:'27.86',f:'29/10',h:'12:48',c:[{n:1,t:'🛒 Pedidos siempre se abre en Bs As → 🏬 De siempre'}]},
   {v:'27.85',f:'29/10',h:'01:37',c:[{n:1,t:'Arqueo: se sacó el aviso "Ojo: Oficina Mati ahora sale de las u. que contaste…"'}]},
   {v:'27.84',f:'29/10',h:'01:36',c:[{n:2,t:'💸 Se sacó la casilla "Retiro cobrado este mes": desde noviembre el retiro es automático, lo que dice el 💸 cobro del cierre del mes anterior × 2 (en Gastos se ve, sin casilla)'}]},
   {v:'27.83',f:'29/10',h:'01:33',c:[{n:1,t:'💸 El cobro es redondo, de a $100.000 para abajo (1.699.000 → 1.600.000); lo que sobra queda en CYC'}]},
@@ -4647,6 +4659,7 @@ function _cobroCrec(ym){
 }
 function renderCobroCrec(){
   try{_retiroAutoGuardar();}catch(_){}
+  try{if(!_arqViewYM)Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&!(state.costocongelado||{})[k]).forEach(k=>congelarMes(k));}catch(_){}
   const el=document.getElementById('arq-cobro-crec');if(!el)return;
   if(_arqViewYM){el.innerHTML='';return;}
   const ks=Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE).sort();
@@ -4675,6 +4688,17 @@ function _retiroAutoGuardar(){
     const r=(state.retiro_mes||{})[sig];
     if(r==null||r===''||Number(r)!==v){state.retiro_mes=state.retiro_mes||{};state.retiro_mes[sig]=v;fbSet('retiro_mes/'+sig,v);}
   }
+}
+// Congela el costo de cada venta del mes (2a del 29/10). Se llama al cerrar el mes; los cierres de octubre en adelante que
+// todavía no lo tienen se congelan solos la primera vez que se abre el Arqueo.
+async function congelarMes(ym){
+  if(!ym||(state.costocongelado||{})[ym])return;
+  const m={};
+  Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.entries(state.ventaprod[k]||{}).forEach(([id,v])=>{
+    if(!v||v.cancelada)return;m[id]=Math.round(efectivoCostoVP({...v,id,_dateKey:k})*100)/100;}));
+  if(!Object.keys(m).length)return;
+  state.costocongelado=state.costocongelado||{};state.costocongelado[ym]=m;
+  try{await fbSet('costocongelado/'+ym,m);}catch(_){delete state.costocongelado[ym];}
 }
 function _mesSigYM(ym){const p=ym.split('_').map(Number);const d=new Date(p[0],p[1],1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');}
 function _ymLabel(ym){const M=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];const p=ym.split('_').map(Number);return M[p[1]-1]||ym;}
@@ -11089,7 +11113,7 @@ async function saveSnapshot(){
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
     prodValues};
-  await fbSet('snapshots/'+key,snap);await log('Cerró mes: '+label);toast('Mes '+label+' guardado ✓');
+  await fbSet('snapshots/'+key,snap);try{await congelarMes(key);}catch(_){}await log('Cerró mes: '+label);toast('Mes '+label+' guardado ✓');
   if(!state.snapshots)state.snapshots={};state.snapshots[key]=snap;try{_btnCerrarTxt();checkCierrePendiente();}catch(_){}   // 29/10: que se vea cerrado en el acto
 }
 
@@ -14121,6 +14145,9 @@ function ventaEstimadaVP(v){return !!(v&&!v.cancelada&&v.netoEstimado);}
 function gestDivVP(v){return ventaEstimadaVP(v)?0:gestDeVenta(v);}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0;
+  // 🧊 MES CERRADO = CONGELADO (29/10/2026, él eligió 2a): el costo de cada venta de un mes cerrado es el que tenía al cerrarlo
+  // (`cyc/costocongelado/<AAAA_MM>/<id>`, lo escribe `congelarMes`). Un reclamo o un envío nuevo ya no lo mueven.
+  {const fz=v&&v._dateKey&&v.id&&state.costocongelado&&state.costocongelado[v._dateKey.substring(0,7)];if(fz&&fz[v.id]!=null)return Number(fz[v.id])||0;}
   const c=_efectivoCostoVP(v)+(ventaEstimadaVP(v)?gestDeVenta(v):0);
   return ventaSinCostoVP(v)?Math.max(Number(v.neto)||0,c):c;
 }
@@ -15381,7 +15408,42 @@ function homePedIr(sec){
   const id={bsas:'tab-bsas-btn',paraguay:'tab-py-btn',paulvic:'tab-paulvic-btn',listas:'tab-listas-btn'}[sec];
   const btn=document.getElementById(id);if(btn&&sec!=='bsas')setPedidoSection(sec,btn);
 }
+// Los resultados: cada pedido de Bs As (sin Paulvic) con su solapa, y los productos de Bs As que hoy no piden nada.
+function pedBsasBuscar(q){
+  const box=document.getElementById('ped-bsas-todo-res');if(!box)return;
+  const nq=normTxt(q||'').trim();
+  if(nq.length<2){box.innerHTML='';return;}
+  const pv=(state.mlconfig&&state.mlconfig.listasProv)||{},bp=new Set(_bsasProvs());
+  const grupoDe=pr=>pr&&pr.listaProv&&bp.has(pr.listaProv)?{k:'listas',t:'📋 '+(pv[pr.listaProv].nombre||pr.listaProv)}:{k:'siempre',t:'🏬 De siempre'};
+  const out=[],ya=new Set();
+  for(const p of (state.pedidos||[])){
+    if(esPedidoPaulvic(p))continue;const pr=prodById(p.prodId);
+    if(!buscaCoincide(nq,p.producto,p.nota,textosDeProd(pr)))continue;
+    ya.add(p.prodId);out.push({nom:p.producto||(pr&&pr.name)||'',g:grupoDe(pr),u:parseInt(p.cantidad)||0});
+  }
+  for(const pr of (state.products||[])){
+    if(!pr||ya.has(pr.id))continue;
+    const esB=pr.origen==='bsas'||(pr.listaProv&&bp.has(pr.listaProv));if(!esB)continue;
+    if(!buscaCoincide(nq,pr.name,'',textosDeProd(pr)))continue;
+    out.push({nom:pr.name||'',g:grupoDe(pr),u:null});if(out.length>40)break;
+  }
+  if(!out.length){box.innerHTML='<div style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.75rem;color:var(--muted);box-shadow:0 6px 20px rgba(0,0,0,.35)">Nada en Bs As con "'+escHtml(q)+'".</div>';return;}
+  out.sort((a,b)=>(b.u!=null)-(a.u!=null)||(b.u||0)-(a.u||0));
+  box.innerHTML='<div style="background:var(--surface);border:1px solid var(--border2);border-radius:10px;max-height:60vh;overflow:auto;box-shadow:0 6px 20px rgba(0,0,0,.35)">'+out.slice(0,25).map(r=>
+    `<div onclick="pedBsasIr('${r.g.k}','${escHtml(r.nom).replace(/'/g,"&#39;")}')" style="padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:.78rem;display:flex;justify-content:space-between;gap:10px;align-items:center"><span style="min-width:0">${escHtml(r.nom)}<br><span style="font-size:.66rem;color:var(--muted)">${escHtml(r.g.t)}</span></span><span style="flex-shrink:0;font-size:.7rem;font-weight:700;color:${r.u?'var(--green)':'var(--muted)'}">${r.u!=null?(r.u?'pedir '+r.u:'sin pedir'):'sin pedido'}</span></div>`).join('')+'</div>';
+}
+function pedBsasIr(k,nom){
+  const box=document.getElementById('ped-bsas-todo-res');if(box)box.innerHTML='';
+  const inp=document.getElementById('ped-bsas-todo');if(inp)inp.value='';
+  const btn=document.getElementById('tab-bsas-btn');
+  _bsasVista=k==='listas'?'listas':'siempre';
+  if(k==='listas'){window._listaQ=nom;}else{const s=document.getElementById('ped-search');if(s)s.value=nom;}
+  if(btn)setPedidoSection('bsas',btn);else{pedidoSection='bsas';renderPedidos();}
+  try{(document.getElementById(k==='listas'?'bsas-listas-body':'pedidos-list')||document.body).scrollIntoView({behavior:'smooth',block:'start'});}catch(_){}
+}
+document.addEventListener('click',e=>{const w=document.getElementById('ped-bsas-todo');const r=document.getElementById('ped-bsas-todo-res');if(r&&w&&!w.contains(e.target)&&!r.contains(e.target))r.innerHTML='';});
 function enterPedidos(){
+  _bsasVista='siempre';   // 29/10/2026, él: "siempre al abrir pedidos que se abra Bs As 'De siempre'" (antes recordaba la última solapa)
   const btn=document.getElementById('tab-bsas-btn');
   if(btn)setPedidoSection('bsas',btn);
   else{pedidoSection='bsas';renderPedidos();}
@@ -26229,11 +26291,15 @@ function renderResumen_page(){
     el.title='Comparación vs '+label;
   };
   setUS('res-patrimonio',c.total);
-  setUS('res-stock',c.stockVal);
+  // 29/10/2026 (él: "que muestre lo mismo, pero el correcto de los dos"): el MISMO número que el "Stock total" del Arqueo
+  // (ML + Oficina CYC + Oficina Mati + vendedores + en camino). Antes era c.stockVal, que no sumaba Oficina CYC ni vendedores.
+  const _stTot=(o,fin)=>{if(!o)return null;const f=fin||{};const loc=(parseFloat(f.of_viejo)||0)+(parseFloat(f.of_mia)||0)+(parseFloat(f.vendedores)||0);
+    const cam=o===c?(c.stockCamino||0):Math.max(0,(o.stock??0)-(o.stockML??0)-(o.stockLocal??0));return (o.stockML||0)+loc+cam;};
+  setUS('res-stock',_stTot(c,state.finanzas));
   setUS('res-efect',c.efect);
   const prevSnap=getLatestSnapshot();
   setComp('res-patrimonio-comp',c.total,prevSnap?.total,'cierre anterior',fmtUS);
-  setComp('res-stock-comp',c.stockVal,prevSnap?.stock,'cierre anterior',fmtUS);
+  setComp('res-stock-comp',_stTot(c,state.finanzas),prevSnap?_stTot(prevSnap,prevSnap.finanzas):null,'cierre anterior',fmtUS);
   setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0)+(Number(prevSnap.vsrUSD)||0):null,'cierre anterior',fmtUS);
 
   _initScopeDefaults('res');

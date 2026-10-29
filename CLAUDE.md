@@ -97,6 +97,8 @@
   OK** · 7a lo nuevo va a la cuenta con más lugar contra H · 8b **por ahora las 4 cuentas en H, sin 5ª cuenta ni K**. Detalle en
   `ml-sync/CEREBRO.md` (💹). La 3 (ordenar compras y pedidos por ganancia por peso facturado): **no se toca por el momento** (él, 22/10); no volver a proponerla hasta que la saque él.
 - **🎯 Objetivo: bajar hasta que desaparezcan el rojo y el naranja de 🧮 La Mezcla** (27/10, él: *"un objetivo debe ser bajar/desaparecer los naranjas/rojos"*): rojo = ventas abajo de 25%, naranja = 25-35% (de lo facturado). Cada decisión de precio, pedido, caja y compra se pesa contra esto: lo que vende abajo del 35% sube, se reemplaza o no se repone (sin romper sobra/stock antiguo). Se mira por semana en Métricas.
+- **🧲 Ir a los extremos** (29/10, él eligió 1a 2a 3a): lo que vende a 35%+ no se toca (la velocidad no importa); lo que vende abajo del 35% sube; **lo que no vendió nada en 30 días con stock se liquida**: un escalón (≤15%) por semana hasta que venda, piso 0%, aunque tenga menos de 90 días (F13 se abre, `liq30`); al costo sin vender → local. La caja va a productos de 35%+.
+- **Vender menos por las subas es A PROPÓSITO** (29/10, él: *"claramente estamos vendiendo menos por el aumento exagerado de precios. pero esa es la idea. una vez nos acomodemos en los precios… van a mejorar un poco las ventas… no vamos a llegar a vender el tope de H. ahí es donde entra el buscar productos nuevos para llenar ese vacío"*): la caída de unidades después de subir NO es motivo para bajar (no se le avisa como problema); el lugar que queda contra el tope de H se llena con **productos nuevos** (Nissei, listas del Once, 🌟 sin competencia), no bajando precios.
 - **El límite hoy es CONSEGUIR mercadería** (27/10 a la noche, él: *"últimamente hay mucho lugar en la kangoo, y pesos, pero en bs as cuesta conseguir producto, es probable que no tengan los proveedores"*; el 27/10 eran pesos, Kangoo y mayorista: *"nos quedamos sin stock, no porque no queremos comprar, sino porque no hay"*). Una unidad vendida barata no se repone; una que espera a un precio alto se vende después. Liberar caja vale menos que el almacenamiento y el descarte.
 - OSDE y el colegio son PERSONALES (no cargar). **Sancor = la obra social privada de Ayelen** (un solo renglón, monto real de la factura).
 
@@ -431,7 +433,7 @@
 ## 8 · PLATA, GASTOS Y ARQUEO
 
 - **El Arqueo está en DÓLARES** (en chico los pesos al lado). Antes de escribir en un campo que existe, preguntar en qué unidad lo lee.
-- **El saldo de MP no se lee por API** (~30 puertas medidas). El disponible: desde el 26/10 lo lee cada día el chat de Chrome (3a, renglón `mp:` del buzón) y lo cargo con `ancla:<cuenta>=<pesos>@<AAAA-MM-DD HH:MM>;go` (la hora en que lo leyó, nunca la de la vuelta; 27/10); `dispo`
+- **El saldo de MP no se lee por API** (~30 puertas medidas). El disponible: desde el 26/10 lo lee cada día el chat de Chrome (3a, renglón `mp:` del buzón) y lo cargo con **`ancla:buzon=<ts>;go`** (29/10, 1a: el robot toma los saldos del renglón `mp:` del buzón; **los saldos de MP no se imprimen nunca**: `buzon` los tapa y ancla/dispo/saldoml muestran `$•••`, `_MASCARA_PLATA`; a mano sigue `ancla:<cuenta>=<pesos>@<AAAA-MM-DD HH:MM>;go`, la hora en que lo leyó); `dispo`
   suma/resta desde ahí (una vez por mes recargarlo; `dispo` NO avisa por Telegram, decisión 30/09). "A liquidar en ML" y la agenda de
   liberaciones salen solos de `saldoml` (reporte de liquidación, ml-daily). El extracto de cuenta se baja a mano y **trae nombres de
   terceros: nunca al repo ni a un log**.
