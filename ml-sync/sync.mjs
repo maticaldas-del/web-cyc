@@ -10612,6 +10612,10 @@ async function sendTelegram(text, tipo) {
   // por cada cambio de precio y despertaba a la madrugada. Ahora solo salen dos cosas —el resumen
   // del día y las bajas de publicaciones— así que no hay volumen que justifique retenerlos, y el
   // resumen de la medianoche llegaba tarde o quedaba encolado por esa misma ventana.
+  // 29/10/2026 (él: "en el CYC Avisos que mandás los resúmenes diarios, a partir de ahora SOLO mandar resúmenes diarios. El resto
+  // importante al otro"): al grupo de los resúmenes va SÓLO el resumen; las bajas/altas de ML, el dólar y la venta van al canal
+  // privado (el de los avisos urgentes, `sendAlerta` directo).
+  if (tipo !== 'resumen') return sendAlerta(text, { directo: true });
   return tgEnviar(text);
 }
 // Descubre y ACUMULA todos los chats: cada persona que le manda "hola" al bot queda
@@ -55549,8 +55553,7 @@ async function main() {
               // SÓLO DATOS (09/10/2026) lo había sacado de Telegram. 26/10/2026, él: "quiero que me avise por telegram cuando ML da de
               // baja un producto, porque es importante a resolver, casi siempre es por pedir facturas en la cuenta de Adriana": va a
               // Telegram siempre (y queda también en mlapi/cerebroavisos para mí).
-              if (SOLO_DATOS) await sendAlerta(_txtPub);
-              mandado = (await sendTelegram(_txtPub, 'baja')) === true;
+              mandado = (await sendTelegram(_txtPub, 'baja')) === true;   // va sólo al canal privado (29/10: antes iba a los dos)
               pubAlerts++;
             }
             if (!DRY) {
