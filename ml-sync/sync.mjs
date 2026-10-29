@@ -41739,6 +41739,35 @@ async function main() {
       if (sinPub.length) { console.log(`\n── 📭 EN LA OFICINA SIN PUBLICACIÓN EN ML (${sinPub.length}) ──`); for (const x of sinPub) console.log(`  · ${String(x.p.name).slice(0, 55)} · ${x.u} u.`); }
       return;
     }
+    // BILLING_PROBE=liquidables (29/10/2026, él: "aplicalo ya. pero antes pasame lista de qué modifica") → SOLO LEE. Las publicaciones
+    // activas (Clásica, no gemela) con stock 25+ de los últimos 30 días y CERO ventas (la misma cuenta que `liq30` del freno F13, con la
+    // línea juntada con sus hermanas de stock): el escalón de esta semana (−15%, terminación 90) y el `entrarpromo` listo. El margen y
+    // los frenos los dice `entrarpromo` sin ;go (misma puerta que todo).
+    if (/^liquidables$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const links = (await db.get('cyc/mllinks')) || {};
+      const prodsL = (await db.get('cyc/products')) || {};
+      const hoyL = dayKeyFromISO(Date.now()), k30 = dayKeyFromISO(Date.now() - 30 * 864e5);
+      const LIN = (await db.get('mlapi/linea')) || {};   // de una vez (como `techodias`): leer de a una era una consulta por publicación
+      const lineaDe = async (m) => LIN[m] || {};
+      const out = [];
+      for (const [mla, e] of Object.entries(links)) {
+        if (!/^MLA/.test(mla) || !e || !e.prodId || e.ignored || e.gemelaTipo || e.gemelaDe || String(e.status || '') !== 'active' || ML_REVISION_NO_MIRAR.has(mla)) continue;
+        let lin = null; try { lin = await lineaDe(mla); } catch { lin = null; } if (!lin) continue;
+        try { const J = await lineaJuntaStock(links, prodsL, mla, lin, lineaDe); lin = J.d; } catch { /* sola */ }
+        const ks = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyL && k >= k30 && lin[k] && typeof lin[k] === 'object').sort();
+        let dd = 0, uu = 0, pr = 0, st = 0; for (const k of ks) { const x = lin[k]; if (Number(x.p) > 0) pr = Number(x.p); if (x.st != null) st = Number(x.st) || 0; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+        if (!(dd >= 25 && uu === 0 && st > 0 && pr > 0)) continue;
+        const nuevo = Math.max(90, Math.floor(pr * 0.85 / 100) * 100 - 10);
+        const p = prodsL[e.prodId] || {};
+        out.push({ mla, cta: e.cuenta || '?', nom: String(e.title || p.name || '').slice(0, 55), pr, nuevo, st, perf: esPerfumeNom(`${p.name || ''} ${e.title || ''}`) });
+      }
+      out.sort((a, b) => b.pr * b.st - a.pr * a.st);
+      console.log(`=== 🧲 LIQUIDACIÓN · ${out.length} publicaciones activas con stock casi todo el mes y CERO ventas en 30 días · SOLO LEE ===\n`);
+      for (const x of out) console.log(`  ${x.mla} · ${x.cta} · ${x.nom}${x.perf ? ' 🌸' : ''} · ${x.st} u. en Full · ${money(x.pr)} → ${money(x.nuevo)}`);
+      if (out.length) { console.log('\nPara ver margen y frenos (sin tocar nada):');
+        for (let i = 0; i < out.length; i += 12) console.log('entrarpromo:' + out.slice(i, i + 12).map((x) => `${x.mla}=${x.nuevo}@PRICE_DISCOUNT|Liquidación 29/10: 0 ventas en 30 días con stock, escalón de la semana`).join(';')); }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('unapub')) {
       const _u = String(process.env.BILLING_PROBE).split(':');
       let MLA = (_u[1] || '').trim().toUpperCase();
