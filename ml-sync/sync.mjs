@@ -24730,7 +24730,31 @@ async function main() {
       if ((_bsa || _nbsa) && !partes.length) { if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}".`); return; }
         console.log(`${provNom}: ${_bsa ? 'pasa a Pedidos → Bs As' : 'vuelve a 📋 Listas'}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
         if (APLICAR) { await db.patch('cyc/mlconfig/listasProv/' + provK, { bsas: _bsa ? true : null }); const rr = (await db.get('cyc/mlconfig/listasProv/' + provK)) || {}; console.log(!!rr.bsas === _bsa ? '✓ releído' : '❌ no quedó'); } return; }
+      // SACAR PRODUCTOS DE UNA LISTA (29/10/2026, él por el chat de Chrome: "todo lo que se vende en Bs As (Once) es imitación de marca, no se puede
+      // vender en ML… sacar de las listas de Bs As todo producto de MARCA REAL"): `lista:<prov>|borrar;<código o nombre exacto>;…;go` lo borra de
+      // `mlapi/listas/<prov>` y lo anota en `cyc/mlconfig/listasProv/<prov>/fuera/<código>` para que volver a cargar la lista no lo traiga de vuelta.
+      if (opc.some((o) => o.trim() === 'borrar')) {
+        if (!provs[provK]) { console.log(`❌ No hay ninguna lista "${provNom}". Las que hay: ${Object.keys(provs).join(', ')}`); return; }
+        const catB = (await db.get('mlapi/listas/' + provK)) || {}; const _nB = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+        const sale = {}, noEsta = [];
+        for (const x of partes) { const q = x.trim(); const qc = q.replace(/[.#$\[\]\/]/g, '_');
+          let k = catB[qc] ? qc : null;
+          if (!k) { const hs = Object.entries(catB).filter(([, e]) => e && _nB(e.n) === _nB(q)).map(([kk]) => kk); if (hs.length === 1) k = hs[0]; else if (hs.length > 1) { noEsta.push(`"${q}" (hay ${hs.length} con ese nombre: pasá el código: ${hs.slice(0, 4).join(', ')})`); continue; } }
+          if (!k) { const kd = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80); if (catB[kd]) k = kd; }
+          if (!k) { noEsta.push(`"${q}"`); continue; } sale[k] = catB[k]; }
+        console.log(`=== SACAR DE LA LISTA ${provNom.toUpperCase()} · ${Object.keys(sale).length} productos ${APLICAR ? '' : '(PRUEBA)'} ===`);
+        for (const [k, e] of Object.entries(sale)) console.log(`  🗑️ ${String(e.n).slice(0, 70)} (${k})`);
+        if (noEsta.length) console.log(`  ⚠️ no los encontré (no se toca nada de esos): ${noEsta.join(' · ')}`);
+        if (!APLICAR) { console.log('PRUEBA: agregá ;go al final.'); return; }
+        if (Object.keys(sale).length) { const del = {}, fu = {}; for (const [k, e] of Object.entries(sale)) { del[k] = null; fu[k] = { n: String(e.n || '').slice(0, 120), ts: Date.now() }; }
+          await db.patch('mlapi/listas/' + provK, del); await db.patch('cyc/mlconfig/listasProv/' + provK + '/fuera', fu);
+          const catR = (await db.get('mlapi/listas/' + provK)) || {}; const quedan = Object.keys(sale).filter((k) => catR[k]).length;
+          await db.patch('cyc/mlconfig/listasProv/' + provK, { n: Object.keys(catR).length, ...cuentaLista(catR, provs[provK].fecha) });
+          console.log(quedan ? `⚠️ ${quedan} no se borraron` : `✓ borrados y releído · quedan ${Object.keys(catR).length} en la lista · no vuelven al recargarla`); }
+        return;
+      }
       const filas = [], malos = [];
+      const _fuera = (provs[provK] && provs[provK].fuera) || {}; let _salteo = 0;
       for (const x of partes) {
         const i = x.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
         let izq = x.slice(0, i).trim(); const der = x.slice(i + 1).trim();
@@ -24742,6 +24766,7 @@ async function main() {
         if (!izq || !(p > 0)) { malos.push(x); continue; }
         if (!cod) cod = izq.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 80);
         cod = String(cod).replace(/[.#$\[\]\/]/g, '_');
+        if (_fuera[cod]) { _salteo++; continue; }   // sacado a propósito (marca real, 29/10): no vuelve
         filas.push({ cod, n: izq, p, ...(foto ? { f: foto } : {}) });
       }
       if (malos.length) { console.log(`❌ ${malos.length} renglón(es) mal escritos (va <producto>=<pesos>). NO escribo ninguno:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
@@ -24758,7 +24783,7 @@ async function main() {
         const _pCambio = v && Math.abs((Number(v.p) || 0) - f.p) >= 1;
         upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ...(f.f ? { f: f.f } : {}), ts: ahora, fl: fechaL || null, ...(_pCambio ? { pAnt: Number(v.p) || null, pl: null, dto: null, precioWeb: null } : {}) }; }
       console.log(`=== LISTA DE ${provNom.toUpperCase()} · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
-      console.log(`${filas.length} productos · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · recargo del proveedor ${rec}%`);
+      console.log(`${filas.length} productos · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · recargo del proveedor ${rec}%${_salteo ? ` · ${_salteo} salteados (sacados antes de esta lista con |borrar)` : ''}`);
       filas.slice(0, 15).forEach((f) => console.log(`  · ${f.n.slice(0, 70)} · ${money(f.p)}`));
       if (!APLICAR) { console.log('\nPRUEBA. Para guardar, agregá ";go" al final.'); return; }
       await db.patch('mlapi/listas/' + provK, upd);
