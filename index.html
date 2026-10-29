@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.00';
+const APP_VERSION='28.01';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.01',f:'29/10',h:'17:40',c:[{n:1,t:'📥 Lo que nos deben: al lado del % de ganancia de cada deuda va la ganancia en pesos en verde (+$X).'}]},
   {v:'28.00',f:'29/10',h:'17:25',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado muestra sólo el nombre; tocándolo se abre ahí mismo el detalle (nombre entero, cuánto paga, costo, ganancia y la nota).'}]},
   {v:'27.99',f:'29/10',h:'17:05',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado ocupa el mismo lugar: fecha, producto (cortado si es largo), perfumería, total y ganancia, y el botón Pagó, todo en columnas fijas.'}]},
   {v:'27.98',f:'29/10',h:'16:55',c:[{n:1,t:'📥 Mercadería Perfumería: en cada producto dejado, el total a cobrar en blanco y negrita y abajo la ganancia en verde con su % sobre el costo (+$4.716 · 25%).'}]},
@@ -7184,7 +7185,7 @@ function renderCuotas(){
     // (como en toda la app: el 25% que se le gana a la perfumería se ve 25%, no 20%) y, en una deuda de mercadería dejada (renglones con
     // ganancia), afuera se ve la ganancia en pesos de lo que tiene costo cargado, no un % que deja afuera la deuda vieja sin costo.
     const pct=d.sinGan?null:gan!=null&&costo>0?Math.round(gan/costo*100):gmV-gmG>0?Math.round(gmG/(gmV-gmG)*100):null;
-    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':gm.length&&gan==null?`<span style="font-size:.7rem;font-weight:700;color:${gmG>=0?'var(--green)':'var(--red)'}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda que no tiene costo no entra.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'}">${pct}%</span>`:'';
+    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':gm.length&&gan==null?`<span style="font-size:.7rem;font-weight:700;color:${gmG>=0?'var(--green)':'var(--red)'}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda que no tiene costo no entra.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'};white-space:nowrap">${pct}%${gan!=null?` <span style="font-weight:600">${gan>=0?'+':'−'}${_pesos(Math.abs(gan))}</span>`:''}</span>`:'';
     const bord=atr?'var(--red)':fin?'rgba(34,197,94,.55)':ab?'var(--border2)':'var(--border)',bg=atr?'background:rgba(239,68,68,.08);':fin?'background:rgba(34,197,94,.07);':'';
     const venceTxt=fin?'':v?`<span style="color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></span>`:(cuotaFija(d)?'':'<span style="color:var(--amber)">sin fecha (✏️)</span>');
     const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">

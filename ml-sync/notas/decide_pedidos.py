@@ -19,8 +19,8 @@ prods=[];grupo='';cur=None;esper={};nfichas=None;noEnt=[];cuentaOk=False;nDecidi
 def m35_de(t):
     m=re.search(r' · M35 (comp|v365):(\d+):(-?\d+):(\d+)/(\d+)',t)
     if m: return dict(f=m.group(1),p=int(m.group(2)),pct=int(m.group(3)),u=int(m.group(4)),d=int(m.group(5)))
-    m=re.search(r' · M35 no:(\S+?):(\S+?)(?: |$)',t)
-    if m: return dict(f='no',pc=m.group(1),pv=m.group(2))
+    m=re.search(r' · M35 no:([^:\s]+):([^:\s]+)(?::(\d+):(\d+)/(\d+))?',t)
+    if m: return dict(f='no',pc=m.group(1),pv=m.group(2),p35=int(m.group(3)) if m.group(3) else None,u=int(m.group(4) or 0),d=int(m.group(5) or 0))
     return None
 # 🛍️ LO QUE PIDE LA PERFUMERÍA (29/10/2026, él: "si pide para perfumería que diga en chiquito en el nombre y que sume lo pedido para ML y para
 # perf"): pedidostodo trae `PERF <u>[@<color>]` (`cyc/pedperf`). Se SUMA a lo de ML aunque no llegue al 35% o haya stock de sobra en ML.
@@ -30,9 +30,16 @@ def perf_de(t):
 def perf_mot(q,perf,mot):
     if q>0: return f"Hola Tito! Te pido {q+perf}: {q} para ML y {perf} para la perfumería. "+mot[len('Hola Tito! '):] if mot.startswith('Hola Tito! ') else mot
     return f"Hola Tito! Te pido {perf} para la perfumería (para ML no hace falta)."
+# 29/10/2026 (él: "descartar sólo con el producto probado. nunca teniendo en cuenta el competidor, porque ya sabemos que aunque esté perdiendo
+# puede vender igual. sí o sí hay que probar con productos en stock en Full"): lo que nunca vendió a 35% se descarta SÓLO si estuvo 30+ días con
+# stock al precio que deja 35% (o más caro) sin vender. Si no se probó, va una COMPRA DE PRUEBA: una semana de lo que vendía (mínimo 2) menos
+# lo que ya hay, para venderla al precio del 35%. El competidor ya no descarta nada.
+PRUEBA_DIAS=30
+def m35_probado(mm): return mm and mm['f']=='no' and mm.get('d',0)>=PRUEBA_DIAS and mm.get('u',0)==0
 def m35_rent(mm):
     if mm['f']!='no': return True,''
-    return False,f"ni contra la competencia ({mm['pc']}%) ni a la venta más cara de 365 días ({mm['pv']}%) llega al 35% (no se repone)"
+    if m35_probado(mm): return False,f"se probó {mm['d']} días con stock a ${mm['p35']} (deja 35%) o más caro y no vendió: no se repone"
+    return True,''
 def nor_de(t):
     m=re.search(r' · NOR (\d+)/(\d+) (\d+)/(\d+)@(\d+)',t or '')
     if not m: return None
@@ -254,6 +261,9 @@ for p in prods:
             # ahí se usan los del producto como antes. Sin hora de venta propia, el `hist` del producto.
             vc=v['cambios'] if p.get('colFicha') is not None else p['cambios']
             r,t,b=ritmo(dict(v,cambios=vc or '',hist=v.get('hist') or p.get('hist')),v['dcs']); Tv,por=Tde(p,v,r,vm); need=max(0.0,r*Tv-t) if v['rent'] else 0.0
+            _mmv=v.get('m35') or (p.get('m35') if not v.get('m35') else None)
+            if v['rent'] and _mmv and _mmv['f']=='no' and not m35_probado(_mmv) and r>0:   # compra de prueba al 35% (de ESE color, si se vendía)
+                need=max(0.0,max(2,math.ceil(r*7))-t); v['prueba']=_mmv.get('p35') or 0; b+=f" · 🧪 prueba al 35%{' ($'+str(v['prueba'])+')' if v['prueba'] else ''}: nunca se probó con stock a un precio que deje 35%"
             if por: b+=f' · {Tv} días porque {por}'
             dets.append([v,need,r,t,r*Tv,b])
         # Lo que el producto tiene SIN COLOR (viajando de Paraguay, Full de publicaciones sin color, oficina o cajas sin color)
@@ -272,6 +282,8 @@ for p in prods:
         res.append((p,tot,dets,rentable))
     else:
         r,t,b=ritmo(p,p['dcs']); Tp,por=Tde(p,p,r,_m); need=r*Tp-t
+        if p.get('m35') and p['m35']['f']=='no' and not m35_probado(p['m35']) and r>0:   # compra de prueba al 35% (sólo lo que se vendía)
+            need=max(0,max(2,math.ceil(r*7))-t); p['prueba']=p['m35'].get('p35') or 0; b+=f" · 🧪 prueba al 35%{' ($'+str(p['prueba'])+')' if p['prueba'] else ''}: nunca se probó con stock a un precio que deje 35%"
         if por: b+=f' · {Tp} días porque {por}'
         q=max(0,math.ceil(need-0.25)) if need>0 else 0
         if not rentable: q=0
@@ -399,6 +411,10 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
         dias=(t/r) if r>0 else None
         x=f"Hola Tito! {quien} no hace falta: {base} y ya hay {tt}"+(f", alcanza para unos {dias:.0f} días." if dias and dias<999 else ".")
     return x+(' '+extra if extra else '')
+def prueba_mot(q,r,p35,color=None):
+    de=f" del {color}" if color else ''
+    return (f"Hola Tito! Te pido {q}{de} de prueba: antes se vendían unos {r*30:.0f} por mes, pero nunca lo probamos a un precio que nos deje 35%"
+            +(f" (${p35})" if p35 else '')+". Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.")
 def titoJ(mo): return "Hola Tito! "+mo
 # EL JUICIO ES UN OBJETIVO, NO UNA COMPRA FIJA (20/10/2026, idea 1 del ayudante de ideas, chica y alta confianza): pedía la
 # cantidad tal cual aunque la mercadería ya hubiera llegado (Cortapelos 2 en 1 y 1 en 1 con 10 y 15 en la oficina, Lupa 75mm
@@ -435,7 +451,8 @@ for p,q,d,rent in res:
             _perfVa=_m[0][0]['v'] if _m else None
             if _perfVa is None and p['perf'][0]>0: avisos.append(f"{p['n']}: la perfumería pide el color {p['perf'][1]} y no tiene renglón: decidilo a mano")
         for v,qq,r,t,obj,b in filas:
-            mot=moJt or tito(qq,r,t,obj,b,v.get('rent',rent),p['neto'],v['v'],ex,v.get('motNoRenta',p['motNoRenta']))   # el 35% de ESE color (revisión etapa 3, 29/10/2026)
+            mot=moJt or tito(qq,r,t,obj,b,v.get('rent',rent),p['neto'],v['v'],ex,v.get('motNoRenta',p['motNoRenta']))
+            if not moJt and 'prueba' in v and qq>0: mot=prueba_mot(qq,r,v.get('prueba'),v['v'])   # el 35% de ESE color (revisión etapa 3, 29/10/2026)
             jv=juDe(pid,v['v'])
             if jv: qq,mot=juicioQ(jv[0],t,jv[1],p['n']+' #'+v['v'])
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
@@ -470,6 +487,7 @@ for p,q,d,rent in res:
         if p.get('rem'): ex+=f"No cuento {p['rem']} que se remataron porque estaban parados. "
         if p.get('barata'): ex+=f"Cuento {p['barata']} que se vendieron baratas porque salían al toque. "
         mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip(),p['motNoRenta'])
+        if 'prueba' in p and q>0: mot=prueba_mot(q,r,p.get('prueba'))
         if juDe(pid): q,mot=juicioQ(juDe(pid)[0],t,juDe(pid)[1],p['n'])
         # `|cub=` (revisión etapa 3, 29/10/2026): lo que esta cuenta ya restó fuera de Full (oficina + camino a Full + lo que viaja). `decido`
         # lo guarda aparte y la web resta de lo decidido sólo lo que ENTRÓ después; antes volvía a restar la oficina y el camino (Te pido 15
