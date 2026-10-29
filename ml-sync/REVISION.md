@@ -958,6 +958,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🔎 Buscador de todo Bs As en Pedidos (29/10/2026; él: *"mi viejo… no encontró los aromatizantes Aer porque estaban en Nippon"*)
+- **Qué es:** `pedBsasBuscar` / `pedBsasIr` (index.html): caja a la derecha de 📋 Listas; busca en memoria en los pedidos de Bs As (sin Paulvic) y en las fichas de Bs As sin pedido, dice en qué solapa está (🏬 De siempre / 📋 lista) y al tocar lleva ahí con el nombre puesto en el buscador de esa solapa. `pedgrupo:<palabras>=siempre;go` (robot) pasa una ficha de una lista a 🏬 De siempre (como el botón de la tarjeta).
+- **Qué chequear:** con 2 letras ya muestra; a 360 px la caja baja a la segunda fila sin empujar las solapas; tocar un resultado de Dai Nippon abre esa solapa con la búsqueda.
+
 ### 🏷️ Nombre de ML en las fichas nuevas (29/10/2026; él: *"de todos en los últimos 30 días… cuando lo publicás en ML actualizar el nombre del producto en la web"*)
 - **Qué es:** `nombreml[:dias=N][:go]` ya no mira sólo Paraguay: toda ficha con id de los últimos 30 días (sin `nombreFijo`) toma el título de su publicación (o lo común de sus colores, o el catálogo). Corre cada noche en ml-daily (paso "Nombre de ML en las fichas nuevas"). `publicar` llama `nombreDeML` al crear.
 - **Qué chequear:** que ninguna ficha de más de 30 días cambie de nombre; que una ficha con variantes no tome el título de un solo color.

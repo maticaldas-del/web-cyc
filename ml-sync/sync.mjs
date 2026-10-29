@@ -85,7 +85,7 @@ if (_MASCARA_PLATA) {
   const _ol = console.log.bind(console);
   console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')) : x)));
 }
-const CONSULTA_ESCRIBE = new Set(['buzon', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -24612,6 +24612,27 @@ async function main() {
       await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}), ...cuentaLista({ ...cat, ...upd }) });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
+      return;
+    }
+    // BILLING_PROBE=pedgrupo:<palabras>=siempre[;go] (29/10/2026, él: "mi viejo estaba mirando para comprar los aromatizantes Aer y no los
+    // encontró porque estaban en Nippon… él hoy los compra en otro lado, ese mayorista no tiene lista") → lo mismo que el botón
+    // 📋/🏬 de la tarjeta de Pedidos: la ficha deja la lista de Bs As (listaProv) y pasa a 🏬 De siempre (queda en listaProvViejo).
+    // Sin ;go sólo muestra qué fichas tocaría.
+    if (/^pedgrupo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('pedgrupo:'.length); const GO = /;go$/.test(raw);
+      const m = raw.replace(/;go$/, '').match(/^(.+?)=siempre$/i);
+      if (!m) { console.log('Usá: pedgrupo:<palabras>=siempre[;go]'); return; }
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const pals = nrm(m[1]).split(/\s+/).filter(Boolean);
+      const prods = (await db.get('cyc/products')) || {};
+      const hits = Object.entries(prods).filter(([, p]) => p && p.listaProv && pals.every((w) => nrm(p.name).includes(w)));
+      if (!hits.length) { console.log('No hay fichas de una lista de Bs As con esas palabras.'); return; }
+      for (const [k, p] of hits) {
+        console.log(`  ${p.name} · hoy en ${p.listaProv} → 🏬 De siempre${GO ? '' : ' (prueba)'}`);
+        if (GO) { await db.patch('cyc/products/' + k, { listaProv: null, listaProvViejo: p.listaProv });
+          const r = (await db.get('cyc/products/' + k + '/listaProv')); console.log(r ? '    ❌ no quedó' : '    ✓ releído'); }
+      }
+      if (!GO) console.log('\nPRUEBA: agregá ;go para guardar.');
       return;
     }
     // BILLING_PROBE=listaori[:go] (18/10/2026) → carga en `mlapi/listasori/<prov>/<código>` el renglón TEXTUAL de cada producto en el
