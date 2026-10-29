@@ -26009,7 +26009,7 @@ function _homeCobroHtml(f){
     const pr=P.esActual?cobroProyMes(ym):null;
     // 29/10/2026 (él: "¿cobramos 1.3m como dice arriba o la nueva regla?"): con el mes cerrado manda lo que CRECIÓ CYC
     // (`_cobroCrec`, la misma tarjeta del Arqueo). Antes del cierre es sólo una idea: lo de las ventas de ML.
-    const cc=(!P.esActual&&ym>=COBRO_CRECE_DESDE)?_cobroCrec(ym):null;
+    const cc=(ym>=COBRO_CRECE_DESDE&&(state.snapshots||{})[ym])?_cobroCrec(ym):null;   // cerrado antes de fin de mes (octubre se cerró el 28/10) también
     if(cc)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · lo que creció CYC</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cc.porSocio>0?'var(--text)':'var(--red)'}">${fmt(cc.porSocio)}</div>
       <div style="font-size:.66rem;color:var(--muted)">sale del cierre del Arqueo (ML, local y todo)</div>`;
