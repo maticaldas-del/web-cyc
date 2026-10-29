@@ -76,3 +76,5 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 57. ¿La regla que voy a aplicar vale sólo para una etiqueta? Si el motivo de fondo ("sin techo medido") también vale para otras (🔥/⏳), ¿las cubre? (28/10, el Espejo 4" en escasez vendió y no subió).
 58. Antes de rearmar algo que la vuelta ya decidió (cajas, pedidos), ¿estoy pisando sus decisiones a mano? Comparo contra el archivo anterior y me quedo con las que tienen motivo propio (28/10, las 97 Cartas Casino).
 59. Cuando creo o publico algo, ¿la ficha quedó con el nombre EXACTO de su publicación de ML? (29/10, 23 fichas nuevas con el nombre de Paraguay).
+60. ¿Este número es de UN color/aroma o un promedio del producto? Cada variante se juzga sola: precio, stock, ventas y si se repone (29/10, Paulvic).
+61. ¿Lo que le muestro (o la web) es el dato de AHORA o el de anoche? Antes de explicar "por qué no subió", mirar el precio de hoy en ML (29/10, Lupa 90).
