@@ -225,6 +225,8 @@ for p in prods:
                 v['rent']=p['costo']>0 and vm>=0.35; v['motNoRenta']=mot_no_renta(p['costo'],v['netoC'],vm)
             else: vm=_m; v['rent']=rentable; v['motNoRenta']=p['motNoRenta']
             if v.get('m35'): v['rent'],v['motNoRenta']=m35_rent(v['m35'])
+            # lo que "no viene más" (Paulvic, `cyc/noconsigo/<prod>/nunca`) no se pide: antes lo tapaba el 35% del producto entero (29/10, Invictus y Phantom)
+            if v.get('nunca'): v['rent'],v['motNoRenta']=False,'no viene más (el proveedor no lo manda)'
             # Cada color con SUS cambios de precio (etapa 3, 20/10/2026): un log nuevo los trae en el renglón del color; un log viejo no, y
             # ahí se usan los del producto como antes. Sin hora de venta propia, el `hist` del producto.
             vc=v['cambios'] if p.get('colFicha') is not None else p['cambios']
