@@ -17,7 +17,8 @@ Mercado Libre no le da este número al robot de CYC: sólo se ve en la pantalla.
 1. Mercado Libre → arriba a la derecha elegí la cuenta (empezá por Adriana).
 2. Publicaciones → Gestión de stock Full (o "Full") → Planificación de envíos. Buscá dónde dice cuánto lugar te queda para
    mandar (puede decir "capacidad", "cupo", "espacio disponible" o "unidades que podés enviar"). Si separa productos chicos/
-   medianos de grandes, anotá los dos números.
+   medianos de grandes, anotá los dos números. Anotá también la HORA en que viste ese número (como en Mercado Pago): las cajas que
+   se cierran después de esa hora se descuentan solas del cupo, las de antes ya están adentro del número que viste.
 3. Repetilo en las otras 3 cuentas.
 Si no encontrás el número en una cuenta, escribí "no lo encontré" y dónde buscaste. No adivines.
 
@@ -50,7 +51,7 @@ y QUÉ dice ML que hay que arreglar (copiado tal cual, corto). No toques nada. L
 Un solo mensaje (si no entra en 2.000 letras, partilo en dos), EXACTAMENTE con este formato, una cosa por renglón:
 
 RUTINA <AAAA-MM-DD>
-cupo: Adriana=<chicos>/<grandes> · Luciana=<chicos>/<grandes> · Ayelen=<chicos>/<grandes> · Matias=<chicos>/<grandes>
+cupo: Adriana=<chicos>/<grandes>@<HH:MM> · Luciana=<chicos>/<grandes>@<HH:MM> · Ayelen=<chicos>/<grandes>@<HH:MM> · Matias=<chicos>/<grandes>@<HH:MM>   (la hora en que viste ESE número)
 mp: Adriana=<pesos>@<HH:MM> · Luciana=<pesos>@<HH:MM> · Ayelen=<pesos>@<HH:MM> · Matias=<pesos>@<HH:MM>   (la hora en que viste ESE número)
 pedido: <N> iguales · <N> cambiaron · <N> sin stock · total de hoy US$ <número>
 ml: <cuenta> · MLA<número> · <título corto> · <qué pide ML>   (una por renglón; si no hay ninguna: "ml: nada")

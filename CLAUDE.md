@@ -314,6 +314,7 @@
   ritmo normal si hubo remate o prueba; **precio para el máximo de compra = el de la última venta**, aunque sea 1, sin pasar el de hoy ni
   contar escasez, sin reposición, sobra, liquidando ni remate (1a del 27/10); nunca vendió → el de hoy, 23/10; **por color** (27/10, él con las Sábanas Rojo: *"ese color se vendió a ese precio, no todos"*): cada color con venta propia usa la suya, topeada por el precio de hoy de SU publicación, y el del producto es el más bajo de los colores que vendieron) → revisar a mano → `notas/pedidos.txt` → `decido:archivo=pedidos;go`. En la completa.
   Lo de la oficina o viajando a Full cubre lo decidido.
+  **¿Se repone? (29/10, él: *"se compara contra el competidor de ml y si no da el 35% se mira con la venta más alta del producto de los últimos 365 días. y se pide unidades según el ritmo de venta del producto a ese precio"*):** cada producto y **cada color/aroma por sí mismo** (él: *"cada aroma variante… tiene su propio camino"*): 35% al precio de la competencia (`techofull`) → si no, a la venta más cara de 365 días → si ninguno, no se repone; unidades con el ritmo a ESE precio (7+ días con stock; si no, el de siempre) y ese precio para el máximo de compra (`M35`).
   **Después de una suba de precio, en los primeros 7 días se sigue trayendo para 30 días con el ritmo de antes** (28/10, eligió 2b: se le propuso bajar a 15 y dijo que no; no volver a proponerlo).
 - **Pedidos se ordena por lo que SALVA cada $1** (27/10, él eligió 1a y *"que quede sólo esa"*): 💸 en riesgo (`riesgoComprar`) ÷ lo que cuesta la compra (`_pedDevuelve`); lo que todavía tiene stock queda abajo aunque deje mucho, lo que está en 0 sube. La ganancia que usa es **la del precio de hoy** cuando lleva 7+ días con stock desde el último cambio de precio (1a del 27/10); si no, la de 30 días. Medido en `sim.py`/`sim2.py`: gana ~$170-480 mil/mes contra ordenar por la plata total cuando faltan pesos.
 - Por color: un color agotado hace 30+ d pide con su ritmo viejo ("ritmo viejo"). Pedido a mano ya no existe (lo arma el panel/yo).
@@ -326,7 +327,7 @@
   **Con cupo chico se llena para la MÁXIMA plata** (27/10, él: *"maximizar la máxima ganancia de $ posible siempre"*): lo que está en 0 o se corta antes de la próxima caja recibe lo que vende hasta que llegue (14 días, contando desde que entra ésta a los 7; mínimo 1), en orden de lo que más deja por unidad; lo que sobra va a lo que más deja por unidad (lo nuevo con lo que deja su publicación); web y `decide_cajas.py` iguales.
   Una cuenta sin publicación no recibe el mínimo si otra tiene stock de ese color en Full. Caja 70×70×70, 30 kg; costo de mandar una
   caja `cyc/mlconfig/costoCaja` ($17.500, `cajacosto`).
-- **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>`; "grande" = sólo los Tenders
+- **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>@<AAAA-MM-DD HH:MM>` (la hora en que lo leyó, como `ancla`; 29/10: si no, lo que se mandó en el medio no se resta); "grande" = sólo los Tenders
   (`cupoGrandes`). Lo vendido NO devuelve cupo (18/10). Avisa, no frena. **Cupo lleno → vender lo lento** (descuento/escalera), retirar
   sólo si él lo pide (21/10).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
@@ -413,7 +414,7 @@
 - `lista:<prov>[|fecha=AAAA-MM-DD];<producto>=<pesos>[@<cód>];…;go`. **Nunca cargar una lista vieja** (18/10; el comando frena si la fecha
   es anterior a `cyc/mlconfig/listasProv/<prov>/fecha`). **Preguntar si el precio es el que se paga o lista con descuento** y cargar el
   NETO (Iscos: "P. Lista" con −30%/−33,5%, `listadto`).
-- **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos;go`, `noWeb`).
+- **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos|fecha=<AAAA-MM-DD del archivo>;go`, `noWeb`; 29/10: sin fecha o más viejo que la lista cargada se niega, y una fila que no vino en la última lista queda "📅 de una lista anterior" y no cuenta).
 - **🏙️ Listas del Once** (28/10, él: *"bs as está muy desaprovechado… lo mejor es conseguir listas"*; eligió 1a): Tito pide la lista a cada mayorista donde compra (foto, PDF o WhatsApp; precio final o +IVA, y si da factura) y el chat de Chrome busca mayoristas del Once con catálogo con precios en internet y los carga (`ml-sync/PROMPT_ONCE.md`: `lista:` con fecha → `|bsas` → `listamedir`). Todo va a Pedidos → Bs As con la vara de 35%.
 - **Dai Nippon** (Bs As, lo trae Tito): **desde el 21/10 tiene casilla, 🧾 Pedido con mensaje de WhatsApp, Ya lo pedí y Llegó** como las otras.
 - **Pedido a una lista y la plata** (20/10 2b + 24/10 12a): pagado al pedir (💵 Ya lo pagué mientras viaja, `pagado:true`) → mercadería en camino en el Arqueo (`listaEnCaminoUSD`); sin pagar → al llegar es deuda hasta que se paga (`listaDeudaUSD`).

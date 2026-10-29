@@ -3189,7 +3189,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.89';
+const APP_VERSION='27.91';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3202,6 +3202,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.91',f:'29/10',h:'14:55',c:[{n:3,t:'📈 Línea de tiempo: todo techo dice su % de seguridad (también el 🔴 y el gris "ya está arriba del techo"), la raya 🚧 de un precio que después vendió más caro ya no se dibuja (si vende, no es techo), y "hoy" es el precio de ahora (la línea llega hasta anoche: lo dice al lado)'}]},
+  {v:'27.90',f:'29/10',h:'14:23',c:[{n:3,t:'🔍 Revisión de Mercadería: Pedidos ya no resta dos veces la oficina y lo que viaja (borraba pedidos que hacían falta) · la caja que se pasa del cupo dice "Se pasa del cupo" en vez de MANDALA YA · un envío pausado ya no se marca llegado · ✅ Etiquetadas pregunta cuántas · las listas viejas ya no cuentan como que dan · el riesgo de un color en 0 no lo tapa otro color · rojo de Pedidos = 14 días o menos'}]},
   {v:'27.89',f:'29/10',h:'13:16',c:[{n:2,t:'🔎 Pedidos: buscador a la derecha de Listas que busca en todo Bs As (De siempre y las listas de Tito) y te lleva a la solapa donde está'}]},
   {v:'27.88',f:'29/10',h:'13:10',c:[{n:2,t:'🧊 Un mes cerrado queda congelado: el costo de cada venta es el que tenía al cerrarlo (un reclamo nuevo o un cambio de envío ya no cambian octubre)'}]},
   {v:'27.87',f:'29/10',h:'13:09',c:[{n:2,t:'📊 Resumen: "Valor de Stock" ahora es el mismo número que el "Stock total" del Arqueo (suma Oficina CYC y vendedores, que antes faltaban)'}]},
@@ -4802,6 +4804,9 @@ const stockOficina=p=>p?getQ(p.id,OFI):0;
 // `cyc/sinetiq/<prodId>` = {t: u. sin variante, v: {<variante>: u.}} lo carga Claude (`ofi:<palabra>=+N!se`, `sinetiq:<palabra>=0`).
 // Armar caja NO cambia la cuenta: sólo muestra cuántas de las que tenés todavía hay que etiquetar. Nunca más que lo que hay en casa.
 function sinEtiq(prodId,variante){
+  // Revisión etapa 3, 29/10/2026: lo que se vende SÓLO en el local (`soloLocal`, comando `sololocal`) no lleva etiqueta de Full: 0 en la
+  // tarjeta 🏷️, en los chips de Contar lo que hay y en el aviso de Armar caja (el robot tampoco lo anota, `sinEtiqSumarBot`).
+  {const _p=prodById(prodId);if(_p&&_p.soloLocal)return 0;}
   const r=(state.sinetiq||{})[prodId]||{};
   const n=variante?(parseInt((r.v||{})[sid(String(variante))])||0):(parseInt(r.t)||0);
   const of=variante?getQV(prodId,OFI,variante):getQ(prodId,OFI);
@@ -4823,6 +4828,7 @@ function renderSinEtiqCard(){
   const el=document.getElementById('ofi-sinetiq-card');if(!el)return;
   const filas=[];
   for(const p of state.products||[]){
+    if(p.soloLocal)continue;   // revisión etapa 3, 29/10/2026: sólo local = no va a Full, no se etiqueta (ver sinEtiq)
     if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({pid:p.id,nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
     const n0=sinEtiq(p.id,'');
     if(n0>0&&!(p.variantes||[]).length)filas.push({pid:p.id,nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
@@ -4835,7 +4841,9 @@ function renderSinEtiqCard(){
   const ord=k=>{const i=LOCS.indexOf(k.split(' · ')[0]);return i<0?99:i;};
   const ks=Object.keys(grp).sort((a,b)=>ord(a)-ord(b)||a.length-b.length||a.localeCompare(b));
   const tot=vis.reduce((a,f)=>a+f.n,0);
-  const fila=f=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b><button type="button" class="btn btn-sm" style="flex:none;white-space:nowrap;padding:3px 8px;font-size:.66rem;border-color:rgba(34,197,94,.45);color:var(--green)" title="Ya les pegaste la etiqueta de Full a estas ${f.n} u.: pasan a listas para la caja" onclick="sinEtiqListo('${f.pid}','${escHtml(String(f.v||'')).replace(/'/g,'&#39;')}')">✅ Etiquetadas</button></div>`;
+  // Revisión etapa 3, 29/10/2026: el botón pregunta cuántas (sinEtiqListo) y el color va como JSON (como setOfiVar): con `&#39;` adentro
+  // de onclick="…" el navegador lo volvía a `'` y un color con apóstrofo rompía el botón.
+  const fila=f=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b><button type="button" class="btn btn-sm" style="flex:none;white-space:nowrap;padding:3px 8px;font-size:.66rem;border-color:rgba(34,197,94,.45);color:var(--green)" title="¿Ya les pegaste la etiqueta de Full? Te pregunto cuántas (de estas ${f.n}) y sólo ésas pasan a listas para la caja" onclick="sinEtiqListo('${f.pid}',${JSON.stringify(String(f.v||'')).replace(/"/g,'&quot;')})">✅ Etiquetadas</button></div>`;
   el.innerHTML=`<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta${sel?' · '+escHtml(sel):''}</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Todo lo que se carga a la oficina entra acá; cuando las etiquetes tocá ✅ Etiquetadas.</div>
@@ -5273,6 +5281,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:3,t:'29/10 · 8 decisiones de Mercadería',que:'renombrar fichas viejas al vincular · sin etiqueta por cuenta · Tenders y su caja · envío pausado y el cupo · costos antes del ticket · recompra más barata · lo pagado que no vino · precios de proveedores en el registro',pedi:'resolvamos las de Mercadería'},
   {etapa:2,t:'27/10 · 6 decisiones de Plata',que:'saldos de MP en el registro público · congelar el mes cobrado · cuándo cargar el retiro · ventas sin factura después de 45 días · stock de Full no disponible · Valor de Stock de Resumen vs Arqueo',pedi:'resolvamos las de Plata'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
@@ -5296,7 +5305,7 @@ const REV_HIST={
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
      {f:'2026-10-20',t:'Cerrada: él eligió 1b 2b 3a 4a 5a 6a 7a 8a (listas como deuda al llegar, recargo contra la web, filas de MP sin venta = ya en la cuenta). v25.33.'}],
-  3:[{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
+  3:[{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'},
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
@@ -6336,8 +6345,12 @@ async function updProdName(id,val){
   if(sueltas.length&&!confirm('⚠️ Hay '+sueltas.length+' venta(s) vieja(s) de "'+p.name+'" cargada(s) con ese nombre exacto (sin vínculo por ID). Si renombrás ahora, esas ventas dejan de matchear el producto.\n\n¿Renombrar igual?')){renderProds();return;}
   const oldName=p.name;p.name=newName;
   await fbSet('products/'+id+'/name',newName);
+  // Revisión etapa 3, 29/10/2026: el nombre que pone él queda FIJO (`nombreFijo`). Sin la marca, `nombreml:go` (cada noche, las fichas
+  // de los últimos 30 días) le volvía a poner el título de ML a la mañana siguiente, y `vincular`/`publicar` también lo pisaban.
+  let _nfMal=false;p.nombreFijo=true;try{await fbSet('products/'+id+'/nombreFijo',true);}catch(e){_nfMal=true;}
   await log('Renombró: "'+oldName+'" → "'+newName+'"');
-  renderInv();renderProds();if(currentPage==='ventaprod')renderVentaProd();syncPedidosDebounced();toast('Renombrado ✓');
+  renderInv();renderProds();if(currentPage==='ventaprod')renderVentaProd();syncPedidosDebounced();
+  toast(_nfMal?'Renombrado, pero no pude dejarlo fijo: esta noche puede volver al nombre de ML. Escribilo de nuevo.':'Renombrado ✓',_nfMal?'err':'ok',_nfMal?7000:undefined);
 }
 // Alterna el origen del producto: define en qué sección de Pedidos aparece (BS AS / Paraguay)
 async function toggleProdOrigen(id){
@@ -6431,7 +6444,9 @@ function paraguayHtml(p){
   let mgRepo=null,_rpP=0,_rpF='';
   try{const _mx=maxCompraDe(p,PY_PROB_PISO);const _m=margenSiComproPY(_mx,nu);if(_m!=null){mgRepo={margen:_m};_rpP=_mx.P;_rpF=_mx.fuente;}}catch(e){}
   if(!mgRepo&&puesto>0)mgRepo=margenMLDe({...p,costUSD:puesto,costFullUSD:null,shipUSD:(p.shipUSD!=null?p.shipUSD:0)});
-  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=25?'var(--green)':m.margen>=PY_PROB_PISO?'var(--amber)':'var(--red)');
+  // Revisión etapa 3, 29/10/2026: verde desde el 35% (`PY_PROB_PISO`), ámbar 25-34%, rojo abajo. Antes verde desde 25% (y el ámbar no
+  // salía nunca): un 30% de reponer salía en verde al lado de "A este precio no conviene comprarlo".
+  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=PY_PROB_PISO?'var(--green)':m.margen>=25?'var(--amber)':'var(--red)');
   return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 12px">
     <div style="font-size:.6rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -7486,12 +7501,15 @@ function cupoPalabrasGrandes(){
 }
 // La ficha manda sobre la palabra: si alguien dijo expreso que este producto es grande (o que no
 // lo es), esa decisión no la pisa un filtro de texto.
+// Revisión etapa 3, 29/10/2026: la palabra va ENTERA en el nombre (o en plural). Con `includes` suelto "tender" agarraba "extender" (un
+// "Extender Wifi" contaba como Tender: cupo de grandes y caja aparte). Misma regla que `esGrandeFullBot` del robot: si se toca una, la otra.
 function esGrandeFull(p){
   if(!p)return false;
   if(p.grandeFull===true)return true;
   if(p.grandeFull===false)return false;
-  const n=normTxt(p.name||'');
-  return cupoPalabrasGrandes().some(w=>w&&n.includes(w));
+  const nP=s=>normTxt(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const n=' '+nP(p.name||'')+' ';
+  return cupoPalabrasGrandes().some(w=>{const x=nP(w);return !!x&&(n.includes(' '+x+' ')||n.includes(' '+x+'s ')||n.includes(' '+x+'es '));});
 }
 // Cuántas unidades de ESTA caja van a cada cupo.
 function cupoDeCaja(items,filas){
@@ -7888,7 +7906,7 @@ function renderOfiCaja(){
       const vr=_ver[l];
       const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
-      const tit=vr?(`${vr.txt} · ${vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
+      const tit=vr?(`${vr.txt} · ${vr.k==='pasa'?`no entra en el cupo de Full de ${l}: ${vr.det}`:vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
       const gC=_ganCta[l]||0;
       return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
         +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
@@ -7907,18 +7925,22 @@ function renderOfiCaja(){
     const p=f.p;
     // Marcado "mandale igual": entra aunque todavía no exista la publicación (ver repoExtraDe).
     if(repoExtraDe(p.id,ofiFiltroCuenta))return true;
+    // Sólo las publicaciones vivas (sin ocultas ni "no la vendemos más"), igual que el reparto (revisión etapa 3, 29/10/2026).
     if((p.variantes||[]).length){
-      const pv=_pubVar[p.id]||(_pubVar[p.id]=cuentasPorVariante(p));
+      const pv=_pubVar[p.id]||(_pubVar[p.id]=cuentasPorVariante(p,null,true));
       if(!f.variante)return Object.values(pv).some(x=>x.has(ofiFiltroCuenta));  // fila "sin variante"
       return !!(pv[f.variante]&&pv[f.variante].has(ofiFiltroCuenta));
     }
-    return cuentasConPublicacion(p).includes(ofiFiltroCuenta);
+    return cuentasConPublicacion(p,true).includes(ofiFiltroCuenta);
   };
   // Y se saca lo marcado "no se manda más a esta cuenta". La marca ya sacaba a la cuenta del
   // reparto, pero el renglón seguía apareciendo igual porque la lista muestra TODO lo que hay en
   // casa para poder cargar a mano. El 25/08/2026 le seguían saliendo en Adriana el P47, las Cartas
   // Casino y el Termómetro pincha, que ya estaban marcados: "esto no va en adriana".
-  const vis=armando?filas.filter(f=>f.hay>0&&publicaLaCuenta(f)&&!noRepoDe(f.p.id,ofiFiltroCuenta)):filas;
+  // Revisión etapa 3, 29/10/2026: lo que YA está cargado en la caja se ve siempre (si no, una publicación que pasó a oculta o a "no la
+  // vendemos más" dejaba unidades adentro de la caja sin renglón para verlas ni sacarlas, y salían al cerrarla).
+  const _cargada=cajaDe(ofiFiltroCuenta);
+  const vis=armando?filas.filter(f=>f.hay>0&&((publicaLaCuenta(f)&&!noRepoDe(f.p.id,ofiFiltroCuenta))||(_cargada[_ck(f.p.id,f.variante)]||0)>0)):filas;
   // Se suma SOLO lo que sigue estando en pantalla: si una fila desapareció (porque ya se despachó)
   // su número no puede seguir contando en la caja.
   const cajaAct=armando?cajaDe(ofiFiltroCuenta):{};
@@ -8089,7 +8111,9 @@ function renderOfiCaja(){
       const _vr=cajaVeredicto(cv);
       const col=_vr.col, veredicto=_vr.txt;
       const pctLl=Math.round(cv.lleno*100);
-      const linea=cv.topeCupo
+      const linea=cv.sePasa   // revisión etapa 3, 29/10/2026
+        ?`no entra en el cupo de Full: ${_vr.det} · sacá lo que sobra o usá "Cargar lo que entra en el cupo"`
+        :cv.topeCupo
         ?`usa todo el cupo de Full que queda (${cv.uTot} u.): esperar no la llena más, lo vendido no devuelve cupo`
         :cv.llena
         ?`la caja ya va llena (${pctLl}%)`
@@ -8629,6 +8653,7 @@ function renderBuzonCard(){
 // esas ya estaban etiquetadas). Con transacción: dos aparatos sumando a la vez no se pisan. El robot hace lo mismo en `ofi:`.
 async function sinEtiqSumar(pid,variante,n){
   n=Math.round(Number(n)||0);if(!pid||!n)return;
+  {const _p=prodById(pid);if(_p&&_p.soloLocal)return;}   // revisión etapa 3, 29/10/2026: sólo local = sin etiqueta de Full (ver sinEtiq)
   const sub=variante?'v/'+sid(String(variante)):'t';
   const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
   const loc=x=>Math.max(0,(parseInt(x)||0)+n);
@@ -8637,12 +8662,33 @@ async function sinEtiqSumar(pid,variante,n){
   try{renderSinEtiqCard();}catch(_){}
 }
 // ✅ YA LO ETIQUETÉ (25/10/2026, él: "que haya un botón para que pasen a etiquetadas, ya que el chat en local imprime las etiquetas
-// y quiere poner que ese producto ya se etiquetó y no tiene forma de hacerlo"). Pone en 0 lo sin etiqueta de ESE renglón.
-async function sinEtiqListo(pid,variante){
-  const r=(state.sinetiq||{})[pid];if(r){if(variante){if(r.v)delete r.v[sid(String(variante))];}else delete r.t;}
-  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+(variante?'v/'+sid(String(variante)):'t')).set(null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}
+// y quiere poner que ese producto ya se etiquetó y no tiene forma de hacerlo").
+// Revisión etapa 3, 29/10/2026: ya NO pone el renglón en 0: pregunta CUÁNTAS se etiquetaron (viene lleno con todas) y resta sólo ésas.
+// El chat de Chrome baja las etiquetas de lo que lleva la caja (PROMPT_CAJAS, paso 4: "como mucho N"): con 10 sin etiqueta y una caja de
+// 4, el botón dejaba las 10 "etiquetadas" y las 6 sin etiqueta pasaban a "con etiqueta" sin que él lo dijera (regla del 26/10). La cuenta
+// es sobre lo que se VE (lo guardado, como mucho lo que hay en la oficina) y va con transacción: dos aparatos no se pisan.
+async function sinEtiqListo(pid,variante,n){
+  const vis=sinEtiq(pid,variante||'');
+  if(n==null){
+    const _p=prodById(pid);
+    const crudo=prompt(`¿Cuántas etiquetaste de ${_p?_p.name:'este producto'}${variante?' · '+variante:''}?\n\nHay ${vis} sin etiqueta. Poné sólo las que ya tienen pegada la etiqueta de Full (si fueron todas, dejá ${vis}).`,String(vis));
+    if(crudo===null)return;
+    n=parseInt(String(crudo).replace(/[^\d]/g,''))||0;
+  }
+  n=Math.max(0,Math.round(Number(n)||0));
+  if(!n){toast('No cambié nada (0 etiquetadas)','info',2500);return;}
+  if(n>vis){toast(`Hay ${vis} sin etiqueta: no puedo marcar ${n}. No cambié nada.`,'err',5000);return;}
+  const of=variante?getQV(pid,OFI,variante):getQ(pid,OFI);
+  const sub=variante?'v/'+sid(String(variante)):'t';
+  const resta=x=>Math.max(0,Math.min(parseInt(x)||0,of)-n);
+  let quedan=0;
+  if(db){try{const tr=await db.ref('cyc/sinetiq/'+pid+'/'+sub).transaction(v=>resta(v)||null);quedan=parseInt(tr&&tr.snapshot&&tr.snapshot.val())||0;await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}
     catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}}
-  toast('🏷️ Listo: etiquetadas','ok',2500);
+  else{const r0=(state.sinetiq||{})[pid]||{};quedan=resta(variante?(r0.v||{})[sid(String(variante))]:r0.t);}
+  const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
+  if(variante){r.v=r.v||{};if(quedan)r.v[sid(String(variante))]=quedan;else delete r.v[sid(String(variante))];}
+  else{if(quedan)r.t=quedan;else delete r.t;}
+  toast(`🏷️ ${n} etiquetada${n===1?'':'s'}${quedan?` · quedan ${quedan} sin etiqueta`:' · no queda ninguna sin etiqueta'}`,'ok',3500);
   try{renderSinEtiqCard();}catch(_){}
   try{if(typeof renderOfiContar==='function')renderOfiContar();}catch(_){}
 }
@@ -9589,7 +9635,8 @@ function pedSemDe(tot,dias,r){
   if(r&&r.inf)return 'rojo';
   const d=r?r.d:PED_DIAS_ROJO;
   if(dias==null)return 'amarillo';
-  return dias<d?'rojo':dias<d+PED_NARANJA_MARGEN?'naranja':'amarillo';
+  // Revisión etapa 3, 29/10/2026: rojo = alcanza lo que tarda reponer O MENOS (CLAUDE.md: "Rojo de Pedidos = 14 días o menos"); antes 14 justos salía naranja.
+  return dias<=d?'rojo':dias<d+PED_NARANJA_MARGEN?'naranja':'amarillo';
 }
 let _pedRepoCur=null;
 let _pedRojoCur=null;   // el umbral del producto que se está dibujando (lo usa el semáforo de cada color)
@@ -9797,6 +9844,11 @@ function cajasVerdes(filas){
 const CAJA_ESPERA_DIAS=7;
 function cajaVeredicto(cv){
   if(!cv||!(cv.uTot>0))return null;
+  // SE PASA DEL CUPO (revisión etapa 3, 29/10/2026): ML no deja entrar más que el cupo que queda. Antes una caja de 25 con 10 de cupo, o
+  // cualquier caja con el cupo en 0, salía MANDALA YA (y en "📦 N cajas para mandar ya", que es lo que arma el chat de Chrome). Primero
+  // hay que sacar lo que sobra (o usar "Cargar lo que entra en el cupo"); no es verde.
+  if(cv.sePasa){const s=cv.sePasa;return{k:'pasa',col:'var(--amber)',txt:'Se pasa del cupo',
+    det:[s.peq?`sobran ${s.peq} chicos/medianos (quedan ${s.estPeq})`:'',s.gra?`sobran ${s.gra} grandes (quedan ${s.estGra})`:''].filter(Boolean).join(' · ')+(s.viejo?` · el cupo es de hace ${s.dias} días: miralo de nuevo`:'')};}
   if(cv.llena||cv.perdida>=cv.extra)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
   if(cv.perdida>=cv.extra*0.5)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
   return{k:'rojo',col:'var(--red)',txt:'Podés esperar y juntar más'};
@@ -9863,12 +9915,17 @@ function convieneCaja(filas,cuenta){
   // TOPE DEL CUPO (29/10/2026, él con Ayelen: "¿por qué dice que gano 400.000 al vender y me dice que espere? ¿tiene sentido?"): la caja
   // de Ayelen iba al 5% de la caja pero usaba los 24 lugares que le quedaban en el cupo de Full. Esperar no la llena más: lo vendido no
   // devuelve cupo (18/10). Si la caja ya ocupa todo el cupo que queda, cuenta como llena y el veredicto es mandarla.
-  let topeCupo=false;try{const cr=cupoRestante(cuenta),cd=cupoDeCaja(items,filas);
-    topeCupo=!!cr&&((cr.estPeq!=null&&cd.peq>0&&cd.peq>=cr.estPeq)||(cr.estGra!=null&&cd.gra>0&&cd.gra>=cr.estGra));}catch(_){}
+  // Revisión etapa 3, 29/10/2026: (1) si la caja SE PASA del cupo que queda, no es "usa todo el cupo": va `sePasa` (cuántas sobran) y el
+  // veredicto "Se pasa del cupo" (antes un cupo en 0 o una caja de 25 con 10 de cupo daban MANDALA YA). (2) "Usa todo el cupo" pide un
+  // cupo de esta semana (`viejo` = 7+ días: no se confía) y que quede algo (más de 0).
+  let topeCupo=false,sePasa=null;try{const cr=cupoRestante(cuenta),cd=cupoDeCaja(items,filas);
+    if(cr){const sP=cr.estPeq!=null&&cd.peq>cr.estPeq?cd.peq-cr.estPeq:0,sG=cr.estGra!=null&&cd.gra>cr.estGra?cd.gra-cr.estGra:0;
+      if(sP||sG)sePasa={peq:sP,gra:sG,estPeq:cr.estPeq,estGra:cr.estGra,dias:cr.dias,viejo:!!cr.viejo};
+      else topeCupo=!cr.viejo&&((cr.estPeq>0&&cd.peq>0&&cd.peq>=cr.estPeq)||(cr.estGra>0&&cd.gra>0&&cd.gra>=cr.estGra));}}catch(_){}
   const extra=topeCupo?0:_cc*(1-lleno);
   const diasPago=gCero>0?_cc/gCero:null;
   return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,
-    perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9||topeCupo,topeCupo,costo:_cc,espera:D,
+    perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9||topeCupo,topeCupo,sePasa,costo:_cc,espera:D,
     sinMedida:oc.sinDim,
     vecesElEnvio:_cc>0?gTotal/_cc:0};
 }
@@ -9896,11 +9953,13 @@ function cajasDe(e){
 // después cuando lo activo sigue normal"): mientras está en pausa no sale (la salida queda 30 días adelante para que la escasez y
 // el viaje no la cuenten como que llega pronto); al reanudarla, la fecha pasa a ser HOY y sale el próximo día hábil a las 12.
 // Misma regla en el robot (`envSalidaTs` de sync.mjs, con `pausado`).
+// Revisión etapa 3, 29/10/2026: al reanudar ya NO se pisa `e.ts` (es cuándo se armó: el cupo de Full lo compara con la hora de la lectura,
+// y pisarlo restaba ese envío dos veces). La hora de reanudar va en `e.reanudado` y manda acá (en el robot también).
 const ENV_PAUSA_DIAS=30;
 function envSalidaTs(e){
   if(!e||!e.fecha)return 0;
   if(e.pausado)return Date.now()+ENV_PAUSA_DIAS*864e5;
-  const f=String(e.fecha).slice(0,10),ts=Number(e.ts)||0,dT=ts?new Date(ts):null;
+  const f=String(e.fecha).slice(0,10),ts=Number(e.reanudado||e.ts)||0,dT=ts?new Date(ts):null;
   const mismo=dT&&`${dT.getFullYear()}-${String(dT.getMonth()+1).padStart(2,'0')}-${String(dT.getDate()).padStart(2,'0')}`===f;
   const d=new Date(f+'T12:00:00');if(isNaN(d))return 0;
   const tarde=mismo&&(dT.getHours()>=12);
@@ -10048,8 +10107,10 @@ async function setEnvioPausa(id,on){
     if(!e.fechaArmada){e.fechaArmada=e.fecha;await fbSet('envios_full/'+id+'/fechaArmada',e.fecha);}
     const cajas=cajasDe(e);
     if(Array.isArray(e.cajasDet)&&e.cajasDet.some(c=>c&&!c.recibida&&c.fecha))await _guardarCajas(id,cajas.map(c=>c&&!c.recibida&&c.fecha?{...c,fecha:hoy}:c));
-    e.fecha=hoy;e.ts=Date.now();e.pausado=null;
-    await fbSet('envios_full/'+id+'/fecha',hoy);await fbSet('envios_full/'+id+'/ts',e.ts);await fbSet('envios_full/'+id+'/pausado',null);
+    // Revisión etapa 3, 29/10/2026: la hora de reanudar va en `reanudado`, NO en `ts` (ver envSalidaTs: el cupo de Full compara `ts` con la
+    // hora de la lectura y pisarlo restaba este envío otra vez).
+    e.fecha=hoy;e.reanudado=Date.now();e.pausado=null;
+    await fbSet('envios_full/'+id+'/fecha',hoy);await fbSet('envios_full/'+id+'/reanudado',e.reanudado);await fbSet('envios_full/'+id+'/pausado',null);
     await log('Envío ('+(e.cuenta||'?')+'): ▶️ reanudado, sale desde el '+hoy);
     toast('▶️ Envío reanudado: '+envSaleTxt(e),'ok',3500);
   }
@@ -10105,24 +10166,34 @@ async function _deshacerCaja(id,i){
   }catch(err){toast('No la deshice: '+(err.message||err),'err');return;}
   // Devolver a la oficina, con la misma cuenta que se usó al descontar.
   // entra:false (20/10/2026 · etapa 3): es la misma mercadería volviendo, no una compra: no apaga "No lo consigo" ni el reloj de Bs As.
-  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u,entra:false});    // c3: sobre la base
+  // Revisión etapa 3, 29/10/2026: CADA renglón con su try/catch. La caja ya salió de la base (arriba): si uno fallaba (sin señal, la app
+  // cerrada a mitad) se cortaba el resto y esas unidades no quedaban ni en camino ni en la oficina, sin aviso; tampoco se devolvía lo
+  // decidido ni se limpiaba el envío. Ahora sigue con los demás, hace la limpieza igual y dice cuáles hay que sumar a mano (como cerrar caja).
+  const _noVolvio=[];let _uNo=0;
+  for(const it of items){
+    try{await ofiMover(it.prodId,it.variante||'',{delta:it.u,entra:false});}    // c3: sobre la base
+    catch(err){_uNo+=it.u;_noVolvio.push(`${((state.products||[]).find(p=>p.id===it.prodId)||{}).name||it.prodId}${it.variante?' · '+it.variante:''}: ${it.u} u. (${String((err&&(err.message||err.code))||err).slice(0,40)})`);}
+  }
   // Lo que se descontó de mis decisiones al cerrarla vuelve (16/10/2026: él deshizo la caja de Adriana y
   // Armar caja quedó vacía, porque cerrar resta lo mandado y deshacer no lo devolvía).
   {const _malC=[];for(const it of items)if(!await clDevolverCaja(it.prodId,e.cuenta,it.variante||'',it.u))_malC.push(`${((state.products||[]).find(p=>p.id===it.prodId)||{}).name||it.prodId}${it.variante?' · '+it.variante:''}`);
    clAvisarFallo(_malC,'devolver','Armar caja');}   // etapa 4 (20/10/2026): si no se pudo devolver, se dice
-  if(!quedan.length){
-    // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
-    await fbSet('envios_full/'+id,null);
-    delete state.envios_full[id];
-  } else {
-    e.cajasDet=quedan;e.cajas=quedan.length;e.seguimientos=quedan.map(b=>b.track).filter(Boolean);
-    await fbSet('envios_full/'+id+'/cajas',quedan.length);
-    await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
-  }
+  try{
+    if(!quedan.length){
+      // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
+      await fbSet('envios_full/'+id,null);
+      delete state.envios_full[id];
+    } else {
+      e.cajasDet=quedan;e.cajas=quedan.length;e.seguimientos=quedan.map(b=>b.track).filter(Boolean);
+      await fbSet('envios_full/'+id+'/cajas',quedan.length);
+      await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
+    }
+  }catch(err){toast('⚠️ La caja se deshizo pero no pude acomodar el envío: '+String((err&&(err.message||err.code))||err).slice(0,60)+'. Avisale a Claude.','err',7000);}
   renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   syncOfiMati();
-  await log('Caja deshecha: '+uTot+' u. volvieron a la oficina');
-  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,'ok',4000);
+  if(_noVolvio.length)alert('⚠️ Se cortó la conexión: estos renglones NO volvieron a tu oficina (la caja ya no está en camino). Sumalos en Contar lo que hay:\n\n'+_noVolvio.join('\n'));
+  await log('Caja deshecha: '+(uTot-_uNo)+' u. volvieron a la oficina'+(_uNo?` · ${_uNo} u. NO volvieron (hay que sumarlas a mano)`:''));
+  toast(_uNo?`Deshecha · ${uTot-_uNo} u. volvieron a tu oficina · ${_uNo} u. hay que sumarlas a mano`:`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,_uNo?'err':'ok',_uNo?7000:4000);
 }
 // Etapa 4 (30/09/2026): las cajas de un envío se tocan con una TRANSACCIÓN sobre la base, buscando la
 // caja por seguimiento y contenido (no por su posición). Antes se escribía la lista ENTERA desde la
@@ -12667,14 +12738,17 @@ function lineaPintar(prodId){
   const _txAt=x0=>x0>W*0.55?`x="${(W-3).toFixed(1)}" text-anchor="end"`:`x="${(x0+3).toFixed(1)}"`;
   _techos.forEach(t=>{const y=L.pr[0]+L.pr[1]-(pcMax>pcMin?(t.probado-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
     const tk=t.ts?dateToKey(new Date(Number(t.ts))):null,ti=tk?ks.indexOf(tk):-1,x0=ti>=0?X(ti):0;
+    // 29/10/2026 (él con la Lupa 90: "hay un techo abajo del precio de hoy que sí vendió"): si DESPUÉS de la prueba vendió a ese precio o
+    // más caro, no es techo (si vende, no es techo): la raya no se dibuja.
+    if(tk&&ks.some(k=>k>tk&&(()=>{const d=_rayasDias[k]||dias[k];return d&&((d.u||0)-(d.uR||0))>0&&(Number(d.pLista||d.p)||0)>=t.probado*0.98;})()))return;
     // 27/10/2026 (él con el Enchufe 2 patas: "hay dos techos al 100% de seguridad, no tienen sentido"): una prueba vieja que quedó
     // ARRIBA del 🔴 techo de las rayas ya no es "un techo": es un precio más caro que el techo. Se ve gris, sin %.
     const _arribaT=!!(_rayas&&_rayas.techo&&t.probado>_rayas.techo.p*1.02);
-    const sg=_arribaT?null:_segTecho(t),seguro=!!(sg&&sg.seg>=0.95),colT=_arribaT?'var(--muted)':seguro?'var(--red)':'#fb923c';
+    const sg=_segTecho(t),seguro=!_arribaT&&!!(sg&&sg.seg>=0.95),colT=_arribaT?'var(--muted)':seguro?'var(--red)':'#fb923c';
     const det=sg?`Estuvo ${sg.dias} día${sg.dias===1?'':'s'} con stock a ese precio o más y vendió ${sg.u}${sg.lam!=null?` (para dejar la misma plata por día que a ${fmt(_rayas.best.p)} tenía que vender ~${sg.lam.toFixed(1)})`:''}: ${Math.round(sg.seg*100)}% seguro.`:'Sin un precio con 5+ días medidos para comparar: no se sabe si es seguro.';
     const tt=_arribaT?`🚧 A ${fmt(t.probado)} no vendió (prueba del ${tk?_lineaFmtDia(tk):'?'}). Ya está arriba del 🔴 techo ${fmt(_rayas.techo.p)}: es lógico que no venda, no es otro techo.`:`🚧 A ${fmt(t.probado)} ${seguro?'ya no vende':'no vendió, SIN CERTEZA'}\nSe probó a ese precio${tk?' (vuelto el '+_lineaFmtDia(tk)+')':''}. ${det}${seguro?'':' Falta medir: se puede volver a probar más arriba, escalón por escalón.'}${t.volvio?'\nVolvió a '+fmt(t.volvio)+'.':''}${t.motivo?'\n🧠 '+t.motivo:''}`.replace(/[<>&]/g,'');
     svg+=`<g style="cursor:help"><title>${tt}</title><line x1="${x0.toFixed(1)}" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="${colT}" stroke-width="1.5" stroke-dasharray="${seguro?'6,3':'2,4'}" opacity=".85"/>`+
-      `<text ${_txAt(x0)} y="${(y<L.pr[0]+14?y+11:y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${_arribaT?'no vendió · ya está arriba del techo '+fmt(_rayas.techo.p):seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
+      `<text ${_txAt(x0)} y="${(y<L.pr[0]+14?y+11:y-3).toFixed(1)}" font-size="10" fill="${colT}">🚧 a ${fmt(t.probado)} ${_arribaT?'no vendió · ya está arriba del techo '+fmt(_rayas.techo.p)+(sg&&sg.dias?' · '+Math.round(sg.seg*100)+'% seguro ('+sg.dias+' d)':''):seguro?'ya no vende · '+Math.round(sg.seg*100)+'% seguro':'no vendió · '+(sg?Math.round(sg.seg*100)+'% seguro de que es techo ('+sg.dias+' d)':'sin dato para medirlo')}</text></g>`;
     // Y el último precio que SÍ vendía (al que se volvió), en verde: el techo útil está entre las dos rayas.
     const vv=Number(t.volvio);if(vv>0&&vv<t.probado){const y2=L.pr[0]+L.pr[1]-(pcMax>pcMin?(vv-pcMin)/(pcMax-pcMin):.5)*L.pr[1];
       svg+=`<g style="cursor:help"><title>✓ ${fmt(vv)}: el precio que sí vendía, al que se volvió después de la prueba.</title><line x1="${x0.toFixed(1)}" y1="${y2.toFixed(1)}" x2="${W}" y2="${y2.toFixed(1)}" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="2,3" opacity=".85"/>`+
@@ -12687,7 +12761,9 @@ function lineaPintar(prodId){
       if(_mlaRaya&&(R.best||R.techo))_prRayasDe=_mlaRaya;
       const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
       if(_prueba)_prNotas.push(`<span style="color:#fb923c">${R.techo===R.noVende?'🔴 techo (no vendía)':'🟠 dejaba de convenir'} medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
-      if(R.noVende)_ray(R.noVende.p,'#ef4444','6,3',`🔴 techo ${fmt(R.noVende.p)}: no vende · ${R.noVende.dias} días sin vender`,`🔴 Techo ${fmt(R.noVende.p)}: a ese precio o más estuvo ${R.noVende.dias} días a la venta con stock y no vendió ninguna. Eso es el techo: el precio al que no se vende (30 días, regla suya del 24/10). Se arranca la escalera.`,-3);
+      const _sgNV=R.noVende?_segTecho({probado:R.noVende.p}):null;
+      // 29/10/2026 (él: "quiero que TODOS los que tienen techo digan el % de seguridad"): el 🔴 también dice con cuánto se sabe.
+      if(R.noVende)_ray(R.noVende.p,'#ef4444','6,3',`🔴 techo ${fmt(R.noVende.p)}: no vende · ${R.noVende.dias} días sin vender · ${_sgNV&&_sgNV.dias?Math.round(_sgNV.seg*100)+'% seguro':R.noVende.dias>=30?'30+ días: techo por regla':'sin % medible'}`,`🔴 Techo ${fmt(R.noVende.p)}: a ese precio o más estuvo ${R.noVende.dias} días a la venta con stock y no vendió ninguna. Eso es el techo: el precio al que no se vende (30 días, regla suya del 24/10). Se arranca la escalera.`,-3);
       // 🟠 deja de convenir (27/10/2026): vende, pero menos de lo que hace falta para dejar la misma plata por día que el 💰. No es el techo
       // (si vendió, no es techo): es donde subir más ya no conviene. Si queda arriba del 🔴, no se dibuja (el 🔴 ya manda).
       if(R.convenir&&R.best&&!(R.noVende&&R.convenir.p>=R.noVende.p*0.98))_ray(R.convenir.p,'#f59e0b','4,3',`🟠 ${fmt(R.convenir.p)}: vende, pero deja menos plata por día que a ${fmt(R.best.p)} · ${Math.round(R.convenir.seg*100)}% seguro`,`🟠 Deja de convenir a ${fmt(R.convenir.p)}: a ese precio vendió ${R.convenir.u} en ${R.convenir.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.convenir.lam.toFixed(1)}. ${Math.round(R.convenir.seg*100)}% seguro (con ${R.convenir.dias} días alcanzaba ${Math.round((R.convenir.umb||0.95)*100)}%). Vende, así que techo no es: es donde subir más ya no conviene.`,-3);
@@ -12874,7 +12950,7 @@ function lineaPintar(prodId){
     if(I.cubTxt)t.push(String(I.cubTxt).replace(/<[^>]+>/g,''));return t.join('\n').replace(/"/g,'&quot;');}catch(_){return '';}})();
   const _lnHdr=(n,tit,leg,der)=>lnHdrHTML(L,H,n,tit,leg,der);
   const _lnHdrs=_lnHdr('pr','💲 Precio',_lgS('var(--text)','color = estrategia')+(_rayas&&(_rayas.best||_rayas.techo)?_lgS('#eab308','💰 más plata')+_lgS('var(--red)','🔴 techo: no vende')+_lgS('#f59e0b','🟠 deja de convenir'):''),
-      `${pFin?'hoy <b>'+fmt(pFin)+'</b>':''}${_estHoy&&ESTRATEGIA_UI[_estHoy.t]?' '+_estChip(_estHoy):''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
+      `${(()=>{/* 29/10/2026 (él con la Lupa 90: "¿por qué no sube?" y ya había subido): la línea llega hasta anoche; el precio de HOY sale de `cyc/netopub`, que el robot pone al día con cada cambio */const LK=state.mllinks||{},NP=state.netopub||{};const vs=Object.keys(porMlaF).filter(m=>LK[m]&&!LK[m].gemelaDe&&!LK[m].gemelaTipo).map(m=>Number((NP[m]||{}).precio)||0).filter(x=>x>0);const pV=vs.length?Math.max(...vs):0;if(pV>0&&pFin&&Math.abs(pV-pFin)>pFin*0.02)return 'hoy <b>'+fmt(pV)+'</b> <span style="color:var(--muted)">(la línea llega hasta anoche: '+fmt(pFin)+')</span>';return pFin?'hoy <b>'+fmt(pFin)+'</b>':'';})()}${_estHoy&&ESTRATEGIA_UI[_estHoy.t]?' '+_estChip(_estHoy):''}${_prNotas.length?' · <span style="color:var(--muted)">'+_prNotas.join(' · ')+'</span>':''}${_prRayasDe?` <span style="color:var(--muted);cursor:help" title="Hay más de una publicación activa a precios distintos (por ejemplo la Clásica y su gemela Premium): las rayas se miden con la de precio más bajo sola, como el robot (techo95). Es la ${_prRayasDe}.">ⓘ</span>`:''}`)
     +_lnHdr('vent','🛒 Ventas y visitas',_lgS('var(--green)','vendidas',1)+(uPT?_lgS('#f97316','Premium',1):'')+(uGT?_lgS('#38bdf8','envío gratis',1):'')+(uRT?_lgS('#facc15','remate',1):'')+(hayVis?_lgS('#60a5fa','visitas',1):''),`<b>${uT} u.</b> · ${vT} visitas`)
     +_lnHdr('gan','💵 Plata por día',_lgS('var(--green)','promedio del mes')+_lgS('rgba(34,197,94,.5)','días del mes que se vende más',1)+_lgS('rgba(239,68,68,.45)','días flojos',1)+_lgS('rgba(245,158,11,.6)','fecha especial',1),_gHoy!=null?`hoy <b>${fmt(Math.round(_gHoy))}</b> por día`:'')
     +_lnHdr('pct','📊 % de ganancia',(pvs.length?_lgS('var(--green)','% de lo vendido'):'')+(cvs.length?_lgS('#f59e0b','costo'):''),`${_pctHoy!=null?`<b style="color:${pctColor(_pctHoy)}">${Math.round(_pctHoy)}%</b> la última venta`:''}${_pctCosto>0?` · costo <span style="color:#f59e0b">${fmt(Math.round(_pctCosto))}</span>`:''}`)
@@ -15790,11 +15866,15 @@ function ventasHistoricas(p,cuenta,variante){
   const desdeDias=Math.max(1,(Date.now()-tMin)/86400000+1);
   return{u,dias,vDia:u/dias,gan,ganDia:gan/dias,desdeDias};
 }
-function cuentasConPublicacion(p){
+// `soloVivas` (revisión etapa 3, 29/10/2026): para Armar caja (a qué cuenta se le puede MANDAR) tampoco cuentan las publicaciones
+// ocultas (`ignored`) ni las de "no la vendemos más": el robot (`pedidostodo`, que arma `decide_cajas.py`) ya las saca, y acá quedaban
+// como cuenta que recibe con "sin decidir" para siempre. Las pantallas que muestran DÓNDE ESTÁ la mercadería siguen viéndolas.
+function cuentasConPublicacion(p,soloVivas){
   const s=new Set();
   Object.values(state.mllinks||{}).forEach(e=>{
     if(!e||e.prodId!==p.id)return;
     if((e.status||'')==='closed')return;   // cerrada = no vende nunca más
+    if(soloVivas&&(e.ignored||e.noVendemosMas))return;
     if(e.cuenta&&LOCS.includes(e.cuenta))s.add(e.cuenta);
   });
   return [...s];
@@ -15837,12 +15917,13 @@ function ventasPorCuentaVar(p,varDeMla){
 // pantalla decía "ninguna cuenta lo necesita" porque miraba el total.
 // Qué cuentas publican CADA variante (por su publicación, no por el producto): con un aroma por
 // publicación, una cuenta puede tener algunos aromas y otros no.
-function cuentasPorVariante(p,varDeMla){
+function cuentasPorVariante(p,varDeMla,soloVivas){
   const mapa=varDeMla||_varPorMla(p);
   const out={};
   Object.entries(state.mllinks||{}).forEach(([mla,e])=>{
     if(!e||e.prodId!==p.id)return;
     if((e.status||'')==='closed')return;
+    if(soloVivas&&(e.ignored||e.noVendemosMas))return;   // ver `cuentasConPublicacion` (revisión etapa 3, 29/10/2026)
     const va=mapa[mla];if(!va)return;
     if(!e.cuenta||!LOCS.includes(e.cuenta))return;
     (out[va]=out[va]||new Set()).add(e.cuenta);
@@ -15868,7 +15949,7 @@ function _pisoCeroAplica(c){
 function _repartoVariantes(p,hayTotal,tr){
   const varDeMla=_varPorMla(p);
   const ventasV=ventasPorCuentaVar(p,varDeMla);
-  const pubV=cuentasPorVariante(p,varDeMla);
+  const pubV=cuentasPorVariante(p,varDeMla,true);   // sólo las publicaciones vivas reciben (revisión etapa 3, 29/10/2026)
   const filas=[];
   let repartido=0;
   for(const va of (p.variantes||[])){
@@ -15946,11 +16027,14 @@ function repartoOficina(){
   const filas=[];
   const tr=enTransito();   // lo que ya va en camino a cada cuenta
   (state.products||[]).forEach(p=>{
+    // Revisión etapa 3, 29/10/2026: lo que se vende SÓLO en el local (`soloLocal`) no va a Full: no sale en Armar caja (salía como
+    // "No está publicado en ninguna cuenta", como si faltara publicarlo) ni puede entrar en una caja al cerrarla.
+    if(p.soloLocal)return;
     const hay=stockOficina(p);
     if(hay<=0)return;
     if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay,tr)); return; }
     const ventas=ventasPorCuenta(p);
-    const reales=cuentasConPublicacion(p);
+    const reales=cuentasConPublicacion(p,true);   // sólo las publicaciones vivas reciben (revisión etapa 3, 29/10/2026)
     // Se suman las cuentas marcadas "mandale igual": todavía no tienen la publicación hecha pero
     // él quiere que el producto le aparezca en la caja para acordarse de mandarlo y publicarlo.
     const publicadas=[...new Set([...reales,...cuentasExtra(p)])].filter(l=>!noRepoDe(p.id,l));
@@ -16136,6 +16220,7 @@ async function syncPedidosAuto(){
     // "PAUSADOS POR PRECIO" SE SACÓ EL 01/10/2026, decisión suya: *"sacar eso de precios TODO. ya que si no da no lo compro"*.
     // Lo que estaba pausado vuelve a Pedidos; si el precio no da, simplemente no lo compra.
     if(noTraerDe(p.id))continue;   // "no traer más"
+    if(p.soloLocal)continue;   // revisión etapa 3, 29/10/2026: sólo se vende en el local (`sololocal`): no se compra para ML (como el robot en `pedidostodo`)
     const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate,pocasVentas,rn,reg}=pedVentasNorm(p);
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay
@@ -16149,7 +16234,7 @@ async function syncPedidosAuto(){
     const coll=p.origen==='py'?'pedidos_py':'pedidos';
     const TARGET_DIAS_P=pedTargetDiasDe(p);   // 30 días, o 95 si el proveedor tarda 2 meses
     const hasVars=(p.variantes||[]).length>0;
-    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null,varSemDias=null,varSemCero=0;
+    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null,varSemDias=null,varSemCero=0,_varR=null;
     if(hasVars&&varSalesMap[p.id]){
       // calcular necesario por variante: stock real de esa variante vs target
       const normFactor=PED_MAX_DAYS/diasHistorial;
@@ -16212,6 +16297,7 @@ async function syncPedidosAuto(){
         const vComprar=Math.max(0,vFalta2-vCasa-vCam-vPv);
         return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vPv,vLi,vHist,vTarget,vRate:vHist?(vTarget/TARGET_DIAS_P):_vRate};
       }).filter(x=>x.vFalta>0);
+      _varR=varDefs;   // para medir el riesgo color por color (revisión etapa 3, 29/10/2026, ver `diasTapaCasa`)
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // SEMÁFORO (06/10/2026): los días que cubre el color MÁS justo contando ML + casa + camino, y
       // cuántos colores que venden están en cero en todos lados.
@@ -16322,14 +16408,29 @@ async function syncPedidosAuto(){
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
         }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,(parseInt(_cl.u)||0)-_pyPost.reduce((a,it)=>a+(parseInt(it.u)||0),0));if(hasVars)variantesNec=null;}
         // LO QUE YA ESTÁ EN LA OFICINA O VIAJANDO A FULL TAMBIÉN CUBRE LO DECIDIDO (22/10/2026, él con el Mercedes Club Black: 1 u. en la
-        // oficina y yo pedía comprar 1: "si está en el envío hay que sacarlo, siempre que llegue a lo que me pedís vos"). Si oficina + camino
-        // a Full llegan a lo que decidí, no se compra nada; y si estaba cargado en el 🧾 Pedido de Paraguay, se saca de ahí (una vez).
-        if(_cl.u!=null&&!hasVars&&aComprar>0){const _cub=(enOficina||0)+transitoTotal(_trPed,p.id);
-          if(_cub>=aComprar){aComprar=0;_cubreEnvio=_cub;
-            if(p.origen==='py'&&(parseInt(((state.pyArmado||{})[p.id]||{}).u)||0)>0&&!(window._pyArmCubre||(window._pyArmCubre=new Set())).has(p.id)){window._pyArmCubre.add(p.id);
-              db.ref('cyc/py_armado/'+p.id).remove().then(()=>{delete state.pyArmado[p.id];toast(`🚚 ${p.name}: lo que hay en la oficina o viajando a Full ya cubre lo que pedía: lo saqué del pedido`,'info',6000);}).catch(()=>{});}}}
+        // oficina y yo pedía comprar 1: "si está en el envío hay que sacarlo, siempre que llegue a lo que me pedís vos"). Si estaba cargado en
+        // el 🧾 Pedido de Paraguay y ya no hace falta, se saca de ahí (una vez).
+        // Revisión etapa 3, 29/10/2026: la decisión de `decide_pedidos.py` YA resta la oficina, el camino a Full y lo que viaja (lo guarda en
+        // `cub`). Restarlo otra vez dejaba en 0 lo que de verdad faltaba ("Te pido 15" con 10 en la oficina y 5 en camino → 0, y el renglón
+        // desaparecía de Pedidos). Ahora se resta sólo lo que ENTRÓ DESPUÉS de decidir: (oficina + camino + lo que viaja) − lo pedido después
+        // de la decisión (eso ya lo descuentan "Ya lo pedí" y `_pyPost`) − `cub`. Sin `cub` (una decisión a mano o vieja) queda la regla de
+        // antes, pero sólo si entró mercadería a la oficina después de decidir (`cyc/ofientro`).
+        if(_cl.u!=null&&!hasVars&&aComprar>0){const _dts=Number(_cl.ts)||0;let _ent=0;
+          if(_cl.cub!=null&&isFinite(Number(_cl.cub))){let _post=0;
+            const _tsDe=(it,c)=>Number(it.ts||c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))||0;
+            for(const c of Object.values(state.compraspy||{})){if(!c||c.estado!=='camino')continue;
+              for(const it of (Array.isArray(c.items)?c.items:Object.values(c.items||{})))if(it&&it.prodId===p.id&&_tsDe(it,c)>_dts)_post+=parseInt(it.u)||0;}
+            for(const c of Object.values(state.comprasLista||{})){if(!c||c.estado!=='camino')continue;
+              for(const it of (Array.isArray(c.items)?c.items:[]))if(it&&it.prodId===p.id&&_tsDe(it,c)>_dts)_post+=parseInt(it.u)||0;}
+            for(const c of Object.values(state.pedidospv||{})){if(!c||c.estado!=='camino'||c.prodId!==p.id||!(_tsDe({},c)>_dts))continue;
+              for(const it of (c.items||[]))_post+=parseInt(it&&it.u)||0;}
+            _ent=Math.max(0,(enOficina||0)+enCamino-_post-Number(_cl.cub));}
+          else if(Number((state.ofientro||{})[p.id])>_dts){const _cub=(enOficina||0)+transitoTotal(_trPed,p.id);if(_cub>=aComprar)_ent=_cub;}
+          if(_ent>0){aComprar=Math.max(0,aComprar-_ent);_cubreEnvio=_ent;
+            if(aComprar===0&&p.origen==='py'&&(parseInt(((state.pyArmado||{})[p.id]||{}).u)||0)>0&&!(window._pyArmCubre||(window._pyArmCubre=new Set())).has(p.id)){window._pyArmCubre.add(p.id);
+              db.ref('cyc/py_armado/'+p.id).remove().then(()=>{delete state.pyArmado[p.id];toast(`🚚 ${p.name}: lo que entró a la oficina o viaja a Full después de decidirlo ya cubre lo que pedía: lo saqué del pedido`,'info',6000);}).catch(()=>{});}}}
         if(aComprar!==formU||_cl.u!=null||_cl.vars||_cl.mano){
-          clInfo={u:aComprar,formU,mot:String(_cl.mot||'')+(_cubreEnvio?` · 🚚 Ahora no se compra: entre la oficina y lo que viaja a Full hay ${_cubreEnvio} u., que cubren lo que pedía.`:''),ts:_cl.ts||null};
+          clInfo={u:aComprar,formU,mot:String(_cl.mot||'')+(_cubreEnvio?(aComprar===0?` · 🚚 Ahora no se compra: después de decidirlo entraron ${_cubreEnvio} u. (oficina o camino a Full), que cubren lo que pedía.`:` · 🚚 Después de decidirlo entraron ${_cubreEnvio} u. (oficina o camino a Full): ahora se compran ${aComprar}.`):''),ts:_cl.ts||null};
           if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,2500);   // por qué ese precio para el máximo de compra
           if(hasVars&&_cl.motVars&&typeof _cl.motVars==='object'){   // el motivo de cada color (decidido color por color)
             const mv={};for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(_cl.motVars[k])mv[k]={v,t:String(_cl.motVars[k]).slice(0,2500),q:(_cl.vars&&k in _cl.vars)?Math.max(0,parseInt(_cl.vars[k])||0):null};}
@@ -16369,8 +16470,24 @@ async function syncPedidosAuto(){
     // solo y se quedaba con días que tampoco tapa.
     // Puede quedar un resto sin cubrir por ninguna de las dos, y está bien que quede: son los
     // días que no tapás ni comprando esto ni mandando lo que tenés.
-    const diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
-    const diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
+    let diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
+    let diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
+    // COLOR POR COLOR (revisión etapa 3, 29/10/2026): con el total, lo que hay en la oficina o en camino de UN color tapaba el riesgo de
+    // OTRO (40 Rojo en la oficina "cubrían" el Blanco en 0 en todos lados: la compra del Blanco salvaba $0 y quedaba última en "lo que salva
+    // cada $1"). Cada color tapa sólo lo suyo (oficina + camino + lo pedido de ese color) y su compra sólo sus días, pesado por lo que vende
+    // (como `varDiasRiesgo`); lo que no tiene color (Paraguay, una lista sin color, oficina o caja sin color) tapa al ritmo del producto, y lo
+    // decidido de un color sin ritmo medido, también.
+    if(_varR&&vDia>0&&_varR.some(x=>x.vRate>0)){
+      const kV=v=>sid(String(v).toLowerCase()),qDe={};for(const x of (variantesNec||[]))qDe[kV(x.v)]=(qDe[kV(x.v)]||0)+Math.max(0,parseInt(x.q)||0);
+      let tc=0,tb=0;const conR=new Set();
+      for(const x of _varR){if(!(x.vRate>0))continue;const k=kV(x.v);conR.add(k);const w=Math.min(1,x.vRate/vDia),rd=Math.max(0,RIESGO_DIAS-x.vStock/x.vRate);
+        const c=Math.min(rd,(x.vCasa+x.vCam+(x.vPv||0))/x.vRate);tc+=w*c;tb+=w*Math.min(Math.max(0,rd-c),(qDe[k]||0)/x.vRate);}
+      const qOtros=Object.entries(qDe).reduce((a,[k,q])=>a+(conR.has(k)?0:q),0);
+      const ofiSC=Math.max(0,(enOficina||0)-(p.variantes||[]).reduce((a,v)=>a+getQV(p.id,OFI,v),0));
+      const camT=transitoTotal(_trPed,p.id),camSC=Math.max(0,camT-(p.variantes||[]).reduce((a,v)=>a+LOCS.reduce((b,l)=>b+transitoDe(_trPed,p.id,l,v),0),0));
+      diasTapaCasa=Math.min(diasEnRiesgo,tc+(enPy+ofiSC+camSC)/vDia);
+      diasTapaCompra=Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),tb+qOtros/vDia);
+    }
     const cubreCasa=vDia>0?Math.round((stock+enOficina+enCamino)/vDia):999;
     // ── EL SEMÁFORO DE PEDIDOS (06/10/2026, regla suya) ──────────────────────────────
     // Cuenta ML + en camino + oficina. 🔴 rojo = no hay en NINGÚN lado (se pierde plata hoy) ·
@@ -17406,7 +17523,7 @@ function candPreciosHTML(c){
     L.push(R.ventas);
     if(R.margenPct!=null)L.push(R.margenViejo!=null
       ?`contra ${R.margenContra} → <b style="color:var(--muted)">${R.margenPct.toFixed(0)}%</b> <span style="color:var(--muted)">(medido a ${fmtUS2(R.margenViejo)} · cambió el precio de Paraguay: falta medirlo)</span>`
-      :`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
+      :`contra ${R.margenContra} → <b style="color:${R.margenPct>=CAND_VARA_COMPRA?'var(--green)':R.margenPct>=25?'var(--amber)':'var(--red)'}">${R.margenPct.toFixed(0)}%</b>`);   // revisión etapa 3, 29/10/2026: verde desde la vara de compra (35%), no desde 25%
   }
   const dud=R.dudas.length?`<br><span style="color:var(--red);font-weight:700">🚨 ¿Es el mismo producto? Abrí los dos links: ${R.dudas.join(' · ')}</span>`:'';
   return L.join(' &nbsp;·&nbsp; ')+dud+(R.colores?'<br><span style="font-size:.92em">'+R.colores+'</span>':'')+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
@@ -17830,6 +17947,11 @@ const _llegadaTxt=(R)=>(R.sum.length?`🏠 Sumé a Mi oficina ${R.sum.reduce((a,
 const _llegoTodoPreg=(n)=>confirm(`¿Llegó TODO lo del pedido (${n} u.)?\n\nAceptar = lo sumo solo a Mi oficina. Si después ves que faltó algo, decíselo a Claude (o restalo en Contar lo que hay).\nCancelar = no sumo nada: lo contás vos en Mi oficina.`);
 async function pyReclamarLlegada(id){
   if(!db)return false;
+  // Revisión etapa 3, 29/10/2026: si el chat lo está marcando ahora (`pyped:llego` deja `llegando` mientras crea las fichas), no se toca:
+  // los dos creaban las mismas fichas. La marca vale 15 minutos (si la corrida se cayó, después se puede marcar de acá).
+  try{const s=await db.ref('cyc/compraspy/'+id+'/llegando').once('value');const v=s.val();
+    if(v&&Date.now()-(Number(v.ts)||0)<15*60e3){alert('El chat está marcando este pedido como llegado en este momento (crea las fichas y suma la oficina). No toco nada: esperá unos minutos y volvé a mirar.');renderPedidos();return false;}}
+  catch(e){toast('No pude leer si el chat lo está marcando: probá de nuevo','err');return false;}
   try{
     const r=await db.ref('cyc/compraspy/'+id+'/estado').transaction(cur=>cur==='camino'?'llego':undefined);
     if(r&&r.committed)return true;
@@ -17876,7 +17998,9 @@ async function _pyPedidoLlego(id){
   // Qué va a pasar con cada uno, ANTES de preguntar: el cartel tiene que decir lo que va a hacer.
   // Los datos salen del candidato si sigue vivo y, si venció a los 45 días, del propio pedido —
   // que guarda nombre, código y precio justamente para esto.
-  const plan=items.map(it=>{
+  // Revisión etapa 3, 29/10/2026: UN plan por producto nuevo (el mismo candidato o agregado `x<cód>` en dos renglones creaba DOS
+  // fichas); la oficina suma los dos renglones a la misma ficha (`_fichaDe`). Misma regla en `pyped:llego` del robot.
+  const plan=items.filter((it,ix,a)=>a.findIndex(y=>y.id===it.id)===ix).map(it=>{
     const k=(state.candidatos||{})[it.id];
     // EL PRECIO ES EL QUE SE PAGÓ, NO EL DE HOY (24/09/2026): el pedido lo guardó al hacerse (y
     // `compray det=` lo corrige con la factura). El del candidato se sigue moviendo después.
@@ -17915,7 +18039,7 @@ async function _pyPedidoLlego(id){
     // El id lleva el número de orden porque varias se crean en el MISMO milisegundo: sin eso la
     // segunda pisaría a la primera y se perdería una ficha sin que nada lo dijera.
     try{
-      const r=await candFichaDesde(crear[i].src,{idSuf:i,recargo:pyRecargoFichas(c).r});   // etapa 2 (20/10/2026): con ticket, contra lo pagado
+      const r=await candFichaDesde(crear[i].src,{idSuf:i,recargo:pyRecargoFichas(c).r||pyRecargoEstimado(c)});   // etapa 2 (20/10/2026): con ticket, contra lo pagado · sin todos los gastos, el estimado sobre lo pagado (revisión etapa 3, 29/10/2026)
       if(r.ok){hechas.push(r.p.name);hechasP[crear[i].src.id]=r.p;} else fallaron.push(crear[i].src.nombre+' ('+r.motivo+')');
     }catch(e){fallaron.push(crear[i].src.nombre+' (no se pudo guardar)');}
   }
@@ -17924,6 +18048,12 @@ async function _pyPedidoLlego(id){
     const k=(state.candidatos||{})[x.src.id];
     if(k&&!k.prodId){try{await fbSet('candidatos_py/'+x.src.id+'/prodId',x.rep[0].id);k.prodId=x.rep[0].id;}catch(e){fallaron.push(x.src.nombre+' (no se pudo enganchar a su ficha)');}}
   }
+  // EL RENGLÓN QUEDA CON SU FICHA (revisión etapa 3, 29/10/2026): los enganchados a una ficha que ya existía y los agregados sin candidato
+  // (`x<cód>`) no tenían dónde quedar atados: el robot (`aplicarCostosPedido`) no encontraba la ficha y el costo real de esta compra no se
+  // les aplicaba, o la tomaba como primera compra. Misma regla en `pyped:llego` del robot.
+  {const up={};(c.items||[]).forEach((it,ix)=>{if(!it||!it.id||it.prodId)return;const r0=repe.find(x=>x.src.id===it.id);
+    const fid=r0?r0.rep[0].id:(!(state.candidatos||{})[it.id]&&hechasP[it.id]?hechasP[it.id].id:null);if(fid)up['compraspy/'+id+'/items/'+ix+'/prodId']=fid;});
+   if(Object.keys(up).length)try{await fbUpdate(up);}catch(e){fallaron.push('no se pudo anotar la ficha en '+Object.keys(up).length+' renglón(es) del pedido');}}
   await fbSet('compraspy/'+id+'/estado','llego');
   await fbSet('compraspy/'+id+'/fechaLlego',hoy);
   c.estado='llego';c.fechaLlego=hoy;
@@ -17978,13 +18108,19 @@ function pyGastoCargado(c,g){const _p=(c&&c.pagos)||{};const v=(Number(_p[g.k])|
 // Base = precio de la WEB (decisión 4a del 20/10/2026): con ticket `ticket.usdWeb`, sin ticket `usdCrudo`. Misma cuenta que
 // `recargoRealPedido` de sync.mjs (el promedio de allá deja afuera el adelanto, decisión 7a; acá es el de ESE pedido y va).
 function pyBaseUSD(c){const w=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;return w>0?w:(parseFloat(c&&c.usdCrudo)||0);}
+// LO DE USO PERSONAL QUE VINO EN EL TICKET (revisión etapa 3, 29/10/2026): `c.personal.usd` (lo separa `compray det=` del robot). Su parte
+// de los pesos de los dólares (mercadería + cambista, por los dólares que costó contra los de CYC) no es de CYC: sale del recargo. Sin
+// correo ni el que retira. Misma cuenta que `pyPersonalARS` de sync.mjs: si se toca una, la otra.
+function pyPersonalARS(c){const pu=parseFloat(c&&c.personal&&c.personal.usd)||0;if(!(pu>0))return 0;
+  const p=(c&&c.pagos)||{},cyc=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0,dol=(Number(p.mercaderia)||0)+(Number(p.cambista)||0);
+  return cyc+pu>0?Math.round(dol*pu/(cyc+pu)):0;}
 function pyRecargoReal(c){
   const falta=PY_GASTOS.filter(g=>!pyGastoCargado(c,g)).map(g=>g.nom);
   const _uw=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;
   const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=_uw>0?_uw:(parseFloat(c&&c.usdCrudo)||0);
   if(!(tc>0))falta.push('el dólar del día del pedido');if(!(usd>0))falta.push('los dólares crudos');
   if(falta.length)return{r:null,falta};
-  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
+  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-pyPersonalARS(c);   // revisión etapa 3, 29/10/2026
   const r=tot/tc/usd;if(!(r>=1&&r<=1.6))return{r:null,falta:['el recargo da '+((r-1)*100).toFixed(1)+'%: algún número está mal']};
   return{r:Math.round(r*10000)/10000,falta:[]};
 }
@@ -17996,10 +18132,15 @@ function pyRecargoFichas(c){
   const R=pyRecargoReal(c);if(!R.r)return R;
   const pag=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0,tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0;
   if(!(pag>0)||!(tc>0))return R;
-  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
+  const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-pyPersonalARS(c);   // revisión etapa 3, 29/10/2026
   const r=tot/tc/pag;if(!(r>=1&&r<=1.6))return R;
   return{r:Math.round(r*10000)/10000,falta:[],contraPagado:true};
 }
+// EL ESTIMADO, CONTRA LO PAGADO (revisión etapa 3, 29/10/2026): sin todos los gastos, la ficha nace con `RECARGO_PY`, que se mide contra
+// el precio de la WEB, aplicado a lo PAGADO (con descuento): nacía más barata de lo que sale. Con el ticket se lleva a la misma base
+// (× web ÷ pagado). Cuando estén los gastos, el robot la pone en el real. Misma cuenta que `_recEst` de `pyped:llego` (sync.mjs).
+function pyRecargoEstimado(c){const w=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0,p=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0;
+  const r=w>0&&p>0?RECARGO_PY*w/p:RECARGO_PY;return r>=1&&r<=1.6?Math.round(r*10000)/10000:RECARGO_PY;}
 // 6.P3 (etapa 6, eligió la a, 21/10/2026): el dólar que se pagó contra el MEP y el cripto de ESE día (`cyc/dolarref`, lo guarda el
 // robot una vez por día desde el 21/10/2026). Positivo = se pagó más caro que ése. Sin dato de ese día no dice nada (no se inventa).
 function pyDolarRefDe(c){
@@ -18044,7 +18185,11 @@ function pyGastosChecklistHTML(c){
   // obligatorio (no frena el recargo real): sale sólo si se cargó, y suma al total.
   const _adel=Number(p.adelanto)||0;
   if(_adel>0)filas+=fila(true,'Adelanto de plata para el pedido','',fmt(Math.round(_adel)),_base>0?_pct(_adel)+'%':'');
-  const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0);
+  // Revisión etapa 3, 29/10/2026: lo de uso personal que vino en el mismo ticket se pagó junto pero no es de CYC (`pyPersonalARS`):
+  // se resta, así el total y los % siguen sumando el recargo real.
+  const _pers=pyPersonalARS(c);
+  if(_pers>0)filas+=fila(true,'🙋 Uso personal (no es de CYC)',fmtUS2(Number(c.personal&&c.personal.usd)||0),'−'+fmt(Math.round(_pers)),_base>0?'−'+_pct(_pers)+'%':'');
+  const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-_pers;
   const recTxt=R.r?((R.r-1)*100).toFixed(1).replace('.',','):null;
   filas+=`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.72rem;padding:5px 0 2px"><b>Total</b><span style="white-space:nowrap"><b>${fmt(Math.round(tot))}</b>${celPc(recTxt?'<b style="color:var(--text)">+'+recTxt+'%</b>':'')}</span></div>`;
   const ca=c.costosAplicados;
@@ -18138,7 +18283,9 @@ function pyPedidoEstGan(c){
   let est=0,gan=0;
   const cands=state.candidatos||{};
   for(const it of (Array.isArray(c&&c.items)?c.items:[])){
-    if(!it||it.desc)continue;const u=parseInt(it.u)||0;if(!(u>0))continue;
+    // Revisión etapa 3, 29/10/2026: `desc` NO es "descartado": es "ya se restó de lo decidido" y lo llevan todos los probados bien pedidos
+    // (`pyped:repo`, `pyRepoRegistrar`). Saltearlo dejaba el ⭐ y el 💵 de la tarjeta sólo con los nuevos.
+    if(!it)continue;const u=parseInt(it.u)||0;if(!(u>0))continue;
     const pr=it.prodId?(state.products||[]).find(x=>x.id===it.prodId):null;
     const cand=it.id&&cands[it.id]?cands[it.id]:null;
     let e=cand?candCombo(cand):null;
@@ -22407,7 +22554,7 @@ async function _listaBuscarYa(q){
       <div style="flex:1;min-width:0;font-size:.72rem;line-height:1.45"><span style="font-size:.6rem;padding:1px 7px;border-radius:9px;background:#7c3aed;color:#fff">${escHtml(provs[k].nombre||k)}</span> <b>${escHtml(e.n)}</b>
         <div style="color:var(--muted);font-size:.66rem">te sale <b style="color:var(--text)">${fmt(_listaPuesto(k,e))}</b>${e.mp?` · en ML <b style="color:var(--text)">${fmt(e.mp)}</b>`:''}</div>
         <details style="margin-top:3px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">detalle ▾</summary><div style="color:var(--muted);font-size:.64rem;margin-top:4px">${e.mv?' · '+(e.mv==1?'<b style="color:var(--amber)">⚠️ 1 solo vendedor</b>':e.mv+' vendedores'):''}${Number(e.pp)>0?` · <span style="color:var(--amber)">🏷️ el más barato está en promo (−${Number(e.pp)}%)</span>`:''}${e.vend!=null?` · 🛒 ${e.vend>=1000?'+1000':e.vend} vendidas`:''}</div><div style="font-size:.64rem;margin-top:3px">${e.mi?`<a href="https://www.mercadolibre.com.ar/p/${e.mi}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a> · `:''}<a href="#" onclick="listaVerOri('${k}','${c}');return false" style="color:var(--blue)">📄 verlo en la lista</a> · <a href="#" onclick="_listaSel='${k}';_listaVista='nuevos';renderListas();return false" style="color:var(--muted)">ir a ${escHtml(provs[k].nombre||k)}</a></div></details></div>
-      <div style="text-align:right;flex:0 0 auto">${m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=listaVaraDe(e)?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
+      <div style="text-align:right;flex:0 0 auto">${!_listaFilaVigente(e,k)?'<span style="font-size:.6rem;color:var(--amber)">📅 de una lista anterior</span>':m!=null&&!_listaCostoVigente(e)?'<span style="font-size:.6rem;color:var(--amber)">⏳ costo nuevo, falta medir</span>':m!=null?`<b style="color:${m>=listaVaraDe(e)?'var(--green)':'var(--red)'}">${m}%</b>`:'<span style="font-size:.6rem;color:var(--muted)">sin medir</span>'}
         ${_listaFichaDe(k,cod,e)?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':_listaDa(e,k)?`<div style="font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${(arm[k]||{})[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${c}',this.value)" style="width:48px;padding:2px 4px;font-size:.78rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"></div>`:''}</div></div>`;};
   out.innerHTML=`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">${R.length?R.length+' resultado'+(R.length===1?'':'s')+(R.length>60?' · muestro los 60 mejores':''):'Nada en ninguna lista con eso.'}</div>`+R.slice(0,60).map(fila).join('');
 }
@@ -22433,9 +22580,18 @@ function _listaPuesto(k,e){return Math.round((Number(e&&e.p)||0)*(1+_listaRec(k)
 // el costo con el que se midió: si no es el de hoy, el margen no vale hasta que `listamedir` lo vuelva a medir (lo hace solo).
 // Misma regla en el robot (`listaCostoVigente`).
 function _listaCostoVigente(e){return !!e&&e.uMed!=null&&Math.abs(Number(e.uMed)-Number(e.p))<1;}
+// revisión etapa 3, 29/10/2026: LA LISTA NUEVA RETIRA LA VIEJA. Lo que la lista nueva de un proveedor no trae quedaba con el precio viejo,
+// "dando" y para pedir. Vale sólo el renglón de la lista guardada (`listasProv/<prov>/fecha`) o de hasta LISTA_GRACIA_DIAS antes (la de la
+// web de un mayorista se carga de a 100 con la fecha de hoy y puede llevar más de un día): `fl` = la fecha de la lista con la que se cargó;
+// sin `fl`, el día en que se cargó su precio (`ts`); sin ninguno, o sin fecha de la lista, vale. Misma regla en el robot (`listaFilaVigente`).
+const LISTA_GRACIA_DIAS=3;
+function _listaFechaProv(k){return String((k!=null&&((((state.mlconfig||{}).listasProv||{})[k])||{}).fecha)||'');}
+function _listaFilaVigente(e,k){const f=_listaFechaProv(k);if(!e||!/^\d{4}-\d{2}-\d{2}$/.test(f))return true;
+  const d=/^\d{4}-\d{2}-\d{2}$/.test(String(e.fl||''))?String(e.fl):(Number(e.ts)>0?new Date(Number(e.ts)-3*36e5).toISOString().slice(0,10):'');
+  return !d||d>=new Date(Date.parse(f+'T12:00:00Z')-LISTA_GRACIA_DIAS*864e5).toISOString().slice(0,10);}
 // "Otro producto" vale para el catálogo que se miró (`noEsCat`); misma regla que `listaNoEsVale` de sync.mjs (20/10/2026).
 function _listaNoEsVale(e){return !!(e&&e.noEs&&(!e.noEsCat||String(e.noEsCat).toUpperCase()===String(e.mi||'').toUpperCase()));}
-function _listaMed25(e){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=listaVaraDe(e)&&_listaCostoVigente(e)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<1&&!e.svm);}   // 43a (24/10/2026): 🌟 sin competencia (svm) entra como en Paraguay
+function _listaMed25(e,k){return e&&!_listaNoEsVale(e)&&!e.sacado&&!e.noWeb&&!e.noFull&&e.m!=null&&isFinite(e.m)&&Number(e.m)>=listaVaraDe(e)&&_listaCostoVigente(e)&&_listaFilaVigente(e,k)&&/^https:\/\//.test(e.mf||'')&&!(e.mv!=null&&Number(e.mv)<1&&!e.svm);}   // 43a (24/10/2026): 🌟 sin competencia (svm) entra como en Paraguay
 // UN SOLO VENDEDOR NO ALCANZA (19/10/2026, él: "hay un flaco que vende los perfumes re caros y es el único (…) es un precio inflado que no
 // sabemos si vende"). Con 1 vendedor en ML el precio no lo confirma nadie: nunca va a ✅ Dan solo, va a 🔎 Para revisar hasta que el
 // chat de compras lo mire (`ok` = mismo producto Y precio creíble).
@@ -22449,10 +22605,10 @@ function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCa
 // foto de ML, así que con 25%+ medido y 2+ vendedores alcanza para cargarlo (la tarjeta del local dice "sin confirmar: mirá bien la
 // foto"). Lo marcado otro producto (`noEs`), fuera de la web o fuera de Full sigue sin poder pedirse (lo frena `_listaMed25`).
 // `k` = la lista; sin `k` queda la regla de siempre.
-function _listaDa(e,k){return _listaMed25(e)&&(_vendOk(e.mv,e.vend,e.res)||!!e.svm)&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend,e.res);}
-function _listaRevisar(e,k){return _listaMed25(e)&&!_listaDa(e,k)&&!pocasVentasN(e.vend,e.res);}
+function _listaDa(e,k){return _listaMed25(e,k)&&(_vendOk(e.mv,e.vend,e.res)||!!e.svm)&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend,e.res);}
+function _listaRevisar(e,k){return _listaMed25(e,k)&&!_listaDa(e,k)&&!pocasVentasN(e.vend,e.res);}
 // pasó todo lo demás pero las vendidas cargadas no llegan a 100 (21/10/2026)
-function _listaPocasV(e){return _listaMed25(e)&&pocasVentasN(e.vend,e.res);}
+function _listaPocasV(e,k){return _listaMed25(e,k)&&pocasVentasN(e.vend,e.res);}
 function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>{if(!it.prodId)s.add(String(it.cod));});});return s;}
 // ── LO YA PROBADO DE UNA LISTA SE PIDE COMO PARAGUAY (20/10/2026, decisión 1a) ───────────────────────────────────────────
@@ -22646,7 +22802,7 @@ async function listaSetU(k,cod,val){
       if(confirm(`"${e&&e.n||cod}" ya es una ficha: ${fi.name}.\n\nNo se carga como NUEVO. ¿Lo cargo en el pedido como PROBADO (${u} u.)? Así al pedirlo se descuenta de Pedidos.`))await listaProbSet(k,fi.id,u,cod);
       else renderListas();
       return;}}
-  if(u>0&&!_listaDa(e,k)){toast('No se puede cargar: '+(e&&e.noFull?'🚫 no se puede mandar a Full ('+e.noFull+')':e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null&&Number(e.m)<listaVaraDe(e)?'en ML da '+Math.round(e.m)+'%, abajo de la vara de compra ('+listaVaraDe(e)+'%)':e&&e.m!=null&&!/^https:\/\//.test(e.mf||'')?'le falta la foto de ML':e&&e.m!=null&&e.mv!=null&&Number(e.mv)<1&&!e.svm?'el catálogo de ML no tiene vendedores':e&&e.m!=null?'falta confirmar que el catálogo de ML es el mismo producto (o el de 1 solo vendedor que vendió 100+)':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
+  if(u>0&&!_listaDa(e,k)){toast('No se puede cargar: '+(e&&!_listaFilaVigente(e,k)?'📅 es de una lista anterior: la del '+_listaFechaProv(k)+' no lo trae (no se sabe si lo siguen teniendo ni a qué precio)':e&&e.noFull?'🚫 no se puede mandar a Full ('+e.noFull+')':e&&e.noWeb?'no está en la web del proveedor: no lo tienen en stock':e&&e.m!=null&&!_listaCostoVigente(e)?'⏳ el costo cambió y el margen es del costo viejo: falta volver a medirlo contra ML':e&&e.m!=null&&Number(e.m)<listaVaraDe(e)?'en ML da '+Math.round(e.m)+'%, abajo de la vara de compra ('+listaVaraDe(e)+'%)':e&&e.m!=null&&!/^https:\/\//.test(e.mf||'')?'le falta la foto de ML':e&&e.m!=null&&e.mv!=null&&Number(e.mv)<1&&!e.svm?'el catálogo de ML no tiene vendedores':e&&e.m!=null?'falta confirmar que el catálogo de ML es el mismo producto (o el de 1 solo vendedor que vendió 100+)':'todavía no está medido contra ML (o le falta la foto de ML)'),'err',5000);renderListas();return;}
   if(u>0&&_listaViajando(k).has(String(cod))){toast('Ya está viajando en un pedido de este proveedor','err',4000);renderListas();return;}
   try{await db.ref('cyc/listas_pedido/'+k+'/'+cod).set(u>0?u:null);}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
   state.listaPed=state.listaPed||{};state.listaPed[k]=state.listaPed[k]||{};if(u>0)state.listaPed[k][cod]=u;else delete state.listaPed[k][cod];
@@ -22689,6 +22845,7 @@ async function _listaYaLoPedi(k){
     +(itemsP.length?`Probados (se descuentan de Pedidos):\n${itemsP.map(i=>'· '+i.u+' × '+i.n+(i.variante?' · '+i.variante:'')).join('\n')}\n\n`:'')
     +(itemsN.length?`${itemsP.length?'Nuevos:\n':''}${itemsN.map(i=>'· '+i.u+' × '+i.n+(i.prodId?' (ya es ficha: va como probado)':'')).join('\n')}\n\n`:'')
     +(sinFicha.length?`⚠️ ${sinFicha.length} probado(s) con la ficha borrada NO entran.\n\n`:'')
+    +((_vj=>_vj.length?`⚠️ ${_vj.length} de una lista anterior (la del ${_listaFechaProv(k)} no los trae: el precio puede no ser el de hoy):\n${_vj.map(x=>'· '+((cat[x.cod]||{}).n||x.cod)).join('\n')}\n\n`:'')(A.filter(x=>cat[x.cod]&&!_listaFilaVigente(cat[x.cod],k))))   // revisión etapa 3, 29/10/2026
     +`Total ${fmt(tot)}`))return;
   if(!items.length)return;
   const hoy=new Date(ahora-3*3600e3).toISOString().slice(0,10),id='li'+k.slice(0,6)+hoy.replace(/-/g,'')+'_'+ahora.toString(36).slice(-4);
@@ -22708,6 +22865,13 @@ async function _listaYaLoPedi(k){
 }
 // LLEGÓ: crea la ficha de cada producto (costo = precio de la lista + recargo, en dólares del día del pedido), del proveedor
 // de esa lista (`listaProv`, así queda en Probados de Listas y no en Bs As), o la engancha si ya existe una con el mismo nombre.
+// ¿LA RECOMPRA SALIÓ MÁS CARA? (revisión etapa 3, 29/10/2026). Lo comprado en pesos (`costoPesos`) se compara en PESOS: lo pagado (`pc`)
+// contra `cost`. Comparar dólares mezclaba el dólar del pedido (`pc ÷ tc`) con el de hoy (`costUSDof` = pesos ÷ dólar de hoy): con el dólar
+// en suba una recompra MÁS BARATA "subía" el costo (y bajaba los pesos); en baja, una más cara no subía. Lo de dólares sigue en dólares.
+// Misma regla que `recompra` de `listaped:llego` (sync.mjs): si se toca una, se toca la otra.
+function _listaRecompra(p,pc,tc){pc=Number(pc)||0;const nuO=tc>0?Math.round(pc/tc*100)/100:0;
+  if(costoEnPesos(p)){const ant=Number(p.cost)||0,t=curTC();return{sube:pc>ant+0.5,usd:t>0?Math.round(pc/t*10000)/10000:nuO,txt:fmt(Math.round(ant))+' → '+fmt(Math.round(pc))};}
+  const an=costUSDof(p);return{sube:nuO>an+0.005,usd:nuO,txt:'US$ '+an.toFixed(2)+' → '+nuO.toFixed(2)};}
 // Etapa 4 (20/10/2026): candado (doble toque) y contador de operaciones en curso. La de adentro es `_listaLlego`.
 async function listaLlego(id){return conCandado('listaLlego:'+id,()=>_listaLlego(id));}
 async function _listaLlego(id){
@@ -22720,7 +22884,7 @@ async function _listaLlego(id){
     const misma=(state.products||[]).find(p=>(p.codLista&&String(p.codLista)===String(it.cod)&&p.listaProv===c.prov)||normTxt(p.name||'')===n||normTxt(p.name||'')===n2);return{it,nombre,misma};});
   // Etapa 2 (20/10/2026): sin dólar no se crean fichas (nacerían con costo US$ 0 y se verían como todo ganancia). Como `updCostPesos`.
   if(!(tc>0)&&plan.some(x=>!x.misma&&!x.prob&&x.nombre)){toast('Falta el dólar en Finanzas: sin eso las fichas nuevas nacerían con costo US$ 0. No marqué nada.','err',6000);return;}
-  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.borrada?'· probado con la ficha BORRADA: no se crea nada ('+x.it.u+' × '+x.it.n+')':x.misma?(x.prob?'· probado: ':'· ya existe: ')+x.misma.name+(x.it.variante?' · '+x.it.variante:'')+(x.prob?' · '+x.it.u+' u. a contar en Mi oficina':'')+((tc>0&&x.it.pc/tc>costUSDof(x.misma)+0.005)?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués te pregunto si llegó todo, para sumarlo a Mi oficina.`))return;
+  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.borrada?'· probado con la ficha BORRADA: no se crea nada ('+x.it.u+' × '+x.it.n+')':x.misma?(x.prob?'· probado: ':'· ya existe: ')+x.misma.name+(x.it.variante?' · '+x.it.variante:'')+(x.prob?' · '+x.it.u+' u. a contar en Mi oficina':'')+(_listaRecompra(x.misma,x.it.pc,tc).sube?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués te pregunto si llegó todo, para sumarlo a Mi oficina.`))return;
   const _todo=_llegoTodoPreg(plan.reduce((a,x)=>a+(parseInt(x.it&&x.it.u)||0),0));
   let n=0;const subio=[];const _fichaDeI={};
   // La oficina de cada probado al llegar: hasta que se cuente (7 días como mucho) Pedidos lo sigue restando (`listaEnCamino`).
@@ -22755,10 +22919,10 @@ async function _listaLlego(id){
       if(x.prob&&!x.misma.codLista&&x.it.cod)try{await fbSet('products/'+x.misma.id+'/codLista',String(x.it.cod));x.misma.codLista=String(x.it.cod);}catch(e){}
       // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como Paraguay): la ficha toma el costo nuevo; el viejo queda congelado
       // en los meses con ventas (`congelarCostoAnterior`). Sólo sube, nunca baja (misma regla que el robot en Paraguay).
-      const nu=tc>0?Math.round(x.it.pc/tc*100)/100:0,an=costUSDof(x.misma);
-      if(nu>an+0.005)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;x.misma.costoPesos=true;
+      const _rc=_listaRecompra(x.misma,x.it.pc,tc),nu=_rc.usd,an=costUSDof(x.misma);   // revisión etapa 3, 29/10/2026: ver `_listaRecompra`
+      if(_rc.sube)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;x.misma.costoPesos=true;
         await fbSet('products/'+x.misma.id+'/costUSD',nu);await fbSet('products/'+x.misma.id+'/cost',x.it.pc);await fbSet('products/'+x.misma.id+'/costoPesos',true);await recalcAndSaveFullUSD(x.misma);
-        subio.push(x.misma.name+' US$ '+an.toFixed(2)+' → '+nu.toFixed(2));await log('Costo '+x.misma.name+': US$'+nu+' (recompra a '+(c.provNom||c.prov)+(cg?', se congeló US$'+an+' en '+cg+' mes/es':'')+')');}catch(e){toast('No pude subir el costo de '+x.misma.name+': '+(e.message||e),'err',5000);}
+        subio.push(x.misma.name+' '+_rc.txt);await log('Costo '+x.misma.name+': US$'+nu+' (recompra a '+(c.provNom||c.prov)+(cg?', se congeló US$'+an+' en '+cg+' mes/es':'')+')');}catch(e){toast('No pude subir el costo de '+x.misma.name+': '+(e.message||e),'err',5000);}
       continue;}
     if(!x.nombre)continue;
     const usd=tc>0?Math.round(x.it.pc/tc*100)/100:0;
@@ -23067,12 +23231,13 @@ async function renderListas(){
     return;
   }
   const fila=([cod,e],conU)=>{const pc=_listaPuesto(k,e);const m=(e.m!=null&&isFinite(e.m))?Number(e.m):null;
-    const est=m!=null&&!_listaCostoVigente(e)?`<span style="font-size:.62rem;color:var(--amber)" title="Se midió con un costo de ${fmt(Number(e.uMed)||0)} y hoy es ${fmt(Number(e.p)||0)}: el ${Math.round(m)}% de antes ya no vale.">⏳ costo nuevo, falta medir</span>`
+    const est=!_listaFilaVigente(e,k)?`<span style="font-size:.62rem;color:var(--amber)" title="Este precio es de una lista anterior: la del ${_listaFechaProv(k)} no lo trae. No se pide hasta que vuelva en una lista nueva.">📅 de una lista anterior</span>`   // revisión etapa 3, 29/10/2026
+      :m!=null&&!_listaCostoVigente(e)?`<span style="font-size:.62rem;color:var(--amber)" title="Se midió con un costo de ${fmt(Number(e.uMed)||0)} y hoy es ${fmt(Number(e.p)||0)}: el ${Math.round(m)}% de antes ya no vale.">⏳ costo nuevo, falta medir</span>`
       :m!=null?`<b style="font-size:1rem;color:${m>=listaVaraDe(e)?'var(--green)':'var(--red)'}">${Math.round(m)}%</b> <span style="font-size:.6rem;color:var(--muted)">ML</span>`
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${escHtml(e.fz)}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
     const uBox=!conU?'':fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
-      :_listaDa(e,k)?`<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${arm[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${String(cod).replace(/'/g,"\\'")}',this.value)" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div>`:'';
+      :(_listaDa(e,k)||Number(arm[cod])>0)?`<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${arm[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${String(cod).replace(/'/g,"\\'")}',this.value)" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div>`:'';   // ya cargado y que dejó de dar (lista anterior, sin stock): la casilla queda para ponerlo en 0 (revisión etapa 3, 29/10/2026)
     // LA TARJETA ENTERA ABRE EL DETALLE (21/10/2026, él: "quiero que salga donde dice detalle y la flechita. que se abra directamente al
     // clickear en cualquier parte de la tarjeta del producto"). Sin el código a la vista ("no nos basamos con eso"; queda en "verlo en
     // la lista"). ⚠️ sólo si hay una duda de verdad: otro producto, o sin confirmar con 1 solo vendedor o un reparo de nombre.
@@ -23135,7 +23300,7 @@ async function renderListas(){
   const nuevos=filas.filter(([cod])=>!yaFicha.has(String(cod))&&!viaj.has(String(cod)));
   const dan=nuevos.filter(([,e])=>_listaDa(e,k)).sort(ord);
   const revis=nuevos.filter(([,e])=>_listaRevisar(e,k)).sort(ord);
-  const resto=nuevos.filter(([,e])=>!_listaMed25(e)&&!e.sacado&&!e.noWeb&&!e.noFull).sort(ord);
+  const resto=nuevos.filter(([,e])=>!_listaMed25(e,k)&&!e.sacado&&!e.noWeb&&!e.noFull).sort(ord);
   const sacados=nuevos.filter(([,e])=>e.sacado);
   // SIN STOCK = NO ESTÁ EN LA WEB DEL PROVEEDOR (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos, no en la
   // lista en Excel"). `noWeb` lo pone el robot (`listaweb`): no sale en ninguna sección para pedir, queda abajo cerrado.
@@ -23144,10 +23309,11 @@ async function renderListas(){
   // cuántos no"). Cada producto cae en UN solo grupo, en este orden: ya es ficha · afuera (sacado, no está en la web del proveedor,
   // regla) · sin evaluar (nunca buscado, buscado con el nombre viejo sin el traductor (`qv`), o medido con un costo viejo) · y de los
   // evaluados: 🟢 da (confirmado) · 🔎 da 25%+ y falta confirmar · ⚫ no está en ML o nadie lo vende · 🔴 no da.
-  const _grp={ficha:0,afuera:0,sinEv:0,da:0,rev:0,noML:0,noDa:0};
+  const _grp={ficha:0,afuera:0,viejo:0,sinEv:0,da:0,rev:0,noML:0,noDa:0};
   for(const [cod,e] of filas){
     if(yaFicha.has(String(cod))||viaj.has(String(cod))){_grp.ficha++;continue;}
     if(e.sacado||e.noWeb||e.noFull||e.fz){_grp.afuera++;continue;}
+    if(!_listaFilaVigente(e,k)){_grp.viejo++;continue;}   // revisión etapa 3, 29/10/2026: de una lista anterior
     const _viejoNom=(e.sc||e.sv||e.noEs)&&Number(e.qv||0)!==LISTA_NOMBRE_VER;
     if((e.m==null&&!e.sc&&!e.sv)||_viejoNom||(e.m!=null&&!_listaCostoVigente(e))){_grp.sinEv++;continue;}
     if(_listaDa(e,k)){_grp.da++;continue;}
@@ -23162,15 +23328,15 @@ async function renderListas(){
   // dividirlos como vos sabes"). El resumen va cerrado con lo principal en la línea de arriba; lo que no da se reparte en 📗 con
   // catálogo en ML (por por qué no entra: casi, poco, pierde, 1 vendedor, otro producto, costo nuevo, nadie lo vende) y 📕 sin
   // catálogo exacto, más ⏳ sin medir y 🚫 afuera por regla. Cada producto cae en una sola carpeta.
-  const _cg={guard:[],casi:[],bajo:[],neg:[],unV:[],otro:[],cNuevo:[],sinFoto:[],nadie:[],sinCat:[],sinMed:[],regla:[]};
+  const _cg={guard:[],casi:[],bajo:[],neg:[],unV:[],otro:[],cNuevo:[],sinFoto:[],nadie:[],sinCat:[],sinMed:[],regla:[],viejo:[]};
   for(const f of resto){const e=f[1],m=e.m!=null&&isFinite(e.m)?Number(e.m):null;
-    if(e.fz)_cg.regla.push(f);else if(e.sc)_cg.sinCat.push(f);else if(e.sv)_cg.nadie.push(f);else if(m==null)_cg.sinMed.push(f);
+    if(e.fz)_cg.regla.push(f);else if(!_listaFilaVigente(e,k))_cg.viejo.push(f);else if(e.sc)_cg.sinCat.push(f);else if(e.sv)_cg.nadie.push(f);else if(m==null)_cg.sinMed.push(f);
     else if(!_listaCostoVigente(e))_cg.cNuevo.push(f);else if(_listaNoEsVale(e))_cg.otro.push(f);
     else if(e.mv!=null&&!_vendOk(e.mv,e.vend,e.res))_cg.unV.push(f);else if(m>=listaVaraDe(e))_cg.sinFoto.push(f);
     else if(m<0)_cg.neg.push(f);else if(m<15)_cg.bajo.push(f);else if(m>=CAND_PISO_PCT)_cg.guard.push(f);else _cg.casi.push(f);}
   const _sub=(t,arr,col,abierto)=>arr.length?`<details${abierto?' open':''} style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:7px 10px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700${col?';color:'+col:''}">${t} (${arr.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${arr.slice(0,150).map(f=>fila(f,false)).join('')}${arr.length>150?`<div style="font-size:.62rem;color:var(--muted)">muestro 150 · el resto con el buscador</div>`:''}</div></details>`:'';
   const _carp=(t,n,col,body,extra)=>n?`<details style="margin-top:14px;background:var(--surface);border:1px solid ${col||'var(--border)'};border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700">${t} (${n})${extra||''}</summary>${body}</details>`:'';
-  const _pocasL=nuevos.filter(([,e])=>_listaPocasV(e)).sort(ord);
+  const _pocasL=nuevos.filter(([,e])=>_listaPocasV(e,k)).sort(ord);
   const _nCon=_pocasL.length+revis.length+_cg.guard.length+_cg.casi.length+_cg.bajo.length+_cg.neg.length+_cg.unV.length+_cg.otro.length+_cg.cNuevo.length+_cg.sinFoto.length+_cg.nadie.length;
   const _conCat=_carp('📗 Con catálogo en ML',_nCon,'',
      _sub('🔎 Darían '+CAND_VARA_COMPRA+'%+ pero falta confirmar que es el mismo producto',revis,'var(--amber)',true)
@@ -23198,9 +23364,10 @@ async function renderListas(){
     ${medirVueltaHTML(k)}<div><b>${filas.length} productos</b> en la lista${v.ts?` <span style="color:var(--muted)">· lista del ${new Date(v.ts).toLocaleDateString('es-AR')}</span>`:''}${rec?` <span style="color:var(--muted)">· recargo del proveedor ${rec}%</span>`:''}</div>
     <div><b>✅ Evaluados ${_ev}</b>: <span style="color:var(--green)">🟢 ${_grp.da} dan</span> · <span style="color:var(--amber)">🔎 ${_grp.rev} dan ${CAND_VARA_COMPRA}%+ y falta confirmar</span> · <span style="color:var(--red)">🔴 ${_grp.noDa} no dan</span> · <span style="color:var(--muted)">⚫ ${_grp.noML} no están en ML o nadie los vende</span></div>
     <div><b>⏳ Sin evaluar ${_grp.sinEv}</b>${_grp.sinEv?' <span style="color:var(--muted)">· el robot los está midiendo</span>':''}</div>
+    ${_grp.viejo?`<div style="color:var(--amber)">📅 ${_grp.viejo} de una lista anterior: la del ${_listaFechaProv(k)} no los trae (no dan ni se piden hasta que vuelvan en una lista)</div>`:''}
     ${_grp.ficha||_grp.afuera?`<div style="color:var(--muted)">${_grp.ficha?`✔️ ${_grp.ficha} ya los vendés o están viajando`:''}${_grp.ficha&&_grp.afuera?' · ':''}${_grp.afuera?`🚫 ${_grp.afuera} afuera (sacados, no están en la web del proveedor o regla)`:''}</div>`:''}
 </div>
-    ${_conCat}${_sinCat}${_sinMed}${_regla}${_carp('🚚 Ya están viajando en un pedido',viajN.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${viajN.map(f=>fila(f,true)).join('')}</div>`)}
+    ${_conCat}${_sinCat}${_sinMed}${_regla}${_carp('📅 De una lista anterior (la del '+_listaFechaProv(k)+' no los trae)',_cg.viejo.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${_cg.viejo.slice(0,150).map(f=>fila(f,false)).join('')}</div>`)}${_carp('🚚 Ya están viajando en un pedido',viajN.length,'',`<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${viajN.map(f=>fila(f,true)).join('')}</div>`)}
     ${sinWeb.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🚫 No está en la web de ${escHtml(nom)}: no lo tienen (${sinWeb.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sinWeb.slice(0,150).map(f=>fila(f,false)).join('')}${sinWeb.length>150?`<div style="font-size:.64rem;color:var(--muted)">… y ${sinWeb.length-150} más (usá el buscador)</div>`:''}</div></details>`:''}
     ${sacados.length?`<details style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px"><summary style="cursor:pointer;font-size:.82rem;font-weight:700;color:var(--muted)">🗑️ Sacados por vos (${sacados.length})</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${sacados.map(f=>fila(f,false)).join('')}</div></details>`:''}
     </details>

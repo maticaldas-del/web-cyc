@@ -8,9 +8,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### 🧲 Ir a los extremos (29/10, él: "lo que vende arriba del 35% dejarlo… lo que tiene sobrestock, está debajo del 35% o no se vende al 35% hace un tiempo, vender lo máximo posible, así hacemos caja")
-Pasado en el chat el 29/10 con 3 decisiones: 1 qué cuenta como "no se vende" (30 días sin vender a 35%+) · 2 escalera rápida de −15% por semana hasta que venda con piso 0%, abriendo F13 antes de los 90 días · 3 lo que vende abajo del 35% sube, no se liquida. Esperando su respuesta.
-
 ### ✅ Contestó la lista de las 12:30 del 29/10 (1a 2a 3a 4a 5b 6 7a 8a 9a 10b 11 12 13a 14a 15b 16a 17a)
 - **Hecho:** 1a saldos de MP fuera del registro (`ancla:buzon=<ts>;go`) · 2a mes cerrado congelado (`cyc/costocongelado`) · 3a lo hace solo el cobro por crecimiento · 4a ventas sin factura no se caen a los 45 días · 5b afuera · 6 Valor de Stock = Stock total del Arqueo · 7a y 14a prompt `PROMPT_ANTIGUEDAD.md` para el chat de Chrome (se lo pasé) · 11 regla en CEREBRO fila 6 (bajar cuando el stock dura más que los días que faltan para pagar) · 15b regla en CEREBRO (cupón de ML cuenta a nuestro precio).
 - **8a Abismo:** hoy ya GANA la caja a $14.990 y deja 40%: no hace falta descuento. Si el 07/11 no se vendió, al local.
@@ -188,3 +185,13 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 
 ## 29/10 · De la vuelta de las 9:52
 - **Pregunta de un comprador que no sé contestar** (Ayelen · Mentonera Facial V Lifting, `MLA4095170164`, hace 4 días): pregunta si la mentonera tiene una apertura o hueco en la zona del mentón o si es cerrada de una sola pieza, y si hay una versión de la otra forma. Pasame la respuesta y la contesto.
+
+### Revisión de Mercadería del 29/10 (8 decisiones, para cuando digas "resolvamos")
+1. **Nombre de las fichas viejas:** al vincular una publicación nueva a una ficha de más de 30 días, ¿se le cambia el nombre al de ML? (a) sugerida: no, las viejas quedan como las conocés · (b) sí, siempre el de ML.
+2. **"Sin etiqueta" por cuenta:** cada cuenta tiene su código de etiqueta distinto; hoy se cuenta por producto y color, sin cuenta. (a) sugerida: llevarlo por cuenta · (b) dejarlo así.
+3. **Tenders:** se ponen en 0 cada noche mientras la cuenta tenga productos chicos para mandar (van en caja aparte). (a) sugerida: que salgan en su propia caja cuando juntan 1 caja llena o se cortan en 14 días · (b) que esperen a que no haya chicos.
+4. **Envío pausado:** (a) sugerida: cuenta como "en camino" (no se vuelve a pedir lo mismo) pero NO resta cupo hasta que sale · (b) no cuenta para nada mientras está pausado.
+5. **Costos antes del ticket de Paraguay:** hoy se ponen con el precio de la web y después sólo pueden subir. (a) sugerida: poner los costos recién con el ticket · (b) dejarlo así.
+6. **Recompra más barata de un probado:** hoy el costo no baja ("sólo sube"). (a) sugerida: que baje al que pagaste (el viejo queda en los meses que ya vendió) · (b) que siga sin bajar.
+7. **Lo pagado en Paraguay que no vino:** (a) sugerida: reclamarlo y, si no se recupera, repartir su costo en lo que llegó · (b) dejarlo sólo anotado como faltante.
+8. **Precios de proveedores en el registro público:** las listas y los tickets muestran precios en el registro del robot (cualquiera lo puede leer). (a) sugerida: no imprimirlos más (sólo cuántos y qué %) · (b) dejarlo así.
