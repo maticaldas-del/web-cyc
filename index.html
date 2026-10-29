@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.03';
+const APP_VERSION='28.04';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.04',f:'29/10',h:'18:35',c:[{n:1,t:'📥 Lo que nos deben: toda deuda con costo o ganancia va siempre a Ventas a cobrar (Mari estaba en Préstamos por error).'}]},
   {v:'28.03',f:'29/10',h:'18:20',c:[{n:2,t:'📥 Lo que nos deben en dos grupos: 🛒 Ventas a cobrar (con la ganancia total) y 💵 Préstamos (sin ganancia). Las ventas viejas sin costo dicen "costo sin cargar".'}]},
   {v:'28.02',f:'29/10',h:'17:55',c:[{n:2,t:'📥 Lo que nos deben: Mercadería Perfumería y Deuda Perfumería quedan juntas en una tarjeta PERFUMERÍA (afuera la ganancia en pesos y el total); adentro, Mercadería y MercadoPago.'}]},
   {v:'28.01',f:'29/10',h:'17:40',c:[{n:1,t:'📥 Lo que nos deben: al lado del % de ganancia de cada deuda va la ganancia en pesos en verde (+$X).'}]},
@@ -7223,7 +7224,8 @@ function renderCuotas(){
   const _lista=act.filter(d=>d!==_pM&&d!==_pD);
   // 🛒 VENTAS A COBRAR / 💵 PRÉSTAMOS (29/10/2026, él eligió 1a 2a: "los que tienen ganancia son Ventas y los que no tienen son deudores"):
   // `tipo` lo marca Claude (`debenmov:<id>=tipo venta|prestamo;go`); sin marca, venta = tiene costo o ganancia. PERFUMERÍA va en Ventas.
-  const _esVenta=d=>d.tipo?d.tipo==='venta':!d.sinGan&&(Number(d.costo)>0||Object.values(d.movs||{}).some(x=>x&&x.gan!=null));
+  // 29/10/2026 (él con Mari, que marqué préstamo y tenía el reloj con costo: "esto es una venta"): con costo o ganancia es venta SIEMPRE, diga lo que diga la marca.
+  const _esVenta=d=>(!d.sinGan&&(Number(d.costo)>0||Object.values(d.movs||{}).some(x=>x&&x.gan!=null)))||d.tipo==='venta';
   const _ven=_lista.filter(_esVenta),_pre=_lista.filter(d=>!_esVenta(d));
   const _sumR=a=>a.reduce((t,d)=>t+(Number(d.resta)||0),0);
   const _ganV=_ven.reduce((t,d)=>t+(Number(d.costo)>0?d.monto-Number(d.costo):0)+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0)
