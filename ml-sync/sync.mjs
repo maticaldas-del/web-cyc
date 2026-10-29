@@ -85,7 +85,7 @@ if (_MASCARA_PLATA) {
   const _ol = console.log.bind(console);
   console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')) : x)));
 }
-const CONSULTA_ESCRIBE = new Set(['buzon', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -41945,6 +41945,28 @@ async function main() {
     //   · qué precio haría falta para el piso,
     //   · las últimas ventas con su precio, para ver a qué precio vende de verdad.
     // Solo LEE.
+    // BILLING_PROBE=prompts[:go] (29/10/2026, él: "vos podés pasar todos los prompts ahí en cyc no? más fácil. yo le digo lo que quiero que
+    // haga y listo"): copia cada `ml-sync/PROMPT_*.md` a `cyc/prompts/<nombre>` ({t título, d para qué, txt lo que se pega, ts}) y la web los
+    // muestra en Mi oficina → 🤖 Textos para el chat de Chrome, con botón de copiar (el chat de Chrome también los puede leer de ahí). Lo que
+    // se pega es el bloque entre ``` del archivo; sin bloque, el archivo entero. Corre cada noche (ml-daily) y después de cambiar uno.
+    if (/^prompts(:go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const go = /:go$/.test(String(process.env.BILLING_PROBE));
+      const dir = new URL('./', import.meta.url);
+      const out = {};
+      for (const fn of readdirSync(dir).filter((x) => /^PROMPT_[A-Z0-9_]+\.md$/.test(x)).sort()) {
+        const raw = readFileSync(new URL('./' + fn, dir), 'utf8');
+        const lineas = raw.split('\n'); const t = String(lineas[0] || fn).replace(/^#\s*/, '').trim();
+        const bl = raw.match(/^```[^\n]*\n([\s\S]*?)^```/m);
+        const txt = (bl ? bl[1] : raw).trim();
+        const d = (lineas.slice(1).find((l) => l.trim() && !/^```/.test(l)) || '').trim();
+        const k = fn.replace(/^PROMPT_|\.md$/g, '').toLowerCase();
+        out[k] = { t: t.slice(0, 200), d: d.slice(0, 400), txt, n: txt.length, ts: Date.now() };
+        console.log(`  ${k} · ${t.slice(0, 80)} · ${txt.length} letras${bl ? '' : ' (archivo entero, sin bloque ```)'}`);
+      }
+      console.log(`=== ${Object.keys(out).length} textos para el chat de Chrome · ${go ? 'GUARDADOS en cyc/prompts' : 'prueba (con :go se guardan)'} ===`);
+      if (go) { await db.set('cyc/prompts', out); const re = (await db.get('cyc/prompts')) || {}; console.log(`releído: ${Object.keys(re).length} de ${Object.keys(out).length} ${Object.keys(re).length === Object.keys(out).length ? '✓' : '⚠️ NO CIERRA'}`); }
+      return;
+    }
     // BILLING_PROBE=ofi35 (24/10/2026 al precio de hoy; 29/10/2026, él: "qué producto de mi oficina no llega al 35%, ni vs competidores en ML ni vs la venta más
     // alta de los últimos 30 días. Así lo que no da ya lo bajo al local y lo vendo acá"). SOLO LEE. Para cada ficha con unidades en la
     // Oficina Mati: el % del peor caso (misma cuenta que `unapub`: comisión que pide ML a ESE precio, envío 0 abajo de $33.000 y el peor

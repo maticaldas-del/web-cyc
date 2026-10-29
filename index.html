@@ -1655,6 +1655,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
     <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
     <div id="ofi-buzon-card"></div>
+    <div id="ofi-prompts-card"></div>
     <div id="ofi-sinetiq-card"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
@@ -2556,7 +2557,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['prompts','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2680,6 +2681,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
+    state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
     state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
     state.sinetiq=d.sinetiq||{};   // 23/10: 🏷️ mercadería en la oficina sin etiqueta de Full (la carga Claude: ofi:…!se / sinetiq:)
     state.noconsigo=d.noconsigo||{};   // 17/10: "🚫 No lo consigo" de Pedidos (Bs As/Paulvic): sin reposición hasta que entre algo a la oficina
@@ -3189,7 +3191,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.91';
+const APP_VERSION='27.92';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3202,6 +3204,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.92',f:'29/10',h:'15:20',c:[{n:2,t:'🤖 Mi oficina: "Textos para el chat de Chrome". Todos los textos (rutina diaria, cajas, Paraguay, listas, Once, Imega…) con 📋 Copiar para pegarlos enteros en el chat de Chrome. Se actualizan solos cada noche.'}]},
   {v:'27.91',f:'29/10',h:'14:55',c:[{n:3,t:'📈 Línea de tiempo: todo techo dice su % de seguridad (también el 🔴 y el gris "ya está arriba del techo"), la raya 🚧 de un precio que después vendió más caro ya no se dibuja (si vende, no es techo), y "hoy" es el precio de ahora (la línea llega hasta anoche: lo dice al lado)'}]},
   {v:'27.90',f:'29/10',h:'14:23',c:[{n:3,t:'🔍 Revisión de Mercadería: Pedidos ya no resta dos veces la oficina y lo que viaja (borraba pedidos que hacían falta) · la caja que se pasa del cupo dice "Se pasa del cupo" en vez de MANDALA YA · un envío pausado ya no se marca llegado · ✅ Etiquetadas pregunta cuántas · las listas viejas ya no cuentan como que dan · el riesgo de un color en 0 no lo tapa otro color · rojo de Pedidos = 14 días o menos'}]},
   {v:'27.89',f:'29/10',h:'13:16',c:[{n:2,t:'🔎 Pedidos: buscador a la derecha de Listas que busca en todo Bs As (De siempre y las listas de Tito) y te lleva a la solapa donde está'}]},
@@ -8426,6 +8429,7 @@ function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
   try{renderSinEtiqCard();}catch(e){console.warn('sinetiq',e);}
   try{renderBuzonCard();}catch(e){console.warn('buzon',e);}
+  try{renderPromptsCard();}catch(e){console.warn('prompts',e);}
   const fcc=document.getElementById('ofi-contar-cuentas');
   if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
     +LOCS.map(l=>`<button class="pf-btn${ofiContarCuenta===l?' active-all':''}" onclick="setOfiContarCuenta('${l}')">${l}</button>`).join('');
@@ -8647,6 +8651,30 @@ function renderBuzonCard(){
     <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="buzonEnviar()">📬 Dejar mensaje</button>
   </details>`;
   if(_v){const t=document.getElementById('buzon-txt');if(t){t.value=_v;if(_foc)t.focus();}}
+}
+// 🤖 TEXTOS PARA EL CHAT DE CHROME (29/10/2026, él: "vos podés pasar todos los prompts ahí en cyc no? más fácil. yo le digo lo que quiero
+// que haga y listo"). Los copia el robot (`prompts:go`, cada noche) de ml-sync/PROMPT_*.md a `cyc/prompts/<nombre>` = {t, d, txt, ts}.
+// Cada uno con 📋 Copiar (para pegarlo entero) y ▸ Ver (el chat de Chrome también lo puede leer abriendo esta pantalla).
+function promptCopiar(k){const x=(state.prompts||{})[k];if(!x||!x.txt)return;
+  const ok=()=>toast('📋 Copiado: pegalo entero en el chat de Chrome','ok',2500);
+  try{navigator.clipboard.writeText(x.txt).then(ok,()=>{_promptCopiaVieja(x.txt);ok();});}catch(e){_promptCopiaVieja(x.txt);ok();}}
+function _promptCopiaVieja(t){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();}
+function renderPromptsCard(){
+  const el=document.getElementById('ofi-prompts-card');if(!el)return;
+  const P=Object.entries(state.prompts||{}).filter(([,x])=>x&&x.txt).sort((a,b)=>String(a[1].t).localeCompare(String(b[1].t)));
+  if(!P.length){el.innerHTML='';return;}
+  const _ab=el.querySelector('details')?.open;
+  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${_ab?' open':''}>
+    <summary style="cursor:pointer;font-size:.8rem;font-weight:700">🤖 Textos para el chat de Chrome <span style="color:var(--muted);font-weight:400">· ${P.length}</span></summary>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Tocá 📋 Copiar y pegalo entero en el chat de Claude en Chrome. O decile al chat: "abrí CYC → Mi oficina → 🤖 Textos y hacé el de …". Se actualizan solos cada noche.</div>
+    ${P.map(([k,x])=>`<div style="padding:6px 0;border-top:1px solid var(--border)">
+      <div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px"><div style="font-size:.74rem;font-weight:600">${_esc(String(x.t).replace(/^PROMPT\s*[·—-]?\s*/i,'').replace(/\s*[—-]\s*para el chat.*$/i,'').replace(/\s*\(.*$/,''))}</div>${x.d?`<div style="font-size:.62rem;color:var(--muted);line-height:1.4">${_esc(x.d)}</div>`:''}</div>
+        <button type="button" class="btn btn-sm" style="flex-shrink:0" onclick="promptCopiar('${_esc(k)}')">📋 Copiar</button>
+      </div>
+      <details style="margin-top:4px"><summary style="cursor:pointer;font-size:.62rem;color:var(--muted)">Ver el texto (${Math.round((x.n||x.txt.length)/100)/10} mil letras)</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:.62rem;max-height:320px;overflow:auto;background:var(--surface2,rgba(127,127,127,.08));padding:8px;border-radius:8px;margin:4px 0 0">${_esc(x.txt)}</pre></details>
+    </div>`).join('')}
+  </details>`;
 }
 // SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo que SUBE
 // la oficina (sumar, contar más, Llegó) se suma también a `cyc/sinetiq`, salvo una devolución (`entra:false`, deshacer una caja:

@@ -18,6 +18,7 @@
 | `ml-sync/REVISION.md` | cada cambio anotado en su etapa (qué es · dónde vive · qué chequear) + el calendario de revisiones |
 | `ml-sync/PROMPT_GUAY.md` · `PROMPT_LISTAS.md` | lo que se le pega ENTERO al chat de compras (no lee direcciones remotas) |
 | `ml-sync/PROMPT_RUTINA_LOCAL.md` | la rutina DIARIA del chat de Chrome (26/10, él dice "rutina"): cupo de Full de las 4 · disponible de Mercado Pago de las 4 · repaso del Pedido del momento en Nissei → deja un mensaje `RUTINA <fecha>` en el 📬 buzón y yo lo cargo |
+| `ml-sync/PROMPT_IMEGA.md` | lo mismo que ONCE para un solo mayorista que conoce Tito (Imega, 29/10). **Todos los `PROMPT_*.md` se ven en la web** (Mi oficina → 🤖 Textos para el chat de Chrome, con 📋 Copiar; `prompts:go` cada noche, 29/10, él: *"yo le digo lo que quiero que haga y listo"*): uno nuevo o cambiado → `prompts:go` en el momento |
 | `ml-sync/PROMPT_ONCE.md` | lo que se le pega al chat de Chrome para buscar mayoristas del Once con precios en internet y cargar sus listas (28/10) |
 | `ml-sync/PROMPT_CAJAS.md` | lo que se le pega al chat de Chrome para armar las cajas "MANDALA YA" en ML (él dice "arrancá"; lee el panel, carga Planificación de envíos, no confirma) |
 | `ml-sync/AUDITORIA.md` | auditoría del robot (datos crudos contra el `informe`) |
