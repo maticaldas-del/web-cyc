@@ -195,3 +195,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 6. **Recompra más barata de un probado:** hoy el costo no baja ("sólo sube"). (a) sugerida: que baje al que pagaste (el viejo queda en los meses que ya vendió) · (b) que siga sin bajar.
 7. **Lo pagado en Paraguay que no vino:** (a) sugerida: reclamarlo y, si no se recupera, repartir su costo en lo que llegó · (b) dejarlo sólo anotado como faltante.
 8. **Precios de proveedores en el registro público:** las listas y los tickets muestran precios en el registro del robot (cualquiera lo puede leer). (a) sugerida: no imprimirlos más (sólo cuántos y qué %) · (b) dejarlo así.
+
+## 29/10 · Compra de prueba al 35% de lo que dejó de pedirse (preguntado en el chat)
+Con la regla nueva (competencia → venta más cara de 365 días) salen de Pedidos 33 renglones que vendían bien pero nunca a 35%. Los que tienen stock ya están a la venta a un precio de 35%+ (la prueba corre sola). Los que están en 0 subieron de precio sin mercadería: la prueba no puede pasar.
+1. (a) prueba sólo donde no hay competencia medida: Sábanas (todos los colores), B39, Pizarra Violeta, Linterna Azul, Funda colchón, Sony ZX: 19 renglones, 51 u., ~$492.000 · (b) también los que la competencia vende más barato (Estimulador, Termómetro Cable, Victoria's Secret, Cool Water, Halloween Kiss Sexy, Midnight Fantasy, Paulvic Acqua/Miss): +14 renglones, +74 u., +~$849.000 · (c) ninguno.
