@@ -137,7 +137,7 @@
 - **Lo mecánico que sí hace solo:** sacar promos no analizadas · pausar lo activo fuera de Full · alinear cada gemela a su Clásica cada
   hora (`alinearGemelas`, `alinearGemelasEnvio`) · aviso de venta al teléfono · foto de precios · ficha y línea cada noche.
 - **Vínculos los hago yo** (09/10): el robot no engancha publicaciones nuevas ni ventas; la sección 6 del `informe` lista las vivas sin
-  ficha y las vinculo con `vincular` (la ficha toma el nombre de la publicación de ML, 19/10; con variantes no). Producto sin ficha →
+  ficha y las vinculo con `vincular` (la ficha toma el nombre de la publicación de ML, 19/10; con variantes no). **Nombre de ML en toda ficha nueva** (29/10, él: *"de todos en los últimos 30 días… cada vez que ingresa uno nuevo sí o sí nombre de ML… cuando lo publicás en ML actualizar el nombre"*): `publicar` renombra la ficha al crear y `nombreml:go` corre cada noche sobre las fichas de los últimos 30 días; las viejas no se tocan (él ya se acostumbró). Producto sin ficha →
   `nuevoprod` (costo 0 si falta, y decirlo: se ve como todo ganancia).
 - **Mis decisiones no vencen** (`SOLO_CLAUDE`): Pedidos, Armar caja y máximo de compra muestran sólo lo que decidí, con motivo; lo no
   decidido dice "sin decidir".

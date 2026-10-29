@@ -951,6 +951,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🏷️ Nombre de ML en las fichas nuevas (29/10/2026; él: *"de todos en los últimos 30 días… cuando lo publicás en ML actualizar el nombre del producto en la web"*)
+- **Qué es:** `nombreml[:dias=N][:go]` ya no mira sólo Paraguay: toda ficha con id de los últimos 30 días (sin `nombreFijo`) toma el título de su publicación (o lo común de sus colores, o el catálogo). Corre cada noche en ml-daily (paso "Nombre de ML en las fichas nuevas"). `publicar` llama `nombreDeML` al crear.
+- **Qué chequear:** que ninguna ficha de más de 30 días cambie de nombre; que una ficha con variantes no tome el título de un solo color.
+
 ### 📸 La foto de un color nunca es de otro color (29/10/2026; él: *"¿por qué el P47 negro en la foto es rojo?"*)
 - **Qué es:** `fotoDeProducto` (index.html): si la publicación de ese color en esa cuenta todavía no tiene foto (recién creada, el robot la completa en su pasada), usa la del mismo color en otra cuenta; y el respaldo (la primera publicación del producto) salta las de otro color. Si no hay ninguna del color, queda la de la ficha o sin foto.
 - **Qué chequear:** en Armar caja, cada renglón de color muestra su color; una publicación nueva toma su propia foto después de la pasada del robot.

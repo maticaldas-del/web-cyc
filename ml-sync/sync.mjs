@@ -28980,14 +28980,20 @@ async function main() {
     // el nombre que muestran sus pedidos. Sin `:go` sólo muestra.
     if (/^nombreml(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE || ''));
-      console.log(`=== NOMBRES DE ML EN LAS FICHAS DE PARAGUAY ${GO ? '(SE GUARDAN)' : '(PRUEBA: no se guarda nada)'} ===\n`);
+      // 29/10/2026 (él: "las publicaciones de productos en cyc tienen que tener el nombre que tiene ML. no de los que están hace
+      // mucho, ya que esos ya me acostumbré. de todos en los últimos 30 días. y cada vez que ingresa uno nuevo sí o sí nombre de
+      // ML"): ya no sólo las de Paraguay, TODA ficha creada en los últimos 30 días (la fecha sale del id, 'p'+milisegundos).
+      // Corre sola cada noche (ml-daily). `nombreml:dias=<N>` cambia la ventana. `nombreFijo` en la ficha = no tocar.
+      const _dM = String(process.env.BILLING_PROBE).match(/dias=(\d+)/); const DIAS_NOM = _dM ? Number(_dM[1]) : 30;
+      console.log(`=== NOMBRES DE ML EN LAS FICHAS DE LOS ÚLTIMOS ${DIAS_NOM} DÍAS ${GO ? '(SE GUARDAN)' : '(PRUEBA: no se guarda nada)'} ===\n`);
       const prods = (await db.get('cyc/products')) || {};
       const links = (await db.get('cyc/mllinks')) || {};
       const cands = (await db.get('cyc/candidatos_py')) || {};
       // Eligió la (a) el 06/10: SÓLO las fichas que nacieron de un producto NUEVO de Paraguay (un candidato
       // que llegó y quedó enganchado con `prodId`). Las fichas viejas, con su nombre corto, no se tocan.
-      const deCand = new Set(Object.values(cands).filter((c) => c && c.prodId).map((c) => c.prodId));
-      const pys = Object.values(prods).filter((p) => p && p.id && p.origen === 'py' && deCand.has(p.id));
+      const desdeNom = Date.now() - DIAS_NOM * 864e5;
+      const nacio = (p) => { const m = String(p.id || '').match(/^p(\d{13})/); return m ? Number(m[1]) : 0; };
+      const pys = Object.values(prods).filter((p) => p && p.id && !p.nombreFijo && nacio(p) >= desdeNom);
       const porProd = {};
       for (const [mla, e] of Object.entries(links)) {
         if (!e || e.ignored || !e.prodId || (e.status || '') === 'closed') continue;
@@ -29027,7 +29033,7 @@ async function main() {
         if (nuevo === String(p.name || '').trim()) { iguales.push(p); continue; }
         cambios.push({ p, nuevo, de });
       }
-      console.log(`Fichas de Paraguay que entraron como productos nuevos: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}\n`);
+      console.log(`Fichas creadas en los últimos ${DIAS_NOM} días: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}\n`);
       for (const c of cambios) console.log(`  ${c.p.name}\n    → ${c.nuevo}   (de ${c.de})`);
       if (sinDato.length) { console.log('\nSin publicación ni catálogo confiable (quedan como están):'); sinDato.forEach((p) => console.log(`  · ${p.name}`)); }
       if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
@@ -30243,6 +30249,8 @@ async function main() {
       if (!pausada) console.log(`🚨 NO QUEDÓ PAUSADA${detP ? ' (' + detP + ')' : ''}: pausala YA en ML (está activa fuera de Full con 1 u.). La vuelta de la hora la pausa igual.`);
       const e2 = { prodId: P.id, cuenta: label, title: (b2 && b2.title) || body.title || body.family_name, status: (b2 && b2.status) || 'paused', upid: (b2 && b2.user_product_id) || null, catalogo: (b2 && b2.catalog_product_id) || cat || null, catalogoListing: true, catOk: (b2 && b2.catalog_product_id) || cat, catOkTs: Date.now(), altaTs: Date.now(), altaClaude: true, altaSinVender: true, ...(color ? { variant: color } : {}) };
       try { await db.patch('cyc/mllinks/' + nid, e2); const rl = await db.get('cyc/mllinks/' + nid); console.log(rl && rl.prodId === P.id ? `   ✓ vinculada a la ficha ${P.name}${color ? ' · ' + color : ''}` : '   ⚠️ no quedó vinculada: vincular a mano'); } catch { console.log('   ⚠️ no pude vincularla en cyc/mllinks'); }
+      // 29/10/2026 (él: "cuando lo publicás en ML ahí actualizar el nombre del producto en la web de CYC"): la ficha toma el título de ML.
+      if (e2.title && !P.nombreFijo) { try { await nombreDeML(P, e2.title); } catch (er) { console.log('  nombre: no pude cambiarlo (' + String(er.message || er).slice(0, 80) + ')'); } }
       const okE = await guardarEstrategia(db, nid, 'nuevo', `Lanzamiento a ${money(precio)}: la publiqué yo (Claude) en el catálogo confirmado ${e2.catOk}${cuenta ? ', deja ' + cuenta.margenNormal.toFixed(0) + '% (' + cuenta.peor.toFixed(0) + '% en el peor caso)' : ''}${precio >= UMBRAL_ENVIO_GRATIS && CRUZA_A_MANO ? '. Cruza los $33.000 a propósito: ' + String(kv.motivo || '').slice(0, 120) : ''}. Se activa sola cuando llegue la caja a Full.`);   // Revisión etapa 1 (24/10): normal y peor bien
       console.log(okE ? '   ✓ estrategia 🆕 lanzamiento anotada' : '   ⚠️ no pude anotar la estrategia');
       return;

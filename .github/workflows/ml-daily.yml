@@ -207,6 +207,21 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: motivoreclamo:60:go
         run: exec node ml-sync/sync.mjs
+      # EL NOMBRE DE ML EN LAS FICHAS NUEVAS (29/10/2026, él): toda ficha de los últimos 30 días toma el título de su publicación.
+      - name: Nombre de ML en las fichas nuevas
+        id: nombreml
+        if: steps.noche.outputs.hecha != '1'
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BILLING_PROBE: nombreml:go
+        run: exec node ml-sync/sync.mjs
       # LA LÍNEA DE TIEMPO DE CADA PUBLICACIÓN (01/10/2026): stock, precio, estado, caja, visitas,
       # ventas, remate y margen de AYER, leído de ML en el momento (mlapi/linea).
       - name: Línea de tiempo de ayer
