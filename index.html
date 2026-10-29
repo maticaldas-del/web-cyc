@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.04';
+const APP_VERSION='28.05';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.05',f:'29/10',h:'18:45',c:[{n:1,t:'📥 Lo que nos deben: PERFUMERÍA · Mercadería queda en Ventas a cobrar y PERFUMERÍA · MercadoPago pasa a Préstamos.'}]},
   {v:'28.04',f:'29/10',h:'18:35',c:[{n:1,t:'📥 Lo que nos deben: toda deuda con costo o ganancia va siempre a Ventas a cobrar (Mari estaba en Préstamos por error).'}]},
   {v:'28.03',f:'29/10',h:'18:20',c:[{n:2,t:'📥 Lo que nos deben en dos grupos: 🛒 Ventas a cobrar (con la ganancia total) y 💵 Préstamos (sin ganancia). Las ventas viejas sin costo dicen "costo sin cargar".'}]},
   {v:'28.02',f:'29/10',h:'17:55',c:[{n:2,t:'📥 Lo que nos deben: Mercadería Perfumería y Deuda Perfumería quedan juntas en una tarjeta PERFUMERÍA (afuera la ganancia en pesos y el total); adentro, Mercadería y MercadoPago.'}]},
@@ -7231,10 +7232,14 @@ function renderCuotas(){
   const _ganV=_ven.reduce((t,d)=>t+(Number(d.costo)>0?d.monto-Number(d.costo):0)+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0)
     +[_pM].filter(Boolean).reduce((t,d)=>t+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0);
   const _sec=(tit,tot,extra)=>`<div style="display:flex;align-items:baseline;gap:8px;margin:${tit.startsWith('🛒')?'0':'10px'} 2px 0;font-size:.74rem;font-weight:700">${tit}<span style="flex:1"></span>${extra||''}<span style="font-family:'DM Mono',monospace">${_pesos(tot)}</span></div>`;
+  // 29/10/2026 (él con MercadoPago: "y este va a préstamos"): la perfumería se separa: Mercadería (vendido, con ganancia) en Ventas y
+  // MercadoPago (plata) en Préstamos, cada una con "PERFUMERÍA ·" adelante. La tarjeta que las juntaba (`_perfG`) ya no se usa.
   const _filas=[];
-  if(_pM||_pD||_ven.length){_filas.push(_sec('🛒 Ventas a cobrar',_sumR(_ven)+[_pM,_pD].filter(Boolean).reduce((t,d)=>t+(Number(d.resta)||0),0),`<span style="color:var(--green);font-size:.68rem">+${_pesos(_ganV)}</span>`));
-    if(_pM||_pD)_filas.push(_perfG());_ven.forEach(d=>_filas.push(fila(d)));}
-  if(_pre.length){_filas.push(_sec('💵 Préstamos',_sumR(_pre),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'));_pre.forEach(d=>_filas.push(fila(d)));}
+  const _pMv=_pM?{..._pM,nom:'🛍️ PERFUMERÍA · Mercadería'}:null,_pDv=_pD?{..._pD,nom:'🛍️ PERFUMERÍA · MercadoPago'}:null;
+  if(_pM||_ven.length){_filas.push(_sec('🛒 Ventas a cobrar',_sumR(_ven)+(_pM?Number(_pM.resta)||0:0),`<span style="color:var(--green);font-size:.68rem">+${_pesos(_ganV)}</span>`));
+    if(_pMv)_filas.push(fila(_pMv));_ven.forEach(d=>_filas.push(fila(d)));}
+  if(_pD||_pre.length){_filas.push(_sec('💵 Préstamos',_sumR(_pre)+(_pD?Number(_pD.resta)||0:0),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'));
+    if(_pDv)_filas.push(fila(_pDv));_pre.forEach(d=>_filas.push(fila(d)));}
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+_filas.join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`
     +(pag.length?`<div style="font-size:.74rem;font-weight:700;color:var(--green);margin:16px 0 6px">✅ Pagadas (${pag.length})${pp>1?` <span style="font-weight:400;color:var(--muted);font-size:.66rem">· página ${pg} de ${pp}</span>`:''}</div>
