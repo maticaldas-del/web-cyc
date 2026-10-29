@@ -3181,7 +3181,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.85';
+const APP_VERSION='27.86';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3194,6 +3194,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.86',f:'29/10',h:'12:48',c:[{n:1,t:'🛒 Pedidos siempre se abre en Bs As → 🏬 De siempre'}]},
   {v:'27.85',f:'29/10',h:'01:37',c:[{n:1,t:'Arqueo: se sacó el aviso "Ojo: Oficina Mati ahora sale de las u. que contaste…"'}]},
   {v:'27.84',f:'29/10',h:'01:36',c:[{n:2,t:'💸 Se sacó la casilla "Retiro cobrado este mes": desde noviembre el retiro es automático, lo que dice el 💸 cobro del cierre del mes anterior × 2 (en Gastos se ve, sin casilla)'}]},
   {v:'27.83',f:'29/10',h:'01:33',c:[{n:1,t:'💸 El cobro es redondo, de a $100.000 para abajo (1.699.000 → 1.600.000); lo que sobra queda en CYC'}]},
@@ -15317,6 +15318,7 @@ function homePedIr(sec){
   const btn=document.getElementById(id);if(btn&&sec!=='bsas')setPedidoSection(sec,btn);
 }
 function enterPedidos(){
+  _bsasVista='siempre';   // 29/10/2026, él: "siempre al abrir pedidos que se abra Bs As 'De siempre'" (antes recordaba la última solapa)
   const btn=document.getElementById('tab-bsas-btn');
   if(btn)setPedidoSection('bsas',btn);
   else{pedidoSection='bsas';renderPedidos();}
