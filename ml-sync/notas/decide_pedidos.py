@@ -13,6 +13,18 @@ if not tc>0: print('⚠️ el log no trae el dólar (o está en 0): sin dólar l
 prods=[];grupo='';cur=None;esper={};nfichas=None;noEnt=[];cuentaOk=False;nDecidir=None;nFuera=None
 # `hist N d` (etapa 3, 20/10/2026): días de la PRIMERA a la ÚLTIMA venta en 180 d, con piso de 7 (lo mismo que `ventasHistoricas`
 # de la web). Un log viejo no lo trae: ahí lo agotado se sigue midiendo ÷180.
+# ¿SE REPONE? (29/10/2026, él: "para todos los productos es igual, se compara contra el competidor de ml y si no da el 35% se mira con la
+# venta más alta del producto de los últimos 365 días. y se pide unidades según el ritmo de venta del producto a ese precio"). pedidostodo
+# trae `M35 comp:<precio>:<%>:<u>/<d>`, `M35 v365:…` o `M35 no:<% comp>:<% venta>` para el producto y cada color (con SU publicación).
+def m35_de(t):
+    m=re.search(r' · M35 (comp|v365):(\d+):(-?\d+):(\d+)/(\d+)',t)
+    if m: return dict(f=m.group(1),p=int(m.group(2)),pct=int(m.group(3)),u=int(m.group(4)),d=int(m.group(5)))
+    m=re.search(r' · M35 no:(\S+?):(\S+?)(?: |$)',t)
+    if m: return dict(f='no',pc=m.group(1),pv=m.group(2))
+    return None
+def m35_rent(mm):
+    if mm['f']!='no': return True,''
+    return False,f"ni contra la competencia ({mm['pc']}%) ni a la venta más cara de 365 días ({mm['pv']}%) llega al 35% (no se repone)"
 def nor_de(t):
     m=re.search(r' · NOR (\d+)/(\d+) (\d+)/(\d+)@(\d+)',t or '')
     if not m: return None
@@ -54,7 +66,7 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
           env=g(r' · envFull \$(\d+)'),   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
-          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest))
+          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
@@ -71,7 +83,7 @@ for l in L:
         nc=re.search(r' · netoC \$(\d+) precioC \$(\d+) envC \$(\d+)',rv)
         cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,li=int(li.group(1)) if li else 0,nunca=(' · NUNCA' in rv),
           hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv),ultv=(int(re.search(r' · ultv \$(\d+)',rv).group(1)) if re.search(r' · ultv \$(\d+)',rv) else None),hoy=(int(re.search(r' · hoy \$(\d+)',rv).group(1)) if re.search(r' · hoy \$(\d+)',rv) else None),
-          netoC=int(nc.group(1)) if nc else None,precioC=int(nc.group(2)) if nc else None,envC=int(nc.group(3)) if nc else None))
+          netoC=int(nc.group(1)) if nc else None,precioC=int(nc.group(2)) if nc else None,envC=int(nc.group(3)) if nc else None,m35=m35_de(rv)))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -92,6 +104,10 @@ def ritmo(x,dcs=30):
     # stock a precio normal (sin 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando ni remate): lo vendido caro en escasez no achica la
     # compra y lo vendido barato por sobra no la agranda. 60 días; con menos de 14 días normales, 180; si tampoco, 365 (con 7+ días).
     # Con 3+ ventas en los últimos 30 días normales manda el más alto entre ése y el 80% del largo (como antes con v30/v60).
+    mm=x.get('m35')
+    if mm and mm['f']!='no' and mm['d']>=7:   # el ritmo A ESE PRECIO (con 7+ días con stock a ese precio o más caro; si no, el de siempre)
+        tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
+        return mm['u']/mm['d'],tiene,f"a ${mm['p']} ({'el de la competencia' if mm['f']=='comp' else 'la venta más cara de 365 días'}, deja {mm['pct']}%) vendió {mm['u']} en {mm['d']} días con stock"
     nr=x.get('nor')
     # 🏷️ AL PRECIO DE HOY (27/10/2026 a la noche, la estrategia nueva: buscar techo, bajar hasta la primera venta y quedarse; "la idea se va
     # en tener 100 productos con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio,
@@ -189,6 +205,7 @@ for p in prods:
     _m=margen(p['neto'],p['costo'],p.get('precio') or p.get('med60') or 0,p.get('env',0))
     rentable = p['costo']>0 and p['neto']>0 and _m>=0.35
     p['motNoRenta']=mot_no_renta(p['costo'],p['neto'],_m)
+    if p.get('m35'): rentable,p['motNoRenta']=m35_rent(p['m35'])
     if p['vars']:
         # Ventas SIN color (la venta no dice qué color fue): se reparten entre los colores según lo que vende cada uno.
         for f in ('v30','v60','v180'):
@@ -207,6 +224,7 @@ for p in prods:
                 vm=margen(v['netoC'],p['costo'],v.get('precioC') or p.get('precio') or p.get('med60') or 0,v.get('envC') or 0)
                 v['rent']=p['costo']>0 and vm>=0.35; v['motNoRenta']=mot_no_renta(p['costo'],v['netoC'],vm)
             else: vm=_m; v['rent']=rentable; v['motNoRenta']=p['motNoRenta']
+            if v.get('m35'): v['rent'],v['motNoRenta']=m35_rent(v['m35'])
             # Cada color con SUS cambios de precio (etapa 3, 20/10/2026): un log nuevo los trae en el renglón del color; un log viejo no, y
             # ahí se usan los del producto como antes. Sin hora de venta propia, el `hist` del producto.
             vc=v['cambios'] if p.get('colFicha') is not None else p['cambios']
@@ -295,6 +313,8 @@ if os.path.exists(_vp):
         if _m: VM[_m.group(1)]=int(_m.group(2))
 def venta(p):
     if p['id'] in VM: return VM[p['id']]
+    # 29/10/2026: el precio con el que se decidió que se repone (competencia o venta más cara de 365 días) es el del máximo de compra.
+    if p.get('m35') and p['m35']['f']!='no': return p['m35']['p']
     # SI YA VENDIÓ, MANDA EL PRECIO DE LA ÚLTIMA VENTA (23/10/2026, él: *"si nunca vendió toma el % que decís vos. si ya vendió no
     # importa si fue sólo 1 unidad. tomar ese %"*): una suba que ya vendió vale para el máximo de compra aunque sea 1 unidad (antes la
     # mediana de 60 d la tapaba con las ventas viejas, más baratas). Sin pasar el precio de hoy: si después lo bajé, se vende a ése.
@@ -316,6 +336,9 @@ def ventas_color(p):
     if p['id'] in VM: return []
     out=[]
     for v in p.get('vars') or []:
+        mm=v.get('m35')
+        if mm and mm['f']!='no':
+            out.append(f"ped:{p['id']}#{v['v']}=venta|{mm['p']}|precio {'de la competencia' if mm['f']=='comp' else 'de la venta mas cara de 365 dias'} de ese color (deja {mm['pct']}%) para el maximo de compra"); continue
         u=v.get('ultv')
         if not u: continue
         hoy=v.get('hoy') or p['precio']   # el precio de hoy de ESE color (sin dato, el del producto)
@@ -324,6 +347,7 @@ def ventas_color(p):
     return out
 def venta_mot(p):
     if p['id'] in VM: return 'precio de venta que fijé a mano para el maximo de compra'
+    if p.get('m35') and p['m35']['f']!='no': return f"precio {'de la competencia' if p['m35']['f']=='comp' else 'de la venta mas cara de 365 dias'} (deja {p['m35']['pct']}%) para el maximo de compra"
     if p.get('ultv') and (not p['precio'] or p['ultv']<=p['precio']): return f"precio de la ultima venta (${p['ultv']}) para el maximo de compra"
     if p.get('ultv'): return f"precio de hoy para el maximo de compra (la ultima venta fue a ${p['ultv']}, mas cara)"
     if p['v180']==0: return 'nunca vendio: precio de hoy para el maximo de compra'
@@ -335,7 +359,7 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
     de=f" del {color}" if color else ''
     quien=f"El {color}" if color else "Este"
     if not rent:
-        return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,(f"al precio de hoy deja {motNo.split(' ')[1].rstrip(',')} y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir." if str(motNo).startswith('deja ') else 'con lo que cuesta no nos deja ganancia.')))
+        return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,(f"al precio de hoy deja {motNo.split(' ')[1].rstrip(',')} y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir." if str(motNo).startswith('deja ') else ('ni al precio de la competencia ni al más caro que vendimos en el año nos deja 35%.' if str(motNo).startswith('ni contra') else 'con lo que cuesta no nos deja ganancia.'))))
     mes=f"{r*30:.0f}"; b=str(b or '')
     if b.startswith('agotado'): base=f"está agotado y cuando había se vendían unos {mes} por mes"
     elif b.startswith('nunca'): base="todavía no se vendió nunca"

@@ -5710,7 +5710,16 @@ async function detectarErrores(db, o = {}) {
       if (P > 0 && P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;   // regla 2: se frena en la barrera de $33.000 (cruzar lo decide la vuelta con !cruza)
       // 🟠 deja de convenir: techo95 (la completa) ya tiene la certeza que pide (95% que baja con los días) de que a este precio deja menos
       // plata por día. Vendió, pero subir más ya no conviene: ahí termina la búsqueda.
-      { const t9 = t95Det[m]; if (t9 && P > 0 && Number(t9.p) > 0 && Math.abs(Number(t9.p) - P) <= P * 0.02 && Number(t9.seg) >= (Number(t9.umb) || 0.95)) { lzC.convenir++; continue; } }
+      // 29/10/2026 (él con el Pendrive 8gb ⏳: "¿ese techo es real? ¿está 95% de que no vende? ¿por eso no sube?"): en 🔥 escasez y ⏳ sin
+      // reposición el 🟠 (deja menos plata POR DÍA que el 💰 barato) no frena: lo que no se puede reponer deja más plata total cuanto más
+      // caro se vende cada unidad. Frena sólo si el stock ya dura 100+ días al ritmo de ESTE precio (5+ días con stock a ±2%; la regla de
+      // estirar: ~100 días, nunca más de 120). Con el Pendrive: 105 u. a 0,9 por día a $23.990 = ~117 días → se queda bien.
+      let escCorto = false;
+      if (ult === 'escasez' || ult === 'sinrepo') { let lin = null; try { lin = (await db.get('mlapi/linea/' + m)) || null; } catch { lin = null; }
+        if (lin) { const k30 = dayKeyFromISO(ahora - 30 * 864e5); let st = null, dd = 0, uu = 0;
+          for (const k of Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k30).sort()) { const x = lin[k]; if (!x || typeof x !== 'object') continue; if (x.st != null) st = Number(x.st) || 0; if (diaConStock(x) && Math.abs((Number(x.pLista || x.p) || 0) - P) <= P * 0.02) { dd++; uu += Number(x.u) || 0; } }
+          escCorto = st != null && dd >= 5 && uu > 0 && st / (uu / dd) < 100; } }
+      { const t9 = t95Det[m]; if (!escCorto && t9 && P > 0 && Number(t9.p) > 0 && Math.abs(Number(t9.p) - P) <= P * 0.02 && Number(t9.seg) >= (Number(t9.umb) || 0.95)) { lzC.convenir++; continue; } }
       if (P > 0 && P >= TECHO_DURO) { lzC.convenir++; continue; }
       if (cercaAntiguo(e)) { lzC.antiguo++; continue; }
       // 1a del 28/10: una 🔥/⏳ con una suba que "NO rindió" vigente en la ficha (⛔, 30 días) YA tiene techo medido arriba: no se sube a ciegas
@@ -47433,7 +47442,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -47459,7 +47468,7 @@ async function main() {
             let xs = de((cM) => cM === va); if (!xs.length) xs = de((cM) => !cM);
             let win = null; for (const r of xs) { const c = { ...r, neto: Number(r.neto), activa: !!r.activa }; if (_netoGana(c, win)) win = c; } return win; })();
           const netoCTxt = npC ? ` · netoC $${Math.round(npC.neto)} precioC $${Math.round(Number(npC.precio) || 0)} envC $${Math.round(Number(npC.envio) || 0)}` : '';
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -47502,7 +47511,7 @@ async function main() {
           const kd = k.slice(0, 10), inf = clP.info[kd + '|' + (v.id || id0)]; if (inf && inf.remate) continue;
           const ts = Number(v.ts) || Date.parse(kd.replace(/_/g, '-') + 'T12:00:00-03:00');
           { const pD = byId[v.prodId]; if (pD && Number(pD.ventasDesde) > 0 && ts < Number(pD.ventasDesde)) continue; }
-          (VN[v.prodId] = VN[v.prodId] || []).push({ k: kd, ts, q: Number(v.qty) || 1, mla: v.mla || '', va: varDe(v) });
+          (VN[v.prodId] = VN[v.prodId] || []).push({ k: kd, ts, q: Number(v.qty) || 1, mla: v.mla || '', va: varDe(v), pu: Number(v.total) > 0 ? Number(v.total) / (Number(v.qty) || 1) : 0 });
         }
       }
       const NORM = {}, mediodia = (k) => Date.parse(k.replace(/_/g, '-') + 'T12:00:00-03:00');
@@ -47546,6 +47555,57 @@ async function main() {
         for (const va of (p.variantes || [])) { const mv = mlasN.filter(([m, e]) => (e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || [])) === va).map(([m]) => m);
           if (!mv.length) continue; const rv = await norDe(p.id, va, mv); NORM[p.id + '#' + va] = rv == null ? ' · NOR ?' : rv; }
       }
+      // ¿SE REPONE? (29/10/2026, él: "para todos los productos es igual, se compara contra el competidor de ml y si no da el 35% se mira
+      // con la venta más alta del producto de los últimos 365 días. y se pide unidades según el ritmo de venta del producto a ese precio";
+      // y "cada aroma variante de cualquier producto se ve por sí mismo"). Para el producto y CADA color, con su publicación Clásica (la
+      // activa más cara): (1) el % del peor caso al precio de la competencia (`cyc/techofull`, lo más caro contra los otros vendedores del
+      // catálogo); si no llega, (2) a la venta más cara de 365 días (sin remates, canceladas ni gemelas). La misma cuenta que `ofi35`
+      // (comisión que pide ML a ESE precio, envío, impuestos de la cuenta, retención de otra provincia). Y el ritmo A ESE PRECIO: días con
+      // stock de la línea de tiempo con el precio a 3% o menos de ese (o más caro) y lo vendido en ellos. Sale `M35 <comp|v365>:$:%:u/d` o
+      // `M35 no:%comp:%v365` y decide_pedidos.py lo usa en vez del 35% al precio de hoy. Sin datos (sin token, sin comisión): no sale.
+      const M35 = {};
+      try {
+        const MIN35 = await pisoConfig(db, 35); let mono35 = null; try { mono35 = await leerMonoPct(db); } catch { mono35 = null; }
+        let TF = {}; try { TF = (await db.get('cyc/techofull')) || {}; } catch { TF = {}; }
+        if (mono35 == null) throw new Error('sin % de monotributo');
+        const tk35 = {}; for (const l of labels) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[l].refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk35[l] = t.access_token; } catch { /* esa cuenta sin dato */ } }
+        const todos = [...grupos.bsas, ...grupos.py, ...grupos.paulvic];
+        const clas = (pid) => Object.entries(L).filter(([m, e]) => e && e.prodId === pid && !e.ignored && !e.gemelaDe && !e.gemelaTipo && /^MLA/i.test(m) && (e.status || '') !== 'closed');
+        const colorDe = (p, m, e) => e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []);
+        const IT = {}; const porCta = {};
+        for (const p of todos) for (const [m, e] of clas(p.id)) if (tk35[e.cuenta]) (porCta[e.cuenta] = porCta[e.cuenta] || []).push(m);
+        for (const [l, ids] of Object.entries(porCta)) for (let k = 0; k < ids.length; k += 20) {
+          try { const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,listing_type_id,category_id,site_id', tk35[l]);
+            for (const r of arr || []) if (r && r.code === 200 && r.body) IT[r.body.id] = { ...r.body, cuenta: l }; } catch { /* sin dato */ } }
+        const feeC = {};
+        const fee = async (b, pr) => { const k = b.listing_type_id + '|' + b.category_id + '|' + Math.round(pr); if (feeC[k] !== undefined) return feeC[k];
+          let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(pr)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk35[b.cuenta]); const x = Array.isArray(d) ? d[0] : d; if (typeof x?.sale_fee_amount === 'number') o = x.sale_fee_amount; } catch { o = null; }
+          feeC[k] = o; return o; };
+        const medir = async (p, mlas, va) => {
+          const bs = mlas.map((m) => IT[m]).filter((b) => b && b.listing_type_id !== 'gold_pro'); if (!bs.length) return '';
+          const b = [...bs].sort((x, y) => (y.status === 'active') - (x.status === 'active') || (Number(y.price) || 0) - (Number(x.price) || 0))[0];
+          const costo = costoPesos(p, 1, tc).costo; if (!(costo > 0)) return ''; const mm = (mlExtraPct(b.cuenta) + mono35) / 100; const npU = NPp[b.id] || {};
+          const mg = async (pr) => { if (!(pr > 0)) return null; const com = await fee(b, pr); if (com == null) return null;
+            const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+            const mlx = pr * mm; return (pr - com - env - costo - mlx - pr * PEOR_RET_PCT) / (costo + mlx + env) * 100; };
+          const pc = Math.max(0, ...mlas.map((m) => Number((TF[m] || {}).t) || 0));
+          const pv = Math.max(0, ...(VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && !(L[v.mla] && L[v.mla].gemelaDe)).map((v) => v.pu));
+          const mc = await mg(pc), mv = await mg(pv);
+          const rit = async (X) => { let d = 0, u = 0; for (const m of mlas) { const lin = await lineaDe(m); if (!lin) continue;
+            for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
+              if (diaConStock(x) && Number(x.pLista || x.p) >= X * 0.97) { d++; u += Number(x.u) || 0; } } } return `${u}/${d}`; };
+          const r = (x) => x == null ? '?' : Math.round(x);
+          if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}`;
+          if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}`;
+          if (mc == null && mv == null) return '';
+          return ` · M35 no:${r(mc)}:${r(mv)}`;
+        };
+        for (const p of todos) {
+          const cs = clas(p.id); if (!cs.length) continue;
+          M35[p.id] = await medir(p, cs.map(([m]) => m), '');
+          for (const va of (p.variantes || [])) { const mv = cs.filter(([m, e]) => colorDe(p, m, e) === va).map(([m]) => m); if (mv.length) M35[p.id + '#' + va] = await medir(p, mv, va); }
+        }
+      } catch (e) { console.log(`⚠️ el 35% contra la competencia / la venta más cara no se pudo medir (${e.message}): Pedidos usa el precio de hoy`); }
       for (const [g, arr] of Object.entries(grupos)) {
         arr.sort((a, b) => ((S[b.id] || {}).t180 || 0) - ((S[a.id] || {}).t180 || 0));
         console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);

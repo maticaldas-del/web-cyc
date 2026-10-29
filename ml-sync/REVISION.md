@@ -78,6 +78,21 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🛒 ¿Se repone? Competencia → venta más cara de 365 días → ritmo a ese precio (29/10/2026, él: *"se compara contra el competidor de ml y si no da el 35% se mira con la venta más alta del producto de los últimos 365 días. y se pide unidades según el ritmo de venta del producto a ese precio"*; y *"cada aroma variante de cualquier producto se ve por sí mismo"*)
+- **Qué es:** `pedidostodo` imprime `M35 comp|v365|no` para el producto y cada color (con su Clásica): % del peor caso al precio de `cyc/techofull` y, si no llega, a la venta más cara de 365 días; y `u/d` = lo vendido en los días con stock a ese precio (−3%) o más caro. `decide_pedidos.py`: no se repone si ninguno llega al 35%; con 7+ días a ese precio, el ritmo es ése; el máximo de compra usa ese precio.
+- **Dónde vive:** `sync.mjs` (bloque `M35` en `pedidostodo`, misma cuenta que `ofi35`) · `decide_pedidos.py` (`m35_de`, `m35_rent`, `ritmo`, `venta`, `ventas_color`).
+- **Qué chequear:** la primera completa: que salga `M35` en casi todo lo que tiene publicación (si sale el ⚠️ de no se pudo medir, cae al precio de hoy); que el Paulvic se juzgue aroma por aroma; cuánto tarda pedidostodo (una consulta de comisión por precio distinto).
+
+### ⏳ 🔥/⏳ no los frena el 🟠 si el stock dura menos de 100 días (29/10/2026, él con el Pendrive 8gb)
+- **Qué es:** en `errores` (vendió y no subió), lo que no se puede reponer sube aunque techo95 diga 🟠 (deja menos plata por día que el 💰), salvo que el stock ya dure 100+ días al ritmo de ESTE precio (5+ días a ±2%). El Pendrive a $23.990: 105 u. a 0,9/día = ~117 d → se queda bien.
+- **Dónde vive:** `sync.mjs`, `errores` (`escCorto`).
+- **Qué chequear:** que no suba algo de 🔥/⏳ que ya dura 100+ días.
+
+### 📈 Todo techo con su % en la línea de tiempo (29/10/2026, v27.91; él: *"quiero que TODOS los que tienen techo diga el % de seguridad"* y con la Lupa 90: *"hay un techo abajo del precio de hoy que sí vendió"*)
+- **Qué es:** el 🔴 y la 🚧 gris dicen su %; la 🚧 de una prueba se borra si después vendió a ese precio o más caro; "hoy" sale de `cyc/netopub` (la línea llega hasta anoche).
+- **Dónde vive:** `index.html`, `lineaPintar` (`_techos.forEach`, `_sgNV`, cabecera del precio).
+- **Qué chequear:** abrir la Lupa 90 y el Pendrive 8gb: que no quede una 🚧 abajo de un precio que vendió y que el % se vea.
+
 ### 🧲 Liquidación de lo que no se vende (29/10/2026, él eligió 1a 2a 3a)
 - **Qué es:** en `frenosBajas` F13: `liq30` = 25+ días con stock en los últimos 30 y 0 unidades vendidas → se puede bajar del 35% aunque la unidad más vieja tenga menos de 90 días, pero `bajoSemana` frena un segundo escalón abajo del 35% antes de 7 días. F0 (0%), F5/F7 (escalera ≤15%) y F12 (perfumes) siguen.
 - `liq30` también abre F7 (sin línea de techo: 30 días sin vender ya es 🔴), F4 (deshacer una suba: la suba fracasó) y F8 (arriba del 💰 sin 95%: 30 días sin vender ya lo dice). `liquidables` (robot) lista lo que entra con el escalón de la semana y el `entrarpromo` listo.
