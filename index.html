@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.96';
+const APP_VERSION='27.97';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.97',f:'29/10',h:'16:45',c:[{n:2,t:'📥 Lo que nos deben: el % de ganancia va sobre el costo (lo de la perfumería dice 25%, no 20%). En Mercadería Perfumería, arriba se ve la ganancia en pesos y adentro cuánto de la deuda no tiene costo cargado.'}]},
   {v:'27.96',f:'29/10',h:'16:30',c:[{n:2,t:'🔍 Revisiones: etapa nueva 9 · Local (cada 7 días): perfumerías, Oficina Local, deudas y pedidos del local, y que nada se mezcle con ML.'}]},
   {v:'27.95',f:'29/10',h:'16:20',c:[{n:1,t:'🏷️ Nombres: "Mi oficina" / "Oficina Mati" ahora es OFICINA ML y "Oficina CYC" es OFICINA LOCAL (en el menú, el Arqueo y los avisos).'}]},
   {v:'27.94',f:'29/10',h:'16:05',c:[{n:2,t:'🏪 Arqueo → Oficina CYC: se empieza a contar producto por producto. Mientras tanto dice cuánto va contado y el valor sigue siendo el de a mano; cuando se termina, pasa a ser la suma de lo contado (unidades × costo). Lo que pide la perfumería sale primero de ahí.'}]},
@@ -7170,14 +7171,17 @@ function renderCuotas(){
     const fechas=cuotaPagosFechas(d);
     const lin1=fin?(cuotaFija(d)?'✅ al día · 📌 siempre a la vista':'✅ pagada'):cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:(cuotaFija(d)?'📌 cuenta corriente':`sin cuotas · total ${_pesos(d.monto)}`);
     const lin2=[
-      d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${d.monto>0?` (${Math.round(gan/d.monto*100)}%)`:''}`:'',
+      d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${gan>=0?'var(--green)':'var(--red)'}">${_pesos(gan)}</b>${costo>0?` (${Math.round(gan/costo*100)}% sobre el costo)`:''}`:'',
       fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
     const nMov=Object.keys(d.movs||{}).length;
     // MÁS RESUMIDO (28/10/2026, él: "dejar lo importante, % de ganancia y pesos cuánto falta, nombre de la persona, el detalle adentro. sacar
     // pagó y editar"): afuera sólo nombre · % de ganancia · falta; lo demás (qué se llevó, cuotas, costo, fechas, botones) va en el desplegable.
     const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0),gmG=gm.reduce((t,x)=>t+Number(x.gan),0),gmV=gm.reduce((t,x)=>t+Number(x.m),0);
-    const pct=d.sinGan?null:gan!=null&&d.monto>0?Math.round(gan/d.monto*100):gmV>0?Math.round(gmG/gmV*100):null;
-    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'}">${pct}%</span>`:'';
+    // 29/10/2026 (él con Mercadería Perfumería: "¿por qué dice 20%? tiene que ser lo que nos deben y la ganancia de eso"): el % va sobre el COSTO
+    // (como en toda la app: el 25% que se le gana a la perfumería se ve 25%, no 20%) y, en una deuda de mercadería dejada (renglones con
+    // ganancia), afuera se ve la ganancia en pesos de lo que tiene costo cargado, no un % que deja afuera la deuda vieja sin costo.
+    const pct=d.sinGan?null:gan!=null&&costo>0?Math.round(gan/costo*100):gmV-gmG>0?Math.round(gmG/(gmV-gmG)*100):null;
+    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':gm.length&&gan==null?`<span style="font-size:.7rem;font-weight:700;color:${gmG>=0?'var(--green)':'var(--red)'}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda que no tiene costo no entra.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'}">${pct}%</span>`:'';
     const bord=atr?'var(--red)':fin?'rgba(34,197,94,.55)':ab?'var(--border2)':'var(--border)',bg=atr?'background:rgba(239,68,68,.08);':fin?'background:rgba(34,197,94,.07);':'';
     const venceTxt=fin?'':v?`<span style="color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></span>`:(cuotaFija(d)?'':'<span style="color:var(--amber)">sin fecha (✏️)</span>');
     const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">
@@ -7215,7 +7219,8 @@ function cuotaDetalleHTML(d){
   const nav=pags>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${Array.from({length:pags},(_,i)=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${i+1===pg?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="event.stopPropagation();cuotaPagina(${i+1})">${i+1}</button>`).join('')}</div>`:'';
   return `<div onclick="event.stopPropagation()" style="padding:4px 12px 12px;border-top:1px dashed var(--border)">
     <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);margin:6px 0">
-      ${(()=>{const g=H.filter(x=>x.gan!=null).reduce((t,x)=>t+x.gan,0),c=H.filter(x=>x.gan!=null).length;return c?`<span>🛍️ ganancia de lo dejado: <b style="color:var(--green)">${_pesos(g)}</b> <span style="opacity:.75">(sólo se ve acá, no entra en ML)</span></span>`:'';})()}
+      ${(()=>{const g=H.filter(x=>x.gan!=null).reduce((t,x)=>t+x.gan,0),c=H.filter(x=>x.gan!=null).length;const vC=H.filter(x=>x.gan!=null).reduce((t,x)=>t+(Number(x.m)||0),0),sinC=H.filter(x=>x.gan==null&&Number(x.m)>0).reduce((t,x)=>t+(Number(x.m)||0),0);
+        return c?`<span>🛍️ ganancia de lo dejado: <b style="color:var(--green)">${_pesos(g)}</b>${vC-g>0?` (${Math.round(g/(vC-g)*100)}% sobre el costo, de ${_pesos(vC)} con costo cargado)`:''}${sinC>0?` · ${_pesos(sinC)} sin costo cargado: su ganancia no se sabe`:''} <span style="opacity:.75">(sólo se ve acá, no entra en ML)</span></span>`:'';})()}
       <span>se sumó <b style="color:var(--green)">${_pesos(sum)}</b></span><span>devolvió <b style="color:var(--red)">${_pesos(res)}</b></span><span>falta <b style="color:var(--text)">${_pesos(d.resta)}</b></span>
       ${d.quien?`<span>cargada por ${_escC(d.quien)}</span>`:''}${d.editado?`<span>editada el ${_isoDM(_isoDe(d.editado))}</span>`:''}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0">
