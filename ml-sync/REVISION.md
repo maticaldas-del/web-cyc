@@ -865,6 +865,12 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   que una venta real a la prueba (precio nuevo) siga contando (Naipes Casino 28/10 09:04 a $7.290).
 
 ## 2 · PLATA (martes)
+### 🙈 Plata del 29/10 (eligió 1a 2a 3a 4a 5b 6)
+- **1a Saldos de MP fuera del registro:** `_MASCARA_PLATA` (sync.mjs, arriba) tapa todo monto en `ancla`/`dispo`/`saldoml`; `buzon` tapa el renglón `mp:`; `ancla:buzon=<ts>[;go]` toma los saldos del mensaje. Chequear: ninguna corrida de esos comandos muestra un monto; lo escrito en `cyc/finanzas/mp_*` es igual que antes.
+- **4a Ventas sin factura:** `facsync` ya no las saca a los 45 días; salen sólo con su factura o si la venta quedó cancelada en `cyc/ventaprod` de su día. Chequear: una sin factura de 50 días sigue en `cyc/facturas_sin`.
+- **6 Valor de Stock = Stock total:** el Resumen (`res-stock`) suma ML + Oficina CYC + Oficina Mati + vendedores + en camino, igual que el Arqueo; la comparación con el cierre anterior se arma igual. Chequear: los dos números iguales en pantalla.
+- **3a** ya lo hace el cobro por crecimiento (lo que se movió después aparece en el cierre siguiente). **5b** queda afuera. **2a** (congelar el mes cerrado): pendiente, ver abajo.
+
 ### 💸 Cobro por crecimiento (29/10/2026; él eligió 1a: *"cobrar lo que crece cyc dividido 3"*, sin promedio de meses)
 - **Qué es:** `_cobroCrec(ym)` (index.html): (patrimonio del cierre − el del anterior) × dólar del cierre + el retiro de ESE mes (el arqueo se hace después de retirar) − `cyc/cobro_corr/<ym>` {ars, nota} (lo viejo que se cargó tarde: no es crecimiento) ÷ 3. Tarjeta `arq-cobro-crec` abajo de "Cerrar el mes" (`renderCobroCrec`); desde el cierre de octubre es el retiro supuesto del mes siguiente (`_retiroTarjetaDe`). `cyc/cobro_corr` en `CYC_KEYS`.
 - **Retiro automático (29/10, él):** sin la casilla "Retiro cobrado este mes"; `_retiroMesVal(ym)` desde noviembre = `_retiroAuto` (2 × cobro del cierre anterior), `_retiroAutoGuardar` lo escribe en `cyc/retiro_mes` si cambió; Gastos lo muestra sin casilla; la tabla de meses sin cargar no los pide. Chequear: noviembre = $3.200.000; borrar y rehacer un cierre cambia el retiro del mes siguiente.
