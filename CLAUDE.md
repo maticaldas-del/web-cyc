@@ -324,7 +324,7 @@
   **Con cupo chico se llena para la MÁXIMA plata** (27/10, él: *"maximizar la máxima ganancia de $ posible siempre"*): lo que está en 0 o se corta antes de la próxima caja recibe lo que vende hasta que llegue (14 días, contando desde que entra ésta a los 7; mínimo 1), en orden de lo que más deja por unidad; lo que sobra va a lo que más deja por unidad (lo nuevo con lo que deja su publicación); web y `decide_cajas.py` iguales.
   Una cuenta sin publicación no recibe el mínimo si otra tiene stock de ese color en Full. Caja 70×70×70, 30 kg; costo de mandar una
   caja `cyc/mlconfig/costoCaja` ($17.500, `cajacosto`).
-- **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>`; "grande" = sólo los Tenders
+- **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>@<AAAA-MM-DD HH:MM>` (la hora en que lo leyó, como `ancla`; 29/10: si no, lo que se mandó en el medio no se resta); "grande" = sólo los Tenders
   (`cupoGrandes`). Lo vendido NO devuelve cupo (18/10). Avisa, no frena. **Cupo lleno → vender lo lento** (descuento/escalera), retirar
   sólo si él lo pide (21/10).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
