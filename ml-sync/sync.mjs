@@ -5031,7 +5031,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // días seguidos con stock al precio de hoy (desde que se puso): para dejar la misma plata por día que el 💰 tenía que vender ~λ
       // (Poisson); con 95% de que vendió menos, se baja otro escalón (F2/F3). Si deja más, la raya 💰 sube sola (best = más plata por día
       // con 5+ días). Mismas excepciones que F7.
-      if (!exento && !escAbre && !suya('sincerteza') && !ventana15) {   // revisión etapa 8: `ventana15`
+      if (!exento && !escAbre && !suya('sincerteza') && !ventana15 && !liq30) {   // revisión etapa 8: `ventana15` · 🧲 liquidación (29/10): 30 días sin vender ya dice que deja menos
         const R8 = lin && cu > 0 ? rayasPrecioLinea(lin, cu, imp, hoyK, 1, xU) : null;
         // Revisión etapa 1 (24/10): en un descuento manda el precio que VE el comprador (`p0v`, como F2), y renovar el mismo descuento
         // no es una baja (`esEscalon`, como F3). La línea guarda el precio de LISTA: con un descuento visto, los días se cuentan desde que
