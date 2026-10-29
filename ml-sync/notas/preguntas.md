@@ -78,3 +78,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 59. Cuando creo o publico algo, ¿la ficha quedó con el nombre EXACTO de su publicación de ML? (29/10, 23 fichas nuevas con el nombre de Paraguay).
 60. ¿Este número es de UN color/aroma o un promedio del producto? Cada variante se juzga sola: precio, stock, ventas y si se repone (29/10, Paulvic).
 61. ¿Lo que le muestro (o la web) es el dato de AHORA o el de anoche? Antes de explicar "por qué no subió", mirar el precio de hoy en ML (29/10, Lupa 90).
+62. Antes de aplicar una lista que me dio él, ¿algún dato de cada caso la contradice (costo cargado, ganancia, qué se llevó)? Si choca, lo pregunto antes de marcar (29/10, Mari).
