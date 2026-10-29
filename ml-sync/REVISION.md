@@ -78,25 +78,6 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
-### 🏷️ Oficina ML y Oficina Local (29/10/2026, v27.95, él: *"OFICINA CYC quiero que se llame oficina LOCAL y oficina mía que sea OFICINA ML"*)
-- **Qué es:** sólo nombres que se ven (menú, títulos, Arqueo, avisos de "Llegó"); las claves de la base no cambian (`Oficina_Mati`, `of_mia`, `of_viejo`, `cyc/oficyc`). `debenmov` acepta `de=local`/`de=ml`.
-- **Qué chequear:** que no quede "Mi oficina"/"Oficina CYC" a la vista (los comentarios y el historial de cambios quedan como estaban).
-
-### 🏪 Oficina CYC por unidades (29/10/2026, v27.94; él: *"voy una por una pasándote lo que hay"*)
-- **Qué es:** `oficyc` carga unidades en `cyc/oficyc` (aparte de la Oficina Mati); el Arqueo sigue con el valor a mano y la web dice "contado hasta ahora"; `oficyc:listo;go` pasa el campo a lo contado (bloqueado, se re-guarda si cambia costo/dólar). `pedidostodo` imprime `OFICYC n` con `PERF` y Pedidos/cajas lo usan primero; `debenmov …|de=cyc` resta.
-- **Dónde vive:** `sync.mjs` (`oficyc`, `debenmov` de=, `OCY` en `pedidostodo`) · `decide_pedidos.py`/`decide_cajas.py` (`ocy`/`OFICYC`) · `index.html` (bloque 🏪 en `updateArqueo`, `ofi-cyc-nota`, `oficyc` en `CYC_KEYS`).
-- **Qué chequear:** al terminar, que el patrimonio no salte (lo contado contra el valor a mano) y que nada de la Oficina CYC aparezca en Armar caja.
-
-### 🛍️ Pedidos de la perfumería en Pedidos de Bs As (29/10/2026, v27.93)
-- **Qué es:** `pedperf` anota lo que pide la perfumería (`cyc/pedperf/<prod>` = {u, local, va, nota}); `pedidostodo` imprime `PERF <u>[@color]` (aunque esté en la papelera o "no traer"); `decide_pedidos.py` aparta lo que ya está en la oficina y suma el resto a lo de ML ("Hola Tito! Te pido N: X para ML y Y para la perfumería"); `decide_cajas.py` no manda a Full lo apartado; `debenmov` con `prod=`/`u=` baja el pedido al dejárselo; la web muestra "🛍️ N perfumería" al lado del nombre.
-- **Dónde vive:** `sync.mjs` (`pedperf`, `PERF0`/`PERFT` en `pedidostodo`, hook en `debenmov`) · `decide_pedidos.py` (`perf_de`, `perf_mot`) · `decide_cajas.py` · `index.html` (`pedPerfChip`, `pedperf` en `CYC_KEYS`).
-- **Qué chequear:** el primer pedido real: que la suma dé, que no vaya a Full y que baje al dejárselo.
-
-### 🛍️ Mercadería a la perfumería = costo + 25% (29/10/2026, él: *"a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa"*)
-- **Qué es:** `debenmov:<deuda>=+25%|prod=<ficha>|local=<…>|u=N;go` → lo que paga c/u = costo de la ficha × 1,25 (sin costo cargado no escribe).
-- **Dónde vive:** `sync.mjs`, `debenmov` (`mPct`).
-- **Qué chequear:** que en Ver deudas el renglón diga el costo, lo que paga y la ganancia (20% de lo que paga = 25% sobre el costo).
-
 ### 🤖 Textos para el chat de Chrome en la web (29/10/2026, v27.92; él: *"vos podés pasar todos los prompts ahí en cyc no? más fácil. yo le digo lo que quiero que haga y listo"*)
 - **Qué es:** `prompts[:go]` copia cada `ml-sync/PROMPT_*.md` (el bloque entre ``` o el archivo entero) a `cyc/prompts`; la web los muestra en Mi oficina con 📋 Copiar y "Ver el texto". Corre cada noche en ml-daily.
 - **Dónde vive:** `sync.mjs` (`prompts`, en `CONSULTA_ESCRIBE`) · `ml-daily.yml` (paso "Textos para el chat de Chrome") · `index.html` (`renderPromptsCard`, `promptCopiar`, `prompts` en `CYC_KEYS`).
@@ -4030,3 +4011,34 @@ sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia
 - 22/10/2026: VENTAS.md al día con 🔐 (`!sinlinea` `!sincerteza` `!sintecho` `!bajocero` `#remate` son suyas), F9 y el detector `errores`; cada error de una venta se anota en su sección 7. Qué chequear: que VENTAS.md no contradiga CEREBRO §0c.
 - 22/10/2026: `planilla` 🛡️: las gemelas (Premium y envío gratis, `gemelaDe`) salen como excepción "la alinea el robot a su Clásica", no para subir a mano. Qué chequear: que la lista 🛡️ no traiga MLA con `gemelaDe` en "para subir".
 - 22/10/2026: `escasez` 🚨: las gemelas no salen como "nunca decidí su precio" (la decisión es la de su Clásica). Qué chequear: que la lista 🚨 no traiga MLA con `gemelaDe`.
+
+## 9 · LOCAL (cada 7 días, nació el 29/10/2026)
+Él (29/10): *"TODO ESTO es un cambio muy grande. vamos a tener que revisarlo y tiene que quedar en una etapa. mirá que no es sólo lo que hicimos,
+vamos a ir haciendo cambios grandes todo el mes sobre local"*. **Qué es el local:** las 3 perfumerías del pueblo (CEBALLOS, SOARES, SARMIENTO)
+son OTRO negocio: CYC les vende al costo + 25% y queda como deuda (Arqueo → Ver deudas, "Mercaderia Perfumeria"); sus ventas, cobros y gastos no
+son de CYC. La mercadería de CYC para el local está en la **OFICINA LOCAL** (antes "Oficina CYC", un solo número; ahora producto por producto) y
+la de ML en la **OFICINA ML**. **Todo cambio sobre el local se anota ACÁ** (no en Plata ni en Mercadería), con qué es · dónde vive · qué chequear.
+Qué se mira cada vez: (1) que lo del local NO se meta en ventas, métricas, cierres ni la ganancia de ML; (2) que la Oficina Local no se cuente
+dos veces con el valor a mano del Arqueo; (3) que lo apartado para la perfumería no vaya a Full ni cuente como stock de ML; (4) que cada deuda
+tenga costo, unidades y perfumería, y que lo que salió de una oficina se haya restado; (5) lo que él pidió en el mes y todavía falta.
+Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lista de deudas" y "🛍️ Mercadería Perfumería".
+
+### 🏷️ Oficina ML y Oficina Local (29/10/2026, v27.95, él: *"OFICINA CYC quiero que se llame oficina LOCAL y oficina mía que sea OFICINA ML"*)
+- **Qué es:** sólo nombres que se ven (menú, títulos, Arqueo, avisos de "Llegó"); las claves de la base no cambian (`Oficina_Mati`, `of_mia`, `of_viejo`, `cyc/oficyc`). `debenmov` acepta `de=local`/`de=ml`.
+- **Qué chequear:** que no quede "Mi oficina"/"Oficina CYC" a la vista (los comentarios y el historial de cambios quedan como estaban).
+
+### 🏪 Oficina CYC por unidades (29/10/2026, v27.94; él: *"voy una por una pasándote lo que hay"*)
+- **Qué es:** `oficyc` carga unidades en `cyc/oficyc` (aparte de la Oficina Mati); el Arqueo sigue con el valor a mano y la web dice "contado hasta ahora"; `oficyc:listo;go` pasa el campo a lo contado (bloqueado, se re-guarda si cambia costo/dólar). `pedidostodo` imprime `OFICYC n` con `PERF` y Pedidos/cajas lo usan primero; `debenmov …|de=cyc` resta.
+- **Dónde vive:** `sync.mjs` (`oficyc`, `debenmov` de=, `OCY` en `pedidostodo`) · `decide_pedidos.py`/`decide_cajas.py` (`ocy`/`OFICYC`) · `index.html` (bloque 🏪 en `updateArqueo`, `ofi-cyc-nota`, `oficyc` en `CYC_KEYS`).
+- **Qué chequear:** al terminar, que el patrimonio no salte (lo contado contra el valor a mano) y que nada de la Oficina CYC aparezca en Armar caja.
+
+### 🛍️ Pedidos de la perfumería en Pedidos de Bs As (29/10/2026, v27.93)
+- **Qué es:** `pedperf` anota lo que pide la perfumería (`cyc/pedperf/<prod>` = {u, local, va, nota}); `pedidostodo` imprime `PERF <u>[@color]` (aunque esté en la papelera o "no traer"); `decide_pedidos.py` aparta lo que ya está en la oficina y suma el resto a lo de ML ("Hola Tito! Te pido N: X para ML y Y para la perfumería"); `decide_cajas.py` no manda a Full lo apartado; `debenmov` con `prod=`/`u=` baja el pedido al dejárselo; la web muestra "🛍️ N perfumería" al lado del nombre.
+- **Dónde vive:** `sync.mjs` (`pedperf`, `PERF0`/`PERFT` en `pedidostodo`, hook en `debenmov`) · `decide_pedidos.py` (`perf_de`, `perf_mot`) · `decide_cajas.py` · `index.html` (`pedPerfChip`, `pedperf` en `CYC_KEYS`).
+- **Qué chequear:** el primer pedido real: que la suma dé, que no vaya a Full y que baje al dejárselo.
+
+### 🛍️ Mercadería a la perfumería = costo + 25% (29/10/2026, él: *"a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa"*)
+- **Qué es:** `debenmov:<deuda>=+25%|prod=<ficha>|local=<…>|u=N;go` → lo que paga c/u = costo de la ficha × 1,25 (sin costo cargado no escribe).
+- **Dónde vive:** `sync.mjs`, `debenmov` (`mPct`).
+- **Qué chequear:** que en Ver deudas el renglón diga el costo, lo que paga y la ganancia (20% de lo que paga = 25% sobre el costo).
+

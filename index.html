@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.95';
+const APP_VERSION='27.96';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.96',f:'29/10',h:'16:30',c:[{n:2,t:'🔍 Revisiones: etapa nueva 9 · Local (cada 7 días): perfumerías, Oficina Local, deudas y pedidos del local, y que nada se mezcle con ML.'}]},
   {v:'27.95',f:'29/10',h:'16:20',c:[{n:1,t:'🏷️ Nombres: "Mi oficina" / "Oficina Mati" ahora es OFICINA ML y "Oficina CYC" es OFICINA LOCAL (en el menú, el Arqueo y los avisos).'}]},
   {v:'27.94',f:'29/10',h:'16:05',c:[{n:2,t:'🏪 Arqueo → Oficina CYC: se empieza a contar producto por producto. Mientras tanto dice cuánto va contado y el valor sigue siendo el de a mano; cuando se termina, pasa a ser la suma de lo contado (unidades × costo). Lo que pide la perfumería sale primero de ahí.'}]},
   {v:'27.93',f:'29/10',h:'15:45',c:[{n:2,t:'🛍️ Pedidos (Bs As): lo que pide la perfumería se suma a lo de ML y dice en chiquito "🛍️ N perfumería" al lado del nombre, aunque en ML no haga falta o no llegue al 35%. Lo que ya está en la oficina queda apartado para ella (no va a Full) y baja solo cuando se le deja.'}]},
@@ -5275,6 +5276,9 @@ const REV_ETAPAS=[
   // 21/10/2026, él: "las reglas del cerebro es lo más importante de todo… meterlo en etapas de revisión? así todas las semanas se
   // actualiza". Va SIEMPRE cada 7 días (`cada`): si le toca, pasa adelante de las demás aunque haya otra más vieja.
   {n:8,dia:null,cada:7,nom:'Reglas del cerebro',que:'CEREBRO.md entero: reglas que se contradicen o están repetidas, decisiones suyas que no llegaron al archivo, que cada regla 🔒 tenga su freno en el código y que lo que se pueda medir pase a código, y las correcciones de la semana convertidas en regla o pregunta',esf:'Máximo'},
+  // 29/10/2026, él: "TODO ESTO es un cambio muy grande. vamos a tener que revisarlo y tiene que quedar en una etapa… vamos a ir haciendo cambios
+  // grandes todo el mes sobre local". Cada 7 días como la 8 (pasa adelante cuando le toca).
+  {n:9,dia:null,cada:7,nom:'Local',que:'lo que CYC le vende a las perfumerías (Ceballos, Soares, Sarmiento) al costo + 25% como deuda, la Oficina Local producto por producto, lo que pide la perfumería en Pedidos y que nada de eso se mezcle con ML ni se cuente dos veces',esf:'Máximo'},
 ];
 // Las etapas con `cada` (la 8) van primero cuando se cumplió su plazo; después, la que hace más que no se revisa.
 function _revVencida(et){if(!et.cada)return false;const u=revUltCorrida(et.n);if(!u)return true;const f=_revFecha(u);return !f||(Date.now()-f.getTime())/864e5>=et.cada-0.5;}
