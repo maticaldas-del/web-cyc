@@ -78,7 +78,7 @@ const _cortarCiclo = (donde) => {
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
 const CONSULTA_ESCRIBE = new Set(['buzon', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
-const CONSULTA_NIEGA = new Set(['cajaitems', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
@@ -36199,6 +36199,49 @@ async function main() {
       console.log(`\n${GO ? `${ok} ocultadas` : `${ok} se ocultarían`}${frenadas ? ` · ${frenadas} frenadas por estar activas con stock` : ''}.`);
       if (!GO) console.log('PRUEBA: no se escribió nada. Agregá ":go" para aplicar.');
       else console.log('Para volver atrás: vincular:<MLA>=<producto>:go');
+      return;
+    }
+
+    // BILLING_PROBE=cerrarpub:<MLA,MLA,...>[:go] → CERRAR PUBLICACIONES EN ML (29/10/2026, él: "en Matías y Adriana no van más. borrarlas,
+    // pero creo que no podés porque tienen stock. borrá todas las publicaciones de p47/p47 oreja de todas las que no estén en Ayelen").
+    // Cierra de verdad en MercadoLibre (status closed, no se puede deshacer: para volver hay que crear otra). FRENO: si tiene mercadería
+    // en Full (a la venta o no disponible), NO la cierra: esa mercadería quedaría trabada; se vende primero o se retira. Relee de ML y
+    // deja el vínculo del panel en `closed` (las ventas viejas siguen contando). Sin `:go` sólo dice qué haría.
+    if (String(process.env.BILLING_PROBE || '').startsWith('cerrarpub:')) {
+      const _c = String(process.env.BILLING_PROBE).slice(10).split(':');
+      const GO = _c[1] === 'go';
+      const mlas = (_c[0] || '').split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      if (!mlas.length) { console.log('Usá: cerrarpub:MLA123,MLA456[:go]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {};
+      console.log(`=== CERRAR PUBLICACIONES EN ML · ${mlas.length} ${GO ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
+      const toks = {};
+      const tokDe = async (label) => { if (toks[label]) return toks[label]; const acc = accounts[label]; if (!acc?.refresh_token) return null;
+        try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); toks[label] = tR.access_token; return tR.access_token; } catch { return null; } };
+      let cerradas = 0, frenadas = 0, ya = 0;
+      for (const mla of mlas) {
+        const e = links[mla] || {};
+        const orden = e.cuenta && labels.includes(e.cuenta) ? [e.cuenta, ...labels.filter((l) => l !== e.cuenta)] : labels;
+        let b = null, tk = null, cta = null;
+        for (const label of orden) { const t = await tokDe(label); if (!t) continue;
+          try { const it = await mlGet('/items/' + mla + '?attributes=id,status,title,available_quantity,inventory_id,shipping,variations,seller_id', t); if (it && it.id) { b = it; tk = t; cta = label; break; } } catch { /* otra cuenta */ } }
+        if (!b) { console.log(`  ✗ ${mla} · ML no la encontró en ninguna cuenta`); continue; }
+        const nom = String(b.title || '').slice(0, 50);
+        if (b.status === 'closed') { console.log(`  · ${mla} · ${cta} · ya estaba cerrada · ${nom}`); ya++; if (GO && e.status !== 'closed') await db.patch('cyc/mllinks/' + mla, { status: 'closed' }); continue; }
+        // ¿mercadería en Full?
+        let full = 0, fullTxt = '';
+        const invs = (Array.isArray(b.variations) && b.variations.length ? b.variations.map((v) => v.inventory_id) : [b.inventory_id]).filter(Boolean);
+        for (const iv of invs) { try { const st = await mlGet('/inventories/' + iv + '/stock/fulfillment', tk); const a = Number(st?.available_quantity) || 0, n = Number(st?.not_available_quantity) || 0; full += a + n; if (a + n) fullTxt += ` ${a} a la venta${n ? ' + ' + n + ' no disponibles' : ''}`; } catch { fullTxt += ' (no pude leer el stock de Full)'; full += 9999; } }
+        if (full > 0) { console.log(`  ⚠️ ${mla} · ${cta} · ${b.status} · EN FULL:${fullTxt} · ${nom}\n       NO la cierro: tiene mercadería en Full. Que se venda o retirarla, y después se cierra.`); frenadas++; continue; }
+        if (!GO) { console.log(`  · ${mla} · ${cta} · ${b.status} · 0 en Full · ${nom} → se cerraría`); cerradas++; continue; }
+        let det = '';
+        try { const rp = await fetch(ML_API + '/items/' + mla, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'closed' }) });
+          if (!rp.ok) det = rp.status + ' ' + (await rp.text()).slice(0, 200); _anotarEscrituraML(rp, mla, 'cerrar publicación (no se vende más en esta cuenta)', det); } catch (er) { det = String(er.message || er).slice(0, 120); }
+        let st2 = '?'; try { st2 = (await mlGet('/items/' + mla + '?attributes=status', tk)).status; } catch { /* abajo */ }
+        if (st2 === 'closed') { await db.patch('cyc/mllinks/' + mla, { status: 'closed' }); cerradas++; console.log(`  ✓ ${mla} · ${cta} · cerrada (releída de ML) · ${nom}`); }
+        else console.log(`  ✗ ${mla} · ${cta} · NO quedó cerrada (ML dice ${st2})${det ? ' · ' + det : ''} · ${nom}`);
+      }
+      console.log(`\n${GO ? cerradas + ' cerradas' : cerradas + ' se cerrarían'} · ${frenadas} frenadas por tener mercadería en Full · ${ya} ya cerradas.`);
+      if (!GO) console.log('PRUEBA: no se tocó nada. Agregá ":go" para cerrar (va por ml-sync).');
       return;
     }
 

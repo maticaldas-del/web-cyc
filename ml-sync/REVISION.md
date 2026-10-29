@@ -945,6 +945,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🗑️ `cerrarpub:<MLA,…>[:go]`: cerrar publicaciones en ML (29/10/2026; él: *"P47 y P47 oreja los vende sólo Ayelen. Borrarlas en las otras"*)
+- **Qué es:** cierra de verdad en ML (status closed, sin vuelta) y deja el vínculo en `closed`. Freno: si tiene mercadería en Full (a la venta o no disponible) no la cierra. Va por ml-sync (`CONSULTA_NIEGA`). Relee de ML.
+- **Qué chequear:** sin `:go` lista qué cerraría y cuáles frena; las frenadas se cierran cuando se vacía su Full.
+
 ### 🔒 `publicar` frena si el producto ya se publica en otra cuenta (29/10/2026; él: *"no puede haber productos en más de una cuenta. hay excepciones, que ya están creadas"*)
 - **Qué es:** creé el P47 negro en Ayelen (MLA2244146707) con el P47 vivo en Matías y Adriana; él dijo que se queda ("esta es la buena"). Desde ahora `publicar` no crea una ficha que ya tiene publicación viva en otra cuenta salvo `|!otracuenta` (sólo si él lo pide).
 - **Qué chequear:** `publicar:<ficha con publicación en otra cuenta>|cuenta=…|precio=…` sin go dice el freno.
