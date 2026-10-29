@@ -40249,11 +40249,14 @@ async function main() {
       // métricas, cierres ni stock.
       const extra = {}; const notaP = [];
       for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
-      const m = String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
-      if (!m) { console.log(`❌ "${numF}": va +N (suma deuda) o -N (devolvió), con signo. Ej. +70000 o -70000@2026-10-28`); return; }
+      // 29/10/2026 (él: "a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa.
+      // tomás el costo del producto, le ponés un 25% y multiplicás por las unidades"): `=+25%|prod=…|local=…|u=N` → lo que paga c/u = costo × 1,25.
+      const mPct = String(numF).trim().match(/^\+\s*(\d+(?:[.,]\d+)?)\s*%(?:@(\d{4}-\d{2}-\d{2}))?$/);
+      if (mPct && !extra.prod) { console.log('❌ el +N% va con |prod=<ficha> (sale del costo de esa ficha)'); return; }
+      const m = mPct ? ['', '+', '0', mPct[2]] : String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
+      if (!m) { console.log(`❌ "${numF}": va +N (suma deuda) o -N (devolvió), con signo, o +25% con |prod=. Ej. +70000 o -70000@2026-10-28`); return; }
       const u = Math.max(1, parseInt(extra.u, 10) || 1);
-      const montoU = Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!(montoU > 0)) { console.log('❌ monto en cero'); return; }
-      const monto = extra.prod ? montoU * u : montoU;
+      let montoU = mPct ? null : Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
       const LOCALES = ['soares', 'sarmiento', 'ceballos'];
       let local = null; if (extra.local) { local = LOCALES.find((l) => _n(extra.local).includes(l)); if (!local) { console.log(`❌ local "${extra.local}": va soares, sarmiento o ceballos.`); return; } }
       let prodF = null, costoU = null;
@@ -40265,6 +40268,9 @@ async function main() {
         const cp = costoPesos(prodF, 1, tcM); costoU = Math.round((cp.costBaseUSD || 0) * tcM);
         if (!(costoU > 0)) { console.log(`⚠️ ${prodF.name} no tiene costo cargado: la ganancia no se puede calcular (se guarda igual, sin ganancia).`); costoU = null; }
       }
+      if (mPct) { if (!(costoU > 0)) { console.log(`❌ ${prodF.name} sin costo cargado: no puedo sacar el ${mPct[1]}%. No escribo nada.`); return; }
+        montoU = Math.round(costoU * (1 + parseFloat(mPct[1].replace(',', '.')) / 100)); }
+      const monto = extra.prod ? montoU * u : montoU;
       const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), f = m[3] || hoyAR, nota = notaP.join('|').trim().slice(0, 120);
       let cand = lista.filter(([id]) => id === quien);
       if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
