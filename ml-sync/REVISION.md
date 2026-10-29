@@ -958,6 +958,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🏠 `ofi35`: lo de la oficina que no llega al 35% (29/10/2026; él: *"ni vs competidores en ML ni vs la venta más alta de los últimos 30 días… lo que no da lo bajo al local"*)
+- **Qué es:** UNA sola cuenta (se juntó con el `ofi35` del 24/10, que medía sólo al precio de hoy): por ficha con unidades en la Oficina Mati (con variantes suma los colores), el % del peor caso a la competencia (techo con Full de `cyc/techofull`), a la venta más cara de 30 días y al precio de hoy, con la comisión que pide ML a ESE precio, envío 0 abajo de $33.000 / peor de Full arriba, impuestos de la cuenta y 2% de retención. ❌ = ninguno de los dos primeros llega al piso. Saltea lo `soloLocal`.
+- **Qué chequear:** que una ficha con colores sume todas sus unidades; que el % de hoy dé parecido al de `unapub` de la misma publicación.
+
 ### 🔎 Buscador de todo Bs As en Pedidos (29/10/2026; él: *"mi viejo… no encontró los aromatizantes Aer porque estaban en Nippon"*)
 - **Qué es:** `pedBsasBuscar` / `pedBsasIr` (index.html): caja a la derecha de 📋 Listas; busca en memoria en los pedidos de Bs As (sin Paulvic) y en las fichas de Bs As sin pedido, dice en qué solapa está (🏬 De siempre / 📋 lista) y al tocar lleva ahí con el nombre puesto en el buscador de esa solapa. `pedgrupo:<palabras>=siempre;go` (robot) pasa una ficha de una lista a 🏬 De siempre (como el botón de la tarjeta).
 - **Qué chequear:** con 2 letras ya muestra; a 360 px la caja baja a la segunda fila sin empujar las solapas; tocar un resultado de Dai Nippon abre esa solapa con la búsqueda.

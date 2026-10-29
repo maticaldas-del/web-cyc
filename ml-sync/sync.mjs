@@ -34761,39 +34761,7 @@ async function main() {
       }
       return;
     }
-    // BILLING_PROBE=ofi35 (24/10/2026, él: "tengo mercadería en mi oficina que no da para el 35% … me la podés marcar? así veo si me
-    // conviene mandarla a ML o intento venderla por otro lado") → LO DE LA OFICINA CON SU % EN ML AL PRECIO DE HOY, EN EL PEOR CASO. Por
-    // ficha: unidades en la oficina, la mejor de sus publicaciones vivas (Clásica, no gemela) con el % del peor caso (la cuenta de
-    // `planilla`/Sacando stock: neto de `cyc/netopub` − costo − IIBB/mono − 2% de retención, ÷ costo + impuestos + envío) y la plata
-    // parada a costo. Sale primero lo que NO llega al 35%. SOLO LEE.
-    if (/^ofi35$/.test(String(process.env.BILLING_PROBE || ''))) {
-      const prodsO = (await db.get('cyc/products')) || {}, inv = (await db.get('cyc/inventory')) || {}, links = (await db.get('cyc/mllinks')) || {}, np = (await db.get('cyc/netopub')) || {};
-      let tc = 0, mono = null; try { tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; } catch { tc = 0; } try { mono = await leerMonoPct(db); } catch { mono = null; }
-      if (!(tc > 0) || mono == null) { console.log('❌ sin dólar o sin el % de monotributo: no opino'); return; }
-      const piso = await pisoConfig(db, 35); const OFI = sid('Oficina Mati');
-      const mgP = (n, e, pr) => { const neto = Number(n && n.neto), P = Number(n && n.precio), env = Number(n && n.envio) || 0; if (!(neto > 0 && P > 0)) return null;
-        const cu = costoPesos(pr, 1, tc).costo; if (!(cu > 0)) return null; const m = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + mono) / 100;
-        const v = (neto - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + env) * 100; return isFinite(v) ? { v, P, cta: e.cuenta || '?' } : null; };
-      const bajo = [], ok = [], sinPub = [], sinDato = [];
-      for (const [pid, p] of Object.entries(prodsO)) {
-        if (!p || !p.name) continue; const of = parseInt(inv[pid + '__' + OFI]) || 0; if (!(of > 0)) continue;
-        const cu = costoPesos(p, 1, tc).costo; const parada = cu > 0 ? cu * of : 0;
-        const pubs = Object.entries(links).filter(([, e]) => e && e.prodId === pid && !e.ignored && !e.gemelaDe && String(e.status || '') !== 'closed');
-        if (!pubs.length) { sinPub.push({ nom: p.name, of, parada, local: !!p.soloLocal }); continue; }
-        let best = null; for (const [m, e] of pubs) { const r = mgP(np[m], e, p); if (r && (!best || r.v > best.v)) best = { ...r, m }; }
-        if (!best) { sinDato.push({ nom: p.name, of, parada, sinCosto: !(cu > 0) }); continue; }
-        (best.v < piso ? bajo : ok).push({ nom: p.name, of, parada, ...best });
-      }
-      const f$ = (x) => '$' + Math.round(x).toLocaleString('es-AR');
-      bajo.sort((a, b) => b.parada - a.parada); sinPub.sort((a, b) => b.parada - a.parada);
-      console.log(`=== 🏢 LA OFICINA CONTRA EL ${piso}% (peor caso, precio de hoy en ML) · ${bajo.length} abajo · ${ok.length} llegan · ${sinPub.length} sin publicación · ${sinDato.length} sin dato ===`);
-      console.log(`\n── ❌ NO LLEGAN AL ${piso}% (${bajo.reduce((a, x) => a + x.of, 0)} u. · ${f$(bajo.reduce((a, x) => a + x.parada, 0))} parados a costo) ──`);
-      for (const x of bajo) console.log(`  ${String(x.of).padStart(4)} u. · ${x.nom.slice(0, 60)} · ${x.cta} ${x.m} a ${f$(x.P)} → ${x.v.toFixed(0)}% · parado ${f$(x.parada)}`);
-      console.log(`\n── ✓ LLEGAN AL ${piso}% (${ok.length} fichas, ${ok.reduce((a, x) => a + x.of, 0)} u.) ──`);
-      if (sinPub.length) { console.log(`\n── ❔ SIN PUBLICACIÓN VIVA (no hay precio de ML que medir) ──`); for (const x of sinPub) console.log(`  ${String(x.of).padStart(4)} u. · ${x.nom.slice(0, 60)}${x.local ? ' · sólo local' : ''} · parado ${x.parada ? f$(x.parada) : 'sin costo'}`); }
-      if (sinDato.length) { console.log(`\n── ⚠️ CON PUBLICACIÓN PERO SIN %: ${sinDato.map((x) => `${x.nom.slice(0, 40)} (${x.of} u.${x.sinCosto ? ', sin costo' : ''})`).join(' | ')}`); }
-      return;
-    }
+    // (el `ofi35` del 24/10, sólo al precio de hoy, se juntó el 29/10 con el nuevo, más abajo: una sola cuenta)
     // BILLING_PROBE=ofisinpub → LO QUE ESTÁ EN LA OFICINA Y NO TIENE PUBLICACIÓN VIVA (23/10/2026, él: "¿cargaste todos los productos
     // nuevos?"). Por ficha (y por color): unidades en la oficina, si tiene catálogo confirmado para `publicar`, y las publicaciones
     // cerradas que tuvo. Una ficha con publicación viva (aunque pausada) no sale. SOLO LEE.
@@ -41697,17 +41665,17 @@ async function main() {
     //   · qué precio haría falta para el piso,
     //   · las últimas ventas con su precio, para ver a qué precio vende de verdad.
     // Solo LEE.
-    // BILLING_PROBE=ofi35 (29/10/2026, él: "qué producto de mi oficina no llega al 35%, ni vs competidores en ML ni vs la venta más
+    // BILLING_PROBE=ofi35 (24/10/2026 al precio de hoy; 29/10/2026, él: "qué producto de mi oficina no llega al 35%, ni vs competidores en ML ni vs la venta más
     // alta de los últimos 30 días. Así lo que no da ya lo bajo al local y lo vendo acá"). SOLO LEE. Para cada ficha con unidades en la
     // Oficina Mati: el % del peor caso (misma cuenta que `unapub`: comisión que pide ML a ESE precio, envío 0 abajo de $33.000 y el peor
     // de Full arriba, impuestos de la cuenta) a (1) el precio de la competencia = el techo con Full de `techofull` (lo más caro que se
     // puede cobrar contra los otros vendedores del catálogo) y (2) el precio más caro que se vendió en 30 días (cualquier publicación
     // de la ficha, sin canceladas). No da = ninguno de los dos llega al 35%.
     if (/^ofi35(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const MIN = 35;
+      const MIN = await pisoConfig(db, 35);
       const fin = (await db.get('cyc/finanzas')) || {}; const tc = parseFloat(fin.tipo_cambio) || 0;
-      if (!(tc > 0)) { console.log('⚠️ Sin dólar cargado no mido nada.'); return; }
-      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      let monoP = null; try { monoP = await leerMonoPct(db); } catch { monoP = null; }
+      if (!(tc > 0) || monoP == null) { console.log('❌ sin dólar o sin el % de monotributo: no opino'); return; }
       const [inv, links, vp, techo, npAll] = await Promise.all(['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/techofull', 'cyc/netopub'].map((r) => db.get(r).then((x) => x || {}).catch(() => ({}))));
       const ofiK = '__' + sid('Oficina Mati');
       const uOfi = {};
@@ -41742,7 +41710,7 @@ async function main() {
         const npU = npAll[b.id] || {};
         const mgA = async (pr) => { if (!(pr > 0)) return null; const com = await fee(b, pr); if (com == null) return null;
           const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
-          const mlx = pr * m; const neto = pr - com - env; return (neto - costo - mlx) / (costo + mlx + env) * 100; };
+          const mlx = pr * m; const neto = pr - com - env; return (neto - costo - mlx - pr * PEOR_RET_PCT) / (costo + mlx + env) * 100; };   // + la retención de otra provincia, como planilla
         const tf = techo[b.id] || null; const pComp = tf && tf.t ? Number(tf.t) : null;
         const pVen = maxVenta[pid] || null;
         const mc = await mgA(pComp), mv = await mgA(pVen), mh = await mgA(Number(b.price) || 0);
