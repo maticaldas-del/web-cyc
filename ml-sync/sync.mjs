@@ -30105,6 +30105,11 @@ async function main() {
       const linksP = (await db.get('cyc/mllinks')) || {};
       const yaHay = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta === label && e.status !== 'closed' && (!color || !e.variant || nrmP(e.variant) === nrmP(color)));
       if (yaHay.length) frenos.push(`esa ficha ya tiene publicación en ${label}: ${yaHay.slice(0, 4).map(([m, e]) => m + ' (' + (e.status || '?') + ')').join(', ')}`);
+      // UNA SOLA CUENTA POR PRODUCTO (29/10/2026, él: "tené en cuenta que no puede haber productos en más de una cuenta. hay excepciones,
+      // que ya están creadas"): si la ficha ya tiene publicación viva en OTRA cuenta, no se crea salvo que él lo pida (`|!otracuenta`).
+      // Caso: el P47 negro en Ayelen (MLA2244146707), que él después dijo que se quedaba ("esta es la buena").
+      const otraCta = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta && e.cuenta !== label && e.status !== 'closed');
+      if (otraCta.length && !partes.includes('!otracuenta')) frenos.push(`esa ficha ya se publica en ${[...new Set(otraCta.map(([, e]) => e.cuenta))].join(', ')}: un producto va en una sola cuenta. Si él lo pidió igual, agregá |!otracuenta`);
       // El catálogo CONFIRMADO.
       const confP = new Set(); if (P.mlCatalogo) confP.add(String(P.mlCatalogo).toUpperCase());
       try { for (const c of Object.values((await db.get('cyc/candidatos_py')) || {})) if (c && c.prodId === P.id && candCatChequeado(c)) confP.add(candCatDe(c)); }

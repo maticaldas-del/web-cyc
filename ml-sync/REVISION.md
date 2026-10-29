@@ -945,6 +945,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🔒 `publicar` frena si el producto ya se publica en otra cuenta (29/10/2026; él: *"no puede haber productos en más de una cuenta. hay excepciones, que ya están creadas"*)
+- **Qué es:** creé el P47 negro en Ayelen (MLA2244146707) con el P47 vivo en Matías y Adriana; él dijo que se queda ("esta es la buena"). Desde ahora `publicar` no crea una ficha que ya tiene publicación viva en otra cuenta salvo `|!otracuenta` (sólo si él lo pide).
+- **Qué chequear:** `publicar:<ficha con publicación en otra cuenta>|cuenta=…|precio=…` sin go dice el freno.
+
 ### 📦 Caja que usa todo el cupo de Full = MANDALA YA (29/10/2026, v27.76; él con Ayelen: *"¿por qué dice que gano 400.000 al vender y me dice que espere? ¿tiene sentido?"*)
 - **Qué es:** la caja de Ayelen iba al 5% del lugar pero usaba los 24 del cupo que le quedaba, y el cartel decía "Podés esperar y juntar más". Esperar no la llena: lo vendido no devuelve cupo. `convieneCaja` marca `topeCupo` (lo chico o lo grande de la caja ≥ `cupoRestante`) → cuenta como llena, sin costo de "a medias", y el cartel lo dice.
 - **Qué chequear:** con cupo libre de sobra el veredicto sigue igual que antes; con la caja en el tope del cupo, verde.
