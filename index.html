@@ -3185,7 +3185,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.79';
+const APP_VERSION='27.80';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3198,6 +3198,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.80',f:'29/10',h:'01:28',c:[{n:1,t:'💸 "Cuánto cobrar": un mes cerrado antes de terminar (octubre) ya muestra lo del cierre'}]},
   {v:'27.79',f:'29/10',h:'01:28',c:[{n:2,t:'💸 "Cuánto cobrar" de Ventas de hoy: con el mes cerrado muestra lo mismo que el Arqueo (lo que creció CYC). En el mes en curso aclara que es sólo lo de ML y que lo de verdad sale al cerrar'}]},
   {v:'27.78',f:'29/10',h:'01:24',c:[{n:3,t:'💸 Arqueo: el cobro de cada socio ahora es lo que creció CYC en el mes (todo: ML, local, perfumerías) + lo que ya retiraron ese mes, ÷ 3. Sale en una tarjeta abajo del botón de cerrar el mes y es el retiro supuesto del mes siguiente'}]},
   {v:'27.77',f:'29/10',h:'01:05',c:[{n:1,t:'📸 Fotos por color: si la publicación de ese color todavía no tiene foto (recién creada), usa la del mismo color en otra cuenta y nunca la de otro color (el P47 negro mostraba uno rojo)'}]},
