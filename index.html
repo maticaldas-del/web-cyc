@@ -1956,18 +1956,22 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <button class="vbtn" data-metv="local" onclick="metVista('local')">🏪 Local</button>
     <button class="vbtn" data-metv="todo" onclick="metVista('todo')" title="ML y el local mezclados: por fecha, cuánto vendió y ganó cada uno y la suma">🔀 ML + Local</button>
   </div>
-  <div id="met-indice" style="display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 18px">
-    <button class="vbtn" onclick="lineaTodoAbrir(event)" style="border-color:var(--green);color:var(--green)" title="La línea de tiempo de TODOS los productos juntos: ventas, ganancia, stock, visitas, precio, cada suba y cada bajada, caja y remate">📈 Línea de todo</button>
-    <button class="vbtn" onclick="metIr('met-kpis')">📊 KPIs</button>
-    <button class="vbtn" onclick="metIr('met-tendencia')">📈 Tendencia</button>
-    <button class="vbtn" onclick="metIr('met-pct-avg')">% Ganancia</button>
-    <button class="vbtn" onclick="metIr('met-rubros')">🏷️ Rubros</button>
-    <button class="vbtn" onclick="metIr('met-reputacion')">⭐ Reputación</button>
-    <button class="vbtn" onclick="metIr('chart-bar-dia')">👥 Por cuenta</button>
-    <button class="vbtn" onclick="metIr('met-horas')">🕐 Horas</button>
-    <button class="vbtn" onclick="metIr('met-origen')">🌎 Origen</button>
-    <button class="vbtn" onclick="metIr('met-mezcla')">🧮 Mezcla</button>
-    <button class="vbtn" onclick="metIr('met-auto')">🧠 Cambios de precio</button>
+  <!-- 29/10/2026 (él: "esto nunca lo uso. ¿podés ponerlos todos en un desplegable?"): los 11 atajos van en un solo desplegable. -->
+  <div id="met-indice" style="margin:-6px 0 18px">
+    <select class="vbtn" style="cursor:pointer" onchange="const v=this.value;this.value='';if(v==='linea')lineaTodoAbrir();else if(v)metIr(v);">
+      <option value="">📑 Ir a…</option>
+      <option value="linea">📈 Línea de todo</option>
+      <option value="met-kpis">📊 KPIs</option>
+      <option value="met-tendencia">📈 Tendencia</option>
+      <option value="met-pct-avg">% Ganancia</option>
+      <option value="met-rubros">🏷️ Rubros</option>
+      <option value="met-reputacion">⭐ Reputación</option>
+      <option value="chart-bar-dia">👥 Por cuenta</option>
+      <option value="met-horas">🕐 Horas</option>
+      <option value="met-origen">🌎 Origen</option>
+      <option value="met-mezcla">🧮 Mezcla</option>
+      <option value="met-auto">🧠 Cambios de precio</option>
+    </select>
   </div>
 
   <!-- Carga manual — solo visible en modo Día -->
@@ -3222,7 +3226,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.18';
+const APP_VERSION='28.19';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3235,6 +3239,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.19',f:'29/10',h:'23:00',c:[{n:1,t:'📊 Métricas: los KPIs más cortos (parte y % de ganancia en una línea, la diferencia contra el anterior en otra; el detalle al dejar el dedo encima) y los atajos (Línea de todo, KPIs, Tendencia…) en un solo desplegable "📑 Ir a…".'}]},
   {v:'28.18',f:'29/10',h:'22:40',c:[{n:3,t:'🔍 ¿Cierra el mes?: ahora suma la ganancia del local (lo dejado en las perfumerías y las otras ventas a cuenta). Antes cada entrega al local se veía como plata que sobraba.'}]},
   {v:'28.17',f:'29/10',h:'22:15',c:[{n:2,t:'📊 Métricas → 🔀 ML + Local: en la Tendencia, ML abajo relleno de azul y el local arriba relleno de naranja (la línea de arriba es el total), como agua y aceite.'}]},
   {v:'28.16',f:'29/10',h:'22:00',c:[{n:1,t:'📊 Métricas → 🏪 Local: sin el botón 💚 Neto (en el local es igual al Total).'}]},
@@ -25155,7 +25160,10 @@ function renderMetricas(){
   const year=sumMetFields(metScopeBuckets(metScopeMode).bucketsYear.flat(),metViewField);
   const yearTotal=metAccts().reduce((s,a)=>s+year[a],0);
   // Línea compacta de comparación: ▲/▼ diferencia vs una base (solo si la base tiene datos).
-  const cmpLine=(c,base,lbl)=>{if(!(base>0))return'';const dd=c-base;return`<div style="font-size:.6rem;margin-top:3px;color:${dd>=0?'var(--green)':'var(--red)'}">${dd>=0?'▲':'▼'} ${fmt(Math.abs(dd))} vs ${lbl}</div>`;};
+  // KPIs MÁS CORTOS (29/10/2026, él: "¿esto se podrá resumir un poco? dejando lo importante"): una línea con la parte y el %, otra con
+  // la diferencia contra el anterior (y el año pasado si hay). El detalle largo queda en el globito (title).
+  const cmpLine=(c,base,lbl)=>{if(!(base>0))return'';const dd=c-base;return`<span title="${dd>=0?'+':'−'}${fmt(Math.abs(dd))} contra ${lbl}" style="color:${dd>=0?'var(--green)':'var(--red)'}">${dd>=0?'▲':'▼'} ${fmt(Math.abs(dd))} ${lbl==='año pasado'?'año ant.':'vs ant.'}</span>`;};
+  const cmpBox=(a,b)=>(a||b)?`<div style="font-size:.6rem;margin-top:3px">${[a,b].filter(Boolean).join(' · ')}</div>`:'';
   const kpiEl=document.getElementById('met-kpis');
   if(kpiEl){
     // % DE GANANCIA SOBRE EL COSTO TOTAL — el mismo que la ficha, Rotación y Ventas x Producto.
@@ -25172,8 +25180,8 @@ function renderMetricas(){
       const mk=g/c*100;
       let d='';
       if(pc>0){const diff=mk-(pg/pc*100);const up=diff>=0;
-        d=` <span style="color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'} ${Math.abs(diff).toFixed(1)} pts vs ant.</span>`;}
-      return`<div class="mk-sub" style="color:${pctColor(mk)};font-weight:600">📈 ${mk.toFixed(1)}% ganancia${d}</div>`;
+        d=` <span title="${up?'+':'−'}${Math.abs(diff).toFixed(1)} puntos contra el período anterior" style="color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'}${Math.abs(diff).toFixed(1)}</span>`;}
+      return` · <span style="color:${pctColor(mk)};font-weight:600">${mk.toFixed(1)}% gan.</span>${d}`;
     };
     let ganTot=0,cosTot=0,ganTotPrev=0,cosTotPrev=0;
     const cards=metAccts().map((a,i)=>{
@@ -25183,13 +25191,13 @@ function renderMetricas(){
       curKeys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metCostoPctDay(k,a);});
       prevKeys.forEach(k=>{pg+=metGetValDay(k,a,'ganancia');pc+=metCostoPctDay(k,a);});
       ganTot+=g;cosTot+=c;ganTotPrev+=pg;cosTotPrev+=pc;
-      const cmpStr=cmpLine(cv,prev[a],prevLbl)+cmpLine(cv,year[a],'año pasado');
-      return`<div class="met-kpi ${acctColors[i]}"><div class="mk-lbl">${METX_LABELS[a]}</div><div class="mk-val">${fmt(cv)}</div><div class="mk-sub">${pctStr} del total</div>${mkLine(g,c,pg,pc)}${cmpStr}</div>`;
+      const cmpStr=cmpBox(cmpLine(cv,prev[a],prevLbl),cmpLine(cv,year[a],'año pasado'));
+      return`<div class="met-kpi ${acctColors[i]}"><div class="mk-lbl">${METX_LABELS[a]}</div><div class="mk-val">${fmt(cv)}</div><div class="mk-sub">${pctStr} del total${mkLine(g,c,pg,pc)}</div>${cmpStr}</div>`;
     }).join('');
     const span=getMetPeriodSpan(metScopeMode);
     const spanTxt=span.n+' '+span.unit+(span.n!==1?'s':'')+(curKeys.length<span.n?` · ${curKeys.length} con ventas`:'');
-    const totCmp=cmpLine(curTotal,prevTotal,prevLbl)+cmpLine(curTotal,yearTotal,'año pasado');
-    const totalCard=`<div class="met-kpi ct"><div class="mk-lbl">${fieldLbl}</div><div class="mk-val">${fmt(curTotal)}</div><div class="mk-sub">${spanTxt}</div>${mkLine(ganTot,cosTot,ganTotPrev,cosTotPrev)}${totCmp}</div>`;
+    const totCmp=cmpBox(cmpLine(curTotal,prevTotal,prevLbl),cmpLine(curTotal,yearTotal,'año pasado'));
+    const totalCard=`<div class="met-kpi ct"><div class="mk-lbl">${fieldLbl}</div><div class="mk-val">${fmt(curTotal)}</div><div class="mk-sub" title="${spanTxt}">${mkLine(ganTot,cosTot,ganTotPrev,cosTotPrev).replace(/^ · /,'')||spanTxt}</div>${totCmp}</div>`;
     kpiEl.innerHTML=cards+totalCard;
   }
   if(metScopeMode==='dia')loadMetricasDelDia();
