@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🏪 Oficina CYC por unidades (29/10/2026, v27.94; él: *"voy una por una pasándote lo que hay"*)
+- **Qué es:** `oficyc` carga unidades en `cyc/oficyc` (aparte de la Oficina Mati); el Arqueo sigue con el valor a mano y la web dice "contado hasta ahora"; `oficyc:listo;go` pasa el campo a lo contado (bloqueado, se re-guarda si cambia costo/dólar). `pedidostodo` imprime `OFICYC n` con `PERF` y Pedidos/cajas lo usan primero; `debenmov …|de=cyc` resta.
+- **Dónde vive:** `sync.mjs` (`oficyc`, `debenmov` de=, `OCY` en `pedidostodo`) · `decide_pedidos.py`/`decide_cajas.py` (`ocy`/`OFICYC`) · `index.html` (bloque 🏪 en `updateArqueo`, `ofi-cyc-nota`, `oficyc` en `CYC_KEYS`).
+- **Qué chequear:** al terminar, que el patrimonio no salte (lo contado contra el valor a mano) y que nada de la Oficina CYC aparezca en Armar caja.
+
 ### 🛍️ Pedidos de la perfumería en Pedidos de Bs As (29/10/2026, v27.93)
 - **Qué es:** `pedperf` anota lo que pide la perfumería (`cyc/pedperf/<prod>` = {u, local, va, nota}); `pedidostodo` imprime `PERF <u>[@color]` (aunque esté en la papelera o "no traer"); `decide_pedidos.py` aparta lo que ya está en la oficina y suma el resto a lo de ML ("Hola Tito! Te pido N: X para ML y Y para la perfumería"); `decide_cajas.py` no manda a Full lo apartado; `debenmov` con `prod=`/`u=` baja el pedido al dejárselo; la web muestra "🛍️ N perfumería" al lado del nombre.
 - **Dónde vive:** `sync.mjs` (`pedperf`, `PERF0`/`PERFT` en `pedidostodo`, hook en `debenmov`) · `decide_pedidos.py` (`perf_de`, `perf_mot`) · `decide_cajas.py` · `index.html` (`pedPerfChip`, `pedperf` en `CYC_KEYS`).

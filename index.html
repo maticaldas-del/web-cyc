@@ -1335,7 +1335,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <!-- OFICINA CYC: solo el VALOR, sin unidades. Esa mercadería no es de ML —no se publica ni
              se manda a Full— así que contarla producto por producto no sirve para nada: no hay a
              qué cuenta mandarla ni con qué venta compararla. Va el número en dólares y listo. -->
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span id="ofi-cyc-nota" style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
         <!-- OFICINA MATI: acá SÍ van las unidades, producto por producto, porque es la mercadería
              que se manda a Full. El número de acá lo calcula la pantalla "Mi oficina" a partir de
              lo contado; por eso el campo queda bloqueado apenas hay algo contado. -->
@@ -2557,7 +2557,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['prompts','pedperf','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2681,6 +2681,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
+    state.oficyc=d.oficyc||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
     state.pedperf=d.pedperf||{};   // 29/10: 🛍️ lo que pidió la perfumería (se suma en Pedidos de Bs As)
     state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
     state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
@@ -3192,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.93';
+const APP_VERSION='27.94';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3205,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.94',f:'29/10',h:'16:05',c:[{n:2,t:'🏪 Arqueo → Oficina CYC: se empieza a contar producto por producto. Mientras tanto dice cuánto va contado y el valor sigue siendo el de a mano; cuando se termina, pasa a ser la suma de lo contado (unidades × costo). Lo que pide la perfumería sale primero de ahí.'}]},
   {v:'27.93',f:'29/10',h:'15:45',c:[{n:2,t:'🛍️ Pedidos (Bs As): lo que pide la perfumería se suma a lo de ML y dice en chiquito "🛍️ N perfumería" al lado del nombre, aunque en ML no haga falta o no llegue al 35%. Lo que ya está en la oficina queda apartado para ella (no va a Full) y baja solo cuando se le deja.'}]},
   {v:'27.92',f:'29/10',h:'15:20',c:[{n:2,t:'🤖 Mi oficina: "Textos para el chat de Chrome". Todos los textos (rutina diaria, cajas, Paraguay, listas, Once, Imega…) con 📋 Copiar para pegarlos enteros en el chat de Chrome. Se actualizan solos cada noche.'}]},
   {v:'27.91',f:'29/10',h:'14:55',c:[{n:3,t:'📈 Línea de tiempo: todo techo dice su % de seguridad (también el 🔴 y el gris "ya está arriba del techo"), la raya 🚧 de un precio que después vendió más caro ya no se dibuja (si vende, no es techo), y "hoy" es el precio de ahora (la línea llega hasta anoche: lo dice al lado)'}]},
@@ -10982,6 +10984,17 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
   // "Oficina Mati" ya no se escribe a mano en cuanto hay unidades contadas: el número sale de la
   // pantalla "Mi oficina" (unidades × costo US$) y es el que entra al patrimonio como Stock Local.
   // El campo se bloquea y se muestra el calculado, para que no queden dos números peleados.
+  // 🏪 OFICINA CYC POR UNIDADES (29/10/2026, él: "voy una por una pasándote lo que hay"): Claude la carga con `oficyc:` (`cyc/oficyc`). Mientras
+  // se carga, el valor del Arqueo sigue siendo el de a mano y acá se ve cuánto va contado; con `oficyc:listo;go` (`mlconfig/oficycPorUnidades`)
+  // el campo se bloquea y vale lo contado (unidades × costo US$, como Mi oficina), y se guarda si cambió el costo o el dólar.
+  {const _uO=x=>x&&typeof x==='object'?Object.values(x.v||{}).reduce((a,b)=>a+(parseInt(b)||0),0)+(parseInt(x.t)||0):(parseInt(x)||0);
+    let _n=0,_u=0,_v=0;for(const [k,x] of Object.entries(state.oficyc||{})){const u=_uO(x);if(!(u>0))continue;const p=prodById(k);_n++;_u+=u;_v+=u*(p?efectivoCostP(p):0);}
+    const _inC=document.getElementById('f_of_viejo'),_ntC=document.getElementById('ofi-cyc-nota'),_porU=(state.mlconfig||{}).oficycPorUnidades===true;
+    if(_inC&&!_arqViewYM){
+      if(_porU){_inC.readOnly=true;_inC.style.opacity='.75';_inC.style.cursor='default';if(document.activeElement!==_inC)setMoneyVal(_inC,Math.round(_v));
+        if(_ntC)_ntC.textContent=` · ${_u} u. contadas (${_n} productos)`;
+        const _g=Math.round(_v*100)/100;if(Math.abs((parseFloat((state.finanzas||{}).of_viejo)||0)-_g)>0.5){state.finanzas.of_viejo=_g;fbSet('finanzas/of_viejo',_g).catch(()=>{});}}
+      else{_inC.readOnly=false;_inC.style.opacity='';_inC.style.cursor='';if(_ntC)_ntC.textContent=_n?` · contado hasta ahora: ${_n} productos (${_u} u.) = US$ ${Math.round(_v).toLocaleString('es-AR')} · el valor sigue a mano hasta terminar`:' · solo el valor, no es de ML';}}}
   const _uOfi=(state.products||[]).reduce((s,p)=>s+stockOficina(p),0);
   const _valOfi=(state.products||[]).reduce((s,p)=>s+stockOficina(p)*efectivoCostP(p),0);
   const _inpMati=document.getElementById('f_of_mia');

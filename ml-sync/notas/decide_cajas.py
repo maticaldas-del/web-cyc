@@ -108,7 +108,7 @@ for l in L:
         gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),hoy=hoy_de(m.group(11)),
-                 fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)));P.append(cur);continue
+                 fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
@@ -156,6 +156,8 @@ for p in P:
     pm=p.get('perf')
     if not pm: continue
     pu=int(pm.group(1)); pva=(pm.group(2) or '').replace('_',' ').lower()
+    _oc=re.search(r' · OFICYC (\d+)',p.get('resto','')); pu=max(0,pu-(int(_oc.group(1)) if _oc else 0))   # lo de la Oficina CYC cubre primero
+    if pu<=0: continue
     if p['vars']:
         _m=[x for x in p['vars'] if x['v'].lower()==pva]
         tv=_m[0] if _m else max(p['vars'],key=lambda x:(x['s'][2],x['casa']))

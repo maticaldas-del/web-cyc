@@ -74,7 +74,7 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
           env=g(r' · envFull \$(\d+)'),   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
-          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest))
+          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest),ocy=(int(re.search(r' · OFICYC (\d+)',rest).group(1)) if re.search(r' · OFICYC (\d+)',rest) else 0))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
@@ -210,12 +210,16 @@ res=[]
 for p in prods:
     if not p.get('perf'): continue
     pu,pva=p['perf']
+    # primero lo que hay en la Oficina CYC (no es de ML: es justo para esto)
+    if p.get('ocy'):
+        r0=min(pu,p['ocy']); pu-=r0
+        if r0: print(f"🛍️ {p['n']}: {r0} de la perfumería salen de la Oficina CYC")
     if p['vars']:
         _m=[v for v in p['vars'] if v['v'].lower()==pva.lower()]
         tv=_m[0] if _m else max(p['vars'],key=lambda v:(v['v180'],v['casa']))
         p['perf']=(pu,tv['v']); r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r)
     else: r=min(pu,p['casa']); p['casa']-=r
-    p['perfOfi']=r; p['perf']=(pu-r,p['perf'][1])
+    p['perfOfi']=r; p['perf']=(pu-r,p['perf'][1] if not p['vars'] else p['perf'][1])
     if r: print(f"🛍️ {p['n']}: {r} de la perfumería ya están en la oficina (apartados){'' if pu-r else ': no hace falta comprar para ella'}")
 for p in prods:
     # Sin costo cargado no se puede decir que deja ganancia (antes 0 de costo = "rentable" y pedía de todo).
