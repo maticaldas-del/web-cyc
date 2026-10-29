@@ -451,6 +451,7 @@ input.qty:focus{border-color:var(--accent2)}
 /* TARJETAS QUE SE ABREN (28/10/2026, él: "simplificar. clickear en la tarjeta y que se abra el detalle para ir rellenando. así con todos"). */
 .arq-toca{cursor:pointer;transition:border-color .15s}.arq-toca:hover{border-color:var(--border2)}.arq-toca.arq-on{border-color:var(--accent2)}
 .arq-flecha{font-size:.7em;color:var(--muted);margin-left:4px}.arq-alerta{margin-left:4px}
+.arq-mp-ctas .fin-field{padding:4px 0;min-height:0}.arq-mp-ctas .fin-label{font-size:.72rem;color:var(--muted)}.arq-mp-ctas .fin-input{max-width:150px;padding-top:4px;padding-bottom:4px;font-size:.78rem}
 .arq-plegada,.arq-extra{display:none}.arq-plegada.arq-on,.arq-extra.arq-on{display:block}
 /* La tarjeta abierta ocupa todo el ancho y adentro tiene sus casillas (él: "que se abra el cuadrado con las cosas adentro para editar… sin scrolear"). */
 .bk-card.arq-on{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2) inset;background:rgba(56,189,248,.06)}
@@ -1334,21 +1335,20 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div class="arqueo-grid">
       <div class="arqueo-section positivo arq-plegada" id="arq-sec-efectivo">
         <h3>💵 Efectivo & Digital</h3>
+        <!-- 29/10/2026 (él: "ordenar un poco esto. efectivo, después ML disponible total, abajo cuentas y a liquidar. que se vea mejor").
+             DISPONIBLE EN ML, UNA CASILLA POR CUENTA: se carga a mano porque ML NO da el saldo por la API (15/08/2026, 403 en las cuatro).
+             El total NO se escribe: es la suma de las cuatro y es el que entra al patrimonio (las cuatro llevan detalle:true, no se suman aparte). -->
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_efectivo"></span><span class="fin-label">Efectivo disponible</span><span id="db_efectivo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_efectivo" placeholder="US$ 0" onchange="saveFin('efectivo',this.value)"></div>
-        <!-- DISPONIBLE EN ML, UNA CASILLA POR CUENTA.
-             Se carga a mano porque ML NO da el saldo por la API: probado el 15/08/2026 en las
-             cuatro cuentas y en los tres endpoints que existen, todos contestan 403 forbidden.
-             El total de abajo NO se escribe: es la suma de las cuatro, y es el que entra al
-             patrimonio. Por eso las cuatro NO se suman aparte en el arqueo (llevan detalle:true),
-             si no la plata se contaría dos veces. -->
-        <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin:2px 0 6px">Disponible en ML, por cuenta</div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Adriana</span><span id="db_mp_adriana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_adriana" placeholder="US$ 0" onchange="saveFin('mp_adriana',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Luciana</span><span id="db_mp_luciana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_luciana" placeholder="US$ 0" onchange="saveFin('mp_luciana',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Ayelen</span><span id="db_mp_ayelen"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_ayelen" placeholder="US$ 0" onchange="saveFin('mp_ayelen',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Matias</span><span id="db_mp_matias"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_matias" placeholder="US$ 0" onchange="saveFin('mp_matias',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_disp"></span><span class="fin-label" style="font-weight:700;color:var(--text)">MercadoPago disponible (total)</span><span id="db_mp_disp"></span></div><input class="fin-input money" type="text" id="f_mp_disp" placeholder="US$ 0" readonly title="Se calcula solo: es la suma de las cuatro cuentas" style="opacity:.75;cursor:default"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_disp"></span><span class="fin-label" style="font-weight:700;color:var(--text)">MercadoPago disponible</span><span id="db_mp_disp"></span></div><input class="fin-input money" type="text" id="f_mp_disp" placeholder="US$ 0" readonly title="Se calcula solo: es la suma de las cuatro cuentas" style="opacity:.75;cursor:default"></div>
         <div id="ancla_aviso" style="display:none;font-size:.68rem;color:var(--amber);margin:-2px 0 8px;line-height:1.35"></div>
         <div id="mp-disp-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin:-4px 0 8px;line-height:1.4"></div>
+        <div class="arq-mp-ctas" style="margin:0 0 10px 10px;padding:2px 0 2px 12px;border-left:2px solid var(--border2)">
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin:2px 0 4px">por cuenta</div>
+          <div class="fin-field"><div class="fin-left"><span class="fin-label">Adriana</span><span id="db_mp_adriana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_adriana" placeholder="US$ 0" onchange="saveFin('mp_adriana',this.value)"></div>
+          <div class="fin-field"><div class="fin-left"><span class="fin-label">Luciana</span><span id="db_mp_luciana"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_luciana" placeholder="US$ 0" onchange="saveFin('mp_luciana',this.value)"></div>
+          <div class="fin-field"><div class="fin-left"><span class="fin-label">Ayelen</span><span id="db_mp_ayelen"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_ayelen" placeholder="US$ 0" onchange="saveFin('mp_ayelen',this.value)"></div>
+          <div class="fin-field"><div class="fin-left"><span class="fin-label">Matias</span><span id="db_mp_matias"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_matias" placeholder="US$ 0" onchange="saveFin('mp_matias',this.value)"></div>
+        </div>
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="US$ 0" onchange="saveFin('mp_liq',this.value)"></div>
         <div id="vsr_linea" style="display:none;font-size:.68rem;margin:-2px 0 8px;line-height:1.4"></div>
       </div>
@@ -3237,7 +3237,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.22';
+const APP_VERSION='28.23';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3250,6 +3250,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.23',f:'29/10',h:'23:55',c:[{n:1,t:'Arqueo → Efectivo & Digital ordenado: Efectivo, MercadoPago disponible (el total), abajo y más chicas las cuatro cuentas, y al final A liquidar.'}]},
   {v:'28.22',f:'29/10',h:'23:45',c:[{n:1,t:'Arqueo → Stock total: los campos de Oficina ML y Oficina Local van adentro del desplegable de cada oficina (se abren al tocarla). La variación que salía debajo de Oficina Local era de las dos juntas: ahora cada una muestra la suya adentro.'}]},
   {v:'28.21',f:'29/10',h:'23:30',c:[{n:1,t:'Arqueo: se sacó el renglón Vendedores (sólo vuelve si quedara un número cargado).'}]},
   {v:'28.20',f:'29/10',h:'23:20',c:[{n:1,t:'📥 Deudas: 🛒 Ventas a cobrar y 💵 Préstamos se pliegan tocando el título (queda recordado).'},{n:1,t:'📤 Lo que debemos: ARCA (y proveedores cuando hay) pasan a ser un renglón más, en vez del aviso naranja.'}]},
