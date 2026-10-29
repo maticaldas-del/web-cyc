@@ -4028,6 +4028,11 @@ dos veces con el valor a mano del Arqueo; (3) que lo apartado para la perfumerí
 tenga costo, unidades y perfumería, y que lo que salió de una oficina se haya restado; (5) lo que él pidió en el mes y todavía falta.
 Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lista de deudas" y "🛍️ Mercadería Perfumería".
 
+### 🏠 Oficina ML / 🏪 Oficina Local en el Stock total del Arqueo (29/10/2026, v28.06; él: *"esto es detalle. que vaya adentro de oficina local o oficina ml… que se abra al clickearlo. en la oficina hay mercadería que se vendió/hubo en ML y mercadería que nunca estuvo en full"*)
+- **Qué es:** "En la oficina" se parte en Oficina ML (unidades de la Oficina_Mati de fichas con publicación en `mllinks`) y Oficina Local (`of_viejo` + vendedores + lo de la oficina que nunca tuvo publicación). Las dos suman `stockLocalFin` como antes (sin unidades contadas, `of_mia` entero va a ML). El detalle de cada renglón (oficinas, en camino, Full por cuenta) se abre tocándolo (`arqDet`, queda abierto al redibujar).
+- **Dónde vive:** `index.html` (HTML del Stock total: `bk_ofi_ml`, `bk_ofi_local`, `det_*`; bloque 🏠/🏪 en `updateArqueo`; `arqDet`, `_arqDetPinta`).
+- **Qué chequear:** Oficina ML + Oficina Local = el "En la oficina" de antes; que un producto `sololocal` sin publicación caiga en Local.
+
 ### 🛒 Ventas a cobrar / 💵 Préstamos (29/10/2026, v28.03; él eligió 1a 2a: *"los que tienen ganancia son Ventas y los que no tienen son deudores… primo, gastón, seba son ventas también, pero no tengo el costo"*; Mari, Matías, Adriana y Andrea préstamos)
 - **Qué es:** cada deuda tiene `tipo` (`debenmov:<id>=tipo venta|prestamo|-;go`); sin marca, venta = tiene costo o ganancia. La web muestra dos grupos con su total (Ventas con la ganancia sumada; PERFUMERÍA va entera en Ventas, aunque adentro tenga MercadoPago). Venta sin costo = "costo sin cargar" (no suma ganancia).
 - **Dónde vive:** `sync.mjs` (`debenmov`, `mtp`) · `index.html` (`renderCuotas`: `_esVenta`, `_sec`; `pctTxt`).
