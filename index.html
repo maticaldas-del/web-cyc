@@ -3185,7 +3185,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.82';
+const APP_VERSION='27.83';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3198,6 +3198,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.83',f:'29/10',h:'01:33',c:[{n:1,t:'💸 El cobro es redondo, de a $100.000 para abajo (1.699.000 → 1.600.000); lo que sobra queda en CYC'}]},
   {v:'27.82',f:'29/10',h:'01:31',c:[{n:1,t:'💸 Se sacó "cuánto cobrar" de abajo de Ventas de hoy: el cobro está en Finanzas → Arqueo, abajo de cerrar el mes'}]},
   {v:'27.81',f:'29/10',h:'01:29',c:[{n:2,t:'💸 "Cuánto cobrar" ya no adivina con las ventas de ML: muestra sólo lo del último mes cerrado (lo que creció CYC) y, si el mes no se cerró, dice que sale al cerrarlo'}]},
   {v:'27.80',f:'29/10',h:'01:28',c:[{n:1,t:'💸 "Cuánto cobrar": un mes cerrado antes de terminar (octubre) ya muestra lo del cierre'}]},
@@ -4642,7 +4643,8 @@ function _cobroCrec(ym){
   const retiro=retCargado?Number(rr):retiroDefMes(ym,0);
   const cc=(state.cobro_corr||{})[ym]||{};const corr=Number(cc.ars)||0;
   const base=crecio+retiro-corr;
-  const porSocio=base>0?Math.round(base/3/1000)*1000:0;
+  // Redondo para abajo, de a $100.000 (29/10/2026, él: "1.699 → 1.6m"): lo que sobra queda en CYC y entra en el crecimiento del mes que viene.
+  const porSocio=base>0?Math.floor(base/3/100000)*100000:0;
   return{ym,crecio,crecioUSD:Number(B.total)-Number(A.total),tc,retiro,retCargado,corr,corrNota:cc.nota||'',base,porSocio};
 }
 function renderCobroCrec(){
