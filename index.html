@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.01';
+const APP_VERSION='28.02';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.02',f:'29/10',h:'17:55',c:[{n:2,t:'📥 Lo que nos deben: Mercadería Perfumería y Deuda Perfumería quedan juntas en una tarjeta PERFUMERÍA (afuera la ganancia en pesos y el total); adentro, Mercadería y MercadoPago.'}]},
   {v:'28.01',f:'29/10',h:'17:40',c:[{n:1,t:'📥 Lo que nos deben: al lado del % de ganancia de cada deuda va la ganancia en pesos en verde (+$X).'}]},
   {v:'28.00',f:'29/10',h:'17:25',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado muestra sólo el nombre; tocándolo se abre ahí mismo el detalle (nombre entero, cuánto paga, costo, ganancia y la nota).'}]},
   {v:'27.99',f:'29/10',h:'17:05',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado ocupa el mismo lugar: fecha, producto (cortado si es largo), perfumería, total y ganancia, y el botón Pagó, todo en columnas fijas.'}]},
@@ -7202,7 +7203,25 @@ function renderCuotas(){
   const act=L.filter(d=>!d.fin||cuotaFija(d)).sort((a,b)=>(cuotaFija(b)-cuotaFija(a))||(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0)),pag=L.filter(d=>d.fin&&!cuotaFija(d));
   const pp=Math.max(1,Math.ceil(pag.length/CUOTA_POR_PAG)),pg=Math.min(pp,Math.max(1,window._cuotaPagPag||1));
   const navP=pp>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${Array.from({length:pp},(_,i)=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${i+1===pg?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="window._cuotaPagPag=${i+1};renderCuotas()">${i+1}</button>`).join('')}</div>`:'';
-  el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+act.map(fila).join('')+'</div>'
+  // 🛍️ UNA SOLA TARJETA "PERFUMERÍA" (29/10/2026, él: "unificar en PERFUMERÍA. en la tarjeta antes de clickear que muestre sólo los pesos de
+  // ganancia. adentro que haya dos: Mercadería (ahora Mercadería Perfumería) y MercadoPago (ahora Deuda Perfumería)"): sólo se juntan a la vista;
+  // las dos deudas siguen guardadas aparte (el robot las nombra igual que antes en `debenmov`).
+  const _nP=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const _pM=act.find(d=>/perfumeria/.test(_nP(d.nom))&&/mercader/.test(_nP(d.nom))),_pD=act.find(d=>/perfumeria/.test(_nP(d.nom))&&/deuda/.test(_nP(d.nom)));
+  const _perfG=()=>{const ab=window._cuotaAbierta==='__perf'||(_pM&&window._cuotaAbierta===_pM.id)||(_pD&&window._cuotaAbierta===_pD.id);
+    const gan=[_pM,_pD].filter(Boolean).reduce((t,d)=>t+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0)+(Number(d.costo)>0?d.monto-Number(d.costo):0),0);
+    const tot=[_pM,_pD].filter(Boolean).reduce((t,d)=>t+(Number(d.resta)||0),0);
+    return `<div style="border:1px solid ${ab?'var(--border2)':'var(--border)'};border-radius:10px;background:var(--surface)">
+      <div onclick="window._cuotaAbierta=window._cuotaAbierta==='__perf'?null:'__perf';window._cuotaPag=1;renderCuotas()" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <b style="flex:1;min-width:0;font-size:.8rem">${ab?'▾':'▸'} 🛍️ PERFUMERÍA</b>
+        <span style="font-size:.7rem;font-weight:700;color:${gan>=0?'var(--green)':'var(--red)'};white-space:nowrap" title="Ganancia de lo dejado con costo cargado">${gan>=0?'+':'−'}${_pesos(Math.abs(gan))}</span>
+        <b style="font-size:.85rem;white-space:nowrap;font-family:'DM Mono',monospace">${_pesos(tot)}</b></div>
+      ${ab?`<div style="padding:0 8px 8px;display:flex;flex-direction:column;gap:6px">${[_pM&&{...d0(_pM),nom:'Mercadería'},_pD&&{...d0(_pD),nom:'MercadoPago'}].filter(Boolean).map(fila).join('')}</div>`:''}</div>`;};
+  const d0=d=>d;
+  window._cuotaPerfIds=[_pM,_pD].filter(Boolean).map(d=>d.id);
+  const _lista=act.filter(d=>d!==_pM&&d!==_pD);
+  const _filas=(_pM||_pD?[_perfG()]:[]).concat(_lista.map(fila));
+  el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+_filas.join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`
     +(pag.length?`<div style="font-size:.74rem;font-weight:700;color:var(--green);margin:16px 0 6px">✅ Pagadas (${pag.length})${pp>1?` <span style="font-weight:400;color:var(--muted);font-size:.66rem">· página ${pg} de ${pp}</span>`:''}</div>
       <div style="display:flex;flex-direction:column;gap:6px">${pag.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(fila).join('')}</div>${navP}`:'');
@@ -7210,7 +7229,7 @@ function renderCuotas(){
 // EL DESPLEGABLE DE CADA DEUDA (28/10/2026, él: "al clickear cualquier tarjeta quiero que se abra un desplegable con el detalle de la deuda e
 // historia de todo… cada vez que se sume deuda aparezca en verde y cuando se resta rojo… máximo 6, el resto por página 1, 2, 3").
 const CUOTA_POR_PAG=6;
-function cuotaToggle(id){window._cuotaAbierta=window._cuotaAbierta===id?null:id;window._cuotaPag=1;renderCuotas();}
+function cuotaToggle(id){window._cuotaAbierta=window._cuotaAbierta===id?((window._cuotaPerfIds||[]).includes(id)?'__perf':null):id;window._cuotaPag=1;renderCuotas();}   // cerrar una de adentro de PERFUMERÍA deja la tarjeta abierta
 function cuotaPagina(n){window._cuotaPag=n;renderCuotas();}
 function cuotaDetalleHTML(d){
   const H=cuotaHistoria(d),pags=Math.max(1,Math.ceil(H.length/CUOTA_POR_PAG)),pg=Math.min(pags,Math.max(1,window._cuotaPag||1));
