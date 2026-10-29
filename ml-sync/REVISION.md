@@ -865,6 +865,10 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   que una venta real a la prueba (precio nuevo) siga contando (Naipes Casino 28/10 09:04 a $7.290).
 
 ## 2 · PLATA (martes)
+### 📸 El botón de cerrar el mes dice si ya está cerrado (29/10/2026, v27.76; él: *"ya cerré octubre y parece que no se dio cuenta la app. dice que todavía no cerré el mes"*)
+- **Qué es:** el cierre de octubre estaba guardado (`cyc/snapshots/2026_10`, `cierrevs` lo ve), pero el botón seguía diciendo "📸 Cerrar Octubre 2026". Ahora `_btnCerrarTxt` dice "✅ Octubre 2026 ya está cerrado" y `saveSnapshot` deja el cierre en `state.snapshots` en el acto y redibuja el botón y el aviso de Inicio.
+- **Qué chequear:** con el mes cerrado, el botón en ✅ y el aviso rojo de Inicio apagado; el 1/11 el botón vuelve a "Cerrar Noviembre".
+
 ### 📥 "Lo que nos deben" = la suma de una lista de deudas (28/10/2026, v27.47; él: *"que deben a cyc esté sólo en la parte de ahí arriba… y que en la parte de abajo estén las cosas que la compongan… agregar una deuda a cyc, nombre y monto y si es con cuotas o no"*)
 - **Qué es:** la casilla a mano de abajo se sacó; en la tarjeta de arriba va la lista (nombre, monto en pesos, con o sin cuotas, 💵 Pagó / Pagó una cuota, ↩︎, 🗑️) y ➕ Agregar deuda a CYC. `deben_cyc` lo escribe la web = lo que falta cobrar ÷ dólar de hoy (patrimonio y cierres sin cambios). Lo escrito a mano (US$ 2.380) pasó UNA vez a la deuda `m_manual` en pesos al dólar de ese momento (`_migrado`). Se arregló que `cyc/debencuotas` no se leía al abrir la web (v27.46 mostraba la lista vacía al recargar). `debencyc` del robot: `+N` agrega una deuda a la lista; `-N`/`N` se niegan (los pagos van en la web).
 - **Dónde vive:** `index.html` (`cuotasSync`, `renderCuotas`, `cuotasGuardar`, tarjeta `bk_deben`), `ml-sync/sync.mjs` (`debencyc`).
@@ -941,6 +945,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
 ## 3 · MERCADERÍA (miércoles)
+### 📦 Caja que usa todo el cupo de Full = MANDALA YA (29/10/2026, v27.76; él con Ayelen: *"¿por qué dice que gano 400.000 al vender y me dice que espere? ¿tiene sentido?"*)
+- **Qué es:** la caja de Ayelen iba al 5% del lugar pero usaba los 24 del cupo que le quedaba, y el cartel decía "Podés esperar y juntar más". Esperar no la llena: lo vendido no devuelve cupo. `convieneCaja` marca `topeCupo` (lo chico o lo grande de la caja ≥ `cupoRestante`) → cuenta como llena, sin costo de "a medias", y el cartel lo dice.
+- **Qué chequear:** con cupo libre de sobra el veredicto sigue igual que antes; con la caja en el tope del cupo, verde.
+
 ### 📷 Listas: foto del proveedor (28/10/2026, pedido suyo por el chat del Once)
 - **Qué es:** `lista:` acepta `<producto>=<pesos>@<código>@<https://foto>` (o `@@<https://foto>` sin código) y la guarda en `f`; la tarjeta de la lista la muestra al lado de la de ML. PROMPT_ONCE lo explica; "precio mayorista" sin aclarar IVA se carga tal cual y se anota.
 - **Dónde vive:** `lista` (sync.mjs) · tarjeta de 📋 Listas (`fP` en index.html) · `ml-sync/PROMPT_ONCE.md`.
