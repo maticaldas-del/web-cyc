@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.98';
+const APP_VERSION='27.99';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.99',f:'29/10',h:'17:05',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado ocupa el mismo lugar: fecha, producto (cortado si es largo), perfumería, total y ganancia, y el botón Pagó, todo en columnas fijas.'}]},
   {v:'27.98',f:'29/10',h:'16:55',c:[{n:1,t:'📥 Mercadería Perfumería: en cada producto dejado, el total a cobrar en blanco y negrita y abajo la ganancia en verde con su % sobre el costo (+$4.716 · 25%).'}]},
   {v:'27.97',f:'29/10',h:'16:45',c:[{n:2,t:'📥 Lo que nos deben: el % de ganancia va sobre el costo (lo de la perfumería dice 25%, no 20%). En Mercadería Perfumería, arriba se ve la ganancia en pesos y adentro cuánto de la deuda no tiene costo cargado.'}]},
   {v:'27.96',f:'29/10',h:'16:30',c:[{n:2,t:'🔍 Revisiones: etapa nueva 9 · Local (cada 7 días): perfumerías, Oficina Local, deudas y pedidos del local, y que nada se mezcle con ML.'}]},
@@ -7124,7 +7125,7 @@ function cuotaHistoria(d){const H=[];
   // Mercadería dejada en una perfumería (28/10/2026): el renglón dice qué, cuántas y dónde, y la ganancia en verde (sólo se ve acá).
   const LOC={soares:'Soares',sarmiento:'Sarmiento',ceballos:'Ceballos'};
   Object.entries(d.movs||{}).forEach(([k,v])=>{if(!v||!Number(v.m))return;const pr=v.prodNom?`🛍️ ${Number(v.u)>1?v.u+' × ':''}${v.prodNom}${v.local?' · en '+(LOC[v.local]||v.local):''}`:'';
-    H.push({f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:[pr,v.nota].filter(Boolean).join(' · ')||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k,prod:!!v.prodNom&&Number(v.m)>0,pagado:v.pagado||null,gan:Number.isFinite(Number(v.gan))&&v.gan!==undefined&&v.gan!==null?Number(v.gan):null,costoU:Number(v.costoU)||null,pu:Number(v.pu)||null});});
+    H.push({nom:v.prodNom||'',u:Number(v.u)||0,loc:v.prodNom?(LOC[v.local]||v.local||''):'',nota:v.nota||'',f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:[pr,v.nota].filter(Boolean).join(' · ')||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k,prod:!!v.prodNom&&Number(v.m)>0,pagado:v.pagado||null,gan:Number.isFinite(Number(v.gan))&&v.gan!==undefined&&v.gan!==null?Number(v.gan):null,costoU:Number(v.costoU)||null,pu:Number(v.pu)||null});});
   return H.sort((a,b)=>String(b.f).localeCompare(String(a.f))||b.ts-a.ts);}
 let _debenMig=false;
 async function cuotasSync(){
@@ -7212,7 +7213,17 @@ function cuotaPagina(n){window._cuotaPag=n;renderCuotas();}
 function cuotaDetalleHTML(d){
   const H=cuotaHistoria(d),pags=Math.max(1,Math.ceil(H.length/CUOTA_POR_PAG)),pg=Math.min(pags,Math.max(1,window._cuotaPag||1));
   const sum=H.filter(x=>x.m>0).reduce((s,x)=>s+x.m,0),res=H.filter(x=>x.m<0).reduce((s,x)=>s-x.m,0);
-  const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:5px ${x.prod&&x.pagado?'6px':'0'};border-top:1px solid var(--border);font-size:.7rem;${x.prod&&x.pagado?'background:rgba(34,197,94,.09);border-radius:6px':''}">
+  // MISMO TAMAÑO EN TODOS (29/10/2026, él: "que los rectángulos sean del mismo tamaño todos, si es necesario cortar el nombre o el detalle… el
+  // nombre ocupe siempre el mismo lugar, nombre de perfumería siempre en el mismo lugar"): lo dejado en una perfumería va en columnas fijas
+  // (fecha · producto en un renglón cortado con … · perfumería · total y ganancia · botón) y el detalle (paga, costo, nota) en un renglón cortado.
+  const _cel='white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  const _filaProd=x=>`<div style="display:grid;grid-template-columns:3em minmax(0,1fr) 5.7em 8.2em 4.7em;align-items:center;column-gap:6px;height:46px;padding:0 6px;border-radius:6px;border-top:1px solid var(--border);font-size:.7rem;${x.pagado?'background:rgba(34,197,94,.09)':''}">
+      <span style="color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
+      <span style="min-width:0;line-height:1.3" title="${_escC((x.u>1?x.u+' × ':'')+x.nom+(x.nota?' · '+x.nota:''))}"><div style="${_cel}">🛍️ ${x.u>1?'<b>'+x.u+' ×</b> ':''}${_escC(x.nom)}</div><div style="${_cel};font-size:.62rem;color:var(--muted)">${x.gan!=null?`paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u`:'sin costo cargado'}${x.nota?' · '+_escC(x.nota):''}</div></span>
+      <span style="${_cel};color:var(--text)">${_escC(x.loc||'—')}</span>
+      <span style="text-align:right;font-family:'DM Mono',monospace;line-height:1.25;white-space:nowrap"><b style="color:var(--text)">${_pesos(x.m)}</b><br><span style="font-size:.6rem;color:${x.gan==null?'var(--muted)':x.gan>=0?'var(--green)':'var(--red)'}">${x.gan==null?'—':(x.gan>=0?'+':'−')+_pesos(Math.abs(x.gan))+(x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':'')}</span></span>
+      <span style="text-align:right">${x.pagado?`<span style="font-size:.62rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.62rem;padding:2px 8px;white-space:nowrap" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="La perfumería pagó este producto">✅ Pagó</button>`}</span></div>`;
+  const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>x.prod?_filaProd(x):`<div style="display:flex;align-items:center;gap:10px;padding:5px ${x.prod&&x.pagado?'6px':'0'};border-top:1px solid var(--border);font-size:.7rem;${x.prod&&x.pagado?'background:rgba(34,197,94,.09);border-radius:6px':''}">
       <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
       <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}${x.gan!=null?`<div style="font-size:.64rem;color:var(--muted)">paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${x.gan>=0?'var(--green)':'var(--red)'}">${_pesos(x.gan)}</b></div>`:''}</span>
       ${x.gan!=null&&x.m>0?`<span style="white-space:nowrap;text-align:right;font-family:'DM Mono',monospace;line-height:1.25"><b style="color:var(--text)">${_pesos(x.m)}</b><br><span style="font-size:.64rem;color:${x.gan>=0?'var(--green)':'var(--red)'}">${x.gan>=0?'+':'−'}${_pesos(Math.abs(x.gan))}${x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':''}</span></span>`:`<b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>`}

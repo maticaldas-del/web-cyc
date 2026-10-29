@@ -4047,3 +4047,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **Dónde vive:** `index.html` (tarjeta de deuda: `pct`, `pctTxt`, renglón 🛍️) · `sync.mjs` (`debenmov`).
 - **Qué chequear:** Mercadería Perfumería arriba "gan. $7.916" y adentro "25% sobre el costo · $1.613.400 sin costo cargado".
 - 29/10 (v27.98, él: *"el total a cobrar en blanco tipo negrita, que diga +x en verde la ganancia y el % de ganancia al producto"*): cada producto dejado muestra el total en blanco/negrita y debajo "+$ganancia · %" en verde (sobre el costo).
+- 29/10 (v27.99, él: *"que los rectángulos sean del mismo tamaño todos… el nombre ocupe siempre el mismo lugar, nombre de perfumería siempre en el mismo lugar"*): cada producto dejado es una fila de alto fijo (46 px) en columnas fijas (`_filaProd`: fecha · producto y detalle cortados con … · perfumería · total + ganancia · Pagó). Dibujado a 390 y 1200 px: nada se corre ni se sale.
