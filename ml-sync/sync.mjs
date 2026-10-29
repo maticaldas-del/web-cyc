@@ -47238,7 +47238,9 @@ async function main() {
       const lineaDe = async (mla) => { if (!(mla in LIN)) { try { LIN[mla] = (await db.get('mlapi/linea/' + mla)) || {}; } catch { LIN[mla] = null; } } return LIN[mla]; };
       const [nsP, rvP, apP, nrP, rxP, esP, ccP, ofP, nhP] = await Promise.all(['cyc/nosubir', 'cyc/rescateventa', 'cyc/autoprecio', 'cyc/norepo', 'cyc/repoextra', 'cyc/estrategia', 'cyc/claudecambios', 'cyc/ofientro', 'cyc/nosubirhist'].map((k) => db.get(k).catch(() => FALLO)));
       if ([nsP, rvP, apP, nrP, rxP, esP, ccP, ofP, nhP].includes(FALLO)) { console.log('⚠️ NO LEÍ: cyc/nosubir, nosubirhist, rescateventa, autoprecio, norepo, repoextra, estrategia, claudecambios u ofientro — no armo la lista a medias'); return; }
-      const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, nosubirhist: nhP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: k180, estrat: esP || {} });
+      // Revisión etapa 3, 29/10/2026: los remates se miran en los 365 días que usa el ritmo a precio normal (`VN`, `NOR`), no sólo en 180: un
+      // remate de hace 7-12 meses contaba como demanda en lo agotado hace mucho (ventana de 365). La noche (`linea`) ya los mira todos.
+      const clP = await clasificarRemates(db, VP, { nosubir: nsP || {}, nosubirhist: nhP || {}, rescv: rvP || {}, autoprecio: apP || {}, lineaDe, desde: dk(364), estrat: esP || {} });
       // EL MISMO FILTRO QUE LA WEB (etapa 3, 20/10/2026): sólo se saltean las canceladas de verdad (`_esCancelada`: cancelada o
       // devolución); un RECLAMO cuenta como venta, igual que en Pedidos de la web. Y `ventasDesde` (la ficha se reusó para otro
       // producto: las ventas de antes son del anterior). Antes se salteaba toda `cancelada` y no se miraba `ventasDesde`.
@@ -47259,21 +47261,27 @@ async function main() {
       }
       if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
       const ent = {};   // lo que ML ya dio de alta de cajas abiertas
-      for (const [ck, x] of Object.entries(CE)) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
+      for (const [ck, x] of Object.entries(CE)) for (const it of (Array.isArray(x && x.items) ? x.items : Object.values((x && x.items) || {}))) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
       const cam = {};   // pid -> {tot, v:{}, cta:{<cuenta>:u}, vc:{<color>:{<cuenta>:u}}}
       // Revisión etapa 3, 29/10/2026: también POR CUENTA (`cta`, `vc`): `decide_cajas.py` mira el camino de la cuenta que recibe
       // (`camcta [..]`); antes sólo tenía el total de las 4.
-      for (const [eid, env] of Object.entries(ENV)) (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).forEach((c, ci) => {
+      // Revisión etapa 3, 29/10/2026 (la misma regla que `enTransito`/`cajaEntradoDe` de la web): sólo los envíos de una de las 4 cuentas, y lo
+      // que ML ya dio de alta se resta sólo si el seguimiento del registro es el de ESTA caja (si la caja cambió de lugar en la lista, el
+      // registro es de otra: se cuenta entera). Antes el robot restaba lo de otra caja y contaba envíos sin cuenta: Pedidos (y el `cub` de la
+      // decisión) veían otro camino que la web para el mismo producto.
+      for (const [eid, env] of Object.entries(ENV)) { if (!env || !C4.includes(String(env.cuenta || ''))) continue;
+        (Array.isArray(env.cajasDet) ? env.cajasDet : []).forEach((c, ci) => {
         if (!c || c.recibida) return;
+        const ceC = CE[`${eid}__${ci}`], mismoSeg = !!ceC && String(ceC.track || '') === String(c.track || '');
         for (const it of (c.items || [])) {
           if (!it || !it.prodId) continue;
-          const ya = ent[`${eid}__${ci}|${it.prodId}|${it.variante || ''}`] || 0;
+          const ya = mismoSeg ? (ent[`${eid}__${ci}|${it.prodId}|${it.variante || ''}`] || 0) : 0;
           const u = Math.max(0, (Number(it.u) || 0) - ya); const o = cam[it.prodId] || (cam[it.prodId] = { tot: 0, v: {}, cta: {}, vc: {} });
           o.tot += u; if (it.variante) o.v[it.variante] = (o.v[it.variante] || 0) + u;
           const cE = String((env && env.cuenta) || '');
           if (cE) { o.cta[cE] = (o.cta[cE] || 0) + u; if (it.variante) { const w = o.vc[it.variante] || (o.vc[it.variante] = {}); w[cE] = (w[cE] || 0) + u; } }
         }
-      });
+      }); }
       const viaPy = {}; for (const c of Object.values(CPY)) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) viaPy[it.prodId] = (viaPy[it.prodId] || 0) + (Number(it.u) || 0);
       // Lo de Paraguay que LLEGÓ y todavía no se contó en la oficina (la misma cuenta que `pyRepoSinContar` de la web, 7 días).
       for (const c of Object.values(CPY)) {
@@ -47425,7 +47433,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -47439,8 +47447,19 @@ async function main() {
           const mo = (((CD[p.id] || {}).mano) || {})[sid(String(va).toLowerCase())];
           const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
           if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
-          const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
+          // Revisión etapa 3, 29/10/2026: los cambios de precio de una publicación SIN color (la que tiene todos los colores adentro) también
+          // son de este color. Antes no iban a ningún color: la suba por escasez de esa publicación no llegaba y `decide_pedidos.py` tomaba el
+          // ritmo frenado por la suba como el normal (Sábanas con colores adentro: 16+16 en vez de 30+30).
+          const camV = cambiosDe(mlasP.filter(([mla, e]) => { const cM = colorMla(mla, e); return cM === va || !cM; }).map(([mla]) => mla)), hV = histD(sv);
+          // Revisión etapa 3, 29/10/2026: lo que deja ESTE color (`cyc/netopub` de su publicación; sin publicación propia, la que tiene los
+          // colores adentro), para que `decide_pedidos.py` juzgue el 35% color por color: con el del producto (la publicación que MENOS deja)
+          // un color en 📦 sobra dejaba a todos los otros sin reponer. Elige como el producto (`_netoGana`: activa primero, la que menos deja).
+          const npC = (() => { const de = (f) => mlasP.filter(([mla, e]) => !e.gemelaDe && !['closed', 'inactive'].includes(String(e.status || '')) && f(colorMla(mla, e)))
+            .map(([mla]) => ({ ...(NPp[mla] || {}), mla })).filter((r) => Number(r.neto) > 0 && (!r.pid || r.pid === p.id));
+            let xs = de((cM) => cM === va); if (!xs.length) xs = de((cM) => !cM);
+            let win = null; for (const r of xs) { const c = { ...r, neto: Number(r.neto), activa: !!r.activa }; if (_netoGana(c, win)) win = c; } return win; })();
+          const netoCTxt = npC ? ` · netoC $${Math.round(npC.neto)} precioC $${Math.round(Number(npC.precio) || 0)} envC $${Math.round(Number(npC.envio) || 0)}` : '';
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -47510,7 +47529,15 @@ async function main() {
           const kp = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < dk(0) && lin[k] && Number(lin[k].p) > 0).sort(); if (!kp.length) continue;
           const pH = Number(lin[kp[kp.length - 1]].p);
           for (let i = kp.length - 1; i > 0; i--) if (Math.abs(Number(lin[kp[i - 1]].p) - pH) > pH * 0.02) { if (kp[i] > kCam) kCam = kp[i]; break; } }
-        let hoyR = ''; if (kCam) { let d = 0, u = 0; for (const k of dias) if (k >= kCam) { d++; u += uD[k] || 0; } hoyR = ` · HOY ${u}/${d}`; }
+        // Revisión etapa 3, 29/10/2026: la ventana del precio de hoy es como mucho de 60 días (desde el más nuevo entre el último cambio y hace
+        // 60 días) y sale también lo de los últimos 30 a ese precio (`u30/d30`, el empujón de 30 días del NOR). Sin tope, un precio quieto hace
+        // 5 meses promediaba 5 meses y tapaba que se aceleró (195 en 300 días → pedía 10 de algo que vende 60 por mes). `@w` = los días de
+        // calendario de la ventana (con 1-2 ventas `decide_pedidos.py` divide por ahí, no por los días con stock).
+        // Formato: ` · HOY u/d@w u30/d30` (`decide_cajas.py` lee el primer `u/d`, como antes).
+        let hoyR = ''; if (kCam) { const kH = kCam > k60 ? kCam : k60, kH30 = kCam > k30 ? kCam : k30; let d = 0, u = 0, d30 = 0, u30 = 0;
+          for (const k of dias) { if (k >= kH) { d++; u += uD[k] || 0; } if (k >= kH30) { d30++; u30 += uD[k] || 0; } }
+          const wH = Math.max(1, Math.round((mediodia(dk(0)) - mediodia(kH)) / 864e5) + 1);
+          hoyR = ` · HOY ${u}/${d}@${wH} ${u30}/${d30}`; }
         return ` · NOR ${a30.u}/${a30.d} ${b.u}/${b.d}@${W}${hoyR}`;
       };
       for (const p of [...grupos.bsas, ...grupos.py, ...grupos.paulvic]) {
@@ -48191,7 +48218,12 @@ async function main() {
             if (!Number.isFinite(val) || val < 0 || (que === 'venta' && !(val > 0)) || String(mot[0] || '').trim() === '') { malos.push(x + ' (falta el número)'); continue; }
             t = mot.slice(1).join('|').trim(); if (!t) { malos.push(x + ' (falta el motivo)'); continue; }
           }
-          notasCtx.push({ tipo, q: resto.trim(), vari, cta, t, raw: x, dec: que, val }); continue;
+          // Revisión etapa 3, 29/10/2026: `ped:<id>=u|N|motivo|cub=<n>` (lo escribe `decide_pedidos.py` en lo que no tiene colores) = lo que
+          // la cuenta YA restó fuera de Full (oficina + camino a Full + lo que viaja de Paraguay, del Paulvic o de una lista). Se guarda
+          // aparte (`cub`) y no va al motivo: la web resta de lo decidido sólo lo que ENTRÓ después (antes restaba todo otra vez y lo dejaba en 0).
+          let cub = null;
+          if (tipo === 'ped' && que === 'u') { const mC = t.match(/\s*\|\s*cub=(\d+)\s*$/i); if (mC) { cub = Number(mC[1]); t = t.slice(0, mC.index).trim(); } }
+          notasCtx.push({ tipo, q: resto.trim(), vari, cta, t, raw: x, dec: que, val, cub }); continue;
         }
         const mpc = String(izq).match(/^\s*(ped|caja):(.+?)\s*=\s*nota\s*$/i);
         if (mpc) {
@@ -48305,7 +48337,13 @@ async function main() {
                   const pre = `${p.id}__${ctaL}`;
                   for (const k of Object.keys(_cajaDecViejas)) if ((k === pre || k.startsWith(pre + '__v__')) && k !== `${p.id}__${ctaL}${vk}`) await db.set('cyc/claudedecide/caja/' + k, null);
                 }
+                // Revisión etapa 3, 29/10/2026: el precio para el máximo de compra de cada color (`pvVars/<color>`) se reescribe entero: la
+                // primera línea `venta` de un producto en esta corrida borra los de antes, así un color que ya no trae precio (su última venta
+                // salió de los 180 días, o fue de escasez/sobra/gemela) no se queda con uno viejo que pisa el del producto en `maxCompraDe`.
+                if (n.tipo === 'ped' && n.dec === 'venta' && !_limpiosDec.has('v' + p.id)) { _limpiosDec.add('v' + p.id); await db.set(base + '/pvVars', null); await db.set(base + '/motPvVars', null); }
                 await db.set(base + '/' + leaf, n.dec === 'auto' ? null : n.val);
+                // `cub` (ver arriba): una decisión sin colores sin `|cub=` (a mano) lo borra, para no usar uno de otra decisión.
+                if (n.tipo === 'ped' && n.dec === 'u' && !vsk) await db.set(base + '/cub', n.cub != null ? n.cub : null);
                 // 6.P2 (etapa 6, eligió la a): si `decide_cajas.py` recortó esta caja por el cupo, el motivo trae "✂️ … (faltan N)" y
                 // queda `cupoCorto` = {falta, ts}: esas N u. de la oficina no llegan a Full, así que `escasez` no las cuenta como
                 // reposición ni la `planilla` como sobra. Una caja sin recorte lo borra (la decisión nueva manda).

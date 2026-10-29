@@ -3189,7 +3189,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.89';
+const APP_VERSION='27.90';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3202,6 +3202,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.90',f:'29/10',h:'14:23',c:[{n:3,t:'🔍 Revisión de Mercadería: Pedidos ya no resta dos veces la oficina y lo que viaja (borraba pedidos que hacían falta) · la caja que se pasa del cupo dice "Se pasa del cupo" en vez de MANDALA YA · un envío pausado ya no se marca llegado · ✅ Etiquetadas pregunta cuántas · las listas viejas ya no cuentan como que dan · el riesgo de un color en 0 no lo tapa otro color · rojo de Pedidos = 14 días o menos'}]},
   {v:'27.89',f:'29/10',h:'13:16',c:[{n:2,t:'🔎 Pedidos: buscador a la derecha de Listas que busca en todo Bs As (De siempre y las listas de Tito) y te lleva a la solapa donde está'}]},
   {v:'27.88',f:'29/10',h:'13:10',c:[{n:2,t:'🧊 Un mes cerrado queda congelado: el costo de cada venta es el que tenía al cerrarlo (un reclamo nuevo o un cambio de envío ya no cambian octubre)'}]},
   {v:'27.87',f:'29/10',h:'13:09',c:[{n:2,t:'📊 Resumen: "Valor de Stock" ahora es el mismo número que el "Stock total" del Arqueo (suma Oficina CYC y vendedores, que antes faltaban)'}]},
@@ -5279,6 +5280,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:3,t:'29/10 · 8 decisiones de Mercadería',que:'renombrar fichas viejas al vincular · sin etiqueta por cuenta · Tenders y su caja · envío pausado y el cupo · costos antes del ticket · recompra más barata · lo pagado que no vino · precios de proveedores en el registro',pedi:'resolvamos las de Mercadería'},
   {etapa:2,t:'27/10 · 6 decisiones de Plata',que:'saldos de MP en el registro público · congelar el mes cobrado · cuándo cargar el retiro · ventas sin factura después de 45 días · stock de Full no disponible · Valor de Stock de Resumen vs Arqueo',pedi:'resolvamos las de Plata'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
 ];
@@ -5302,7 +5304,7 @@ const REV_HIST={
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
      {f:'2026-10-20',t:'Cerrada: él eligió 1b 2b 3a 4a 5a 6a 7a 8a (listas como deuda al llegar, recargo contra la web, filas de MP sin venta = ya en la cuenta). v25.33.'}],
-  3:[{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
+  3:[{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'},
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
@@ -6441,7 +6443,9 @@ function paraguayHtml(p){
   let mgRepo=null,_rpP=0,_rpF='';
   try{const _mx=maxCompraDe(p,PY_PROB_PISO);const _m=margenSiComproPY(_mx,nu);if(_m!=null){mgRepo={margen:_m};_rpP=_mx.P;_rpF=_mx.fuente;}}catch(e){}
   if(!mgRepo&&puesto>0)mgRepo=margenMLDe({...p,costUSD:puesto,costFullUSD:null,shipUSD:(p.shipUSD!=null?p.shipUSD:0)});
-  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=25?'var(--green)':m.margen>=PY_PROB_PISO?'var(--amber)':'var(--red)');
+  // Revisión etapa 3, 29/10/2026: verde desde el 35% (`PY_PROB_PISO`), ámbar 25-34%, rojo abajo. Antes verde desde 25% (y el ámbar no
+  // salía nunca): un 30% de reponer salía en verde al lado de "A este precio no conviene comprarlo".
+  const pintar=(m)=>(!m||m.margen==null)?'var(--muted)':(m.margen>=PY_PROB_PISO?'var(--green)':m.margen>=25?'var(--amber)':'var(--red)');
   return `<div style="display:flex;flex-direction:column;gap:4px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:8px 12px">
     <div style="font-size:.6rem;color:#f87171;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">🇵🇾 Paraguay <span style="text-transform:none;letter-spacing:0;font-size:.92em;color:var(--muted)">· mirado ${cuando}</span></div>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
@@ -9630,7 +9634,8 @@ function pedSemDe(tot,dias,r){
   if(r&&r.inf)return 'rojo';
   const d=r?r.d:PED_DIAS_ROJO;
   if(dias==null)return 'amarillo';
-  return dias<d?'rojo':dias<d+PED_NARANJA_MARGEN?'naranja':'amarillo';
+  // Revisión etapa 3, 29/10/2026: rojo = alcanza lo que tarda reponer O MENOS (CLAUDE.md: "Rojo de Pedidos = 14 días o menos"); antes 14 justos salía naranja.
+  return dias<=d?'rojo':dias<d+PED_NARANJA_MARGEN?'naranja':'amarillo';
 }
 let _pedRepoCur=null;
 let _pedRojoCur=null;   // el umbral del producto que se está dibujando (lo usa el semáforo de cada color)
@@ -16223,7 +16228,7 @@ async function syncPedidosAuto(){
     const coll=p.origen==='py'?'pedidos_py':'pedidos';
     const TARGET_DIAS_P=pedTargetDiasDe(p);   // 30 días, o 95 si el proveedor tarda 2 meses
     const hasVars=(p.variantes||[]).length>0;
-    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null,varSemDias=null,varSemCero=0;
+    let necesario,variantesNec,aComprarVar=null,varDiasCub=null,varCuenta=null,varDiasRiesgo=null,varSemDias=null,varSemCero=0,_varR=null;
     if(hasVars&&varSalesMap[p.id]){
       // calcular necesario por variante: stock real de esa variante vs target
       const normFactor=PED_MAX_DAYS/diasHistorial;
@@ -16286,6 +16291,7 @@ async function syncPedidosAuto(){
         const vComprar=Math.max(0,vFalta2-vCasa-vCam-vPv);
         return{v,vFalta:vFalta2,vComprar,vStock,vCasa,vCam,vPv,vLi,vHist,vTarget,vRate:vHist?(vTarget/TARGET_DIAS_P):_vRate};
       }).filter(x=>x.vFalta>0);
+      _varR=varDefs;   // para medir el riesgo color por color (revisión etapa 3, 29/10/2026, ver `diasTapaCasa`)
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // SEMÁFORO (06/10/2026): los días que cubre el color MÁS justo contando ML + casa + camino, y
       // cuántos colores que venden están en cero en todos lados.
@@ -16396,14 +16402,29 @@ async function syncPedidosAuto(){
           aComprar=vn.reduce((a,x)=>a+(x.q||0),0);
         }else if(_cl.u!=null&&(!hasVars||SOLO_CLAUDE)){aComprar=Math.max(0,(parseInt(_cl.u)||0)-_pyPost.reduce((a,it)=>a+(parseInt(it.u)||0),0));if(hasVars)variantesNec=null;}
         // LO QUE YA ESTÁ EN LA OFICINA O VIAJANDO A FULL TAMBIÉN CUBRE LO DECIDIDO (22/10/2026, él con el Mercedes Club Black: 1 u. en la
-        // oficina y yo pedía comprar 1: "si está en el envío hay que sacarlo, siempre que llegue a lo que me pedís vos"). Si oficina + camino
-        // a Full llegan a lo que decidí, no se compra nada; y si estaba cargado en el 🧾 Pedido de Paraguay, se saca de ahí (una vez).
-        if(_cl.u!=null&&!hasVars&&aComprar>0){const _cub=(enOficina||0)+transitoTotal(_trPed,p.id);
-          if(_cub>=aComprar){aComprar=0;_cubreEnvio=_cub;
-            if(p.origen==='py'&&(parseInt(((state.pyArmado||{})[p.id]||{}).u)||0)>0&&!(window._pyArmCubre||(window._pyArmCubre=new Set())).has(p.id)){window._pyArmCubre.add(p.id);
-              db.ref('cyc/py_armado/'+p.id).remove().then(()=>{delete state.pyArmado[p.id];toast(`🚚 ${p.name}: lo que hay en la oficina o viajando a Full ya cubre lo que pedía: lo saqué del pedido`,'info',6000);}).catch(()=>{});}}}
+        // oficina y yo pedía comprar 1: "si está en el envío hay que sacarlo, siempre que llegue a lo que me pedís vos"). Si estaba cargado en
+        // el 🧾 Pedido de Paraguay y ya no hace falta, se saca de ahí (una vez).
+        // Revisión etapa 3, 29/10/2026: la decisión de `decide_pedidos.py` YA resta la oficina, el camino a Full y lo que viaja (lo guarda en
+        // `cub`). Restarlo otra vez dejaba en 0 lo que de verdad faltaba ("Te pido 15" con 10 en la oficina y 5 en camino → 0, y el renglón
+        // desaparecía de Pedidos). Ahora se resta sólo lo que ENTRÓ DESPUÉS de decidir: (oficina + camino + lo que viaja) − lo pedido después
+        // de la decisión (eso ya lo descuentan "Ya lo pedí" y `_pyPost`) − `cub`. Sin `cub` (una decisión a mano o vieja) queda la regla de
+        // antes, pero sólo si entró mercadería a la oficina después de decidir (`cyc/ofientro`).
+        if(_cl.u!=null&&!hasVars&&aComprar>0){const _dts=Number(_cl.ts)||0;let _ent=0;
+          if(_cl.cub!=null&&isFinite(Number(_cl.cub))){let _post=0;
+            const _tsDe=(it,c)=>Number(it.ts||c.ts||Date.parse(String(c.fecha||'')+'T12:00:00-03:00'))||0;
+            for(const c of Object.values(state.compraspy||{})){if(!c||c.estado!=='camino')continue;
+              for(const it of (Array.isArray(c.items)?c.items:Object.values(c.items||{})))if(it&&it.prodId===p.id&&_tsDe(it,c)>_dts)_post+=parseInt(it.u)||0;}
+            for(const c of Object.values(state.comprasLista||{})){if(!c||c.estado!=='camino')continue;
+              for(const it of (Array.isArray(c.items)?c.items:[]))if(it&&it.prodId===p.id&&_tsDe(it,c)>_dts)_post+=parseInt(it.u)||0;}
+            for(const c of Object.values(state.pedidospv||{})){if(!c||c.estado!=='camino'||c.prodId!==p.id||!(_tsDe({},c)>_dts))continue;
+              for(const it of (c.items||[]))_post+=parseInt(it&&it.u)||0;}
+            _ent=Math.max(0,(enOficina||0)+enCamino-_post-Number(_cl.cub));}
+          else if(Number((state.ofientro||{})[p.id])>_dts){const _cub=(enOficina||0)+transitoTotal(_trPed,p.id);if(_cub>=aComprar)_ent=_cub;}
+          if(_ent>0){aComprar=Math.max(0,aComprar-_ent);_cubreEnvio=_ent;
+            if(aComprar===0&&p.origen==='py'&&(parseInt(((state.pyArmado||{})[p.id]||{}).u)||0)>0&&!(window._pyArmCubre||(window._pyArmCubre=new Set())).has(p.id)){window._pyArmCubre.add(p.id);
+              db.ref('cyc/py_armado/'+p.id).remove().then(()=>{delete state.pyArmado[p.id];toast(`🚚 ${p.name}: lo que entró a la oficina o viaja a Full después de decidirlo ya cubre lo que pedía: lo saqué del pedido`,'info',6000);}).catch(()=>{});}}}
         if(aComprar!==formU||_cl.u!=null||_cl.vars||_cl.mano){
-          clInfo={u:aComprar,formU,mot:String(_cl.mot||'')+(_cubreEnvio?` · 🚚 Ahora no se compra: entre la oficina y lo que viaja a Full hay ${_cubreEnvio} u., que cubren lo que pedía.`:''),ts:_cl.ts||null};
+          clInfo={u:aComprar,formU,mot:String(_cl.mot||'')+(_cubreEnvio?(aComprar===0?` · 🚚 Ahora no se compra: después de decidirlo entraron ${_cubreEnvio} u. (oficina o camino a Full), que cubren lo que pedía.`:` · 🚚 Después de decidirlo entraron ${_cubreEnvio} u. (oficina o camino a Full): ahora se compran ${aComprar}.`):''),ts:_cl.ts||null};
           if(_cl.motPv)clInfo.motPv=String(_cl.motPv).slice(0,2500);   // por qué ese precio para el máximo de compra
           if(hasVars&&_cl.motVars&&typeof _cl.motVars==='object'){   // el motivo de cada color (decidido color por color)
             const mv={};for(const v of (p.variantes||[])){const k=sid(String(v).toLowerCase());if(_cl.motVars[k])mv[k]={v,t:String(_cl.motVars[k]).slice(0,2500),q:(_cl.vars&&k in _cl.vars)?Math.max(0,parseInt(_cl.vars[k])||0):null};}
@@ -16443,8 +16464,24 @@ async function syncPedidosAuto(){
     // solo y se quedaba con días que tampoco tapa.
     // Puede quedar un resto sin cubrir por ninguna de las dos, y está bien que quede: son los
     // días que no tapás ni comprando esto ni mandando lo que tenés.
-    const diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
-    const diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
+    let diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
+    let diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
+    // COLOR POR COLOR (revisión etapa 3, 29/10/2026): con el total, lo que hay en la oficina o en camino de UN color tapaba el riesgo de
+    // OTRO (40 Rojo en la oficina "cubrían" el Blanco en 0 en todos lados: la compra del Blanco salvaba $0 y quedaba última en "lo que salva
+    // cada $1"). Cada color tapa sólo lo suyo (oficina + camino + lo pedido de ese color) y su compra sólo sus días, pesado por lo que vende
+    // (como `varDiasRiesgo`); lo que no tiene color (Paraguay, una lista sin color, oficina o caja sin color) tapa al ritmo del producto, y lo
+    // decidido de un color sin ritmo medido, también.
+    if(_varR&&vDia>0&&_varR.some(x=>x.vRate>0)){
+      const kV=v=>sid(String(v).toLowerCase()),qDe={};for(const x of (variantesNec||[]))qDe[kV(x.v)]=(qDe[kV(x.v)]||0)+Math.max(0,parseInt(x.q)||0);
+      let tc=0,tb=0;const conR=new Set();
+      for(const x of _varR){if(!(x.vRate>0))continue;const k=kV(x.v);conR.add(k);const w=Math.min(1,x.vRate/vDia),rd=Math.max(0,RIESGO_DIAS-x.vStock/x.vRate);
+        const c=Math.min(rd,(x.vCasa+x.vCam+(x.vPv||0))/x.vRate);tc+=w*c;tb+=w*Math.min(Math.max(0,rd-c),(qDe[k]||0)/x.vRate);}
+      const qOtros=Object.entries(qDe).reduce((a,[k,q])=>a+(conR.has(k)?0:q),0);
+      const ofiSC=Math.max(0,(enOficina||0)-(p.variantes||[]).reduce((a,v)=>a+getQV(p.id,OFI,v),0));
+      const camT=transitoTotal(_trPed,p.id),camSC=Math.max(0,camT-(p.variantes||[]).reduce((a,v)=>a+LOCS.reduce((b,l)=>b+transitoDe(_trPed,p.id,l,v),0),0));
+      diasTapaCasa=Math.min(diasEnRiesgo,tc+(enPy+ofiSC+camSC)/vDia);
+      diasTapaCompra=Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),tb+qOtros/vDia);
+    }
     const cubreCasa=vDia>0?Math.round((stock+enOficina+enCamino)/vDia):999;
     // ── EL SEMÁFORO DE PEDIDOS (06/10/2026, regla suya) ──────────────────────────────
     // Cuenta ML + en camino + oficina. 🔴 rojo = no hay en NINGÚN lado (se pierde plata hoy) ·
@@ -17480,7 +17517,7 @@ function candPreciosHTML(c){
     L.push(R.ventas);
     if(R.margenPct!=null)L.push(R.margenViejo!=null
       ?`contra ${R.margenContra} → <b style="color:var(--muted)">${R.margenPct.toFixed(0)}%</b> <span style="color:var(--muted)">(medido a ${fmtUS2(R.margenViejo)} · cambió el precio de Paraguay: falta medirlo)</span>`
-      :`contra ${R.margenContra} → <b style="color:${R.margenPct>=25?'var(--green)':'var(--amber)'}">${R.margenPct.toFixed(0)}%</b>`);
+      :`contra ${R.margenContra} → <b style="color:${R.margenPct>=CAND_VARA_COMPRA?'var(--green)':R.margenPct>=25?'var(--amber)':'var(--red)'}">${R.margenPct.toFixed(0)}%</b>`);   // revisión etapa 3, 29/10/2026: verde desde la vara de compra (35%), no desde 25%
   }
   const dud=R.dudas.length?`<br><span style="color:var(--red);font-weight:700">🚨 ¿Es el mismo producto? Abrí los dos links: ${R.dudas.join(' · ')}</span>`:'';
   return L.join(' &nbsp;·&nbsp; ')+dud+(R.colores?'<br><span style="font-size:.92em">'+R.colores+'</span>':'')+'<br>'+R.links.join(' &nbsp;·&nbsp; ');
