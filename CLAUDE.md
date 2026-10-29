@@ -457,8 +457,8 @@
 
 - **Todo cambio o cosa nueva se anota en `ml-sync/REVISION.md` en su etapa, EN EL MISMO COMMIT** (qué es · dónde vive · qué chequear).
   Si no entra en ninguna, etapa nueva ahí y en `REV_ETAPAS` (`index.html`).
-- **8 etapas:** 1 Precios · 2 Plata · 3 Mercadería · 4 Choques y fallas mudas · 5 Datos, historial y cerebro · 6 Ideas nuevas · 7 Diseño ·
-  8 Reglas del cerebro (cada 7 días, adelante cuando le toca). Cada madrugada a las **04:00** toca la que hace más que no se revisa
+- **9 etapas:** 1 Precios · 2 Plata · 3 Mercadería · 4 Choques y fallas mudas · 5 Datos, historial y cerebro · 6 Ideas nuevas · 7 Diseño ·
+  8 Reglas del cerebro (cada 7 días, adelante cuando le toca) · **9 Local** (cada 7 días, 29/10, él: *"vamos a ir haciendo cambios grandes todo el mes sobre local"*: todo cambio del local se anota en esa etapa). Cada madrugada a las **04:00** toca la que hace más que no se revisa
   (`REV_HIST`/`REV_HECHAS`; nunca una de los últimos 6 días). 4 revisores con esfuerzo **máximo**. Tarea `trig_01TT94wnEKk299d85Sj6ePWw`:
   **PRENDIDA otra vez el 24/10/2026 01:02 UTC** (vie 23/10 22:02 de acá, como pidió él; estuvo pausada desde el 21/10). Primera revisión sáb 24/10 04:00.
 - **El cartel de Inicio lo manejo yo** (`REV_PENDIENTE` / `REV_HECHAS`, sin botón): algo resuelto ENTERO sale de pendiente con su fecha.
