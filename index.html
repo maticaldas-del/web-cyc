@@ -63,6 +63,8 @@ body.light{
 .hv-vuelta .hv-fila{display:flex;gap:10px;padding:5px 0;border-top:1px dashed var(--border)}
 .hv-vuelta .hv-h{font-family:'DM Mono',monospace;color:var(--muted);flex-shrink:0}
 .hv-vuelta summary::-webkit-details-marker{display:none}
+summary .dgrp-car{display:inline-block}
+details>summary:has(.dgrp-car)::-webkit-details-marker{display:none}
 .vp-dia-cab{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;margin:6px 0 4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:.72rem}
 .vp-dia-f{font-weight:700;text-transform:capitalize}
 .vp-dia-n{color:var(--muted)}
@@ -1363,6 +1365,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Deuda de CYC</span><span id="db_deuda_cyc"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_deuda_cyc" placeholder="US$ 0" onchange="saveFin('deuda_cyc',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Mati</span><span id="db_dolares_mati"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_mati" placeholder="US$ 0" onchange="saveFin('dolares_mati',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Tito</span><span id="db_dolares_tito"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_tito" placeholder="US$ 0" onchange="saveFin('dolares_tito',this.value)"></div>
+        <!-- 29/10/2026 (él: "¿se podrá poner ahí? así lo saco de naranja"): ARCA y proveedores van como renglón propio, los calcula el panel (no se escriben). -->
+        <div class="fin-field" id="row_prov_deuda" style="display:none"><div class="fin-left"><span class="fin-label neg-label">Proveedores</span><span id="db_prov_deuda" style="font-size:.62rem;color:var(--muted)"></span></div><input class="fin-input negative money" type="text" id="f_prov_deuda" readonly tabindex="-1" title="Lo calcula el panel: llegó y falta pagar"></div>
+        <div class="fin-field" id="row_arca_deuda" style="display:none"><div class="fin-left"><span class="fin-label neg-label">ARCA</span><span id="db_arca_deuda" style="font-size:.62rem;color:var(--muted)"></span></div><input class="fin-input negative money" type="text" id="f_arca_deuda" readonly tabindex="-1" title="Lo calcula el panel: la diferencia de categoría H"></div>
       </div>
     </div>
     <!-- ⚖️ Corregir: SACADO (28/10/2026, él: "sacarlo, ya que la idea es que esté todo registrado"). Queda escondido; sólo aparece si
@@ -3226,7 +3231,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.19';
+const APP_VERSION='28.20';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3239,6 +3244,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.20',f:'29/10',h:'23:20',c:[{n:1,t:'📥 Deudas: 🛒 Ventas a cobrar y 💵 Préstamos se pliegan tocando el título (queda recordado).'},{n:1,t:'📤 Lo que debemos: ARCA (y proveedores cuando hay) pasan a ser un renglón más, en vez del aviso naranja.'}]},
   {v:'28.19',f:'29/10',h:'23:00',c:[{n:1,t:'📊 Métricas: los KPIs más cortos (parte y % de ganancia en una línea, la diferencia contra el anterior en otra; el detalle al dejar el dedo encima) y los atajos (Línea de todo, KPIs, Tendencia…) en un solo desplegable "📑 Ir a…".'}]},
   {v:'28.18',f:'29/10',h:'22:40',c:[{n:3,t:'🔍 ¿Cierra el mes?: ahora suma la ganancia del local (lo dejado en las perfumerías y las otras ventas a cuenta). Antes cada entrega al local se veía como plata que sobraba.'}]},
   {v:'28.17',f:'29/10',h:'22:15',c:[{n:2,t:'📊 Métricas → 🔀 ML + Local: en la Tendencia, ML abajo relleno de azul y el local arriba relleno de naranja (la línea de arriba es el total), como agua y aceite.'}]},
@@ -7282,15 +7288,18 @@ function renderCuotas(){
   const _sumR=a=>a.reduce((t,d)=>t+(Number(d.resta)||0),0);
   const _ganV=_ven.reduce((t,d)=>t+(Number(d.costo)>0?d.monto-Number(d.costo):0)+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0)
     +[_pM].filter(Boolean).reduce((t,d)=>t+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0);
-  const _sec=(tit,tot,extra)=>`<div style="display:flex;align-items:baseline;gap:8px;margin:${tit.startsWith('🛒')?'0':'10px'} 2px 0;font-size:.74rem;font-weight:700">${tit}<span style="flex:1"></span>${extra||''}<span style="font-family:'DM Mono',monospace">${_pesos(tot)}</span></div>`;
+  // 29/10/2026 (él: "que sean desplegables, así puedo minimizarlos"): cada grupo se pliega tocando su título; queda recordado en este aparato.
+  const _gAb=k=>{try{return localStorage.getItem('cyc_deuGrp_'+k)!=='0';}catch(e){return true;}};
+  const _sec=(tit,tot,extra)=>`<summary style="display:flex;align-items:baseline;gap:8px;margin:${tit.startsWith('🛒')?'0':'10px'} 2px 6px;font-size:.74rem;font-weight:700;cursor:pointer;list-style:none"><span class="dgrp-car" style="font-size:.6rem;color:var(--muted);width:10px">▾</span>${tit}<span style="flex:1"></span>${extra||''}<span style="font-family:'DM Mono',monospace">${_pesos(tot)}</span></summary>`;
+  const _grp=(k,head,rows)=>`<details ${_gAb(k)?'open':''} ontoggle="try{localStorage.setItem('cyc_deuGrp_${k}',this.open?'1':'0')}catch(e){};this.querySelector('.dgrp-car').textContent=this.open?'▾':'▸'">${head.replace('▾',_gAb(k)?'▾':'▸')}<div style="display:flex;flex-direction:column;gap:6px">${rows.join('')}</div></details>`;
   // 29/10/2026 (él con MercadoPago: "y este va a préstamos"): la perfumería se separa: Mercadería (vendido, con ganancia) en Ventas y
   // MercadoPago (plata) en Préstamos, cada una con "PERFUMERÍA ·" adelante. La tarjeta que las juntaba (`_perfG`) ya no se usa.
   const _filas=[];
   const _pMv=_pM?{..._pM,nom:'🛍️ PERFUMERÍA · Mercadería'}:null,_pDv=_pD?{..._pD,nom:'🛍️ PERFUMERÍA · MercadoPago'}:null;
-  if(_pM||_ven.length){_filas.push(_sec('🛒 Ventas a cobrar',_sumR(_ven)+(_pM?Number(_pM.resta)||0:0),`<span style="color:var(--green);font-size:.68rem">+${_pesos(_ganV)}</span>`));
-    if(_pMv)_filas.push(fila(_pMv));_ven.forEach(d=>_filas.push(fila(d)));}
-  if(_pD||_pre.length){_filas.push(_sec('💵 Préstamos',_sumR(_pre)+(_pD?Number(_pD.resta)||0:0),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'));
-    if(_pDv)_filas.push(fila(_pDv));_pre.forEach(d=>_filas.push(fila(d)));}
+  if(_pM||_ven.length){const r=[];if(_pMv)r.push(fila(_pMv));_ven.forEach(d=>r.push(fila(d)));
+    _filas.push(_grp('ven',_sec('🛒 Ventas a cobrar',_sumR(_ven)+(_pM?Number(_pM.resta)||0:0),`<span style="color:var(--green);font-size:.68rem">+${_pesos(_ganV)}</span>`),r));}
+  if(_pD||_pre.length){const r=[];if(_pDv)r.push(fila(_pDv));_pre.forEach(d=>r.push(fila(d)));
+    _filas.push(_grp('pre',_sec('💵 Préstamos',_sumR(_pre)+(_pD?Number(_pD.resta)||0:0),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'),r));}
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+_filas.join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`
     +(pag.length?`<div style="font-size:.74rem;font-weight:700;color:var(--green);margin:16px 0 6px">✅ Pagadas (${pag.length})${pp>1?` <span style="font-weight:400;color:var(--muted);font-size:.66rem">· página ${pg} de ${pp}</span>`:''}</div>
@@ -11091,7 +11100,12 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0)+(Number(prev.pvUSD)||0)+((Number(prev.arcaARS)>0&&Number(prev.tipoCambio)>0)?Number(prev.arcaARS)/Number(prev.tipoCambio):0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
   const dbkDb=document.getElementById('dbk_deben');if(dbkDb)dbkDb.innerHTML=prevDeben!==null?deltaBadge(c.deben,prevDeben):'';
-  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'')+(c.pvDeuda>0?(()=>{const ls=_arqViewYM?0:listaDeudaUSD(),pv=c.pvDeuda-ls;return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.pvDeuda)} de proveedores · llegó, falta pagar${ls>0.005?` (${pv>0.005?'Paulvic '+fmtUS(pv)+' · ':''}listas ${fmtUS(ls)})`:''}</div>`;})():'')+(c.arcaDeuda>0?(()=>{const _s=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];const a=_s&&_s.arcaARS>0?{ars:Number(_s.arcaARS),meses:Math.round(Number(_s.arcaARS)/(Number((state.mlconfig||{}).arcaHMes)||427498))}:arcaDeudaARS();return `<div style="font-size:.62rem;color:var(--amber);margin-top:3px">incluye ${fmtUS(c.arcaDeuda)} (${fmt(a.ars)}) para ARCA · categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses</div>`;})():'');
+  const dbkDd=document.getElementById('dbk_deudas');if(dbkDd)dbkDd.innerHTML=(prevDeuda!==null?deltaBadge(c.deuda,prevDeuda,true):'');
+  {const _num=u=>Math.round(u).toLocaleString('es-AR'),_tcA=curTC();
+   const rP=document.getElementById('row_prov_deuda');if(rP){const on=c.pvDeuda>0.005;rP.style.display=on?'':'none';if(on){const ls=_arqViewYM?0:listaDeudaUSD(),pv=c.pvDeuda-ls;
+     document.getElementById('f_prov_deuda').value=_num(c.pvDeuda);document.getElementById('db_prov_deuda').textContent='llegó, falta pagar'+(ls>0.005?` · ${pv>0.005?'Paulvic '+fmtUS(pv)+' · ':''}listas ${fmtUS(ls)}`:'')+(_tcA>0?` · ≈ ${fmt(Math.round(c.pvDeuda*_tcA))}`:'');}}
+   const rA=document.getElementById('row_arca_deuda');if(rA){const on=c.arcaDeuda>0.005;rA.style.display=on?'':'none';if(on){const _s=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];const a=_s&&_s.arcaARS>0?{ars:Number(_s.arcaARS),meses:Math.round(Number(_s.arcaARS)/(Number((state.mlconfig||{}).arcaHMes)||427498))}:arcaDeudaARS();
+     document.getElementById('f_arca_deuda').value=_num(c.arcaDeuda);document.getElementById('db_arca_deuda').textContent=`categoría H de ${a.meses} mes${a.meses===1?'':'es'} · sin intereses · ≈ ${fmt(a.ars)}`;}}}
   const dbkT=document.getElementById('dbk_total_day');
   if(dbkT)dbkT.innerHTML='';
   if(!_arqViewYM)saveDailySnap();
