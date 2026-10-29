@@ -1865,6 +1865,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+### 📨 Al grupo de los resúmenes, sólo resúmenes (29/10/2026, él)
+- **Qué es:** `sendTelegram(text, tipo)`: con tipo distinto de `resumen` (baja, dólar, venta) manda por `sendAlerta(...,{directo:true})` al canal privado. La baja ya no se manda dos veces.
+- **Qué chequear:** que en el grupo no aparezca nada que no sea el resumen; que una baja de ML llegue una sola vez al privado.
+
 
 ### 🔔 El aviso de venta sale apenas se leen las ventas (27/10/2026, él: *"tardó más de 20 mins en avisar. se puede hacer que sea al instante?"*)
 - **Qué es:** `avisarVentasNuevas` se llamaba al FINAL de la vuelta, después del stock de Full, cajas y fichas. Con ML lento (la pasada de Nissei comparte el cupo de ML: 471 consultas en 25 min en vez de 1) la vuelta tardó 20-40 min y el aviso esperó todo eso. Ahora se llama apenas termina el recorrido de ventas de las 4 cuentas; el del final queda de respaldo (la memoria `mlapi/avisoventa` evita avisar dos veces).
