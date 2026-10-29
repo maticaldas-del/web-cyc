@@ -197,5 +197,6 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 8. **Precios de proveedores en el registro público:** las listas y los tickets muestran precios en el registro del robot (cualquiera lo puede leer). (a) sugerida: no imprimirlos más (sólo cuántos y qué %) · (b) dejarlo así.
 
 ## 29/10 · Compra de prueba al 35% de lo que dejó de pedirse (preguntado en el chat)
+**RESUELTA 29/10** (él: *"descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en stock en Full"*): prueba para todo lo que se vendía y nunca se probó al 35% con stock (ni (a) ni (b): regla nueva en Pedidos).
 Con la regla nueva (competencia → venta más cara de 365 días) salen de Pedidos 33 renglones que vendían bien pero nunca a 35%. Los que tienen stock ya están a la venta a un precio de 35%+ (la prueba corre sola). Los que están en 0 subieron de precio sin mercadería: la prueba no puede pasar.
 1. (a) prueba sólo donde no hay competencia medida: Sábanas (todos los colores), B39, Pizarra Violeta, Linterna Azul, Funda colchón, Sony ZX: 19 renglones, 51 u., ~$492.000 · (b) también los que la competencia vende más barato (Estimulador, Termómetro Cable, Victoria's Secret, Cool Water, Halloween Kiss Sexy, Midnight Fantasy, Paulvic Acqua/Miss): +14 renglones, +74 u., +~$849.000 · (c) ninguno.
