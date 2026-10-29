@@ -1269,14 +1269,23 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
           <span class="bk-lbl" style="margin:0">🏠 Oficina ML <span data-arqdet="ofiml" style="opacity:.6">▸</span></span>
           <span class="bk-val neutral" id="bk_ofi_ml" style="font-size:.78rem">$0</span>
         </div>
-        <div id="det_ofiml" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
+        <div id="det_ofiml" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"><div id="det_ofiml_txt"></div>
+          <!-- 29/10/2026 (él: "que estos estén en un desplegable dentro de oficina local / oficina ml"): el campo vive adentro de su oficina. -->
+          <div class="arq-ofi-campo" onclick="event.stopPropagation()" style="margin-top:6px;font-size:.8rem">
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina ML</span><span id="ofi-mati-nota" style="font-size:.6rem;color:var(--muted)"></span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="US$ 0" onchange="saveFin('of_mia',this.value)"></div>
+        <div id="ofi-doble-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.4"></div>
+          </div></div>
         <div style="border-top:1px solid var(--border);margin:8px 0"></div>
         <div onclick="event.stopPropagation();arqDet('ofiloc')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:8px">
           <span class="bk-lbl" style="margin:0">🏪 Oficina Local <span data-arqdet="ofiloc" style="opacity:.6">▸</span></span>
           <span class="bk-val neutral" id="bk_ofi_local" style="font-size:.78rem">$0</span>
         </div>
-        <div id="det_ofiloc" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div>
-        <div id="dbk_stock_local" style="margin-top:3px"></div>
+        <div id="det_ofiloc" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"><div id="det_ofiloc_txt"></div>
+          <div class="arq-ofi-campo" onclick="event.stopPropagation()" style="margin-top:6px;font-size:.8rem">
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Local</span><span id="ofi-cyc-nota" style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
+        <div class="fin-field" id="row_vendedores" style="display:none"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="US$ 0" onchange="saveFin('vendedores',this.value)"></div>
+          </div></div>
+        <div id="dbk_stock_local" style="display:none"></div>
 
         <div id="bk_camino_wrap" style="display:none">
           <div style="border-top:1px solid var(--border);margin:8px 0"></div>
@@ -1343,21 +1352,17 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="US$ 0" onchange="saveFin('mp_liq',this.value)"></div>
         <div id="vsr_linea" style="display:none;font-size:.68rem;margin:-2px 0 8px;line-height:1.4"></div>
       </div>
-      <div class="arqueo-section positivo arq-plegada" id="arq-sec-local">
+      <div class="arqueo-section positivo arq-plegada" id="arq-sec-local" style="display:none">
         <h3>🏢 Stock Local</h3>
         <!-- OFICINA CYC: solo el VALOR, sin unidades. Esa mercadería no es de ML —no se publica ni
              se manda a Full— así que contarla producto por producto no sirve para nada: no hay a
              qué cuenta mandarla ni con qué venta compararla. Va el número en dólares y listo. -->
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Local</span><span id="ofi-cyc-nota" style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
         <!-- OFICINA MATI: acá SÍ van las unidades, producto por producto, porque es la mercadería
              que se manda a Full. El número de acá lo calcula la pantalla "Mi oficina" a partir de
              lo contado; por eso el campo queda bloqueado apenas hay algo contado. -->
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina ML</span><span id="ofi-mati-nota" style="font-size:.6rem;color:var(--muted)"></span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="US$ 0" onchange="saveFin('of_mia',this.value)"></div>
         <!-- Vendedores: SACADO (29/10/2026, él: "sacar eso"). Queda escondido; sólo aparece si quedó un número cargado, porque sigue contando. -->
-        <div class="fin-field" id="row_vendedores" style="display:none"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="US$ 0" onchange="saveFin('vendedores',this.value)"></div>
         <!-- Desde que se cuenta la oficina por unidades, esa mercadería ya entra sola en el
              patrimonio (Stock Local). Si además queda cargada a mano acá, se cuenta DOS VECES. -->
-        <div id="ofi-doble-aviso" style="display:none;font-size:.64rem;color:var(--amber);margin-top:6px;line-height:1.4"></div>
       </div>
       <!-- 📥 Lo que nos deben: desde el 28/10/2026 vive arriba, en su tarjeta (la suma de las deudas de abajo). -->
       <div class="arqueo-section negativo arq-plegada" id="arq-sec-debemos">
@@ -3232,7 +3237,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.21';
+const APP_VERSION='28.22';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3245,6 +3250,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.22',f:'29/10',h:'23:45',c:[{n:1,t:'Arqueo → Stock total: los campos de Oficina ML y Oficina Local van adentro del desplegable de cada oficina (se abren al tocarla). La variación que salía debajo de Oficina Local era de las dos juntas: ahora cada una muestra la suya adentro.'}]},
   {v:'28.21',f:'29/10',h:'23:30',c:[{n:1,t:'Arqueo: se sacó el renglón Vendedores (sólo vuelve si quedara un número cargado).'}]},
   {v:'28.20',f:'29/10',h:'23:20',c:[{n:1,t:'📥 Deudas: 🛒 Ventas a cobrar y 💵 Préstamos se pliegan tocando el título (queda recordado).'},{n:1,t:'📤 Lo que debemos: ARCA (y proveedores cuando hay) pasan a ser un renglón más, en vez del aviso naranja.'}]},
   {v:'28.19',f:'29/10',h:'23:00',c:[{n:1,t:'📊 Métricas: los KPIs más cortos (parte y % de ganancia en una línea, la diferencia contra el anterior en otra; el detalle al dejar el dedo encima) y los atajos (Línea de todo, KPIs, Tendencia…) en un solo desplegable "📑 Ir a…".'}]},
@@ -11086,7 +11092,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
     const vLoc=ofV+vend+vNoML+(contado?Math.max(0,ofM-vML-vNoML):0);
     setCard('bk_ofi_ml',vML,'neutral');setCard('bk_ofi_local',vLoc,'neutral');
     const _li=(arr)=>arr.sort((a,b)=>b.v-a.v).slice(0,12).map(x=>`<div style="display:flex;gap:6px"><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escC?_escC(x.p.name):x.p.name}</span><span style="white-space:nowrap">${fmtN(x.u)} u. · US$ ${fmtN(Math.round(x.v))}</span></div>`).join('');
-    const dM=document.getElementById('det_ofiml'),dL=document.getElementById('det_ofiloc');
+    const dM=document.getElementById('det_ofiml_txt'),dL=document.getElementById('det_ofiloc_txt');
     const mlA=pr.filter(x=>x.ml),noA=pr.filter(x=>!x.ml);
     if(dM)dM.innerHTML=contado?`${mlA.length} productos · ${fmtN(mlA.reduce((t,x)=>t+x.u,0))} u. (tienen o tuvieron publicación en ML)${_li(mlA)}${mlA.length>12?`<div>… y ${mlA.length-12} más (en Oficina ML → Contar lo que hay)</div>`:''}`:'cargada a mano (sin unidades contadas)';
     if(dL){const OC=state.oficyc||{};const _uO=x=>x&&typeof x==='object'?Object.values(x.v||{}).reduce((a,b)=>a+(parseInt(b)||0),0)+(parseInt(x.t)||0):(parseInt(x)||0);
