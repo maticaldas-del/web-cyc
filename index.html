@@ -1954,7 +1954,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div id="met-vista" style="display:flex;gap:6px;margin:-6px 0 12px">
     <button class="vbtn" data-metv="ml" onclick="metVista('ml')">📦 ML</button>
     <button class="vbtn" data-metv="local" onclick="metVista('local')">🏪 Perfumería</button>
-    <button class="vbtn" data-metv="todo" onclick="metVista('todo')">🔀 Todo</button>
+    <button class="vbtn" data-metv="todo" onclick="metVista('todo')" title="ML y el local mezclados: por fecha, cuánto vendió y ganó cada uno y la suma">🔀 ML + Local</button>
   </div>
   <div id="met-indice" style="display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 18px">
     <button class="vbtn" onclick="lineaTodoAbrir(event)" style="border-color:var(--green);color:var(--green)" title="La línea de tiempo de TODOS los productos juntos: ventas, ganancia, stock, visitas, precio, cada suba y cada bajada, caja y remate">📈 Línea de todo</button>
@@ -2052,7 +2052,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 
   <!-- 🏪 LOCAL, APARTE DE ML (29/10/2026, él eligió 1a 2a 3a: "no quiero agregar una tarjeta más, de última que esté adentro de métricas.
        pero separado"): lo que se le vende a las perfumerías (al costo + 25%, como deuda) y las otras ventas a cuenta. No toca ningún número de ML. -->
-  <div class="stitle" id="met-local-t">🏪 Local <span id="met-local-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <!-- 🔀 TODO = ML y LOCAL MEZCLADOS (29/10/2026, él: "yo decía 'todo' como algo que mezcle las métricas, entonces puedo ver cuánto vendió por fecha
+       cada cosa ml y local, ganancia y todo eso"): una sola tabla por fecha con ML, local y la suma; reemplaza el "una abajo de la otra". -->
+  <div class="stitle" id="met-todo-t">🔀 ML + Local <span id="met-todo-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div id="met-todo"></div>
+
+  <div class="stitle" id="met-local-t">🏪 Perfumería <span id="met-local-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-local"></div>
 
   <footer>CYC · Métricas ML · datos independientes</footer>
@@ -3217,7 +3222,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.09';
+const APP_VERSION='28.11';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3230,6 +3235,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.11',f:'29/10',h:'20:25',c:[{n:1,t:'📊 Métricas → 🏪 Perfumería: queda sólo lo de las perfumerías (se sacó la ganancia junto con ML, las deudas de personas y las otras ventas; lo mezclado está en 🔀 ML + Local).'}]},
+  {v:'28.10',f:'29/10',h:'20:15',c:[{n:2,t:'📊 Métricas: "Todo" pasa a ser 🔀 ML + Local mezclados: por día (o por mes en períodos largos), cuánto vendió y ganó ML, cuánto el local y la suma, con barras de cada uno; arriba los totales y cuánto deja cada $100.'}]},
   {v:'28.09',f:'29/10',h:'19:55',c:[{n:2,t:'📊 Métricas: arriba se elige 📦 ML (la de siempre, sin nada del local) · 🏪 Perfumería (sólo el local) · 🔀 Todo (las dos). Se acuerda de la última elección.'}]},
   {v:'28.08',f:'29/10',h:'19:40',c:[{n:3,t:'🏪 Métricas → Local, a fondo: la ganancia de ML + perfumerías + otras ventas juntas (con su parte de cada una), a qué perfumería le vendemos más con barras (en el período y desde siempre), mes a mes vendido y cobrado, productos con su ganancia y %, y las deudas de hoy (ventas, préstamos y atrasadas).'}]},
   {v:'28.07',f:'29/10',h:'19:20',c:[{n:2,t:'🏪 Métricas: sección Local al final (botón 🏪 Local arriba), aparte de ML: vendido a las perfumerías, ganancia, cobrado, falta cobrar, por perfumería, lo que más se les dejó y las otras ventas a cuenta. Sigue el período que elegís arriba.'}]},
@@ -24935,23 +24942,69 @@ function metIr(id){
 }
 // 🏪 EL LOCAL EN MÉTRICAS (29/10/2026, 1a 2a 3a): la venta cuenta el día que se deja la mercadería (2a); arriba las perfumerías (por perfumería y
 // los productos más dejados) y abajo las otras ventas a cuenta (3a). Sale de `cyc/debencuotas`: nada de ML se mezcla.
+// 🔀 ML + LOCAL MEZCLADOS POR FECHA (29/10/2026): vendido y ganancia de ML (las mismas cuentas de los KPIs: `metGetValDay`) y del local
+// (lo dejado a las perfumerías ese día + las otras ventas a cuenta cargadas ese día), por día si el período es de hasta 62 días y por mes si
+// es más largo. Totales arriba con la parte de cada uno.
+function renderMetTodo(curKeys,prevKeys,lbl){
+  const el=document.getElementById('met-todo');if(!el)return;
+  const per=document.getElementById('met-todo-period');if(per)per.textContent='· '+(lbl||'');
+  const ks=(curKeys||[]).slice().sort();if(!ks.length){el.innerHTML='<div style="font-size:.66rem;color:var(--muted)">Sin datos en este período.</div>';return;}
+  const k0=ks[0],k1=ks[ks.length-1];
+  const kOf=f=>String(f||'').slice(0,10).replace(/-/g,'_');
+  const _n=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const D=(typeof cuotasLista==='function'?cuotasLista():Object.values(state.debencuotas||{})).filter(d=>d&&d.nom);
+  const M=D.find(d=>/perfumeria/.test(_n(d.nom))&&/mercader/.test(_n(d.nom)));
+  // lo del local por día
+  const loc={};const addL=(k,m,g)=>{if(!(k>=k0&&k<=k1))return;const o=loc[k]=loc[k]||{v:0,g:0};o.v+=m;o.g+=g;};
+  if(M)Object.values(M.movs||{}).forEach(x=>{if(x&&Number(x.m)>0&&x.prodNom)addL(kOf(x.f),Number(x.m)||0,Number(x.gan)||0);});
+  D.filter(d=>d!==M&&!/perfumeria/.test(_n(d.nom))&&((!d.sinGan&&Number(d.costo)>0)||d.tipo==='venta')).forEach(d=>addL(kOf(d.fecha0||(d.ts?new Date(Number(d.ts)).toISOString():'')),Number(d.monto)||0,Number(d.costo)>0?d.monto-Number(d.costo):0));
+  // días del período: los de ML más los del local
+  const dias=[...new Set([...ks,...Object.keys(loc)])].filter(k=>k>=k0&&k<=k1).sort();
+  const mlDia=(k,f)=>MET_ACCTS.reduce((t,a)=>t+(metGetValDay(k,a,f)||0),0);
+  const porMes=dias.length>62;
+  const fila={};for(const k of dias){const b=porMes?k.slice(0,7):k;const o=fila[b]=fila[b]||{mv:0,mg:0,lv:0,lg:0};o.mv+=mlDia(k,'total');o.mg+=mlDia(k,'ganancia');if(loc[k]){o.lv+=loc[k].v;o.lg+=loc[k].g;}}
+  const bs=Object.keys(fila).sort();
+  const T=bs.reduce((t,b)=>{const o=fila[b];t.mv+=o.mv;t.mg+=o.mg;t.lv+=o.lv;t.lg+=o.lg;return t;},{mv:0,mg:0,lv:0,lg:0});
+  const pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';
+  const box=(t,v,sub)=>`<div style="flex:1;min-width:140px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px"><div style="font-size:.62rem;color:var(--muted)">${t}</div><div style="font-size:.95rem;font-weight:700;font-family:'DM Mono',monospace">${v}</div>${sub?`<div style="font-size:.6rem;color:var(--muted)">${sub}</div>`:''}</div>`;
+  const NM=['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const etq=b=>porMes?`${NM[+b.slice(5,7)]} ${b.slice(2,4)}`:`${b.slice(8,10)}/${b.slice(5,7)}`;
+  const mxV=Math.max(1,...bs.map(b=>fila[b].mv+fila[b].lv)),mxG=Math.max(1,...bs.map(b=>Math.max(0,fila[b].mg)+Math.max(0,fila[b].lg)));
+  const apil=(a,b,mx)=>`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--border);margin-top:2px"><div style="width:${(Math.max(0,a)/mx*100).toFixed(1)}%;background:#3b82f6"></div><div style="width:${(Math.max(0,b)/mx*100).toFixed(1)}%;background:#ec4899"></div></div>`;
+  let h=`<div style="display:flex;gap:8px;flex-wrap:wrap">
+    ${box('💵 Vendido total',_pesos(T.mv+T.lv),`📦 ML ${_pesos(T.mv)} · 🛍️ Local ${_pesos(T.lv)} (${pct(T.lv,T.mv+T.lv)})`)}
+    ${box('💰 Ganancia total',`<span style="color:var(--green)">+${_pesos(T.mg+T.lg)}</span>`,`📦 ML ${_pesos(T.mg)} · 🛍️ Local ${_pesos(T.lg)} (${pct(T.lg,T.mg+T.lg)})`)}
+    ${box('📊 Cuánto deja cada $100',pct(T.mg+T.lg,T.mv+T.lv),`ML ${pct(T.mg,T.mv)} · Local ${pct(T.lg,T.lv)}`)}</div>
+    <div style="font-size:.6rem;color:var(--muted);margin:8px 0 4px"><span style="color:#3b82f6">■</span> ML · <span style="color:#ec4899">■</span> Local · ${porMes?'por mes':'por día'} (arriba vendido, abajo ganancia)</div>
+    <div style="display:grid;grid-template-columns:4em 1fr 1fr 1fr;gap:2px 8px;font-size:.6rem;color:var(--muted);padding:2px 0"><span></span><span style="text-align:right">📦 ML</span><span style="text-align:right">🛍️ Local</span><span style="text-align:right">Total</span></div>`;
+  for(const b of bs.slice().reverse()){const o=fila[b];
+    h+=`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.64rem">
+      <div style="display:grid;grid-template-columns:4em 1fr 1fr 1fr;gap:0 8px;font-family:'DM Mono',monospace">
+        <span style="color:var(--muted)">${etq(b)}</span>
+        <span style="text-align:right">${_pesos(o.mv)}<br><span style="color:var(--green)">+${_pesos(o.mg)}</span></span>
+        <span style="text-align:right">${o.lv?_pesos(o.lv):'—'}<br><span style="color:var(--green)">${o.lv?'+'+_pesos(o.lg):''}</span></span>
+        <b style="text-align:right">${_pesos(o.mv+o.lv)}<br><span style="color:var(--green)">+${_pesos(o.mg+o.lg)}</span></b></div>
+      ${apil(o.mv,o.lv,mxV)}${apil(o.mg,o.lg,mxG)}</div>`;}
+  el.innerHTML=h;
+}
 function metVista(v){if(v)try{localStorage.setItem('cyc_metvista',v);}catch(e){}
   let cur='ml';try{cur=localStorage.getItem('cyc_metvista')||'ml';}catch(e){}if(v)cur=v;
   document.querySelectorAll('[data-metv]').forEach(b=>b.classList.toggle('active',b.dataset.metv===cur));
   const wrap=document.querySelector('#page-metricas .page-wrap');if(!wrap)return;
   let enML=false;for(const ch of wrap.children){
     if(ch.id==='met-indice'){enML=true;ch.style.display=cur==='local'?'none':'';continue;}
-    if(ch.id==='met-local-t'||ch.id==='met-local'){ch.style.display=cur==='ml'?'none':'';enML=false;continue;}
+    if(ch.id==='met-todo-t'||ch.id==='met-todo'){ch.style.display=cur==='todo'?'':'none';enML=false;continue;}
+    if(ch.id==='met-local-t'||ch.id==='met-local'){ch.style.display=cur==='local'?'':'none';enML=false;continue;}
     if(ch.tagName==='FOOTER')continue;
-    if(enML){if(cur==='local'){if(ch.style.display!=='none'){ch.style.display='none';ch.dataset.metOcultoPorVista='1';}}else if(ch.dataset.metOcultoPorVista){ch.style.display='';delete ch.dataset.metOcultoPorVista;}}   // lo que ya estaba oculto por otra razón (ej. carga del Día) no se toca
+    if(enML){if(cur!=='ml'){if(ch.style.display!=='none'){ch.style.display='none';ch.dataset.metOcultoPorVista='1';}}else if(ch.dataset.metOcultoPorVista){ch.style.display='';delete ch.dataset.metOcultoPorVista;}}   // lo que ya estaba oculto por otra razón (ej. carga del Día) no se toca
   }
-  if(v&&cur==='local'){const t=document.getElementById('met-local-t');if(t)t.scrollIntoView({block:'start'});}
+  if(v&&cur!=='ml'){const t=document.getElementById(cur==='todo'?'met-todo-t':'met-local-t');if(t)t.scrollIntoView({block:'start'});}
 }
 function renderMetLocal(curKeys,prevKeys,lbl){
   // 29/10/2026 (él: "quiero ver qué perfumería le vendemos más, con barras. ganancia local y ml juntas. deudas. todo. quiero poder analizarlo igual
   // de profundo que como están las métricas de ml"): resumen, ML + Local juntos, perfumerías con barras, mes a mes, productos, deudas y otras ventas.
   const el=document.getElementById('met-local');if(!el)return;
-  const per=document.getElementById('met-local-period');if(per)per.textContent='· '+(lbl||'')+' · aparte de ML';
+  const per=document.getElementById('met-local-period');if(per)per.textContent='· '+(lbl||'');
   const rango=ks=>{const a=(ks||[]).slice().sort();return a.length?[a[0],a[a.length-1]]:null;};
   const R=rango(curKeys),RP=rango(prevKeys);
   const kOf=f=>String(f||'').slice(0,10).replace(/-/g,'_'),en=(f,r)=>r&&kOf(f)>=r[0]&&kOf(f)<=r[1];
@@ -24978,14 +25031,8 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const otras=otrasDe(R),otrasP=otrasDe(RP),gO=otras.filter(d=>Number(d.costo)>0).reduce((t,d)=>t+d.monto-Number(d.costo),0),gOP=otrasP.filter(d=>Number(d.costo)>0).reduce((t,d)=>t+d.monto-Number(d.costo),0);
   const gTot=gML+gan+gO,gTotP=gMLP+ganP+gOP;
   const parte=(v)=>gTot>0?Math.round(v/gTot*100)+'%':'—';
-  let h=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Lo que se le deja a las perfumerías (Soares, Sarmiento, Ceballos) queda anotado como deuda y cuenta el día que se deja. Los números de ML de arriba no cambian.</div>`;
-  h+=tit('💰 Ganancia de todo junto: ML + Local')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
-    ${box('Total',`<span style="color:var(--green)">+${_pesos(gTot)}</span>${cmp(gTot,gTotP)}`,'ML + perfumerías + otras ventas')}
-    ${box('📦 ML',_pesos(gML)+cmp(gML,gMLP),parte(gML)+' del total')}
-    ${box('🛍️ Perfumerías',_pesos(gan)+cmp(gan,ganP),parte(gan)+' del total')}
-    ${box('🤝 Otras ventas a cuenta',_pesos(gO)+cmp(gO,gOP),parte(gO)+' del total')}</div>`
-    +`<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:6px;background:var(--border)">${[[gML,'#3b82f6'],[gan,'#ec4899'],[gO,'#f59e0b']].map(([v,c])=>gTot>0&&v>0?`<div style="width:${(v/gTot*100).toFixed(1)}%;background:${c}"></div>`:'').join('')}</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:3px"><span style="color:#3b82f6">■</span> ML · <span style="color:#ec4899">■</span> Perfumerías · <span style="color:#f59e0b">■</span> Otras ventas</div>`;
+  let h=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Sólo las perfumerías (Soares, Sarmiento, Ceballos): lo que se les deja queda anotado como deuda y cuenta el día que se deja. Para verlo junto con ML, 🔀 ML + Local.</div>`;
+  // 29/10/2026 (él: "acá en perfumería mezcla, que sea sólo perfumería"): lo mezclado con ML vive en 🔀 ML + Local (renderMetTodo); acá sólo las perfumerías.
   // 2 · Perfumerías: resumen
   h+=tit('🛍️ Perfumerías')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
     ${box('Vendido',_pesos(vend)+cmp(vend,vendP),`${fmtN(sum(dC,'u'))} u. en ${dC.length} entrega${dC.length===1?'':'s'}`)}
@@ -25009,19 +25056,6 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const porP={};dC.forEach(x=>{const k=x.prodNom;const o=porP[k]=porP[k]||{m:0,u:0,g:0,c:0,loc:new Set()};o.m+=Number(x.m)||0;o.u+=Number(x.u)||0;if(x.gan!=null){o.g+=Number(x.gan);o.c+=Number(x.m)-Number(x.gan);}o.loc.add(LOC[x.local]||x.local||'');});
   const prA=Object.entries(porP).sort((a,b)=>b[1].m-a[1].m),mxP=Math.max(1,...prA.map(([,o])=>o.m));
   h+=tit('📦 Productos dejados · en el período')+(prA.length?prA.slice(0,15).map(([k,o])=>`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.66rem"><div style="display:flex;gap:8px;align-items:baseline"><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escC(k)} <span style="color:var(--muted)">· ${[...o.loc].filter(Boolean).join(', ')}</span></span><span style="color:var(--muted)">${fmtN(o.u)} u.</span><b style="font-family:'DM Mono',monospace">${_pesos(o.m)}</b><span style="color:var(--green);font-family:'DM Mono',monospace">+${_pesos(o.g)} · ${pc(o.g,o.c)}</span></div>${barra(o.m/mxP*100,'#ec4899')}</div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Nada dejado en este período.</div>');
-  // 6 · Deudas (hoy): ventas a cobrar y préstamos, atrasadas
-  const esV=d=>(!d.sinGan&&(Number(d.costo)>0||Object.values(d.movs||{}).some(x=>x&&x.gan!=null)))||d.tipo==='venta';
-  const hoyI=(typeof _isoHoy==='function')?_isoHoy():new Date().toISOString().slice(0,10);
-  const act=D.filter(d=>!d.fin&&(Number(d.resta)||0)>0),ven=act.filter(esV),pre=act.filter(d=>!esV(d));
-  const atr=act.filter(d=>{try{const v=cuotaVence(d);return v&&v<hoyI;}catch(e){return false;}});
-  const sR=a=>a.reduce((t,d)=>t+(Number(d.resta)||0),0),totD=sR(act);
-  h+=tit('📥 Deudas hoy')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
-    ${box('🛒 Ventas a cobrar',_pesos(sR(ven)),`${ven.length} · ${totD>0?Math.round(sR(ven)/totD*100):0}% de lo que nos deben`)}
-    ${box('💵 Préstamos',_pesos(sR(pre)),`${pre.length} · ${totD>0?Math.round(sR(pre)/totD*100):0}% de lo que nos deben`)}
-    ${box('⚠️ Atrasadas',atr.length?`<span style="color:var(--red)">${_pesos(sR(atr))}</span>`:'$0',atr.length?`${atr.length} con la cuota vencida`:'ninguna vencida')}</div>`
-    +(()=>{const arr=act.slice().sort((a,b)=>(Number(b.resta)||0)-(Number(a.resta)||0)),mx=Math.max(1,...arr.map(d=>Number(d.resta)||0));return arr.map(d=>`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.66rem"><div style="display:flex;gap:8px"><span style="flex:1">${_escC(d.nom)} <span style="color:var(--muted)">· ${esV(d)?'venta':'préstamo'}</span></span><b style="font-family:'DM Mono',monospace">${_pesos(Number(d.resta)||0)}</b></div>${barra((Number(d.resta)||0)/mx*100,esV(d)?'#22c55e':'#94a3b8')}</div>`).join('');})();
-  // 7 · Otras ventas a cuenta del período
-  h+=tit('🤝 Otras ventas a cuenta · en el período <span style="font-weight:400;color:var(--muted)">(no son de la perfumería)</span>')+(otras.length?otras.map(d=>`<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border);font-size:.66rem"><span style="flex:1">${_escC(d.nom)}</span><b style="font-family:'DM Mono',monospace">${_pesos(Number(d.monto)||0)}</b><span style="color:${Number(d.costo)>0?'var(--green)':'var(--muted)'};font-family:'DM Mono',monospace">${Number(d.costo)>0?'+'+_pesos(d.monto-Number(d.costo))+' · '+pc(d.monto-Number(d.costo),Number(d.costo)):'costo sin cargar'}</span></div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Ninguna cargada en este período.</div>');
   el.innerHTML=h;
 }
 function renderMetricas(){
@@ -25050,6 +25084,7 @@ function renderMetricas(){
   try{renderMetMezcla();}catch(e){console.warn('renderMetMezcla',e);}
   renderMetAuto();           // la plata que trajo la automatización de precios
   try{renderMetLocal(curKeys,prevKeys,lbl);}catch(e){console.warn('renderMetLocal',e);}   // 🏪 el local, aparte
+  try{renderMetTodo(curKeys,prevKeys,lbl);}catch(e){console.warn('renderMetTodo',e);}
   try{metVista();}catch(e){}
   const acctColors=['c1','c4','c2','c3'];
   // Mismo período un año atrás (alineado con las líneas del gráfico).

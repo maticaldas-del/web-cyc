@@ -4033,6 +4033,11 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **Dónde vive:** `index.html` (`renderMetLocal`, llamado desde `renderMetricas`; `met-local`).
 - **Qué chequear:** que lo vendido en el mes coincida con los movimientos de Mercadería del mes en Lo que nos deben; que los KPIs de ML no cambien.
 
+### 🔀 ML + Local mezclados y Perfumería sola (29/10/2026, v28.10-28.11; él: *"yo decía 'todo' como algo que mezcle las métricas… cuánto vendió por fecha cada cosa ml y local, ganancia"* y *"acá en perfumería mezcla, que sea sólo perfumería"*)
+- **Qué es:** el botón 🔀 ML + Local (antes "Todo", que apilaba las dos) muestra `renderMetTodo`: totales de vendido y ganancia con la parte de cada uno, cuánto deja cada $100, y una tabla por día (por mes si el período pasa de 62 días) con ML, Local (perfumerías + otras ventas a cuenta) y la suma, con barras apiladas. 🏪 Perfumería queda sólo con las perfumerías (sin la ganancia junto con ML, sin deudas de personas ni otras ventas).
+- **Dónde vive:** `index.html` (`renderMetTodo`, `renderMetLocal`, `metVista`; `met-todo`).
+- **Qué chequear:** que el ML de la tabla dé igual que los KPIs del mismo período; que en 📦 ML no aparezca nada del local.
+
 ### 🏪 Métricas a fondo del local + selector ML · Perfumería · Todo (29/10/2026, v28.08-28.09; él: *"quiero ver qué perfumería le vendemos más, con barras. ganancia local y ml juntas. deudas. todo… igual de profundo que las métricas de ml"* y *"quiero seguir viendo métricas ml como siempre… pero también la de la perfumería y que se mezclen cuando necesito"*)
 - **Qué es:** `renderMetLocal` muestra: ganancia de ML (la de los KPIs) + perfumerías + otras ventas juntas con barra de partes; perfumerías (vendido, ganancia, cobrado, falta); a qué perfumería le vendemos más con barras (período y desde siempre, con lo que tiene sin pagar cada una); mes a mes vendido y cobrado; productos con ganancia y %; deudas de hoy (ventas, préstamos, atrasadas, con barras); otras ventas del período. Arriba de Métricas `metVista`: 📦 ML (la de siempre, sin el local), 🏪 Perfumería (sólo el local), 🔀 Todo; se recuerda por aparato (`cyc_metvista`).
 - **Dónde vive:** `index.html` (`renderMetLocal`, `metVista`, `#met-vista`).
