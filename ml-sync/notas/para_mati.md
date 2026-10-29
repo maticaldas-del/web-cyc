@@ -8,6 +8,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### 🧲 Ir a los extremos (29/10, él: "lo que vende arriba del 35% dejarlo… lo que tiene sobrestock, está debajo del 35% o no se vende al 35% hace un tiempo, vender lo máximo posible, así hacemos caja")
+Pasado en el chat el 29/10 con 3 decisiones: 1 qué cuenta como "no se vende" (30 días sin vender a 35%+) · 2 escalera rápida de −15% por semana hasta que venda con piso 0%, abriendo F13 antes de los 90 días · 3 lo que vende abajo del 35% sube, no se liquida. Esperando su respuesta.
+
 ### ✅ Contestó la lista de las 12:30 del 29/10 (1a 2a 3a 4a 5b 6 7a 8a 9a 10b 11 12 13a 14a 15b 16a 17a)
 - **Hecho:** 1a saldos de MP fuera del registro (`ancla:buzon=<ts>;go`) · 2a mes cerrado congelado (`cyc/costocongelado`) · 3a lo hace solo el cobro por crecimiento · 4a ventas sin factura no se caen a los 45 días · 5b afuera · 6 Valor de Stock = Stock total del Arqueo · 7a y 14a prompt `PROMPT_ANTIGUEDAD.md` para el chat de Chrome (se lo pasé) · 11 regla en CEREBRO fila 6 (bajar cuando el stock dura más que los días que faltan para pagar) · 15b regla en CEREBRO (cupón de ML cuenta a nuestro precio).
 - **8a Abismo:** hoy ya GANA la caja a $14.990 y deja 40%: no hace falta descuento. Si el 07/11 no se vendió, al local.
