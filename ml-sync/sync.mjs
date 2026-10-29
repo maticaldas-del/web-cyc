@@ -40180,6 +40180,9 @@ async function main() {
     // el total de "Lo que nos deben" al abrirse. OJO: "deuda de CYC A la perfumería" es lo contrario (lo que debemos), NO va acá.
     // Sin nada: lista las deudas con su saldo. La deuda: el id exacto o palabras que agarren UNA sola. Sin ;go sólo muestra.
     if (/^debenmov(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      // El registro de GitHub es PÚBLICO (29/10/2026): el nombre de un deudor (una persona) no se imprime; sólo la inicial y el id.
+      // Las fijas del negocio (Mercadería / Deuda Perfumería) sí, son de CYC.
+      const _tapaNom = (d) => d && d.fija ? String(d.nom || '') : String(d && d.nom || '?').slice(0, 1).toUpperCase() + '···';
       const raw = String(process.env.BILLING_PROBE).slice('debenmov'.length).replace(/^:/, '');
       const GO = /;go\s*$/i.test(raw); const cuerpo = raw.replace(/;go\s*$/i, '').trim();
       const D = (await db.get('cyc/debencuotas')) || {};
@@ -40187,7 +40190,7 @@ async function main() {
       const saldo = (d) => { const n = Math.max(1, Number(d.n) || 1), monto = Number(d.monto) || 0, pag = Math.min(n, Number(d.pagadas) || 0);
         return Math.max(0, monto - pag * (monto / n) + Object.values(d.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0)); };
       const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
-      if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) console.log(`  ${id} · ${d.nom} · falta ${money(Math.round(saldo(d)))} · ${Object.keys(d.movs || {}).length} movimiento(s)`); return; }
+      if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) console.log(`  ${id} · ${_tapaNom(d)} · falta ${money(Math.round(saldo(d)))} · ${Object.keys(d.movs || {}).length} movimiento(s)`); return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
       const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...partesP] = resto.split('|');
       // DEUDA NUEVA CON CUOTAS (29/10/2026, él: "agregar una deuda nueva… Germán. Le vendimos una Play 5 y un joystick… 24 cuotas semanales,
@@ -40224,10 +40227,10 @@ async function main() {
       if (mds) {
         let cand2 = lista.filter(([id]) => id === quien);
         if (!cand2.length) { const pal = _n(quien).split(' ').filter(Boolean); cand2 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
-        if (cand2.length !== 1) { console.log(`❌ "${quien}" agarra ${cand2.length} deudas${cand2.length ? ': ' + cand2.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        if (cand2.length !== 1) { console.log(`❌ "${quien}" agarra ${cand2.length} deudas${cand2.length ? ': ' + cand2.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand2[0]; const nD = Math.round(parseFloat(mds[1].replace(/\./g, '').replace(',', '.')) || 0);
         if (!(nD >= 0)) { console.log('❌ monto inválido'); return; }
-        console.log(`=== "${d.nom}" ARRANCA DE CERO ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  falta hoy ${money(Math.round(saldo(d)))} → ${money(nD)} · se sacan ${Object.keys(d.movs || {}).length} movimiento(s) y ${Object.keys(d.pagos || {}).length} pago(s) (copia en el archivo)`);
+        console.log(`=== "${_tapaNom(d)}" ARRANCA DE CERO ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  falta hoy ${money(Math.round(saldo(d)))} → ${money(nD)} · se sacan ${Object.keys(d.movs || {}).length} movimiento(s) y ${Object.keys(d.pagos || {}).length} pago(s) (copia en el archivo)`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         const tsA = Date.now(); await db.set(`cyc/debencuotas_archivo/${id}/${tsA}`, d);
         await db.patch(`cyc/debencuotas/${id}`, { monto: nD, n: 1, pagadas: 0, pagos: null, movs: null, vence1: null, frec: null, cadaDias: null, costo: null, ts: tsA, fecha0: new Date(tsA - 3 * 3600e3).toISOString().slice(0, 10), editado: tsA });
@@ -40239,10 +40242,10 @@ async function main() {
       if (mnd) {
         let cand1 = lista.filter(([id]) => id === quien);
         if (!cand1.length) { const pal = _n(quien).split(' ').filter(Boolean); cand1 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
-        if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
         const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
-        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${d[campo] || '—'} → ${val || '—'}`);
+        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${d[campo] || '—'} → ${val || '—'}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
         const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
@@ -40253,12 +40256,12 @@ async function main() {
       if (mc) {
         let cand0 = lista.filter(([id]) => id === quien);
         if (!cand0.length) { const pal = _n(quien).split(' ').filter(Boolean); cand0 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
-        if (cand0.length !== 1) { console.log(`❌ "${quien}" agarra ${cand0.length} deudas${cand0.length ? ': ' + cand0.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        if (cand0.length !== 1) { console.log(`❌ "${quien}" agarra ${cand0.length} deudas${cand0.length ? ': ' + cand0.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand0[0]; const nC = parseFloat(mc[1].replace(/\./g, '').replace(',', '.')) || 0;
         const tcC = mc[2] ? (parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0) : 1;
         if (!(tcC > 0)) { console.log('❌ sin dólar cargado en el Arqueo: no puedo pasar los dólares a pesos.'); return; }
         const costo = Math.round(nC * tcC); if (!(costo > 0)) { console.log('❌ costo en cero'); return; }
-        console.log(`=== COSTO DE "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+        console.log(`=== COSTO DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
         console.log(`  costo ${money(costo)}${mc[2] ? ` (US$ ${nC} × dólar ${money(tcC)})` : ''} · antes ${Number(d.costo) > 0 ? money(Math.round(d.costo)) : '—'} · deuda ${money(Math.round(Number(d.monto) || 0))} → ganancia ${money(Math.round((Number(d.monto) || 0) - costo))}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { costo, sinGan: null });
@@ -40299,9 +40302,9 @@ async function main() {
       const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), f = m[3] || hoyAR, nota = notaP.join('|').trim().slice(0, 120);
       let cand = lista.filter(([id]) => id === quien);
       if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
-      if (cand.length !== 1) { console.log(`❌ "${quien}" agarra ${cand.length} deudas${cand.length ? ': ' + cand.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+      if (cand.length !== 1) { console.log(`❌ "${quien}" agarra ${cand.length} deudas${cand.length ? ': ' + cand.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
       const [id, d] = cand[0]; const signo = m[1] === '+' ? 1 : -1, antes = saldo(d), despues = Math.max(0, antes + signo * monto);
-      console.log(`=== MOVIMIENTO EN "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+      console.log(`=== MOVIMIENTO EN "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
       if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
       console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? '  ⚠️ devolvió más de lo que debía' : ''}`);
