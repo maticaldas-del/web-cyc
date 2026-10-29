@@ -1115,7 +1115,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <div class="nav-card nc3 ht" onclick="goPage('oficina')" title="Qué tenés en casa y a qué cuenta va cada cosa.">
       <span class="nc-icon">🏢</span>
-      <div class="nc-title">Mi oficina</div>
+      <div class="nc-title">Oficina ML</div>
       <div class="ht-vivo ht-cel" id="hv-ofi"></div>
       <div id="nc-ofi-sub" class="ht-pc" style="font-size:.66rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
@@ -1335,11 +1335,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <!-- OFICINA CYC: solo el VALOR, sin unidades. Esa mercadería no es de ML —no se publica ni
              se manda a Full— así que contarla producto por producto no sirve para nada: no hay a
              qué cuenta mandarla ni con qué venta compararla. Va el número en dólares y listo. -->
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina CYC</span><span id="ofi-cyc-nota" style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Local</span><span id="ofi-cyc-nota" style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
         <!-- OFICINA MATI: acá SÍ van las unidades, producto por producto, porque es la mercadería
              que se manda a Full. El número de acá lo calcula la pantalla "Mi oficina" a partir de
              lo contado; por eso el campo queda bloqueado apenas hay algo contado. -->
-        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Mati</span><span id="ofi-mati-nota" style="font-size:.6rem;color:var(--muted)"></span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="US$ 0" onchange="saveFin('of_mia',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina ML</span><span id="ofi-mati-nota" style="font-size:.6rem;color:var(--muted)"></span><span id="db_of_mia"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_mia" placeholder="US$ 0" onchange="saveFin('of_mia',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Vendedores</span><span id="db_vendedores"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_vendedores" placeholder="US$ 0" onchange="saveFin('vendedores',this.value)"></div>
         <!-- Desde que se cuenta la oficina por unidades, esa mercadería ya entra sola en el
              patrimonio (Stock Local). Si además queda cargada a mano acá, se cuenta DOS VECES. -->
@@ -1458,7 +1458,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <details id="prod-inventario" style="margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px" ontoggle="if(this.open)renderInv()">
       <summary style="cursor:pointer;font-size:.86rem;font-weight:700">📦 Inventario · unidades por cuenta</summary>
       <div style="margin-top:10px">
-    <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Mi oficina</a>.</div>
+    <div style="font-size:.68rem;color:var(--muted);margin-bottom:8px">👀 Sólo para mirar: el stock de Full lo trae el robot cada hora y lo de casa se cuenta en <a href="#" onclick="goPage('oficina');return false" style="color:var(--accent,#38bdf8)">Oficina ML</a>.</div>
     <input class="search-box" id="inv-search" type="search" placeholder="Buscar producto..." oninput="renderInv()">
     <!-- "🔧 Reparar stock variantes" se sacó el 21/10/2026 (decisión 7.4 de diseño, eligió la a): escribía en el
          inventario sin preguntar, en una pestaña que es sólo para mirar. -->
@@ -1617,8 +1617,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div class="ph-left">
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div>
-        <div class="ph-title">Mi oficina</div>
-        <div class="ph-sub">Oficina Mati · lo que tenés en casa y a qué cuenta va</div>
+        <div class="ph-title">Oficina ML</div>
+        <div class="ph-sub">Oficina ML · lo que tenés en casa y a qué cuenta va</div>
       </div>
     </div>
     <div class="ph-right">
@@ -1708,7 +1708,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div id="ofi-camino-list"></div>
   </div>
 
-  <footer>CYC · Mi oficina</footer>
+  <footer>CYC · Oficina ML</footer>
 </div>
 </div>
 
@@ -2374,8 +2374,8 @@ const FIN_FIELDS=[
   {k:'mp_ayelen',   label:'MP Ayelen',         pos:true, detalle:true},
   {k:'mp_matias',   label:'MP Matias',         pos:true, detalle:true},
   {k:'mp_liq',      label:'A liquidar ML',     pos:true},
-  {k:'of_viejo',    label:'Oficina CYC',       pos:true},
-  {k:'of_mia',      label:'Oficina Mati',      pos:true},
+  {k:'of_viejo',    label:'Oficina Local',       pos:true},
+  {k:'of_mia',      label:'Oficina ML',      pos:true},
   {k:'tarjeta',     label:'Tarjeta',           pos:false},
   {k:'deben_cyc',   label:'Deben a CYC',      pos:true},   // desde el 28/10/2026 lo calcula la web: la suma de cyc/debencuotas
   {k:'vendedores',  label:'Vendedores',        pos:true},
@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.94';
+const APP_VERSION='27.95';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.95',f:'29/10',h:'16:20',c:[{n:1,t:'🏷️ Nombres: "Mi oficina" / "Oficina Mati" ahora es OFICINA ML y "Oficina CYC" es OFICINA LOCAL (en el menú, el Arqueo y los avisos).'}]},
   {v:'27.94',f:'29/10',h:'16:05',c:[{n:2,t:'🏪 Arqueo → Oficina CYC: se empieza a contar producto por producto. Mientras tanto dice cuánto va contado y el valor sigue siendo el de a mano; cuando se termina, pasa a ser la suma de lo contado (unidades × costo). Lo que pide la perfumería sale primero de ahí.'}]},
   {v:'27.93',f:'29/10',h:'15:45',c:[{n:2,t:'🛍️ Pedidos (Bs As): lo que pide la perfumería se suma a lo de ML y dice en chiquito "🛍️ N perfumería" al lado del nombre, aunque en ML no haga falta o no llegue al 35%. Lo que ya está en la oficina queda apartado para ella (no va a Full) y baja solo cuando se le deja.'}]},
   {v:'27.92',f:'29/10',h:'15:20',c:[{n:2,t:'🤖 Mi oficina: "Textos para el chat de Chrome". Todos los textos (rutina diaria, cajas, Paraguay, listas, Once, Imega…) con 📋 Copiar para pegarlos enteros en el chat de Chrome. Se actualizan solos cada noche.'}]},
@@ -8674,7 +8675,7 @@ function renderPromptsCard(){
   const _ab=el.querySelector('details')?.open;
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${_ab?' open':''}>
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">🤖 Textos para el chat de Chrome <span style="color:var(--muted);font-weight:400">· ${P.length}</span></summary>
-    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Tocá 📋 Copiar y pegalo entero en el chat de Claude en Chrome. O decile al chat: "abrí CYC → Mi oficina → 🤖 Textos y hacé el de …". Se actualizan solos cada noche.</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Tocá 📋 Copiar y pegalo entero en el chat de Claude en Chrome. O decile al chat: "abrí CYC → Oficina ML → 🤖 Textos y hacé el de …". Se actualizan solos cada noche.</div>
     ${P.map(([k,x])=>`<div style="padding:6px 0;border-top:1px solid var(--border)">
       <div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
         <div style="flex:1;min-width:180px"><div style="font-size:.74rem;font-weight:600">${_esc(String(x.t).replace(/^PROMPT\s*[·—-]?\s*/i,'').replace(/\s*[—-]\s*para el chat.*$/i,'').replace(/\s*\(.*$/,''))}</div>${x.d?`<div style="font-size:.62rem;color:var(--muted);line-height:1.4">${_esc(x.d)}</div>`:''}</div>
@@ -11003,7 +11004,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
     if(_uOfi>0){
       _inpMati.readOnly=true;_inpMati.style.opacity='.75';_inpMati.style.cursor='default';
       if(document.activeElement!==_inpMati)setMoneyVal(_inpMati,Math.round(_valOfi));
-      if(_notaMati)_notaMati.textContent=` · ${_uOfi} u. contadas en Mi oficina`;
+      if(_notaMati)_notaMati.textContent=` · ${_uOfi} u. contadas en Oficina ML`;
       // Y se GUARDA, no sólo se muestra. Antes el número calculado se escribía en la base solo
       // cuando él tocaba una casilla en "Mi oficina": si después cambiaba el costo de un producto
       // o el dólar, la casilla mostraba el valor nuevo y la base seguía con el viejo — y la
@@ -11014,11 +11015,11 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
       // La oficina quedó en 0 después de haberse contado: vale 0, no el número viejo.
       _inpMati.readOnly=true;_inpMati.style.opacity='.75';_inpMati.style.cursor='default';
       if(document.activeElement!==_inpMati)setMoneyVal(_inpMati,0);
-      if(_notaMati)_notaMati.textContent=' · 0 u. en Mi oficina';
+      if(_notaMati)_notaMati.textContent=' · 0 u. en Oficina ML';
       syncOfiMati();
     }else{
       _inpMati.readOnly=false;_inpMati.style.opacity='';_inpMati.style.cursor='';
-      if(_notaMati)_notaMati.textContent=' · contá las unidades en Mi oficina';
+      if(_notaMati)_notaMati.textContent=' · contá las unidades en Oficina ML';
     }
   }
   const _ofiAviso=document.getElementById('ofi-doble-aviso');
@@ -11029,7 +11030,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
     // SACADO (29/10/2026, él: "sacá ese aviso, ya que lo tengo en cuenta siempre"): no se muestra más.
     const avisar=false&&!_arqViewYM&&_uOfi>0&&cyc>0;
     _ofiAviso.style.display=avisar?'':'none';
-    if(avisar)_ofiAviso.textContent=`Ojo: "Oficina Mati" ahora sale de las ${_uOfi} u. que contaste (${fmtUS(_valOfi)}). Fijate que esa misma mercadería no esté además adentro de los ${fmtUS(cyc)} de Oficina CYC.`;
+    if(avisar)_ofiAviso.textContent=`Ojo: "Oficina ML" ahora sale de las ${_uOfi} u. que contaste (${fmtUS(_valOfi)}). Fijate que esa misma mercadería no esté además adentro de los ${fmtUS(cyc)} de Oficina CYC.`;
   }
   const _mpAviso=document.getElementById('mp-disp-aviso');
   if(_mpAviso){
@@ -13482,7 +13483,7 @@ async function fichaAbrir(mla,ev){
 }
 // 7.19 · ATAJOS (21/10/2026, eligió la a): 📈 en Pedidos y Armar caja, 📋 Ficha desde la línea de tiempo, y "mandar" que lleva a
 // Armar caja. Sólo navegan: no calculan nada.
-function _irCajaLink(t){return `<a role="button" onclick="irACaja('',event)" title="Ir a Mi oficina → Armar caja" style="color:inherit;text-decoration:underline;cursor:pointer">${t}</a>`;}
+function _irCajaLink(t){return `<a role="button" onclick="irACaja('',event)" title="Ir a Oficina ML → Armar caja" style="color:inherit;text-decoration:underline;cursor:pointer">${t}</a>`;}
 // Las publicaciones de la línea abierta (del color elegido si hay uno), activas primero: las que tienen ficha para abrir.
 function _lineaFichaMlas(prodId,vari){
   const L=state.mllinks||{};const v=String(vari||'').toLowerCase();
@@ -17989,9 +17990,9 @@ async function llegadaSumarOfi(renglones){
   try{await syncOfiMati();}catch(_){}
   return {sum,mano};
 }
-const _llegadaTxt=(R)=>(R.sum.length?`🏠 Sumé a Mi oficina ${R.sum.reduce((a,x)=>a+x.u,0)} u. (${R.sum.length} renglón/es).`:'')
-  +(R.mano.length?`\n\n⚠️ NO lo sumé, contalo en Mi oficina:\n${R.mano.map(x=>'· '+x.u+' u. '+(x.nom||'')+(x.variante?' · '+x.variante:'')+' ('+x.why+')').join('\n')}`:'');
-const _llegoTodoPreg=(n)=>confirm(`¿Llegó TODO lo del pedido (${n} u.)?\n\nAceptar = lo sumo solo a Mi oficina. Si después ves que faltó algo, decíselo a Claude (o restalo en Contar lo que hay).\nCancelar = no sumo nada: lo contás vos en Mi oficina.`);
+const _llegadaTxt=(R)=>(R.sum.length?`🏠 Sumé a Oficina ML ${R.sum.reduce((a,x)=>a+x.u,0)} u. (${R.sum.length} renglón/es).`:'')
+  +(R.mano.length?`\n\n⚠️ NO lo sumé, contalo en Oficina ML:\n${R.mano.map(x=>'· '+x.u+' u. '+(x.nom||'')+(x.variante?' · '+x.variante:'')+' ('+x.why+')').join('\n')}`:'');
+const _llegoTodoPreg=(n)=>confirm(`¿Llegó TODO lo del pedido (${n} u.)?\n\nAceptar = lo sumo solo a Oficina ML. Si después ves que faltó algo, decíselo a Claude (o restalo en Contar lo que hay).\nCancelar = no sumo nada: lo contás vos en Oficina ML.`);
 async function pyReclamarLlegada(id){
   if(!db)return false;
   // Revisión etapa 3, 29/10/2026: si el chat lo está marcando ahora (`pyped:llego` deja `llegando` mientras crea las fichas), no se toca:
@@ -18019,7 +18020,7 @@ async function _pyPedidoLlego(id){
   if(!(c.items||[]).some(x=>x&&x.id)){
     // Reposición: los productos YA tienen ficha. No se crea nada; sólo se cierra y se recuerda
     // contar en la oficina (si no, esas unidades desaparecen del patrimonio hasta contarlas).
-    if(!confirm(`Marcar como LLEGADA la reposición del ${c.fecha}\n\n${c.productos||0} producto(s) · ${c.unidades||0} u.\n\nSale de "En camino". Después contalas en Mi oficina → Contar lo que hay: hasta que las cuentes no suman en el patrimonio.\n\nNo crea fichas: ya las tienen.`))return;
+    if(!confirm(`Marcar como LLEGADA la reposición del ${c.fecha}\n\n${c.productos||0} producto(s) · ${c.unidades||0} u.\n\nSale de "En camino". Después contalas en Oficina ML → Contar lo que hay: hasta que las cuentes no suman en el patrimonio.\n\nNo crea fichas: ya las tienen.`))return;
     const _todo=_llegoTodoPreg((c.items||[]).reduce((a,it)=>a+(parseInt(it&&it.u)||0),0));
     if(!await pyReclamarLlegada(id))return;
     const hoyR=new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
@@ -18036,7 +18037,7 @@ async function _pyPedidoLlego(id){
     c.estado='llego';c.fechaLlego=hoyR;c.ofiAlLlegar=Object.keys(_quedan).length?_quedan:undefined;
     await log('Reposición de Paraguay llegada: '+id+(_todo?' · sumada a la oficina':''));
     renderPedidos();
-    alert('Llegó ✓\n\n'+(_todo?_llegadaTxt(R):'Ahora contá estas unidades en Mi oficina:\n'+(c.items||[]).map(it=>'· '+it.u+' u. '+(it.nom||'')+(it.variante?' · '+it.variante:'')).join('\n')));
+    alert('Llegó ✓\n\n'+(_todo?_llegadaTxt(R):'Ahora contá estas unidades en Oficina ML:\n'+(c.items||[]).map(it=>'· '+it.u+' u. '+(it.nom||'')+(it.variante?' · '+it.variante:'')).join('\n')));
     return;
   }
   // Pedido con nuevos (y quizá probados adentro, desde el 05/10 es uno solo): los nuevos se vuelven fichas
@@ -18076,7 +18077,7 @@ async function _pyPedidoLlego(id){
     +(crear.some(x=>x.par&&x.par.length)?`\nℹ️ Se crean aunque haya una ficha con nombre parecido (no es el mismo código ni el mismo nombre):\n${crear.filter(x=>x.par&&x.par.length).slice(0,6).map(x=>'· '+x.src.nombre+' ~ '+x.par[0].name).join('\n')}\n`:'')
     +(yaT.length?`\n${yaT.length} ya tenía(n) ficha.\n`:'')
     +(sinNom.length?`\n⚠️ ${sinNom.length} sin nombre: no se puede crear.\n`:'')
-    +(_repIts.length?`\nProbados (${_repIts.length}): no crean ficha, después los contás en Mi oficina.\n`:'')
+    +(_repIts.length?`\nProbados (${_repIts.length}): no crean ficha, después los contás en Oficina ML.\n`:'')
     +`\nNo publica nada en ML ni compra nada.`))return;
   const _todo=_llegoTodoPreg([...items,..._repIts].reduce((a,it)=>a+(parseInt(it&&it.u)||0),0));
   if(!await pyReclamarLlegada(id))return;
@@ -18123,7 +18124,7 @@ async function _pyPedidoLlego(id){
   // aparecer en ningún lado hasta que alguien los mire.
   // Y SE RECUERDA CONTAR (etapa 3, 29/09/2026): las fichas nacen con 0 en la oficina y el pedido deja
   // de contar "en camino", así que hasta contarlas el patrimonio baja lo que costó el pedido.
-  const _contar=_todo?'\n\n'+_llegadaTxt(R):`\n\nAhora contá estas unidades en Mi oficina (hasta que las cuentes no suman en el patrimonio):\n`
+  const _contar=_todo?'\n\n'+_llegadaTxt(R):`\n\nAhora contá estas unidades en Oficina ML (hasta que las cuentes no suman en el patrimonio):\n`
     +[...items,..._repIts].map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')+(it.variante?' · '+it.variante:'')).join('\n');
   {
     alert(`Pedido marcado como llegado ✓ · ${hechas.length} ficha(s) creada(s)\n\n`
@@ -22931,7 +22932,7 @@ async function _listaLlego(id){
     const misma=(state.products||[]).find(p=>(p.codLista&&String(p.codLista)===String(it.cod)&&p.listaProv===c.prov)||normTxt(p.name||'')===n||normTxt(p.name||'')===n2);return{it,nombre,misma};});
   // Etapa 2 (20/10/2026): sin dólar no se crean fichas (nacerían con costo US$ 0 y se verían como todo ganancia). Como `updCostPesos`.
   if(!(tc>0)&&plan.some(x=>!x.misma&&!x.prob&&x.nombre)){toast('Falta el dólar en Finanzas: sin eso las fichas nuevas nacerían con costo US$ 0. No marqué nada.','err',6000);return;}
-  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.borrada?'· probado con la ficha BORRADA: no se crea nada ('+x.it.u+' × '+x.it.n+')':x.misma?(x.prob?'· probado: ':'· ya existe: ')+x.misma.name+(x.it.variante?' · '+x.it.variante:'')+(x.prob?' · '+x.it.u+' u. a contar en Mi oficina':'')+(_listaRecompra(x.misma,x.it.pc,tc).sube?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués te pregunto si llegó todo, para sumarlo a Mi oficina.`))return;
+  if(!confirm(`Marcar como LLEGADO el pedido a ${c.provNom||c.prov} del ${c.fecha}:\n\n${plan.map(x=>x.borrada?'· probado con la ficha BORRADA: no se crea nada ('+x.it.u+' × '+x.it.n+')':x.misma?(x.prob?'· probado: ':'· ya existe: ')+x.misma.name+(x.it.variante?' · '+x.it.variante:'')+(x.prob?' · '+x.it.u+' u. a contar en Oficina ML':'')+(_listaRecompra(x.misma,x.it.pc,tc).sube?' (costo sube a '+fmt(x.it.pc)+')':''):'· ficha nueva: '+x.nombre+' · '+fmt(x.it.pc)).join('\n')}\n\nDespués te pregunto si llegó todo, para sumarlo a Oficina ML.`))return;
   const _todo=_llegoTodoPreg(plan.reduce((a,x)=>a+(parseInt(x.it&&x.it.u)||0),0));
   let n=0;const subio=[];const _fichaDeI={};
   // La oficina de cada probado al llegar: hasta que se cuente (7 días como mucho) Pedidos lo sigue restando (`listaEnCamino`).
@@ -22987,7 +22988,7 @@ async function _listaLlego(id){
   }
   await log('Llegó el pedido a '+(c.provNom||c.prov)+' del '+c.fecha+': '+n+' ficha(s) nueva(s)'+(nProb?' · '+nProb+' probado(s)':'')+(_todo?' · sumado a la oficina':''));
   if(_todo&&R.mano.length)alert('Llegó ✓\n\n'+_llegadaTxt(R));
-  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s)':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. ${_todo?_llegadaTxt({sum:R.sum,mano:[]}):'Contá las unidades en Mi oficina.'}`,'ok',8000);_listaRepintar();
+  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s)':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. ${_todo?_llegadaTxt({sum:R.sum,mano:[]}):'Contá las unidades en Oficina ML.'}`,'ok',8000);_listaRepintar();
 }
 async function listaPagado(id){
   const c=(state.comprasLista||{})[id];if(!c)return;

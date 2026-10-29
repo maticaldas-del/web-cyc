@@ -40294,14 +40294,14 @@ async function main() {
       const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
       console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
-      if (signo > 0 && prodF && extra.de && /cyc/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
+      if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
         const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
-        if (ant >= u) { obj.t = ant - u; await db.set('cyc/oficyc/' + prodF.id, obj); console.log(`  🏪 Oficina CYC: ${prodF.name} ${ant} → ${ant - u}`);
+        if (ant >= u) { obj.t = ant - u; await db.set('cyc/oficyc/' + prodF.id, obj); console.log(`  🏪 Oficina Local: ${prodF.name} ${ant} → ${ant - u}`);
           if ((await db.get('cyc/mlconfig/oficycPorUnidades')) === true) { const OCa = (await db.get('cyc/oficyc')) || {}; const tcA = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
             let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
-            await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina CYC = US$ ${tot.toFixed(2)}`); } }
-        else console.log(`  ⚠️ en la Oficina CYC hay ${ant} sin color de ${prodF.name}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
-      else if (signo > 0 && prodF && extra.de && /mati/i.test(extra.de)) console.log(`  🏠 salió de la Oficina Mati: restalo con ofi:${prodF.id}=-${u};go (ml-sync)`);
+            await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
+        else console.log(`  ⚠️ en la Oficina Local hay ${ant} sin color de ${prodF.name}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
+      else if (signo > 0 && prodF && extra.de && /mati|ml/i.test(extra.de)) console.log(`  🏠 salió de la Oficina ML: restalo con ofi:${prodF.id}=-${u};go (ml-sync)`);
       // Lo que se le dejó a la perfumería baja lo que ella había pedido (`cyc/pedperf`, 29/10/2026): ya no hay que comprarlo para ella.
       if (signo > 0 && prodF) { let pp = null; try { pp = await db.get('cyc/pedperf/' + prodF.id); } catch { pp = null; }
         if (pp && Number(pp.u) > 0) { const r2 = Math.max(0, Number(pp.u) - u);
@@ -40309,7 +40309,7 @@ async function main() {
           console.log(`  🛍️ lo que pidió la perfumería: ${pp.u} → ${r2}${r2 ? '' : ' (cumplido, sale de Pedidos)'}`); } }
       return;
     }
-    // BILLING_PROBE=oficyc[:<palabras o id>[@<color>]=<+N|-N|N>;…|listo|amano][;go] · LA OFICINA CYC POR UNIDADES (29/10/2026, él: "stock del local
+    // BILLING_PROBE=oficyc[:<palabras o id>[@<color>]=<+N|-N|N>;…|listo|amano][;go] · LA OFICINA LOCAL POR UNIDADES (29/10/2026, él: "stock del local
     // eso ya está, es mercadería oficina cyc. solamente que junta toda la mercadería en un grupo, lo que yo haría es ir una por una pasándote lo
     // que hay"). `cyc/oficyc/<prod>[/v/<color>]` = unidades (aparte de la Oficina Mati: no es de ML, no va a Pedidos ni a Full). Se valúa al costo
     // en dólares de la ficha (como la oficina). Mientras se carga, el Arqueo sigue con el valor a mano (`finanzas/of_viejo`); con `oficyc:listo;go`
@@ -40331,9 +40331,9 @@ async function main() {
         console.log(`  TOTAL contado: ${ks.length} productos · US$ ${total(O).toFixed(2)}`); };
       if (!cuerpo || /^(listo|amano)$/i.test(cuerpo)) {
         const vf = parseFloat(await db.get('cyc/finanzas/of_viejo')) || 0;
-        console.log(`=== 🏪 OFICINA CYC POR UNIDADES · el Arqueo usa ${cfgO ? 'LO CONTADO' : 'el valor a mano (US$ ' + vf.toFixed(2) + ')'} ===`); lista(OC);
+        console.log(`=== 🏪 OFICINA LOCAL POR UNIDADES · el Arqueo usa ${cfgO ? 'LO CONTADO' : 'el valor a mano (US$ ' + vf.toFixed(2) + ')'} ===`); lista(OC);
         if (/^listo$/i.test(cuerpo)) { console.log(`\n→ con ;go el Arqueo pasa a usar lo contado (US$ ${total(OC).toFixed(2)} en vez de US$ ${vf.toFixed(2)})`);
-          if (GO) { await db.set('cyc/mlconfig/oficycPorUnidades', true); await db.set('cyc/finanzas/of_viejo', Math.round(total(OC) * 100) / 100); console.log('✓ guardado: Oficina CYC = lo contado'); } }
+          if (GO) { await db.set('cyc/mlconfig/oficycPorUnidades', true); await db.set('cyc/finanzas/of_viejo', Math.round(total(OC) * 100) / 100); console.log('✓ guardado: Oficina Local = lo contado'); } }
         if (/^amano$/i.test(cuerpo) && GO) { await db.set('cyc/mlconfig/oficycPorUnidades', null); console.log('✓ el Arqueo vuelve al valor a mano (queda el último número)'); }
         return; }
       const malos = [], ops = [];
@@ -40348,7 +40348,7 @@ async function main() {
       }
       if (malos.length) { console.log('❌ NO ESCRIBO NADA:\n   ' + malos.join('\n   ')); return; }
       const N2 = JSON.parse(JSON.stringify(OC));
-      console.log(`=== 🏪 OFICINA CYC · ${GO ? 'APLICANDO' : 'PRUEBA'} ===`);
+      console.log(`=== 🏪 OFICINA LOCAL · ${GO ? 'APLICANDO' : 'PRUEBA'} ===`);
       for (const o of ops) { const x = N2[o.P.id] && typeof N2[o.P.id] === 'object' ? N2[o.P.id] : { t: parseInt(N2[o.P.id]) || 0 };
         const ant = o.va ? parseInt((x.v || {})[sid(o.va)]) || 0 : parseInt(x.t) || 0; const nu = Math.max(0, o.sg === '+' ? ant + o.n : o.sg === '-' ? ant - o.n : o.n);
         if (o.va) { x.v = x.v || {}; x.v[sid(o.va)] = nu; } else x.t = nu; N2[o.P.id] = x;

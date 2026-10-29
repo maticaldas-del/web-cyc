@@ -78,6 +78,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🏷️ Oficina ML y Oficina Local (29/10/2026, v27.95, él: *"OFICINA CYC quiero que se llame oficina LOCAL y oficina mía que sea OFICINA ML"*)
+- **Qué es:** sólo nombres que se ven (menú, títulos, Arqueo, avisos de "Llegó"); las claves de la base no cambian (`Oficina_Mati`, `of_mia`, `of_viejo`, `cyc/oficyc`). `debenmov` acepta `de=local`/`de=ml`.
+- **Qué chequear:** que no quede "Mi oficina"/"Oficina CYC" a la vista (los comentarios y el historial de cambios quedan como estaban).
+
 ### 🏪 Oficina CYC por unidades (29/10/2026, v27.94; él: *"voy una por una pasándote lo que hay"*)
 - **Qué es:** `oficyc` carga unidades en `cyc/oficyc` (aparte de la Oficina Mati); el Arqueo sigue con el valor a mano y la web dice "contado hasta ahora"; `oficyc:listo;go` pasa el campo a lo contado (bloqueado, se re-guarda si cambia costo/dólar). `pedidostodo` imprime `OFICYC n` con `PERF` y Pedidos/cajas lo usan primero; `debenmov …|de=cyc` resta.
 - **Dónde vive:** `sync.mjs` (`oficyc`, `debenmov` de=, `OCY` en `pedidostodo`) · `decide_pedidos.py`/`decide_cajas.py` (`ocy`/`OFICYC`) · `index.html` (bloque 🏪 en `updateArqueo`, `ofi-cyc-nota`, `oficyc` en `CYC_KEYS`).
