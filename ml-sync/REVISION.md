@@ -867,6 +867,7 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 ## 2 · PLATA (martes)
 ### 💸 Cobro por crecimiento (29/10/2026; él eligió 1a: *"cobrar lo que crece cyc dividido 3"*, sin promedio de meses)
 - **Qué es:** `_cobroCrec(ym)` (index.html): (patrimonio del cierre − el del anterior) × dólar del cierre + el retiro de ESE mes (el arqueo se hace después de retirar) − `cyc/cobro_corr/<ym>` {ars, nota} (lo viejo que se cargó tarde: no es crecimiento) ÷ 3. Tarjeta `arq-cobro-crec` abajo de "Cerrar el mes" (`renderCobroCrec`); desde el cierre de octubre es el retiro supuesto del mes siguiente (`_retiroTarjetaDe`). `cyc/cobro_corr` en `CYC_KEYS`.
+- **Retiro automático (29/10, él):** sin la casilla "Retiro cobrado este mes"; `_retiroMesVal(ym)` desde noviembre = `_retiroAuto` (2 × cobro del cierre anterior), `_retiroAutoGuardar` lo escribe en `cyc/retiro_mes` si cambió; Gastos lo muestra sin casilla; la tabla de meses sin cargar no los pide. Chequear: noviembre = $3.200.000; borrar y rehacer un cierre cambia el retiro del mes siguiente.
 - **Un solo número:** "💸 cuánto cobrar" se sacó de Ventas de hoy (29/10, él): el cobro vive sólo en el Arqueo.
 - **Qué chequear:** octubre da (3.059.248 + 1.800.000) ÷ 3 ≈ $1.620.000 c/u menos la corrección; que la misma cuenta salga en `cierrevs`; que el retiro de un mes cerrado nunca se calcule de su propio cierre.
 
