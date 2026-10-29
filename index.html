@@ -3181,7 +3181,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.84';
+const APP_VERSION='27.85';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3194,6 +3194,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.85',f:'29/10',h:'01:37',c:[{n:1,t:'Arqueo: se sacó el aviso "Ojo: Oficina Mati ahora sale de las u. que contaste…"'}]},
   {v:'27.84',f:'29/10',h:'01:36',c:[{n:2,t:'💸 Se sacó la casilla "Retiro cobrado este mes": desde noviembre el retiro es automático, lo que dice el 💸 cobro del cierre del mes anterior × 2 (en Gastos se ve, sin casilla)'}]},
   {v:'27.83',f:'29/10',h:'01:33',c:[{n:1,t:'💸 El cobro es redondo, de a $100.000 para abajo (1.699.000 → 1.600.000); lo que sobra queda en CYC'}]},
   {v:'27.82',f:'29/10',h:'01:31',c:[{n:1,t:'💸 Se sacó "cuánto cobrar" de abajo de Ventas de hoy: el cobro está en Finanzas → Arqueo, abajo de cerrar el mes'}]},
@@ -10883,7 +10884,8 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
     // El único riesgo de doble conteo que queda: que la mercadería de la oficina de Mati también
     // esté metida dentro del número de Oficina CYC.
     const cyc=parseFloat(state.finanzas.of_viejo)||0;
-    const avisar=!_arqViewYM&&_uOfi>0&&cyc>0;
+    // SACADO (29/10/2026, él: "sacá ese aviso, ya que lo tengo en cuenta siempre"): no se muestra más.
+    const avisar=false&&!_arqViewYM&&_uOfi>0&&cyc>0;
     _ofiAviso.style.display=avisar?'':'none';
     if(avisar)_ofiAviso.textContent=`Ojo: "Oficina Mati" ahora sale de las ${_uOfi} u. que contaste (${fmtUS(_valOfi)}). Fijate que esa misma mercadería no esté además adentro de los ${fmtUS(cyc)} de Oficina CYC.`;
   }
