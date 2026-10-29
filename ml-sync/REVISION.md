@@ -4028,6 +4028,11 @@ dos veces con el valor a mano del Arqueo; (3) que lo apartado para la perfumerí
 tenga costo, unidades y perfumería, y que lo que salió de una oficina se haya restado; (5) lo que él pidió en el mes y todavía falta.
 Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lista de deudas" y "🛍️ Mercadería Perfumería".
 
+### 🏪 Local en Métricas, aparte de ML (29/10/2026, v28.07; él eligió 1a 2a 3a: *"no quiero agregar una tarjeta más, de última que esté adentro de métricas. pero separado"*)
+- **Qué es:** sección "🏪 Local" al final de Métricas (botón en el índice), con el período de arriba: vendido a las perfumerías (cuenta el día que se deja, 2a), ganancia y su % sobre el costo, cobrado en el período, falta cobrar, por perfumería, lo que más se les dejó y "otras ventas a cuenta" (3a: deudas que son venta y no son la perfumería, por su día de carga). No toca ningún número de ML.
+- **Dónde vive:** `index.html` (`renderMetLocal`, llamado desde `renderMetricas`; `met-local`).
+- **Qué chequear:** que lo vendido en el mes coincida con los movimientos de Mercadería del mes en Lo que nos deben; que los KPIs de ML no cambien.
+
 ### 🏠 Oficina ML / 🏪 Oficina Local en el Stock total del Arqueo (29/10/2026, v28.06; él: *"esto es detalle. que vaya adentro de oficina local o oficina ml… que se abra al clickearlo. en la oficina hay mercadería que se vendió/hubo en ML y mercadería que nunca estuvo en full"*)
 - **Qué es:** "En la oficina" se parte en Oficina ML (unidades de la Oficina_Mati de fichas con publicación en `mllinks`) y Oficina Local (`of_viejo` + vendedores + lo de la oficina que nunca tuvo publicación). Las dos suman `stockLocalFin` como antes (sin unidades contadas, `of_mia` entero va a ML). El detalle de cada renglón (oficinas, en camino, Full por cuenta) se abre tocándolo (`arqDet`, queda abierto al redibujar).
 - **Dónde vive:** `index.html` (HTML del Stock total: `bk_ofi_ml`, `bk_ofi_local`, `det_*`; bloque 🏠/🏪 en `updateArqueo`; `arqDet`, `_arqDetPinta`).
