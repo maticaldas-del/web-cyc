@@ -3181,7 +3181,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.86';
+const APP_VERSION='27.87';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3194,6 +3194,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.87',f:'29/10',h:'13:09',c:[{n:2,t:'📊 Resumen: "Valor de Stock" ahora es el mismo número que el "Stock total" del Arqueo (suma Oficina CYC y vendedores, que antes faltaban)'}]},
   {v:'27.86',f:'29/10',h:'12:48',c:[{n:1,t:'🛒 Pedidos siempre se abre en Bs As → 🏬 De siempre'}]},
   {v:'27.85',f:'29/10',h:'01:37',c:[{n:1,t:'Arqueo: se sacó el aviso "Ojo: Oficina Mati ahora sale de las u. que contaste…"'}]},
   {v:'27.84',f:'29/10',h:'01:36',c:[{n:2,t:'💸 Se sacó la casilla "Retiro cobrado este mes": desde noviembre el retiro es automático, lo que dice el 💸 cobro del cierre del mes anterior × 2 (en Gastos se ve, sin casilla)'}]},
@@ -26107,11 +26108,15 @@ function renderResumen_page(){
     el.title='Comparación vs '+label;
   };
   setUS('res-patrimonio',c.total);
-  setUS('res-stock',c.stockVal);
+  // 29/10/2026 (él: "que muestre lo mismo, pero el correcto de los dos"): el MISMO número que el "Stock total" del Arqueo
+  // (ML + Oficina CYC + Oficina Mati + vendedores + en camino). Antes era c.stockVal, que no sumaba Oficina CYC ni vendedores.
+  const _stTot=(o,fin)=>{if(!o)return null;const f=fin||{};const loc=(parseFloat(f.of_viejo)||0)+(parseFloat(f.of_mia)||0)+(parseFloat(f.vendedores)||0);
+    const cam=o===c?(c.stockCamino||0):Math.max(0,(o.stock??0)-(o.stockML??0)-(o.stockLocal??0));return (o.stockML||0)+loc+cam;};
+  setUS('res-stock',_stTot(c,state.finanzas));
   setUS('res-efect',c.efect);
   const prevSnap=getLatestSnapshot();
   setComp('res-patrimonio-comp',c.total,prevSnap?.total,'cierre anterior',fmtUS);
-  setComp('res-stock-comp',c.stockVal,prevSnap?.stock,'cierre anterior',fmtUS);
+  setComp('res-stock-comp',_stTot(c,state.finanzas),prevSnap?_stTot(prevSnap,prevSnap.finanzas):null,'cierre anterior',fmtUS);
   setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0)+(Number(prevSnap.vsrUSD)||0):null,'cierre anterior',fmtUS);
 
   _initScopeDefaults('res');

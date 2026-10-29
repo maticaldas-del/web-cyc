@@ -77,6 +77,14 @@ const _cortarCiclo = (donde) => {
 // los que escriben en cantidad o en plata se niegan de entrada, y cualquier otro corre con la base,
 // ML, Mercado Pago y Telegram en sólo lectura (se deja renovar y guardar el token de ML, que ML rota).
 const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env.ML_CONSULTA === '1';
+// 🙈 LOS SALDOS DE MERCADO PAGO NO VAN AL REGISTRO PÚBLICO (29/10/2026, él eligió 1a: "todo lo que se pueda ocultar que se oculte,
+// pero que no se vea afectado el funcionamiento"). En ancla / dispo / saldoml cada monto en pesos o dólares sale como "$•••": lo que
+// escriben en la base es igual, y cada uno ya relee y dice ✓/⚠️ sin mostrar el número.
+const _MASCARA_PLATA = /^(ancla|dispo|saldoml)(:|;|$)/.test(String(process.env.BILLING_PROBE || ''));
+if (_MASCARA_PLATA) {
+  const _ol = console.log.bind(console);
+  console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')) : x)));
+}
 const CONSULTA_ESCRIBE = new Set(['buzon', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
@@ -21210,17 +21218,28 @@ async function main() {
         // días. Antes se pisaba entera y una venta sin factura de hace 4 días desaparecía sola con
         // `facsync:3`, y la pantalla quedaba en verde. Ahora se arrastra la guardada y una vieja sale
         // SÓLO si esta vuelta la leyó (y ya no está sin factura), si aparece en alguna factura, si
-        // tiene más de 45 días o si es anterior al arranque. Las que ML no contestó quedan como estaban.
+        // se canceló o si es anterior al arranque (los 45 días se sacaron el 29/10). Las que ML no contestó quedan como estaban.
         let arrastradas = 0;
         {
           const sinGuardado = (await db.get('cyc/facturas_sin/' + sid(label))) || {};
           const facturadasIds = new Set();
           for (const f of [...Object.values(facs), ...Object.values(yaGuardadas)]) for (const vid of ((f && f.ventas) || [])) facturadasIds.add(String(vid));
+          // 29/10/2026 (él eligió 4a): ya NO se caen a los 45 días. Siguen contando contra el tope de H hasta que aparezca
+          // su factura o la venta se cancele. Las de más de 45 días (fuera de la ventana que se relee) se cruzan con
+          // cyc/ventaprod de su día: si la venta quedó cancelada, sale.
           const limiteSin = Date.now() - 45 * 864e5;
+          const _vpDia = {};
+          const _cancelada = async (oid, fv) => {
+            const dk = String(fv).slice(0, 10).replace(/-/g, '_'); if (!dk) return false;
+            if (!(dk in _vpDia)) { try { _vpDia[dk] = (await db.get('cyc/ventaprod/' + dk)) || {}; } catch { _vpDia[dk] = null; } }
+            const vd = _vpDia[dk]; if (!vd) return false;
+            const ents = Object.entries(vd).filter(([k]) => k.startsWith('v' + oid + '_'));
+            return ents.length > 0 && ents.every(([, x]) => x && x.cancelada);
+          };
           for (const [oid, v] of Object.entries(sinGuardado)) {
             if (sin[oid] || leidasFac.has(oid) || facturadasIds.has(oid)) continue;
             const fv = (v && v.fecha) || '';
-            if (fv && Date.parse(fv) < limiteSin) continue;
+            if (fv && Date.parse(fv) < limiteSin && await _cancelada(oid, fv)) continue;
             if (arranque && fv && fv < arranque) continue;
             sin[oid] = v; arrastradas++; sinReales++;
           }
@@ -50497,8 +50516,22 @@ async function main() {
     // teniendo como futuro: quedaba contado dos veces hasta la mañana siguiente (y congelado si ese día
     // se cerraba el mes).
     if (/^ancla(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const _raw = String(process.env.BILLING_PROBE).replace(/^ancla:?/, '');
+      let _raw = String(process.env.BILLING_PROBE).replace(/^ancla:?/, '');
       const GO = /(^|;)go$/.test(_raw);
+      // 29/10/2026 (él eligió 1a): `ancla:buzon=<ts>[;go]` toma los saldos del renglón "mp:" del mensaje del buzón, sin que nadie
+      // los escriba en el comando (el registro es público). Los montos no se imprimen nunca (ver _MASCARA_PLATA).
+      const _mB = _raw.match(/^buzon=(\d+)/);
+      if (_mB) {
+        const msg = (await db.get('cyc/buzon/' + _mB[1])) || null;
+        const ln = msg && String(msg.t || '').split('\n').find((l) => /^\s*mp:/i.test(l));
+        if (!ln) { console.log(`❌ el mensaje ${_mB[1]} del buzón no tiene renglón "mp:"`); return; }
+        const dia = new Date((Number(msg.ts) || Date.now()) - 3 * 36e5).toISOString().slice(0, 10);
+        const ps = [...ln.replace(/^\s*mp:/i, '').matchAll(/([A-Za-zÁÉÍÓÚáéíóú]+)\s*=\s*\$?\s*([\d.,]+)(?:\s*@\s*(\d{1,2}:\d{2}))?/g)]
+          .map((m) => `${m[1]}=${m[2]}${m[3] ? '@' + dia + ' ' + m[3] : ''}`);
+        if (!ps.length) { console.log('❌ no entendí el renglón "mp:" del buzón'); return; }
+        console.log(`(saldos tomados del buzón ${_mB[1]}: ${ps.length} cuenta(s))`);
+        _raw = ps.join(';') + (GO ? ';go' : '');
+      }
       const pares = _raw.replace(/(^|;)go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
       const CT = { adriana: 'Adriana', luciana: 'Luciana', ayelen: 'Ayelen', matias: 'Matias' };
       const nrmC = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -51314,7 +51347,7 @@ async function main() {
       const B = (await db.get('cyc/buzon')) || {};
       // `ver=<ts>[,<ts>]` (26/10/2026): el mensaje ENTERO (la lista lo corta en 600 letras y el chat de compras deja 120 dudas en uno).
       const mV = raw.match(/ver=([\d,]+)/);
-      if (mV) { for (const t of mV[1].split(',').filter(Boolean)) console.log(B[t] ? `=== [${t}] ===\n${String(B[t].t || '')}\n` : `  ${t}: no existe`); return; }
+      if (mV) { for (const t of mV[1].split(',').filter(Boolean)) console.log(B[t] ? `=== [${t}] ===\n${String(B[t].t || '').replace(/(^|\n)(\s*mp:)[^\n]*/gi, (m0, a, b) => a + b + ' (saldos ocultos)')}\n` : `  ${t}: no existe`); return; }
       const mL = raw.match(/leido=([\d,]+)/);
       if (mL) {
         const tss = mL[1].split(',').filter(Boolean);
@@ -51326,8 +51359,10 @@ async function main() {
       const sin = L.filter((x) => !x.leido), leid = L.filter((x) => x.leido).slice(-5);
       const f = (t) => new Date((Number(t) || 0) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
       console.log(`=== 📬 BUZÓN · ${sin.length} sin leer ===`);
-      for (const x of sin) console.log(`  [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 600)}`);
-      if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 200)}`); }
+      // Los saldos de Mercado Pago del renglón "mp:" no se imprimen (registro público, 1a del 29/10): se cargan con ancla:buzon=<ts>;go.
+      const _tapaMP = (t) => String(t || '').replace(/(^|\n)(\s*mp:)[^\n]*/gi, (m0, a, b) => `${a}${b} (saldos ocultos · cargar con ancla:buzon=<ts>;go)`);
+      for (const x of sin) console.log(`  [${x.k}] ${f(x.ts)} · ${_tapaMP(x.t).slice(0, 600)}`);
+      if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${_tapaMP(x.t).slice(0, 200)}`); }
       return;
     }
 
