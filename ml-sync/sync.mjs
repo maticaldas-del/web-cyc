@@ -29860,11 +29860,21 @@ async function main() {
         console.log(`\n── ${cta}: ${tot} u. en ${Object.keys(items).length} productos${antes ? ` (reemplaza la caja cargada que tenía ${antes} u.)` : ''}`);
         for (const [k, n] of Object.entries(items)) { const [pid, va] = k.split('|'); console.log(`   ${String(n).padStart(3)} · ${((prodsO[pid] || {}).name || pid).slice(0, 55)}${va ? ' · ' + decodeURIComponent(va) : ''}`); }
         if (GO) {
-          await db.set('cyc/cajas_armando/' + cta, { items, ts: Date.now() });
+          await db.set('cyc/cajas_armando/' + cta, { items, ts: Date.now(), por: 'cajaarmar' });
           const rel = ((await db.get('cyc/cajas_armando/' + cta)) || {}).items || {};
           const ok = Object.keys(items).every((k) => rel[k] === items[k]) && Object.keys(rel).length === Object.keys(items).length;
           console.log(`   ${ok ? '✓ cargada y releída' : '✗ NO QUEDÓ IGUAL al releer'}`);
         }
+      }
+      // Una cuenta que ya no lleva nada se VACÍA si su caja la cargó este comando (28/10/2026: al corregir las cajas, Luciana y Adriana
+      // quedaban con la caja vieja). Una caja que cargó él o el chat a mano (sin `por:'cajaarmar'`) no se toca: se avisa.
+      for (const [cta, c] of Object.entries(arm)) {
+        if (porCta[cta] || !c || !Object.keys(c.items || {}).length) continue;
+        const nA = Object.values(c.items || {}).reduce((a, x) => a + (Number(x) || 0), 0);
+        if (c.por === 'cajaarmar' || Date.now() - (Number(c.ts) || 0) < 3 * 36e5) {
+          console.log(`\n── ${cta}: ya no lleva nada · se vacía la caja cargada (${nA} u.)`);
+          if (GO) { await db.set('cyc/cajas_armando/' + cta, null); console.log(((await db.get('cyc/cajas_armando/' + cta)) == null) ? '   ✓ vaciada y releída' : '   ✗ no quedó vacía'); }
+        } else console.log(`\n── ${cta}: tiene una caja cargada a mano (${nA} u.) y hoy no lleva nada: no la toco (vaciala desde Armar caja si no va)`);
       }
       if (problemas.length) { console.log('\n⚠️ recortado a lo que hay en la oficina:'); problemas.forEach((x) => console.log('   ' + x)); }
       if (!Object.keys(porCta).length) console.log('  (nada para cargar)');
