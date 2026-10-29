@@ -39815,6 +39815,29 @@ async function main() {
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) console.log(`  ${id} · ${d.nom} · falta ${money(Math.round(saldo(d)))} · ${Object.keys(d.movs || {}).length} movimiento(s)`); return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
       const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...partesP] = resto.split('|');
+      // DEUDA NUEVA CON CUOTAS (29/10/2026, él: "agregar una deuda nueva… Germán. Le vendimos una Play 5 y un joystick… 24 cuotas semanales,
+      // la primera el 15, la segunda el 22, paga 74 mil por cuota"): `debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>
+      // |frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD|pagos=AAAA-MM-DD,…|costo=<pesos>;go`. Las fechas de `pagos` = cuotas ya pagadas.
+      if (_n(quien) === 'nueva') {
+        const kv = {}; for (const x of String(resto).split('|')) { const i2 = x.indexOf('='); if (i2 > 0) kv[x.slice(0, i2).trim().toLowerCase()] = x.slice(i2 + 1).trim(); else if (!kv.nom) kv.nom = x.trim(); }
+        const nom = String(kv.nom || '').slice(0, 80), nC = parseInt(kv.cuotas, 10) || 1, cuota = Math.round(parseFloat(String(kv.cuota || '').replace(/\./g, '').replace(',', '.')) || 0);
+        const fr = String(kv.frec || (nC > 1 ? 'men' : '')).toLowerCase(), mDias = fr.match(/^dias:(\d+)$/);
+        const frec = mDias ? 'dias' : (['sem', 'men', 'quin'].includes(fr) ? fr : null);
+        const fOk = (f) => /^\d{4}-\d{2}-\d{2}$/.test(f);
+        const pagosF = String(kv.pagos || '').split(',').map((x) => x.trim()).filter(Boolean);
+        if (!nom || !(cuota > 0) || (nC > 1 && (!frec || !fOk(kv.vence1 || ''))) || pagosF.some((f) => !fOk(f)) || pagosF.length > nC) {
+          console.log('❌ Usá: debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>|frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD[|pagos=AAAA-MM-DD,…][|costo=<pesos>];go'); return; }
+        if (lista.some(([, d]) => _n(d.nom) === _n(nom))) { console.log(`❌ Ya hay una deuda que se llama "${nom}": no la duplico.`); return; }
+        const ts0 = Date.now(), pagos = {}; pagosF.forEach((f, i) => { pagos[String(Date.parse(f + 'T12:00:00-03:00') + i)] = { f }; });
+        const costo = Math.round(parseFloat(String(kv.costo || '').replace(/\./g, '').replace(',', '.')) || 0);
+        const dN = { nom, ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1, fecha0: kv.vence1 } : {}), ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
+        console.log(`=== DEUDA NUEVA "${nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'se llevó: ' + kv.det + ' · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        const idN = 'c' + ts0; await db.set('cyc/debencuotas/' + idN, dN);
+        const rN = await db.get('cyc/debencuotas/' + idN);
+        console.log(rN && Number(rN.monto) === dN.monto ? `  ✓ guardada y releída (${idN})` : '  ⚠️ no la pude releer');
+        return;
+      }
       // CUÁNTO NOS COSTÓ UNA DEUDA (28/10/2026, él con la Notebook Tati: "costo 330 dolares"): `=costo <N>[usd]` → `costo` en pesos (con usd,
       // al dólar del Arqueo). Es el mismo campo que "Cuánto nos costó" del ✏️ de la web; la ganancia la calcula la web (monto − costo).
       // NOMBRE Y "QUÉ SE LLEVÓ" (28/10/2026, él: "cambiale el nombre. ponele Mari y adentro del detalle qué se llevó… así con todos"):
