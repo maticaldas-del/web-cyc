@@ -22,6 +22,14 @@ def m35_de(t):
     m=re.search(r' · M35 no:(\S+?):(\S+?)(?: |$)',t)
     if m: return dict(f='no',pc=m.group(1),pv=m.group(2))
     return None
+# 🛍️ LO QUE PIDE LA PERFUMERÍA (29/10/2026, él: "si pide para perfumería que diga en chiquito en el nombre y que sume lo pedido para ML y para
+# perf"): pedidostodo trae `PERF <u>[@<color>]` (`cyc/pedperf`). Se SUMA a lo de ML aunque no llegue al 35% o haya stock de sobra en ML.
+def perf_de(t):
+    m=re.search(r' · PERF (\d+)(?:@(\S+))?',t)
+    return (int(m.group(1)),(m.group(2) or '').replace('_',' ')) if m else None
+def perf_mot(q,perf,mot):
+    if q>0: return f"Hola Tito! Te pido {q+perf}: {q} para ML y {perf} para la perfumería. "+mot[len('Hola Tito! '):] if mot.startswith('Hola Tito! ') else mot
+    return f"Hola Tito! Te pido {perf} para la perfumería (para ML no hace falta)."
 def m35_rent(mm):
     if mm['f']!='no': return True,''
     return False,f"ni contra la competencia ({mm['pc']}%) ni a la venta más cara de 365 días ({mm['pv']}%) llega al 35% (no se repone)"
@@ -66,7 +74,7 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
           env=g(r' · envFull \$(\d+)'),   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
-          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest))
+          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
@@ -198,6 +206,17 @@ def reparto(total,pesos):
     for i in sorted(range(len(ex)),key=lambda i:ex[i]-q[i],reverse=True)[:total-sum(q)]: q[i]+=1
     return q
 res=[]
+# 🛍️ LO DE LA PERFUMERÍA QUE YA ESTÁ EN LA OFICINA queda apartado (29/10/2026): no cuenta como stock para ML y sólo se compra lo que falta.
+for p in prods:
+    if not p.get('perf'): continue
+    pu,pva=p['perf']
+    if p['vars']:
+        _m=[v for v in p['vars'] if v['v'].lower()==pva.lower()]
+        tv=_m[0] if _m else max(p['vars'],key=lambda v:(v['v180'],v['casa']))
+        p['perf']=(pu,tv['v']); r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r)
+    else: r=min(pu,p['casa']); p['casa']-=r
+    p['perfOfi']=r; p['perf']=(pu-r,p['perf'][1])
+    if r: print(f"🛍️ {p['n']}: {r} de la perfumería ya están en la oficina (apartados){'' if pu-r else ': no hace falta comprar para ella'}")
 for p in prods:
     # Sin costo cargado no se puede decir que deja ganancia (antes 0 de costo = "rentable" y pedía de todo).
     # 24/10/2026 (él: "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"): se repone sólo lo que a su
@@ -405,6 +424,12 @@ for p,q,d,rent in res:
             for f,qq in zip(filas,reparto(nJ,pes) if nJ>0 else [0]*len(filas)): f[1]=qq
             moJt=titoJ(moJ)
         else: moJt=None
+        # el color de la perfumería: el que dijo; si no dijo, el que más pide para ML o el que más vende
+        _perfVa=None
+        if p.get('perf') and filas:
+            _pv=p['perf'][1].lower(); _m=[f for f in filas if f[0]['v'].lower()==_pv]
+            _perfVa=_m[0][0]['v'] if _m else None
+            if _perfVa is None and p['perf'][0]>0: avisos.append(f"{p['n']}: la perfumería pide el color {p['perf'][1]} y no tiene renglón: decidilo a mano")
         for v,qq,r,t,obj,b in filas:
             mot=moJt or tito(qq,r,t,obj,b,v.get('rent',rent),p['neto'],v['v'],ex,v.get('motNoRenta',p['motNoRenta']))   # el 35% de ESE color (revisión etapa 3, 29/10/2026)
             jv=juDe(pid,v['v'])
@@ -415,7 +440,9 @@ for p,q,d,rent in res:
             if (p['id'],v['v']) in {('p1779912655490','Invictus'),('p1779912655490','Phantom')}: qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local."
             elif v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
             if v.get('mano') is not None and not v.get('manoVenc'): avisos.append(f"{p['n']} #{v['v']}: ✋ él lo cambió a mano a {v['mano']} en Pedidos: en la web manda eso (no lo que decido) hasta el pedido hecho")
+            if p.get('perf') and p['perf'][0]>0 and v['v']==_perfVa: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
+        if p.get('perf') and not filas: avisos.append(f"{p['n']}: la perfumería pide {p['perf'][0]} pero no tiene ningún color con datos: decidilo a mano")
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
             # una decisión mía vieja, se borra (=auto) para que no quede pidiendo unidades de otro momento.
@@ -443,6 +470,7 @@ for p,q,d,rent in res:
         # `|cub=` (revisión etapa 3, 29/10/2026): lo que esta cuenta ya restó fuera de Full (oficina + camino a Full + lo que viaja). `decido`
         # lo guarda aparte y la web resta de lo decidido sólo lo que ENTRÓ después; antes volvía a restar la oficina y el camino (Te pido 15
         # con 10 en la oficina y 5 en camino → la web lo dejaba en 0 y el renglón desaparecía de Pedidos).
+        if p.get('perf') and p['perf'][0]>0: q,mot=q+p['perf'][0],perf_mot(q,p['perf'][0],mot)
         N.append(f"ped:{pid}=u|{q}|{mot}|cub={max(0,round(t-p['full']))}")
         if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
 bad=[n for n in N if ';' in n]

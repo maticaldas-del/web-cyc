@@ -108,7 +108,7 @@ for l in L:
         gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),hoy=hoy_de(m.group(11)),
-                 fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'));P.append(cur);continue
+                 fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
@@ -151,6 +151,17 @@ def txt_dias(D,por):
     return f"para {D} dias ({por}: el cupo de esa cuenta lo controla el botón del cupo)" if D==T_LARGO else "para 37 dias (30 + 7 de viaje)"
 def txt_stock(fd,cd,otras):   # lo de la cuenta que recibe y, si hay, lo de las otras (revisión etapa 3, 29/10/2026)
     return f"hay {fd} en Full y {cd} en camino"+(f" (y {otras} en las otras cuentas)" if otras>0 else '')
+# 🛍️ LO QUE PIDIÓ LA PERFUMERÍA queda en la oficina (29/10/2026, `cyc/pedperf`): esas unidades no van a Full.
+for p in P:
+    pm=p.get('perf')
+    if not pm: continue
+    pu=int(pm.group(1)); pva=(pm.group(2) or '').replace('_',' ').lower()
+    if p['vars']:
+        _m=[x for x in p['vars'] if x['v'].lower()==pva]
+        tv=_m[0] if _m else max(p['vars'],key=lambda x:(x['s'][2],x['casa']))
+        r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r)
+    else: r=min(pu,p['casa']); p['casa']-=r
+    if r: print(f"🛍️ {p['n']}: {r} quedan en la oficina para la perfumería (no van a Full)")
 for p in P:
     if p['casa']<=0 and not any(x['casa']>0 for x in p['vars']): continue
     nOfi+=1

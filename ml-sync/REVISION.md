@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🛍️ Pedidos de la perfumería en Pedidos de Bs As (29/10/2026, v27.93)
+- **Qué es:** `pedperf` anota lo que pide la perfumería (`cyc/pedperf/<prod>` = {u, local, va, nota}); `pedidostodo` imprime `PERF <u>[@color]` (aunque esté en la papelera o "no traer"); `decide_pedidos.py` aparta lo que ya está en la oficina y suma el resto a lo de ML ("Hola Tito! Te pido N: X para ML y Y para la perfumería"); `decide_cajas.py` no manda a Full lo apartado; `debenmov` con `prod=`/`u=` baja el pedido al dejárselo; la web muestra "🛍️ N perfumería" al lado del nombre.
+- **Dónde vive:** `sync.mjs` (`pedperf`, `PERF0`/`PERFT` en `pedidostodo`, hook en `debenmov`) · `decide_pedidos.py` (`perf_de`, `perf_mot`) · `decide_cajas.py` · `index.html` (`pedPerfChip`, `pedperf` en `CYC_KEYS`).
+- **Qué chequear:** el primer pedido real: que la suma dé, que no vaya a Full y que baje al dejárselo.
+
 ### 🛍️ Mercadería a la perfumería = costo + 25% (29/10/2026, él: *"a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa"*)
 - **Qué es:** `debenmov:<deuda>=+25%|prod=<ficha>|local=<…>|u=N;go` → lo que paga c/u = costo de la ficha × 1,25 (sin costo cargado no escribe).
 - **Dónde vive:** `sync.mjs`, `debenmov` (`mPct`).
