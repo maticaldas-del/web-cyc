@@ -85,7 +85,7 @@ if (_MASCARA_PLATA) {
   const _ol = console.log.bind(console);
   console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')) : x)));
 }
-const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedperf', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -40248,7 +40248,7 @@ async function main() {
       // ficha (lo pagado, puesto en la oficina: sin reclamos ni envío a Full) y la ganancia. SÓLO para verla en Ver deudas: no toca ventas,
       // métricas, cierres ni stock.
       const extra = {}; const notaP = [];
-      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
+      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u|de)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
       // 29/10/2026 (él: "a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa.
       // tomás el costo del producto, le ponés un 25% y multiplicás por las unidades"): `=+25%|prod=…|local=…|u=N` → lo que paga c/u = costo × 1,25.
       const mPct = String(numF).trim().match(/^\+\s*(\d+(?:[.,]\d+)?)\s*%(?:@(\d{4}-\d{2}-\d{2}))?$/);
@@ -40293,11 +40293,72 @@ async function main() {
       if (pagaK) await db.set(`cyc/debencuotas/${id}/movs/${pagaK}/pagado`, f);
       const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
       console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
+      // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
+      if (signo > 0 && prodF && extra.de && /cyc/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
+        const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
+        if (ant >= u) { obj.t = ant - u; await db.set('cyc/oficyc/' + prodF.id, obj); console.log(`  🏪 Oficina CYC: ${prodF.name} ${ant} → ${ant - u}`);
+          if ((await db.get('cyc/mlconfig/oficycPorUnidades')) === true) { const OCa = (await db.get('cyc/oficyc')) || {}; const tcA = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+            let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
+            await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina CYC = US$ ${tot.toFixed(2)}`); } }
+        else console.log(`  ⚠️ en la Oficina CYC hay ${ant} sin color de ${prodF.name}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
+      else if (signo > 0 && prodF && extra.de && /mati/i.test(extra.de)) console.log(`  🏠 salió de la Oficina Mati: restalo con ofi:${prodF.id}=-${u};go (ml-sync)`);
       // Lo que se le dejó a la perfumería baja lo que ella había pedido (`cyc/pedperf`, 29/10/2026): ya no hay que comprarlo para ella.
       if (signo > 0 && prodF) { let pp = null; try { pp = await db.get('cyc/pedperf/' + prodF.id); } catch { pp = null; }
         if (pp && Number(pp.u) > 0) { const r2 = Math.max(0, Number(pp.u) - u);
           if (r2 > 0) await db.patch('cyc/pedperf/' + prodF.id, { u: r2, ts: Date.now() }); else await db.set('cyc/pedperf/' + prodF.id, null);
           console.log(`  🛍️ lo que pidió la perfumería: ${pp.u} → ${r2}${r2 ? '' : ' (cumplido, sale de Pedidos)'}`); } }
+      return;
+    }
+    // BILLING_PROBE=oficyc[:<palabras o id>[@<color>]=<+N|-N|N>;…|listo|amano][;go] · LA OFICINA CYC POR UNIDADES (29/10/2026, él: "stock del local
+    // eso ya está, es mercadería oficina cyc. solamente que junta toda la mercadería en un grupo, lo que yo haría es ir una por una pasándote lo
+    // que hay"). `cyc/oficyc/<prod>[/v/<color>]` = unidades (aparte de la Oficina Mati: no es de ML, no va a Pedidos ni a Full). Se valúa al costo
+    // en dólares de la ficha (como la oficina). Mientras se carga, el Arqueo sigue con el valor a mano (`finanzas/of_viejo`); con `oficyc:listo;go`
+    // (`mlconfig/oficycPorUnidades`) el valor pasa a ser la suma de lo contado y cada cambio lo reescribe; `oficyc:amano;go` vuelve atrás.
+    // Lo que pide la perfumería sale primero de acá (pedidostodo `OFICYC`) y `debenmov …|prod=|u=|de=cyc` lo resta al dejárselo.
+    if (/^oficyc(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('oficyc'.length).replace(/^:/, '');
+      const GO = /;go\s*$/i.test(raw); const cuerpo = raw.replace(/;go\s*$/i, '').trim();
+      const tcO = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      const OC = (await db.get('cyc/oficyc')) || {}; const cfgO = (await db.get('cyc/mlconfig/oficycPorUnidades')) === true;
+      const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const byId = {}; for (const p of products) byId[p.id] = p;
+      const uDe = (x) => x && typeof x === 'object' ? Object.values(x.v || {}).reduce((a, b) => a + (parseInt(b) || 0), 0) + (parseInt(x.t) || 0) : (parseInt(x) || 0);
+      const cuDe = (p) => Number(costoPesos(p, 1, tcO).costBaseUSD) || 0;
+      const total = (O) => Object.entries(O).reduce((t, [k, x]) => t + uDe(x) * cuDe(byId[k] || {}), 0);
+      const lista = (O) => { const ks = Object.keys(O).filter((k) => uDe(O[k]) > 0).sort((a, b) => String((byId[a] || {}).name).localeCompare(String((byId[b] || {}).name)));
+        for (const k of ks) { const p = byId[k] || {}; const x = O[k]; const vs = x && typeof x === 'object' && x.v ? Object.entries(x.v).filter(([, q]) => parseInt(q) > 0).map(([c, q]) => `${c} ${q}`).join(', ') : '';
+          console.log(`  · ${p.name || k} · ${uDe(x)} u.${vs ? ' (' + vs + ')' : ''} · US$ ${cuDe(p).toFixed(2)} c/u${cuDe(p) > 0 ? '' : ' ⚠️ sin costo'} = US$ ${(uDe(x) * cuDe(p)).toFixed(2)}`); }
+        console.log(`  TOTAL contado: ${ks.length} productos · US$ ${total(O).toFixed(2)}`); };
+      if (!cuerpo || /^(listo|amano)$/i.test(cuerpo)) {
+        const vf = parseFloat(await db.get('cyc/finanzas/of_viejo')) || 0;
+        console.log(`=== 🏪 OFICINA CYC POR UNIDADES · el Arqueo usa ${cfgO ? 'LO CONTADO' : 'el valor a mano (US$ ' + vf.toFixed(2) + ')'} ===`); lista(OC);
+        if (/^listo$/i.test(cuerpo)) { console.log(`\n→ con ;go el Arqueo pasa a usar lo contado (US$ ${total(OC).toFixed(2)} en vez de US$ ${vf.toFixed(2)})`);
+          if (GO) { await db.set('cyc/mlconfig/oficycPorUnidades', true); await db.set('cyc/finanzas/of_viejo', Math.round(total(OC) * 100) / 100); console.log('✓ guardado: Oficina CYC = lo contado'); } }
+        if (/^amano$/i.test(cuerpo) && GO) { await db.set('cyc/mlconfig/oficycPorUnidades', null); console.log('✓ el Arqueo vuelve al valor a mano (queda el último número)'); }
+        return; }
+      const malos = [], ops = [];
+      for (const it of cuerpo.split(';').map((x) => x.trim()).filter(Boolean)) {
+        const i = it.lastIndexOf('='); if (i < 1) { malos.push(`"${it}": va <producto>=<+N|-N|N>`); continue; }
+        const vstr = it.slice(i + 1).trim(); const mv = vstr.match(/^([+-]?)(\d+)$/); if (!mv) { malos.push(`"${it}": unidades +N, -N o N`); continue; }
+        let q = it.slice(0, i).trim(), va = ''; const ia = q.indexOf('@'); if (ia > 0) { va = q.slice(ia + 1).trim(); q = q.slice(0, ia).trim(); }
+        let pc = products.filter((x) => x.id === q); if (!pc.length) { const pw = _n(q).split(' ').filter(Boolean); pc = products.filter((x) => pw.every((w) => (' ' + _n(x.name) + ' ').includes(w))); }
+        if (pc.length !== 1) { malos.push(`"${q}" agarra ${pc.length} fichas${pc.length ? ': ' + pc.slice(0, 6).map((x) => `${x.name} (${x.id})`).join(' | ') : ' (si no existe: nuevoprod con su costo)'}`); continue; }
+        const P = pc[0]; if (va) { const vv = (P.variantes || []).map(String).find((x) => _n(x) === _n(va)); if (!vv) { malos.push(`${P.name} no tiene el color "${va}"`); continue; } va = vv; }
+        ops.push({ P, va, sg: mv[1], n: parseInt(mv[2], 10) });
+      }
+      if (malos.length) { console.log('❌ NO ESCRIBO NADA:\n   ' + malos.join('\n   ')); return; }
+      const N2 = JSON.parse(JSON.stringify(OC));
+      console.log(`=== 🏪 OFICINA CYC · ${GO ? 'APLICANDO' : 'PRUEBA'} ===`);
+      for (const o of ops) { const x = N2[o.P.id] && typeof N2[o.P.id] === 'object' ? N2[o.P.id] : { t: parseInt(N2[o.P.id]) || 0 };
+        const ant = o.va ? parseInt((x.v || {})[sid(o.va)]) || 0 : parseInt(x.t) || 0; const nu = Math.max(0, o.sg === '+' ? ant + o.n : o.sg === '-' ? ant - o.n : o.n);
+        if (o.va) { x.v = x.v || {}; x.v[sid(o.va)] = nu; } else x.t = nu; N2[o.P.id] = x;
+        console.log(`  · ${o.P.name}${o.va ? ' #' + o.va : ''}: ${ant} → ${nu}${o.sg === '-' && o.n > ant ? '  ⚠️ había menos' : ''}${cuDe(o.P) > 0 ? ` · US$ ${cuDe(o.P).toFixed(2)} c/u` : '  ⚠️ sin costo: no suma valor'}`); }
+      console.log(`  total contado: US$ ${total(OC).toFixed(2)} → US$ ${total(N2).toFixed(2)}${cfgO ? ' (el Arqueo usa lo contado)' : ' (el Arqueo sigue con el valor a mano hasta "oficyc:listo;go")'}`);
+      if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+      for (const o of ops) await db.set('cyc/oficyc/' + o.P.id, N2[o.P.id]);
+      if (cfgO) await db.set('cyc/finanzas/of_viejo', Math.round(total(N2) * 100) / 100);
+      const R3 = (await db.get('cyc/oficyc')) || {}; const okN = ops.filter((o) => uDe(R3[o.P.id]) === uDe(N2[o.P.id])).length;
+      console.log(`releído: ${okN} de ${ops.length} ${okN === ops.length ? '✓' : '⚠️ NO CIERRA'}`);
       return;
     }
     // BILLING_PROBE=pedperf[:<palabras o id>[@<color>]=<u>[|local=<soares|sarmiento|ceballos>][|<nota>];…][;go] (29/10/2026, él: "hay productos
@@ -47513,7 +47574,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id) > 0 ? ' · OFICYC ' + ocyU(p.id) : ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -47679,6 +47740,8 @@ async function main() {
       } catch (e) { console.log(`⚠️ el 35% contra la competencia / la venta más cara no se pudo medir (${e.message}): Pedidos usa el precio de hoy`); }
       // 🛍️ lo que pidió la perfumería (`pedperf`, 29/10/2026): decide_pedidos.py lo suma a lo de ML (`PERF <u>[@<color>]`).
       let PERFT = {}; try { PERFT = (await db.get('cyc/pedperf')) || {}; } catch { PERFT = {}; console.log('⚠️ no leí cyc/pedperf: lo que pidió la perfumería no se suma'); }
+      let OCY = {}; try { OCY = (await db.get('cyc/oficyc')) || {}; } catch { OCY = {}; }
+      const ocyU = (k) => { const y = OCY[k]; return y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); };
       for (const [g, arr] of Object.entries(grupos)) {
         arr.sort((a, b) => ((S[b.id] || {}).t180 || 0) - ((S[a.id] || {}).t180 || 0));
         console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);
