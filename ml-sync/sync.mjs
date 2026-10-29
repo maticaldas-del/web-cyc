@@ -47754,8 +47754,16 @@ async function main() {
           const r = (x) => x == null ? '?' : Math.round(x);
           if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}`;
           if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}`;
-          if (mc == null && mv == null) return '';
-          return ` · M35 no:${r(mc)}:${r(mv)}`;
+          // 29/10/2026 (él: "descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en
+          // stock en full"): el precio que deja 35% (`p35`, entre el de hoy y la venta más cara, verificado con la comisión de ML) y cuántos días
+          // estuvo a ese precio o más caro con stock y cuánto vendió ahí (365 días). decide_pedidos.py descarta sólo con 30+ días sin vender.
+          const P0 = Number(b.price) || 0; const mh = await mg(P0);
+          let p35 = null; const pts = [[pv, mv], [P0, mh], [pc, mc]].filter(([x, y]) => x > 0 && y != null).sort((x, y) => x[0] - y[0]);
+          if (pts.length >= 2) { const [p1, y1] = pts[0], [p2, y2] = pts[pts.length - 1]; if (y2 > y1) p35 = p1 + (MIN35 - y1) * (p2 - p1) / (y2 - y1); }
+          else if (pts.length === 1 && pts[0][1] > -50) p35 = pts[0][0] * (1 + (MIN35 - pts[0][1]) / 100);
+          if (p35 > 0) { p35 = Math.ceil(p35 / 100) * 100 - 10; for (let i = 0; i < 6; i++) { const y = await mg(p35); if (y == null || y >= MIN35) break; p35 = Math.ceil(p35 * 1.04 / 100) * 100 - 10; } }
+          if (mc == null && mv == null && !(p35 > 0)) return '';
+          return ` · M35 no:${r(mc)}:${r(mv)}${p35 > 0 ? ':' + Math.round(p35) + ':' + (await rit(p35)) : ''}`;
         };
         for (const p of todos) {
           const cs = clas(p.id); if (!cs.length) continue;

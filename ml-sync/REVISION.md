@@ -83,6 +83,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Dónde vive:** `sync.mjs` (`prompts`, en `CONSULTA_ESCRIBE`) · `ml-daily.yml` (paso "Textos para el chat de Chrome") · `index.html` (`renderPromptsCard`, `promptCopiar`, `prompts` en `CYC_KEYS`).
 - **Qué chequear:** que estén todos (7 hoy) y que un prompt cambiado se vea al día siguiente (o después de `prompts:go`).
 
+### 🧪 Descartar sólo lo probado al 35% · compra de prueba (29/10/2026; él: *"descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en stock en Full"*)
+- **Qué es:** `M35 no:<%comp>:<%venta>:<p35>:<u>/<d>`: el precio que deja 35% (interpolado entre hoy, la venta más cara y la competencia y verificado con la comisión de ML) y los días con stock a ese precio o más caro y lo vendido. `decide_pedidos.py`: no se repone sólo con 30+ días sin vender ahí (`PRUEBA_DIAS`); si se vendía y no se probó, pide una semana de su ritmo (mín. 2) menos lo que hay, con motivo "de prueba". La competencia ya no descarta.
+- **Dónde vive:** `sync.mjs` (`medir` en el bloque `M35`) · `decide_pedidos.py` (`m35_probado`, `m35_rent`, `prueba_mot`).
+- **Qué chequear:** que el `p35` tenga sentido contra el precio de hoy; que la prueba llegue a Full y se publique a ese precio; que a los 30 días sin vender salga de Pedidos.
+
 ### 🛒 ¿Se repone? Competencia → venta más cara de 365 días → ritmo a ese precio (29/10/2026, él: *"se compara contra el competidor de ml y si no da el 35% se mira con la venta más alta del producto de los últimos 365 días. y se pide unidades según el ritmo de venta del producto a ese precio"*; y *"cada aroma variante de cualquier producto se ve por sí mismo"*)
 - **Qué es:** `pedidostodo` imprime `M35 comp|v365|no` para el producto y cada color (con su Clásica): % del peor caso al precio de `cyc/techofull` y, si no llega, a la venta más cara de 365 días; y `u/d` = lo vendido en los días con stock a ese precio (−3%) o más caro. `decide_pedidos.py`: no se repone si ninguno llega al 35%; con 7+ días a ese precio, el ritmo es ése; el máximo de compra usa ese precio.
 - **Dónde vive:** `sync.mjs` (bloque `M35` en `pedidostodo`, misma cuenta que `ofi35`) · `decide_pedidos.py` (`m35_de`, `m35_rent`, `ritmo`, `venta`, `ventas_color`).
