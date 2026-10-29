@@ -3222,7 +3222,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.15';
+const APP_VERSION='28.16';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3235,6 +3235,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.16',f:'29/10',h:'22:00',c:[{n:1,t:'📊 Métricas → 🏪 Local: sin el botón 💚 Neto (en el local es igual al Total).'}]},
   {v:'28.15',f:'29/10',h:'21:45',c:[{n:1,t:'📊 Métricas: se sacó 🏢 Ganancia CYC (es la ganancia dividida en 3) y la pantalla se llama "Métricas" (ya no es sólo ML).'}]},
   {v:'28.14',f:'29/10',h:'21:30',c:[{n:3,t:'📊 Métricas → 🏪 Local y 🔀 ML + Local armadas igual que ML: mismos KPIs, Tendencia (con período anterior, año pasado y proyección), % de Ganancia y Participación, con sus propios números. En Local las "cuentas" son Soares, Sarmiento, Ceballos y Otras ventas; en ML + Local son ML y Local. Abajo sigue el detalle de cada una.'}]},
   {v:'28.13',f:'29/10',h:'20:50',c:[{n:1,t:'📊 Métricas → 🔀 ML + Local ya no muestra los botones de ML (Línea de todo, KPIs, Tendencia…).'},{n:2,t:'📊 Métricas → 🔀 ML + Local: gráfico de líneas como el de ML (azul ML, naranja Local, la suma punteada), con Diario/Acumulativo y Vendido/Ganancia; la tabla queda abajo sin barras.'}]},
@@ -25110,6 +25111,10 @@ function renderMetLocal(curKeys,prevKeys,lbl){
 }
 function renderMetricas(){
   try{metSrc=localStorage.getItem('cyc_metvista')||'ml';}catch(e){metSrc='ml';}if(!['ml','local','todo'].includes(metSrc))metSrc='ml';_metLocMemo=null;
+  // 29/10/2026 (él: "en métricas local que desaparezca el neto, ya que no hay diferencia entre total y neto")
+  {const bn=document.getElementById('met-field-neto');if(bn)bn.style.display=metSrc==='local'?'none':'';
+   if(metSrc==='local'&&metViewFields.includes('neto')){metViewFields=metViewFields.filter(f=>f!=='neto');if(!metViewFields.length)metViewFields=['total'];metViewField=metViewFields[0];
+     if(metChartLine){metChartLine.destroy();metChartLine=null;}if(metChartBar){metChartBar.destroy();metChartBar=null;}_syncMetFieldBtns();}}
   _syncMetFieldBtns(); // deja los botones prendidos/apagados según las métricas activas
   _initMetDefaults();
   _metNextApagar();
