@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.97';
+const APP_VERSION='27.98';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.98',f:'29/10',h:'16:55',c:[{n:1,t:'📥 Mercadería Perfumería: en cada producto dejado, el total a cobrar en blanco y negrita y abajo la ganancia en verde con su % sobre el costo (+$4.716 · 25%).'}]},
   {v:'27.97',f:'29/10',h:'16:45',c:[{n:2,t:'📥 Lo que nos deben: el % de ganancia va sobre el costo (lo de la perfumería dice 25%, no 20%). En Mercadería Perfumería, arriba se ve la ganancia en pesos y adentro cuánto de la deuda no tiene costo cargado.'}]},
   {v:'27.96',f:'29/10',h:'16:30',c:[{n:2,t:'🔍 Revisiones: etapa nueva 9 · Local (cada 7 días): perfumerías, Oficina Local, deudas y pedidos del local, y que nada se mezcle con ML.'}]},
   {v:'27.95',f:'29/10',h:'16:20',c:[{n:1,t:'🏷️ Nombres: "Mi oficina" / "Oficina Mati" ahora es OFICINA ML y "Oficina CYC" es OFICINA LOCAL (en el menú, el Arqueo y los avisos).'}]},
@@ -7214,7 +7215,7 @@ function cuotaDetalleHTML(d){
   const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:5px ${x.prod&&x.pagado?'6px':'0'};border-top:1px solid var(--border);font-size:.7rem;${x.prod&&x.pagado?'background:rgba(34,197,94,.09);border-radius:6px':''}">
       <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
       <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}${x.gan!=null?`<div style="font-size:.64rem;color:var(--muted)">paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${x.gan>=0?'var(--green)':'var(--red)'}">${_pesos(x.gan)}</b></div>`:''}</span>
-      <b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>
+      ${x.gan!=null&&x.m>0?`<span style="white-space:nowrap;text-align:right;font-family:'DM Mono',monospace;line-height:1.25"><b style="color:var(--text)">${_pesos(x.m)}</b><br><span style="font-size:.64rem;color:${x.gan>=0?'var(--green)':'var(--red)'}">${x.gan>=0?'+':'−'}${_pesos(Math.abs(x.gan))}${x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':''}</span></span>`:`<b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>`}
       ${x.prod?(x.pagado?`<span style="font-size:.64rem;color:var(--green);white-space:nowrap">✅ pagado ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.62rem;padding:2px 8px" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="La perfumería pagó este producto">✅ Pagó</button>`):''}</div>`).join('');
   const nav=pags>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${Array.from({length:pags},(_,i)=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${i+1===pg?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="event.stopPropagation();cuotaPagina(${i+1})">${i+1}</button>`).join('')}</div>`:'';
   return `<div onclick="event.stopPropagation()" style="padding:4px 12px 12px;border-top:1px dashed var(--border)">
