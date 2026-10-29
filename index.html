@@ -1364,7 +1364,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
       <span class="fin-label">💸 Retiro cobrado este mes (Mati + Viejo)</span>
-      <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong>. Se usa para el chequeo de abajo.</span>
+      <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong> (lo que dijo la tarjeta 💸 del cierre anterior × 2). Hay que cargarlo: el cobro del mes que viene se lo vuelve a sumar a lo que creció.</span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
     </div>
     <div id="retiros-mes-list" style="margin-top:12px"></div>
@@ -3185,7 +3185,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.80';
+const APP_VERSION='27.81';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3198,6 +3198,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.81',f:'29/10',h:'01:29',c:[{n:2,t:'💸 "Cuánto cobrar" ya no adivina con las ventas de ML: muestra sólo lo del último mes cerrado (lo que creció CYC) y, si el mes no se cerró, dice que sale al cerrarlo'}]},
   {v:'27.80',f:'29/10',h:'01:28',c:[{n:1,t:'💸 "Cuánto cobrar": un mes cerrado antes de terminar (octubre) ya muestra lo del cierre'}]},
   {v:'27.79',f:'29/10',h:'01:28',c:[{n:2,t:'💸 "Cuánto cobrar" de Ventas de hoy: con el mes cerrado muestra lo mismo que el Arqueo (lo que creció CYC). En el mes en curso aclara que es sólo lo de ML y que lo de verdad sale al cerrar'}]},
   {v:'27.78',f:'29/10',h:'01:24',c:[{n:3,t:'💸 Arqueo: el cobro de cada socio ahora es lo que creció CYC en el mes (todo: ML, local, perfumerías) + lo que ya retiraron ese mes, ÷ 3. Sale en una tarjeta abajo del botón de cerrar el mes y es el retiro supuesto del mes siguiente'}]},
@@ -26009,8 +26010,17 @@ function _homeCobroHtml(f){
     const _avEste=P.esActual?'':_gastosFaltanAviso(ym,mesCorto);
     const pr=P.esActual?cobroProyMes(ym):null;
     // 29/10/2026 (él: "¿cobramos 1.3m como dice arriba o la nueva regla?"): con el mes cerrado manda lo que CRECIÓ CYC
-    // (`_cobroCrec`, la misma tarjeta del Arqueo). Antes del cierre es sólo una idea: lo de las ventas de ML.
-    const cc=(ym>=COBRO_CRECE_DESDE&&(state.snapshots||{})[ym])?_cobroCrec(ym):null;   // cerrado antes de fin de mes (octubre se cerró el 28/10) también
+    // (`_cobroCrec`, la misma tarjeta del Arqueo).
+    // 29/10/2026 (él: "esto desaparece, no? nosotros cobraríamos lo que dice al cerrar el mes"): desde octubre no hay más
+    // proyección: sólo el cobro del ÚLTIMO mes cerrado. Lo que se cobra no se adivina durante el mes.
+    const _ksC=ym>=COBRO_CRECE_DESDE?Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&k<=ym).sort():[];
+    const _kC=_ksC[_ksC.length-1];
+    const cc=_kC?_cobroCrec(_kC):null;
+    if(cc&&_kC!==ym){const [cy,cm]=_kC.split('_').map(Number);
+      return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${MONTHS[cm%12]} ${cm===12?cy+1:cy} · cada uno · lo que creció CYC</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem">${fmt(cc.porSocio)}</div>
+      <div style="font-size:.66rem;color:var(--muted)">${mesCorto} todavía no se cerró: lo que se cobra en ${sigLbl} sale al cerrarlo en el Arqueo</div>`;}
+    if(!cc&&ym>=COBRO_CRECE_DESDE)return `<div style="font-size:.7rem;color:var(--muted)">Lo que se cobra en ${sigLbl} sale al cerrar ${mesCorto.toLowerCase()} en el Arqueo (lo que creció CYC ÷ 3).</div>`;
     if(cc)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · lo que creció CYC</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cc.porSocio>0?'var(--text)':'var(--red)'}">${fmt(cc.porSocio)}</div>
       <div style="font-size:.66rem;color:var(--muted)">sale del cierre del Arqueo (ML, local y todo)</div>`;
