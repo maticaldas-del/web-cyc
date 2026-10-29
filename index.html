@@ -3185,7 +3185,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.81';
+const APP_VERSION='27.82';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3198,6 +3198,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.82',f:'29/10',h:'01:31',c:[{n:1,t:'💸 Se sacó "cuánto cobrar" de abajo de Ventas de hoy: el cobro está en Finanzas → Arqueo, abajo de cerrar el mes'}]},
   {v:'27.81',f:'29/10',h:'01:29',c:[{n:2,t:'💸 "Cuánto cobrar" ya no adivina con las ventas de ML: muestra sólo lo del último mes cerrado (lo que creció CYC) y, si el mes no se cerró, dice que sale al cerrarlo'}]},
   {v:'27.80',f:'29/10',h:'01:28',c:[{n:1,t:'💸 "Cuánto cobrar": un mes cerrado antes de terminar (octubre) ya muestra lo del cierre'}]},
   {v:'27.79',f:'29/10',h:'01:28',c:[{n:2,t:'💸 "Cuánto cobrar" de Ventas de hoy: con el mes cerrado muestra lo mismo que el Arqueo (lo que creció CYC). En el mes en curso aclara que es sólo lo de ML y que lo de verdad sale al cerrar'}]},
@@ -25963,10 +25964,7 @@ function renderHomeHoy(){
     ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
-    <details id="hoy-cobro" ${_hoyCobroAbierto()?'open':''} onclick="event.stopPropagation()" ontoggle="_hoyCobroToggle(this)" style="margin-top:14px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--c) 25%,transparent)">
-      <summary style="cursor:pointer;font-size:.72rem;color:var(--muted)">💸 cuánto cobrar</summary>
-      <div id="hoy-cobro-in" style="margin-top:8px">${_hoyCobroAbierto()?_homeCobroHtml(_homeHoyFecha()):''}</div>
-    </details>
+    <!-- 💸 cuánto cobrar: SACADO de acá (29/10/2026, él: "sacá el cuánto cobrar de abajo de las ventas, ya que va a estar en finanzas"). Vive en el Arqueo (renderCobroCrec). -->
   </div>`;
   vivaScan(el);
   try{_homeHoyEfectos(esc,h,hoy);}catch(e){}
@@ -25997,42 +25995,6 @@ function _homeHoyDeslizar(el){
 // que me interesa de ahí es cuánto cobrar (…) en detalle desplegable en ventas de hoy"). Misma cuenta que tenía el
 // Puntaje (cobroProxMes): la ganancia real de un mes ÷ 3 se cobra al mes siguiente. Se calcula sólo con el
 // desplegable abierto. El mes es el del día que se está mirando.
-function _hoyCobroAbierto(){try{return localStorage.getItem('cycHoyCobro')==='1';}catch(e){return false;}}
-function _hoyCobroToggle(d){try{localStorage.setItem('cycHoyCobro',d.open?'1':'0');}catch(e){}
-  if(d.open){const box=document.getElementById('hoy-cobro-in');if(box)box.innerHTML=_homeCobroHtml(_homeHoyFecha());}}
-function _homeCobroHtml(f){
-  try{
-    const ym=f.getFullYear()+'_'+String(f.getMonth()+1).padStart(2,'0');
-    const P=calcPuntajeMes(ym),cb=cobroProxMes(P);
-    const [py,pm]=ym.split('_').map(Number);
-    const sigLbl=MONTHS[pm%12]+' '+(pm===12?py+1:py);
-    const mesCorto=MONTHS[pm-1];
-    const _avEste=P.esActual?'':_gastosFaltanAviso(ym,mesCorto);
-    const pr=P.esActual?cobroProyMes(ym):null;
-    // 29/10/2026 (él: "¿cobramos 1.3m como dice arriba o la nueva regla?"): con el mes cerrado manda lo que CRECIÓ CYC
-    // (`_cobroCrec`, la misma tarjeta del Arqueo).
-    // 29/10/2026 (él: "esto desaparece, no? nosotros cobraríamos lo que dice al cerrar el mes"): desde octubre no hay más
-    // proyección: sólo el cobro del ÚLTIMO mes cerrado. Lo que se cobra no se adivina durante el mes.
-    const _ksC=ym>=COBRO_CRECE_DESDE?Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&k<=ym).sort():[];
-    const _kC=_ksC[_ksC.length-1];
-    const cc=_kC?_cobroCrec(_kC):null;
-    if(cc&&_kC!==ym){const [cy,cm]=_kC.split('_').map(Number);
-      return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${MONTHS[cm%12]} ${cm===12?cy+1:cy} · cada uno · lo que creció CYC</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem">${fmt(cc.porSocio)}</div>
-      <div style="font-size:.66rem;color:var(--muted)">${mesCorto} todavía no se cerró: lo que se cobra en ${sigLbl} sale al cerrarlo en el Arqueo</div>`;}
-    if(!cc&&ym>=COBRO_CRECE_DESDE)return `<div style="font-size:.7rem;color:var(--muted)">Lo que se cobra en ${sigLbl} sale al cerrar ${mesCorto.toLowerCase()} en el Arqueo (lo que creció CYC ÷ 3).</div>`;
-    if(cc)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · lo que creció CYC</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cc.porSocio>0?'var(--text)':'var(--red)'}">${fmt(cc.porSocio)}</div>
-      <div style="font-size:.66rem;color:var(--muted)">sale del cierre del Arqueo (ML, local y todo)</div>`;
-    const _soloML=ym>=COBRO_CRECE_DESDE?'<div style="font-size:.66rem;color:var(--muted)">sólo las ventas de ML: lo de verdad sale al cerrar el mes en el Arqueo</div>':'';
-    if(pr)return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno · proyección a fin de ${mesCorto.toLowerCase()}</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${pr.mes>0?'var(--text)':'var(--red)'}">${fmt(pr.mes)}</div>
-      ${_soloML}${_avEste}`;   // 21/10/2026, él: sacar "En <mes> cobran lo que dejó <mes anterior>" de Inicio ("ya lo sabemos")
-    return `<div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Para cobrar en ${sigLbl} · cada uno${P.esActual?' · va hasta hoy':''}</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.5rem;color:${cb.tercio>0?'var(--text)':'var(--red)'}">${fmt(cb.tercio)}</div>
-      ${_soloML}${_avEste}`;   // 21/10/2026, él: sacar "En <mes> cobran lo que dejó <mes anterior>" de Inicio ("ya lo sabemos")
-  }catch(e){return '<span style="color:var(--muted);font-size:.7rem">No pude calcularlo.</span>';}
-}
 // PARA RETIRAR HASTA HOY (30/09/2026). Regla suya: "los 3 cobremos lo mismo: CYC, papá y yo". Corrección suya
 // el mismo día: "que diga cuánto retirar hasta ahora: la ganancia REAL de CYC dividida entre 3". O sea, sin
 // proyección: lo que ya dejaron las ventas del mes (neto − mercadería) menos los gastos YA cargados, ANTES del
@@ -26063,7 +26025,7 @@ function cobroProxMes(P){
 }
 function renderPuntajeMes(){
   // La tarjeta del Puntaje del mes ya no se dibuja (09/10/2026, él: "sacar lo del puntaje del mes, no me interesa").
-  // Lo único que quería, cuánto cobrar, vive en el desplegable de "Ventas de hoy" (_homeCobroHtml). Desde el 20/10/2026
+  // Lo único que quería, cuánto cobrar, vivió en el desplegable de "Ventas de hoy" hasta el 29/10 (ahora en el Arqueo, renderCobroCrec). Desde el 20/10/2026
   // (etapa 7) acá ya no se arma lo que se tiraba (barras, objetivo, cobro, sugerencias) ni se redibuja "Ventas de hoy"
   // (Inicio la dibuja primero): sólo queda lo que todavía se usa, el monotributo de cada cuenta para la tarjeta ⚖️
   // (P.monoCuentas → _monoHomeHtml) y el puntaje de Rotación.
