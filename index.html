@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.99';
+const APP_VERSION='28.00';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.00',f:'29/10',h:'17:25',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado muestra sólo el nombre; tocándolo se abre ahí mismo el detalle (nombre entero, cuánto paga, costo, ganancia y la nota).'}]},
   {v:'27.99',f:'29/10',h:'17:05',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado ocupa el mismo lugar: fecha, producto (cortado si es largo), perfumería, total y ganancia, y el botón Pagó, todo en columnas fijas.'}]},
   {v:'27.98',f:'29/10',h:'16:55',c:[{n:1,t:'📥 Mercadería Perfumería: en cada producto dejado, el total a cobrar en blanco y negrita y abajo la ganancia en verde con su % sobre el costo (+$4.716 · 25%).'}]},
   {v:'27.97',f:'29/10',h:'16:45',c:[{n:2,t:'📥 Lo que nos deben: el % de ganancia va sobre el costo (lo de la perfumería dice 25%, no 20%). En Mercadería Perfumería, arriba se ve la ganancia en pesos y adentro cuánto de la deuda no tiene costo cargado.'}]},
@@ -7217,12 +7218,19 @@ function cuotaDetalleHTML(d){
   // nombre ocupe siempre el mismo lugar, nombre de perfumería siempre en el mismo lugar"): lo dejado en una perfumería va en columnas fijas
   // (fecha · producto en un renglón cortado con … · perfumería · total y ganancia · botón) y el detalle (paga, costo, nota) en un renglón cortado.
   const _cel='white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-  const _filaProd=x=>`<div style="display:grid;grid-template-columns:3em minmax(0,1fr) 5.7em 8.2em 4.7em;align-items:center;column-gap:6px;height:46px;padding:0 6px;border-radius:6px;border-top:1px solid var(--border);font-size:.7rem;${x.pagado?'background:rgba(34,197,94,.09)':''}">
+  // 29/10/2026 (él: "ese detalle abajo del nombre ponerlo todo al abrir la tarjeta haciendo click. en la misma"): la fila muestra sólo el nombre;
+  // tocándola se abre ahí mismo el detalle (nombre entero, paga, costo, ganancia, nota).
+  const _filaProd=x=>{const ab=window._cuotaMovAb===x.mov;return `<div style="border-top:1px solid var(--border);${x.pagado?'background:rgba(34,197,94,.09);':''}border-radius:6px">
+    <div onclick="event.stopPropagation();window._cuotaMovAb=window._cuotaMovAb==='${x.mov}'?null:'${x.mov}';renderCuotas()" style="cursor:pointer;display:grid;grid-template-columns:3em minmax(0,1fr) 5.7em 8.2em 4.7em;align-items:center;column-gap:6px;height:46px;padding:0 6px;font-size:.7rem">
       <span style="color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
-      <span style="min-width:0;line-height:1.3" title="${_escC((x.u>1?x.u+' × ':'')+x.nom+(x.nota?' · '+x.nota:''))}"><div style="${_cel}">🛍️ ${x.u>1?'<b>'+x.u+' ×</b> ':''}${_escC(x.nom)}</div><div style="${_cel};font-size:.62rem;color:var(--muted)">${x.gan!=null?`paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u`:'sin costo cargado'}${x.nota?' · '+_escC(x.nota):''}</div></span>
+      <span style="min-width:0;${_cel}">🛍️ ${x.u>1?'<b>'+x.u+' ×</b> ':''}${_escC(x.nom)}</span>
       <span style="${_cel};color:var(--text)">${_escC(x.loc||'—')}</span>
       <span style="text-align:right;font-family:'DM Mono',monospace;line-height:1.25;white-space:nowrap"><b style="color:var(--text)">${_pesos(x.m)}</b><br><span style="font-size:.6rem;color:${x.gan==null?'var(--muted)':x.gan>=0?'var(--green)':'var(--red)'}">${x.gan==null?'—':(x.gan>=0?'+':'−')+_pesos(Math.abs(x.gan))+(x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':'')}</span></span>
-      <span style="text-align:right">${x.pagado?`<span style="font-size:.62rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.62rem;padding:2px 8px;white-space:nowrap" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="La perfumería pagó este producto">✅ Pagó</button>`}</span></div>`;
+      <span style="text-align:right">${x.pagado?`<span style="font-size:.62rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.62rem;padding:2px 8px;white-space:nowrap" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="La perfumería pagó este producto">✅ Pagó</button>`}</span></div>
+    ${ab?`<div style="padding:2px 6px 8px calc(3em + 12px);font-size:.66rem;color:var(--muted);line-height:1.55;word-break:break-word">
+      <div style="color:var(--text)">${x.u>1?x.u+' × ':''}${_escC(x.nom)}${x.loc?' · '+_escC(x.loc):''}</div>
+      ${x.gan!=null?`<div>paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${x.gan>=0?'var(--green)':'var(--red)'}">${_pesos(x.gan)}</b>${x.m-x.gan>0?' ('+Math.round(x.gan/(x.m-x.gan)*100)+'% sobre el costo)':''}</div>`:'<div>sin costo cargado: la ganancia no se sabe</div>'}
+      ${x.nota?`<div>📝 ${_escC(x.nota)}</div>`:''}${x.pagado?`<div style="color:var(--green)">✅ pagado el ${_isoDM(x.pagado)}</div>`:''}</div>`:''}</div>`;};
   const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>x.prod?_filaProd(x):`<div style="display:flex;align-items:center;gap:10px;padding:5px ${x.prod&&x.pagado?'6px':'0'};border-top:1px solid var(--border);font-size:.7rem;${x.prod&&x.pagado?'background:rgba(34,197,94,.09);border-radius:6px':''}">
       <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
       <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}${x.gan!=null?`<div style="font-size:.64rem;color:var(--muted)">paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${x.gan>=0?'var(--green)':'var(--red)'}">${_pesos(x.gan)}</b></div>`:''}</span>

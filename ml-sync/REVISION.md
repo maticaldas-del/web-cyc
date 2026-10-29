@@ -4053,3 +4053,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **Qué es:** `lista:<prov>|borrar;<código o nombre exacto>;…[;go]` borra de `mlapi/listas/<prov>` y anota en `cyc/mlconfig/listasProv/<prov>/fuera`; al volver a cargar la lista se saltean ("N salteados"). Recuenta los botones (`cuentaLista`). PROMPT_ONCE e IMEGA: no copiar marcas reales.
 - **Dónde vive:** `sync.mjs` (bloque `borrar` y `_fuera` en `lista`) · `PROMPT_ONCE.md` · `PROMPT_IMEGA.md`.
 - **Qué chequear:** que lo borrado no aparezca en Pedidos → Bs As ni vuelva al recargar; que un nombre repetido pida el código.
+- 29/10 (v28.00, él: *"ese detalle abajo del nombre ponerlo todo al abrir la tarjeta haciendo click. en la misma"*): la fila del producto dejado sólo tiene el nombre; tocándola se abre debajo el detalle (`window._cuotaMovAb`). Y `lista|borrar` ahora va antes del freno de fecha (sin fecha lo frenaba).
