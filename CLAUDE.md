@@ -554,6 +554,7 @@ Si dudás si un comando existe, buscá en `sync.mjs` (`grep -n "'<nombre>'" ml-s
 
 ## 13 · PENDIENTES ABIERTOS (al 22/10/2026; borrar al cerrarse)
 
+- **El arqueo de noviembre es el primero con todo cargado** (29/10, él: *"el que importa es el próx arqueo, ya que vamos a tener todo al detalle cargado"*; local por unidades y perfumerías incluidas): al cerrar noviembre correr `cierrevs` y explicarle la diferencia renglón por renglón. Octubre dio +$603.578 que sobran (US$ 387, con el local ya sumado); sospechosos: efectivo +US$ 2.903 y lo vendido sin reporte.
 - **Revisiones por etapas:** vuelven solas el sáb 24/10 04:00 (ver §9). Cuando el cartel quede sin pendientes, recordarle la revisión
   completa al final si la pide.
 - **Los 22 ❌ de antes del detector** (corrida del 22/10, 72 h) siguen puestos y NO se deshacen solos: los decide la vuelta de a uno,
