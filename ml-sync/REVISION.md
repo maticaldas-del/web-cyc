@@ -78,6 +78,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🧲 Liquidación de lo que no se vende (29/10/2026, él eligió 1a 2a 3a)
+- **Qué es:** en `frenosBajas` F13: `liq30` = 25+ días con stock en los últimos 30 y 0 unidades vendidas → se puede bajar del 35% aunque la unidad más vieja tenga menos de 90 días, pero `bajoSemana` frena un segundo escalón abajo del 35% antes de 7 días. F0 (0%), F5/F7 (escalera ≤15%) y F12 (perfumes) siguen.
+- **Qué chequear:** algo que vendió 1 en 30 días NO entra; un perfume sin ventas igual frena en 10%; dos bajas en la misma semana abajo del 35% → la segunda frenada.
+
 ### 🪜 F14 · salida "vende muchísimo menos" (28/10/2026, él eligió la 1a; con el Filtro: *"si lo hubiéramos dejado al precio que vendió nos hubiéramos perdido muchísimas ventas y ganancia. habría que afinar"*)
 - **Qué es:** un escalón que vendió (F14) igual baja si deja menos de la MITAD de la plata por día que el 💰, con 95% de seguridad (Poisson con la franja del mes) y 7+ días con stock en ese precio (`F14_MENOS_DIAS`); baja hacia el 💰 sin pasarlo (≤15%, F2/F3 siguen). `techo95` no le anota 🏔️ a ese escalón. La cuenta contra el 💰 es UNA (`medirContraBest`): la usan F8, F14 y `techo95`.
 - **Dónde vive:** `ml-sync/sync.mjs` (`medirContraBest`, `muchoMenosOk`, F14 y F8 en `frenosBajas`, `techo95`).
