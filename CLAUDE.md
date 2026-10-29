@@ -411,7 +411,7 @@
 - `lista:<prov>[|fecha=AAAA-MM-DD];<producto>=<pesos>[@<cód>];…;go`. **Nunca cargar una lista vieja** (18/10; el comando frena si la fecha
   es anterior a `cyc/mlconfig/listasProv/<prov>/fecha`). **Preguntar si el precio es el que se paga o lista con descuento** y cargar el
   NETO (Iscos: "P. Lista" con −30%/−33,5%, `listadto`).
-- **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos;go`, `noWeb`).
+- **Iscos: sólo lo que está en su web** y el precio de la web × **0,665** (19/10, `listaweb:iscos|fecha=<AAAA-MM-DD del archivo>;go`, `noWeb`; 29/10: sin fecha o más viejo que la lista cargada se niega, y una fila que no vino en la última lista queda "📅 de una lista anterior" y no cuenta).
 - **🏙️ Listas del Once** (28/10, él: *"bs as está muy desaprovechado… lo mejor es conseguir listas"*; eligió 1a): Tito pide la lista a cada mayorista donde compra (foto, PDF o WhatsApp; precio final o +IVA, y si da factura) y el chat de Chrome busca mayoristas del Once con catálogo con precios en internet y los carga (`ml-sync/PROMPT_ONCE.md`: `lista:` con fecha → `|bsas` → `listamedir`). Todo va a Pedidos → Bs As con la vara de 35%.
 - **Dai Nippon** (Bs As, lo trae Tito): **desde el 21/10 tiene casilla, 🧾 Pedido con mensaje de WhatsApp, Ya lo pedí y Llegó** como las otras.
 - **Pedido a una lista y la plata** (20/10 2b + 24/10 12a): pagado al pedir (💵 Ya lo pagué mientras viaja, `pagado:true`) → mercadería en camino en el Arqueo (`listaEnCaminoUSD`); sin pagar → al llegar es deuda hasta que se paga (`listaDeudaUSD`).

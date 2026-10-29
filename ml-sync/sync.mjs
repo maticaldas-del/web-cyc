@@ -270,8 +270,12 @@ async function clDescontarPedBot(db, pid, va, u) {
   const o = await db.get(base); if (!o || typeof o !== 'object') return '';
   const vars = o.vars && typeof o.vars === 'object' ? o.vars : {}, mano = o.mano && typeof o.mano === 'object' ? o.mano : {};
   const k = va ? sid(String(va).toLowerCase()) : '', upd = {};
+  // Revisión etapa 3, 29/10/2026: IGUAL QUE LA WEB. Con color y una decisión SIN colores (`u` del producto, sin `vars`) la web resta de
+  // `u`; acá se devolvía '' sin restar nada y el renglón quedaba igual marcado `desc` (Pedidos no lo restaba nunca: se volvía a pedir).
+  // Ahora el color sólo corta si la decisión TIENE colores (`vars`) y ese color no está, como `clDescontarPed`.
+  const hayVars = !!(o.vars && typeof o.vars === 'object');
   if (k && mano[k] && mano[k].u != null) { upd['vars/' + k] = Math.max(0, (parseInt(mano[k].u) || 0) - left); upd['mano/' + k] = null; }
-  else if (k) { if (!(k in vars)) return ''; upd['vars/' + k] = Math.max(0, (parseInt(vars[k]) || 0) - left); }
+  else if (k && hayVars) { if (!(k in vars)) return ''; upd['vars/' + k] = Math.max(0, (parseInt(vars[k]) || 0) - left); }
   else if (o.u != null) upd.u = Math.max(0, (parseInt(o.u) || 0) - left);
   else {
     const ef = {}; for (const [kk, n] of Object.entries(vars)) ef[kk] = Math.max(0, parseInt(n) || 0);
@@ -11052,6 +11056,16 @@ function pyGastoCargado(c, g) {
 // (lo que decía la web de lo que vino de verdad); sin ticket, `usdCrudo` (lo que guardó "Ya lo pedí"). Decisión 7a: con
 // `{ sinAdelanto: true }` el adelanto ocasional no entra (lo usa el PROMEDIO de `paramcompra`); el pedido lo sigue pagando.
 // Misma cuenta que `pyRecargoReal` de index.html: si se toca una, la otra.
+// LO DE USO PERSONAL QUE VINO EN EL TICKET (revisión etapa 3, 29/10/2026): `c.personal.usd` (lo pagado, lo separa `compray det=`). Su
+// parte de los pesos de los dólares (mercadería + cambista, por los dólares que costó contra los de CYC) no es de CYC y sale del recargo.
+// Sin correo ni el que retira, como la deuda del local del 28/10 ("su parte de comisiones; sin correo ni el que retira"). Misma cuenta
+// que `pyPersonalARS` de index.html: si se toca una, la otra.
+function pyPersonalARS(c) {
+  const pu = parseFloat(c && c.personal && c.personal.usd) || 0; if (!(pu > 0)) return 0;
+  const p = (c && c.pagos) || {}, cyc = parseFloat(c && c.ticket && c.ticket.usdPagado) || 0;
+  const dol = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0);
+  return cyc + pu > 0 ? Math.round(dol * pu / (cyc + pu)) : 0;
+}
 function recargoRealPedido(c, opt) {
   const falta = PY_GASTOS.filter((g) => !pyGastoCargado(c, g)).map((g) => g.nom);
   const tc = parseFloat(c && c.tcPedido) || parseFloat(c && c.tcPanel) || 0;
@@ -11061,7 +11075,7 @@ function recargoRealPedido(c, opt) {
   if (!(usd > 0)) falta.push('los dólares crudos');
   if (falta.length) return { r: null, falta };
   const p = c.pagos || {};
-  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (opt && opt.sinAdelanto ? 0 : (Number(p.adelanto) || 0));
+  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (opt && opt.sinAdelanto ? 0 : (Number(p.adelanto) || 0)) - pyPersonalARS(c);
   const r = tot / tc / usd;
   // Un recargo abajo de 1 o arriba de 1,6 no es un pedido: es un dato mal cargado. No se usa.
   if (!(r >= 1 && r <= 1.6)) return { r: null, falta: [`el recargo da ${((r - 1) * 100).toFixed(1)}%: algún número está mal`] };
@@ -11080,12 +11094,13 @@ function recargoFichasPedido(c) {
   const tc = parseFloat(c && c.tcPedido) || parseFloat(c && c.tcPanel) || 0;
   if (!(pag > 0) || !(tc > 0)) return R;
   const p = c.pagos || {};
-  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (Number(p.adelanto) || 0);
+  const tot = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0) + (Number(p.envio) || 0) + (Number(p.retira) || 0) + (Number(p.otros) || 0) + (Number(p.adelanto) || 0) - pyPersonalARS(c);   // revisión etapa 3, 29/10/2026
   const r = tot / tc / pag;
   if (!(r >= 1 && r <= 1.6)) return R;
   return { r: Math.round(r * 10000) / 10000, falta: [], contraPagado: true };
 }
-// Sube el costo de las fichas de este pedido que salieron MÁS CARAS que lo que tienen. Nunca baja.
+// Sube el costo de las fichas de este pedido que salieron MÁS CARAS que lo que tienen. Nunca baja (salvo la PRIMERA compra, que va al
+// real para los dos lados: revisión etapa 3, 29/10/2026, ver `primera`).
 // La ficha ENTERA toma el costo nuevo (decisión suya); las ventas de meses pasados quedan con el viejo
 // congelado en `precios_hist_prod`, igual que `poncosto`. Probados = renglón con `prodId` y sin `id`;
 // nuevos = el candidato ya tiene ficha (si todavía no, la ficha se crea al llegar con este recargo).
@@ -11101,23 +11116,35 @@ async function aplicarCostosPedido(db, idPedido, c, GO) {
   const php = (await db.get('cyc/precios_hist_prod')) || {};
   const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || 0;
   const cambios = [], iguales = [], sinFicha = [];
+  // ¿LA FICHA YA VENDÍA ANTES DE ESTE PEDIDO? (revisión etapa 3, 29/10/2026). "Primera compra" era "el renglón tiene candidato" (`it.id`), y
+  // un renglón con candidato puede ser de una ficha que ya existía (un agregado que el ticket empareja con un candidato viejo que ya era
+  // ficha, o uno enganchado al llegar a la misma ficha): ahí NO se congelaba el costo viejo y las ventas de meses cerrados cambiaban.
+  // Ahora es primera compra sólo si la ficha no tiene ventas de antes del día del pedido.
+  const fK = String(c.fecha || '').replace(/-/g, '_');
+  const vendioAntes = new Set(), vendioAntesNom = new Set();
+  if (fK) for (const [dk, o] of Object.entries(vp)) { if (String(dk).slice(0, 10) >= fK) continue; for (const v of Object.values(o || {})) { if (!v) continue; if (v.prodId) vendioAntes.add(v.prodId); else if (v.prod) vendioAntesNom.add(norm(v.prod)); } }
   for (const it of (c.items || [])) {
     if (!it) continue;
-    const pid = it.id ? ((cands[it.id] || {}).prodId || null) : (it.prodId || null);
+    // La ficha: primero la del renglón (`prodId`, la anotan `compray det=` y "Llegó" en los enganchados y agregados) y si no, la del
+    // candidato (revisión etapa 3, 29/10/2026: los agregados `x<cód>` no tienen candidato y quedaban "sin ficha" para siempre).
+    const pid = (it.prodId && products[it.prodId] ? it.prodId : null) || (it.id ? ((cands[it.id] || {}).prodId || null) : (it.prodId || null));
     const usd = parseFloat(it.usd) || 0;
     if (!pid || !products[pid]) { sinFicha.push(it.nom || it.cod || '?'); continue; }
     if (!(usd > 0)) { sinFicha.push((it.nom || '?') + ' (sin precio)'); continue; }
     const p = products[pid];
     const antes = parseFloat(p.costUSD) || 0;
     const nuevo = Math.round(usd * r * 100) / 100;
-    if (antes > 0 && nuevo <= antes * 1.005) { iguales.push({ nom: p.name, antes, nuevo }); continue; }
-    // `primera`: el renglón es un producto NUEVO de este mismo pedido (la ficha nació de él con el 17% estimado).
+    // `primera`: el renglón es un producto NUEVO de este mismo pedido (la ficha nació de él con el recargo estimado).
     // Ahí no hay un costo anterior de verdad: el "antes" es la estimación, y se dice así (08/10/2026, él).
-    cambios.push({ pid, p, antes, nuevo, primera: !!it.id });
+    const primera = !!it.id && !vendioAntes.has(pid) && !vendioAntesNom.has(norm(p.name || ''));
+    // Revisión etapa 3, 29/10/2026: la PRIMERA compra va al costo real para arriba Y para abajo (la estimación no es un costo pagado;
+    // él el 08/10: "que quede ganancia real"). Lo que ya se vendía sigue con la regla de siempre: sólo sube.
+    if (antes > 0 && (primera ? Math.abs(nuevo - antes) < 0.005 : nuevo <= antes * 1.005)) { iguales.push({ nom: p.name, antes, nuevo, primera }); continue; }
+    cambios.push({ pid, p, antes, nuevo, primera });
   }
   console.log(`\n💲 COSTOS CON EL RECARGO REAL DE ESTE PEDIDO: ${((r - 1) * 100).toFixed(1)}%${rF.contraPagado && rBase && Math.abs(rBase - r) > 0.00005 ? ` contra lo PAGADO del ticket (contra la web da ${((rBase - 1) * 100).toFixed(1)}%)` : ''} (el panel estimaba ${RECARGO_PAR_PCT}%)`);
-  for (const x of cambios) console.log(x.primera ? `  · ${x.p.name}: primera compra, costo ajustado del ${RECARGO_PAR_PCT}% estimado al real → US$ ${x.nuevo.toFixed(2)} (estaba US$ ${x.antes.toFixed(2)})` : `  ⬆️ ${x.p.name}: US$ ${x.antes.toFixed(2)} → US$ ${x.nuevo.toFixed(2)}`);
-  for (const x of iguales) console.log(`  = ${x.nom}: tiene US$ ${x.antes.toFixed(2)}, este pedido sale US$ ${x.nuevo.toFixed(2)} · no se toca (sólo sube)`);
+  for (const x of cambios) console.log(x.primera ? `  · ${x.p.name}: primera compra, costo ajustado del estimado al real → US$ ${x.nuevo.toFixed(2)} (estaba US$ ${x.antes.toFixed(2)})` : `  ⬆️ ${x.p.name}: US$ ${x.antes.toFixed(2)} → US$ ${x.nuevo.toFixed(2)}`);
+  for (const x of iguales) console.log(`  = ${x.nom}: tiene US$ ${x.antes.toFixed(2)}, este pedido sale US$ ${x.nuevo.toFixed(2)} · ${x.primera ? 'ya está en el real' : 'no se toca (sólo sube)'}`);
   if (sinFicha.length) console.log(`  · sin ficha todavía (se crea al llegar con este recargo): ${sinFicha.join(', ')}`);
   if (!GO) { console.log(`  (prueba: no se tocó ninguna ficha)`); return { r, cambios, iguales }; }
   for (const x of cambios) {
@@ -11174,16 +11201,18 @@ const BAJAR_MIN_PCT_JOVEN = 35, EDAD_LIBERA_CERO = 90;
 // cualquier marca (las que ML frena se venden en el local). Misma cuenta en index.html (`perfLocalPct`).
 // LOS NÚMEROS DE CADA PROVEEDOR DE 📋 LISTAS (18/10/2026, pedido suyo: "que ponga la cantidad de productos de más de 25%, y los que no
 // tengan, ocultarlos"). Misma regla que la web (`_listaDa`): 25% a 80% en ML, con foto de ML y sin reparo de nombre. `pend` = nunca medidos.
-function cuentaLista(cat) {
+// `fechaProv` = la fecha de la lista guardada del proveedor (revisión etapa 3, 29/10/2026): lo de una lista anterior no da ni está
+// "por medir" (`viejos`); sin `fechaProv` cuenta como antes.
+function cuentaLista(cat, fechaProv) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < 1 && !e.svm);   // 43a (24/10): 🌟 sin competencia (svm) entra como en Paraguay
+  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && listaFilaVigente(e, fechaProv) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < 1 && !e.svm);   // 43a (24/10): 🌟 sin competencia (svm) entra como en Paraguay
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
   const da = (e) => m25(e) && vendOk(e.mv, e.vend, e.svm, e.res) && listaOkVale(e) && !pocasVentas(e.vend, e.res);
   // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
   // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
-  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => !e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e) && !pocasVentas(e.vend)).length, tMed: Date.now() };
+  return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => listaFilaVigente(e, fechaProv) && (!e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e)))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e) && !pocasVentas(e.vend)).length, viejos: v.filter((e) => !listaFilaVigente(e, fechaProv)).length, tMed: Date.now() };
 }
 // 20/10/2026 · etapa 4: con el catálogo fijado a mano (`miFijo`) vale sólo si lo MEDIDO (`mi`) es ese catálogo: si una vuelta midió
 // otro (ML no contestó el fijado y se buscó por nombre), el margen es de otro producto y no se da por confirmado. Misma regla en la web.
@@ -11196,6 +11225,18 @@ function listaOkVale(e) { return !!(e && e.ok && (e.miFijo ? String(e.miFijo).to
 // (y el `ok`) quedaban los medidos con el costo viejo. `uMed` = el costo con el que se midió; si no es el de hoy, no "da" hasta que
 // `listamedir` lo vuelva a medir (lo hace solo: ve `uMed` distinto). Misma regla en index.html (`_listaCostoVigente`).
 function listaCostoVigente(e) { return !!e && e.uMed != null && Math.abs(Number(e.uMed) - Number(e.p)) < 1; }
+// revisión etapa 3, 29/10/2026: LA LISTA NUEVA RETIRA LA VIEJA. `lista:` suma renglones (no borra nada) y la del Once se carga de a 100:
+// lo que la lista nueva no traía quedaba con el precio VIEJO, "dando" y para pedir (una del Once de 300 recargada con 250 dejaba 50 con
+// precios de antes). Cada renglón guarda `fl` = la fecha de la lista con la que se cargó, y vale sólo si es de la lista guardada
+// (`cyc/mlconfig/listasProv/<prov>/fecha`) o de hasta LISTA_GRACIA_DIAS antes: la de la web de un mayorista se carga de a 100 con la
+// fecha "de hoy" y puede llevar más de un día. Sin `fl` (cargados antes de este arreglo) cuenta el día en que se cargó su precio (`ts`);
+// sin ninguno de los dos, o con el proveedor sin fecha, vale como siempre. Misma regla en index.html (`_listaFilaVigente`).
+const LISTA_GRACIA_DIAS = 3;
+function listaFilaVigente(e, fechaProv) {
+  const f = String(fechaProv || ''); if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(f)) return true;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(e.fl || '')) ? String(e.fl) : (Number(e.ts) > 0 ? new Date(Number(e.ts) - 3 * 36e5).toISOString().slice(0, 10) : '');
+  return !d || d >= new Date(Date.parse(f + 'T12:00:00Z') - LISTA_GRACIA_DIAS * 864e5).toISOString().slice(0, 10);
+}
 const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 35;   // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
@@ -19715,7 +19756,7 @@ async function main() {
       }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
-        for (const e of Object.values(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || e.m == null || !(Number(e.m) >= 25) || !listaCostoVigente(e)) continue;
+        for (const e of Object.values(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || e.m == null || !(Number(e.m) >= 25) || !listaCostoVigente(e) || !listaFilaVigente(e, pv.fecha)) continue;   // lista vieja: no se compra (revisión etapa 3, 29/10/2026)
           const nv = Number(e.mv) || 0; filas.push({ f: k, n: String(e.n), m: Number(e.m), nv, ok: vendOk(nv, e.vend, e.svm, e.res) && listaOkVale(e), vend: e.vend != null ? Number(e.vend) : null }); } }
       console.log('=== LO NUEVO QUE SE PODRÍA COMPRAR, POR TRAMO DE % ===');
       for (const t of T) { const x = filas.filter((f) => f.m >= t[0] && f.m < t[1]), ok = x.filter((f) => f.ok), okV = ok.filter((f) => f.vend != null && f.vend >= CAND_MIN_VENTAS);
@@ -24615,7 +24656,14 @@ async function main() {
       // Y SIN FECHA NO SE CARGA si el proveedor ya tiene una guardada (etapa 3, 20/10/2026): sin `|fecha=` no hay cómo saber si la que
       // viene es más vieja, y el freno de arriba no actuaba. Las opciones que no cargan productos (descartar, negocio, bsas) siguen igual.
       if (!fechaL && fechaG && partes.length) { console.log(`❌ NO CARGO: ${provNom} ya tiene guardada la lista del ${fechaG}. Pasá la fecha de ésta con |fecha=AAAA-MM-DD (si es anterior no se carga: nunca cargar listas viejas).`); return; }
-      if (fechaL && !partes.length) { console.log(`${provNom}: fecha de la lista guardada = ${fechaL}${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`); if (APLICAR) await db.patch('cyc/mlconfig/listasProv/' + provK, { fecha: fechaL }); return; }
+      // revisión etapa 3, 29/10/2026: "anota la fecha de la que ya está" → lo que hoy vale pasa a ser de esa lista (`fl`), así anotar la
+      // fecha no lo da por viejo (`listaFilaVigente`). Lo que ya era de una lista anterior sigue viejo.
+      if (fechaL && !partes.length) { const catF = (await db.get('mlapi/listas/' + provK)) || {}; const updF = {};
+        for (const [cod, e] of Object.entries(catF)) if (e && e.n && listaFilaVigente(e, fechaG) && e.fl !== fechaL) updF[cod + '/fl'] = fechaL;
+        console.log(`${provNom}: fecha de la lista guardada = ${fechaL} · ${Object.keys(updF).length} renglón(es) pasan a ser de esa lista${APLICAR ? '' : ' · PRUEBA: agregá ;go'}`);
+        if (APLICAR) { const ksF = Object.keys(updF); for (let i = 0; i < ksF.length; i += 600) await db.patch('mlapi/listas/' + provK, Object.fromEntries(ksF.slice(i, i + 600).map((x) => [x, updF[x]])));
+          await db.patch('cyc/mlconfig/listasProv/' + provK, { fecha: fechaL, ...cuentaLista((await db.get('mlapi/listas/' + provK)) || {}, fechaL) }); }
+        return; }
       // DESCARTAR UN PROVEEDOR (15/10/2026, él: "si todos están muy lejos del % descartamos el proveedor"): `lista:<prov>|descartar;go`
       // lo esconde de la pestaña (los datos quedan); `|volver;go` lo devuelve.
       const _dsc = opc.some((o) => o.trim() === 'descartar'), _vlv = opc.some((o) => o.trim() === 'volver');
@@ -24664,7 +24712,11 @@ async function main() {
         // la lista de Godrej decía "VN" y ML emparejó con otras marcas; con "Villeneuve" se busca bien).
         const _nomCambio = v && String(v.n || '') !== f.n;
         const _sinMed = _nomCambio ? { t: null, m: null, mi: null, mt: null, mp: null, mv: null, mf: null, sc: null, sv: null, rp: null, ok: null, okCat: null } : {};
-        upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ...(f.f ? { f: f.f } : {}), ts: ahora, ...(v && Math.abs((Number(v.p) || 0) - f.p) >= 1 ? { pAnt: Number(v.p) || null } : {}) }; }
+        // revisión etapa 3, 29/10/2026: `fl` = la fecha de ESTA lista (lo que la nueva no trae queda viejo, `listaFilaVigente`). Y si cambió
+        // el precio se borran el P. Lista, el descuento y el "precio de la web" de antes: `listadto` partía del `pl` viejo (P. Lista nuevo
+        // $110.000 con un `pl` guardado de $100.000 y −30% → $70.000 en vez de $77.000).
+        const _pCambio = v && Math.abs((Number(v.p) || 0) - f.p) >= 1;
+        upd[f.cod] = { ...(v || {}), ..._sinMed, n: f.n, p: f.p, ...(f.f ? { f: f.f } : {}), ts: ahora, fl: fechaL || null, ...(_pCambio ? { pAnt: Number(v.p) || null, pl: null, dto: null, precioWeb: null } : {}) }; }
       console.log(`=== LISTA DE ${provNom.toUpperCase()} · carga ${APLICAR ? '' : '(PRUEBA: no escribo nada)'} ===`);
       console.log(`${filas.length} productos · ${nuevos} nuevos · ${cambio} cambiaron de precio · ${igual} iguales · recargo del proveedor ${rec}%`);
       filas.slice(0, 15).forEach((f) => console.log(`  · ${f.n.slice(0, 70)} · ${money(f.p)}`));
@@ -24672,9 +24724,11 @@ async function main() {
       await db.patch('mlapi/listas/' + provK, upd);
       const total = Object.keys({ ...cat, ...upd }).length;
       // Los números del botón (cuántos dan / falta medir) se rehacen: un costo nuevo deja de "dar" hasta medirlo (etapa 3, 20/10/2026).
-      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}), ...cuentaLista({ ...cat, ...upd }) });
+      const _cl = cuentaLista({ ...cat, ...upd }, fechaL || fechaG);
+      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}), ..._cl });
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
+      if (_cl.viejos) console.log(`📅 ${_cl.viejos} de una lista anterior no vienen en la del ${fechaL || fechaG}: no dan ni se piden (si la estás cargando de a partes, vuelven al cargarlos).`);
       return;
     }
     // BILLING_PROBE=listaori[:go] (18/10/2026) → carga en `mlapi/listasori/<prov>/<código>` el renglón TEXTUAL de cada producto en el
@@ -24709,7 +24763,7 @@ async function main() {
       if (!ks.length) { console.log('No hay listas guardadas.'); return; }
       const cada = Math.max(20, Math.floor(n / ks.length));
       for (const k of ks) { await correrPyCatMedir(db, products, labels, accounts, cada, aplicar, null, { lista: k, nombre: provs[k].nombre, rec: provs[k].rec });
-        if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista((await db.get('mlapi/listas/' + k)) || {})); }
+        if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista((await db.get('mlapi/listas/' + k)) || {}, provs[k].fecha)); }
       return;
     }
     // BILLING_PROBE=listadto:<prov>;base=<divisor>;dto=<%>[;<prefijo de código>=<%>…][;go] (19/10/2026, eligió la a). El costo de
@@ -24736,7 +24790,7 @@ async function main() {
       const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
       const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0, n = 0;
       for (const x of ks) if (x.endsWith('/p')) { n++; const c = x.slice(0, -2); if (re[c] && Number(re[c].p) === upd[x]) ok++; }
-      await db.patch('cyc/mlconfig/listasProv/' + k, { costo: 'lista − descuento', dtoTs: Date.now(), ...cuentaLista(re) });   // los números del botón, con el costo nuevo (etapa 3, 20/10/2026)
+      await db.patch('cyc/mlconfig/listasProv/' + k, { costo: 'lista − descuento', dtoTs: Date.now(), ...cuentaLista(re, ((await db.get('cyc/mlconfig/listasProv/' + k)) || {}).fecha) });   // los números del botón, con el costo nuevo (etapa 3, 20/10/2026)
       console.log(`✓ releído: ${ok} de ${n} con el costo nuevo. Ahora: listamedir:${k}:<cuántos>:go`); return;
     }
     // BILLING_PROBE=listaweb:<proveedor>[;go] (19/10/2026, él con Iscos: "sólo tienen en stock lo que hay en la web de ellos. No en la
@@ -24745,7 +24799,10 @@ async function main() {
     // Avisa si algo cargado en el pedido del momento (`cyc/listas_pedido/<prov>`) quedó sin stock. El cruce lo hago yo en el chat.
     if (/^listaweb:/.test(String(process.env.BILLING_PROBE || ''))) {
       const _r = String(process.env.BILLING_PROBE).slice('listaweb:'.length); const GOw = /(^|;)go\s*$/.test(_r) && !DRY;
-      const k = _r.replace(/(^|;)go\s*$/, '').trim().toLowerCase();
+      // revisión etapa 3, 29/10/2026: `listaweb:<prov>|fecha=AAAA-MM-DD[;go]` = el día en que se miró la web, para el archivo que no lo dice.
+      const [_kW, ..._opW] = _r.replace(/(^|;)go\s*$/, '').split('|');
+      const k = String(_kW || '').trim().toLowerCase();
+      let _fOpc = null; for (const o of _opW) { const m = o.trim().match(/^fecha=(\d{4}-\d{2}-\d{2})$/); if (m) _fOpc = m[1]; else if (o.trim()) { console.log(`❌ No entiendo "${o.trim()}": va listaweb:<proveedor>[|fecha=AAAA-MM-DD][;go]. No escribo nada.`); return; } }
       // Desde el 20/10/2026 (etapa 4, 1a) el cruce viaja CIFRADO en `ml-sync/privado/listaweb_<prov>.txt.enc`: son precios del proveedor.
       const _bw = await leerPrivado(db, 'listaweb_' + k + '.txt');
       if (!_bw) { console.log(`❌ No está ml-sync/privado/listaweb_${k}.txt.enc (o no se pudo abrir). No escribo nada.`); return; }
@@ -24753,17 +24810,30 @@ async function main() {
       // Renglón `cód|precio de la web`: el costo pasa a ser ESE precio con los descuentos de la web (`dtoWeb`, Iscos 30 y después 5 =
       // ×0,665, dicho por él el 19/10: "si ves 100.000 queda 66.500"). Guarda `pl` (precio de la web), `dto` y `p`; `listamedir` lo
       // vuelve a medir solo porque cambió `p`.
-      const web = new Map(txt.split(/\r?\n/).map((x) => x.trim()).filter(Boolean).map((x) => { const [c, pr] = x.split('|'); return [c.trim(), Number(pr) || 0]; }));
+      // revisión etapa 3, 29/10/2026: NUNCA UN ARCHIVO DE LA WEB MÁS VIEJO QUE LA LISTA. El único archivo era el del 20/10 y volver a
+      // correrlo después de una lista nueva ponía otra vez el precio de la web de ese día (y el `noWeb` con el stock de ese día). El archivo
+      // dice de qué día es en un renglón `#fecha=AAAA-MM-DD` (el día que se miró la web; si no lo trae, va en el comando con `|fecha=`).
+      // Más viejo que la lista guardada (`fecha`) o que el último archivo aplicado (`webFecha`) no se aplica; sin fecha, tampoco si la
+      // lista tiene fecha. Lo que toma el precio de la web queda de ESE día (`fl`, ver `listaFilaVigente`).
+      const _lnW = txt.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+      let _fArch = null; for (const x of _lnW) { const m = x.match(/^#\s*fecha\s*[=:]\s*(\d{4}-\d{2}-\d{2})/i); if (m) _fArch = m[1]; }
+      if (_fArch && _fOpc && _fArch !== _fOpc) { console.log(`❌ NO APLICO: el archivo dice que es del ${_fArch} y el comando dice ${_fOpc}. No escribo nada.`); return; }
+      const fechaW = _fArch || _fOpc;
+      const web = new Map(_lnW.filter((x) => !x.startsWith('#')).map((x) => { const [c, pr] = x.split('|'); return [c.trim(), Number(pr) || 0]; }));
       const enWeb = new Set(web.keys());
       const pvW = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; const dtos = (pvW.dtoWeb || (k === 'iscos' ? [30, 5] : [])).map(Number);
+      if (fechaW && pvW.fecha && fechaW < pvW.fecha) { console.log(`❌ NO APLICO: el archivo de la web es del ${fechaW} y la lista guardada es del ${pvW.fecha} (más nueva): volvería precios y stock viejos. Hay que mirar la web de nuevo. No escribo nada.`); return; }
+      if (fechaW && pvW.webFecha && fechaW < pvW.webFecha) { console.log(`❌ NO APLICO: el archivo es del ${fechaW} y ya se aplicó uno más nuevo (del ${pvW.webFecha}). No escribo nada.`); return; }
+      if (!fechaW && pvW.fecha) { console.log(`❌ NO APLICO: el archivo no dice de qué día es y la lista guardada es del ${pvW.fecha}; si es más viejo volvería precios y stock de ese día. Poné un renglón #fecha=AAAA-MM-DD (el día que se miró la web) en el archivo, o pasala en el comando: listaweb:${k}|fecha=AAAA-MM-DD;go. No escribo nada.`); return; }
       const fac = dtos.reduce((f, d) => f * (1 - d / 100), 1), dtoTot = Math.round((1 - fac) * 1000) / 10;
       const cat = (await db.get('mlapi/listas/' + k)) || {}; const upd = {}; let si = 0, no = 0, cambia = 0, conPrecio = 0, ej = 0;
       for (const [cod, e] of Object.entries(cat)) { if (!e || !e.n) continue; const esta = enWeb.has(cod); esta ? si++ : no++;
         if (esta && e.noWeb) { upd[cod + '/noWeb'] = null; cambia++; } else if (!esta && !e.noWeb) { upd[cod + '/noWeb'] = Date.now(); cambia++; }
         const pw = web.get(cod); if (esta && pw > 0) { const np = Math.round(pw * fac); conPrecio++;
           if (Number(e.p) !== np || Number(e.pl) !== pw) { upd[cod + '/pl'] = pw; upd[cod + '/dto'] = dtoTot; upd[cod + '/p'] = np; upd[cod + '/precioWeb'] = true;
-            if (ej++ < 10) console.log(`  ${cod} · ${String(e.n).slice(0, 50)} · era $${e.p} → web $${pw} −${dtos.join('% −')}% = $${np}`); } } }
-      console.log(`precio de la web en ${conPrecio} · descuento ${dtos.join('% y ')}% = −${dtoTot}%`);
+            if (ej++ < 10) console.log(`  ${cod} · ${String(e.n).slice(0, 50)} · era $${e.p} → web $${pw} −${dtos.join('% −')}% = $${np}`); }
+          if (fechaW && e.fl !== fechaW) upd[cod + '/fl'] = fechaW; } }   // revisión etapa 3, 29/10/2026: el precio es el de la web de ese día
+      console.log(`precio de la web en ${conPrecio} · descuento ${dtos.join('% y ')}% = −${dtoTot}% · archivo del ${fechaW || 'día que no dice'}`);
       const faltan = [...enWeb].filter((c) => !cat[c]).length;
       console.log(`${k}: ${si + no} en la lista · ${si} están en la web · ${no} NO (sin stock) · ${cambia} cambian${faltan ? ` · ⚠️ ${faltan} códigos del archivo no existen en la lista` : ''}${GOw ? '' : ' · PRUEBA: agregá ;go'}`);
       const arm = (await db.get('cyc/listas_pedido/' + k)) || {};
@@ -24771,7 +24841,7 @@ async function main() {
       if (!GOw) return;
       const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
       const re = (await db.get('mlapi/listas/' + k)) || {}; let ok = 0; for (const x of ks) { const c = x.slice(0, x.lastIndexOf('/')), f = x.slice(x.lastIndexOf('/') + 1); const v = (re[c] || {})[f]; if (f === 'noWeb' ? !!v === !!upd[x] : v === upd[x]) ok++; }
-      const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; await db.patch('cyc/mlconfig/listasProv/' + k, { ...cuentaLista(re), webTs: Date.now(), enWeb: si });
+      const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; await db.patch('cyc/mlconfig/listasProv/' + k, { ...cuentaLista(re, pv.fecha), webTs: Date.now(), enWeb: si, ...(fechaW ? { webFecha: fechaW } : {}) });
       console.log(`✓ releído: ${ok} de ${ks.length} · ${pv.nombre || k} ahora cuenta sólo lo que está en la web.`); return;
     }
     // BILLING_PROBE=listanofull:<proveedor|todas>[;go] (21/10/2026, él con los desodorantes de Dai Nippon: "todos esos productos que no se
@@ -24804,7 +24874,7 @@ async function main() {
         const ks = Object.keys(upd); for (let i = 0; i < ks.length; i += 600) await db.patch('mlapi/listas/' + k, Object.fromEntries(ks.slice(i, i + 600).map((x) => [x, upd[x]])));
         if (sacar.length) await db.patch('cyc/listas_pedido/' + k, Object.fromEntries(sacar.map((c) => [c, null])));
         const re = (await db.get('mlapi/listas/' + k)) || {}; const ok = ks.filter((x) => (re[x.split('/')[0]] || {}).noFull === upd[x]).length;
-        await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista(re));
+        await db.patch('cyc/mlconfig/listasProv/' + k, cuentaLista(re, ((await db.get('cyc/mlconfig/listasProv/' + k)) || {}).fecha));
         console.log(`✓ releído: ${ok} de ${ks.length} marcados · ${sacar.length} sacados del pedido`);
       }
       return;
@@ -24856,12 +24926,12 @@ async function main() {
         console.log(`   ✅ encontrados y medidos ${c.med} (${c.d25} de 25%+ · ${c.b25} abajo) · 🔍 buscados y no encontrados ${c.sc + c.sv} (${c.sc} sin el mismo producto en ML · ${c.sv} nadie lo vende) · ⏳ por buscar ${c.nunca + c.sinRes + c.rebus} (${c.nunca} nunca · ${c.sinRes} sin resultado · ${c.rebus} por volver a buscar con el nombre traducido) · 🚫 afuera por regla ${c.fz}`);
         const top = Object.entries(mot).sort((a, b) => b[1] - a[1]).slice(0, 8); if (top.length) console.log('   afuera por: ' + top.map(([r, n]) => `${r} ${n}`).join(' · '));
         // Los de 25%+ por dónde están (20/10/2026): qué les falta para "dar" de verdad.
-        { const q = { ok: 0, sinOk: 0, unVend: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0 };
+        { const q = { ok: 0, sinOk: 0, unVend: 0, noEs: 0, viejo: 0, sinMi: 0, sacado: 0, listaVieja: 0 };
           for (const e of v) { if (!(e.m != null && Number(e.m) >= 25)) continue;
-            if (e.sacado || e.noWeb || e.noFull) { q.sacado++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
+            if (e.sacado || e.noWeb || e.noFull) { q.sacado++; continue; } if (!listaFilaVigente(e, pv.fecha)) { q.listaVieja++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
             if (!listaCostoVigente(e)) { q.viejo++; continue; } if (!(Number(e.mv) >= CAND_MIN_VENDEDORES)) { q.unVend++; continue; }
             if (listaOkVale(e)) q.ok++; else q.sinOk++; }
-          console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (2+ vendedores y ✅) · ${q.sinOk} sin ✅ · ${q.unVend} con 1 solo vendedor · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web`); }
+          console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (2+ vendedores y ✅) · ${q.sinOk} sin ✅ · ${q.unVend} con 1 solo vendedor · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web${q.listaVieja ? ` · ${q.listaVieja} de una lista anterior (la del ${pv.fecha} no los trae)` : ''}`); }
         // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
         { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;
           if (g === 'sc' || g === 'sv') { const gv = v.filter((e) => e.m == null && !e.fz && (g === 'sc' ? e.sc : (!e.sc && e.sv))); const paso = Math.max(1, Math.floor(gv.length / nM));
@@ -24903,7 +24973,7 @@ async function main() {
         out.push(`py|${String(c.prov || 'nissei').toLowerCase()}|${c.cod || ''}|${String(c.nombre || '').replace(/\|/g, '/').slice(0, 80)}|${candCatDe(c)}|${Math.round(mg)}%`); }
       const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc) continue; const cat = (await db.get('mlapi/listas/' + k)) || {};
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_VENDE) || !listaCostoVigente(e)) continue;
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= CAND_VARA_VENDE) || !listaCostoVigente(e) || !listaFilaVigente(e, pv.fecha)) continue;
           if (!/^https:\/\//.test(e.mf || '') || !(Number(e.mv) >= 1) || (Number(e.mv) < CAND_MIN_VENDEDORES && Number(e.m) < CAND_VARA_COMPRA) || !listaOkVale(e) || (e.vend != null && (Number(e.vend) >= CAND_MIN_VENTAS || e.res != null))) continue;
           out.push(`lista|${k}|${cod}|${String(e.n).replace(/\|/g, '/').slice(0, 80)}|${e.mi || ''}|${Math.round(e.m)}%`); } }
       console.log(`=== PASARON TODO, FALTAN LAS VENTAS DE ML: ${out.length} (fuente|proveedor|código|nombre|catálogo ML|margen) ===`);
@@ -24921,7 +24991,7 @@ async function main() {
       let tot = 0; const filas = []; const porProv = {};
       for (const [k, pv] of Object.entries(provs)) { if (pv.desc || (solo && k !== solo.toLowerCase())) continue;
         const cat = (await db.get('mlapi/listas/' + k)) || {}; const rec = Number(pv.rec) || 0;
-        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= listaVaraDe(e) && e.mi) || !listaCostoVigente(e)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026)
+        for (const [cod, e] of Object.entries(cat)) { if (!e || listaNoEsVale(e) || e.sacado || e.noWeb || e.noFull || !(e.m != null && Number(e.m) >= listaVaraDe(e) && e.mi) || !listaCostoVigente(e) || !listaFilaVigente(e, pv.fecha)) continue;   // costo nuevo sin medir: el margen no vale (etapa 3, 20/10/2026) · de una lista anterior, tampoco (revisión etapa 3, 29/10/2026)
           const okV = listaOkVale(e);
           // 20/10/2026 (eligió la 1a): ya no hacen falta las ventas; sólo el ✅, y con 1 solo vendedor no da (no sale).
           if (CONF ? !okV : (okV || !(Number(e.mv) >= 1 || e.svm))) continue;   // 43a: los 🌟 sin competencia también se confirman   // 24/10/2026 (1a): los de 1 vendedor también se confirman
@@ -25001,15 +25071,15 @@ async function main() {
         if (u.ok) u.okCat = u.miFijo || e.miFijo || e.mi || null; else if (u.noEs) { u.okCat = null; u.noEsCat = e.miFijo || e.mi || null; }
         console.log(`  · ${pk} · ${String(e.n).slice(0, 60)} → ${u.vend != null ? u.vend + ' vendidas' : ''}${u.ok ? ' · ✅ mismo producto' : ''}${u.noEs ? ' · ❌ otro producto' : ''}${u.miFijo ? ' · catálogo ' + u.miFijo + ' (se vuelve a medir)' : ''}`);
         if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk); } }
-      if (APLICAR) for (const pk of tocados) await db.patch('cyc/mlconfig/listasProv/' + pk, cuentaLista((await db.get('mlapi/listas/' + pk)) || {}));
+      if (APLICAR) for (const pk of tocados) await db.patch('cyc/mlconfig/listasProv/' + pk, cuentaLista((await db.get('mlapi/listas/' + pk)) || {}, ((await db.get('cyc/mlconfig/listasProv/' + pk)) || {}).fecha));
       if (!APLICAR) console.log('PRUEBA: agregá ;go al final.'); else console.log('✓ guardado. Los que tienen catálogo nuevo se miden con `listamedir`.');
       return;
     }
     // BILLING_PROBE=listacuenta[:go] → vuelve a contar, sin medir nada, cuántos de cada lista dan (los números de los botones de proveedor).
     if (/^listacuenta(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const aplicar = /:go$/.test(String(process.env.BILLING_PROBE)); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
-      for (const k of Object.keys(provs)) { const c = cuentaLista((await db.get('mlapi/listas/' + k)) || {});
-        console.log(`  ${String(provs[k].nombre || k).padEnd(16)} · ${c.n} productos · ${c.med} medidos · ${c.pend} sin medir · ✅ dan ${c.dan} · 🔎 para revisar ${c.revisar}`);
+      for (const k of Object.keys(provs)) { const c = cuentaLista((await db.get('mlapi/listas/' + k)) || {}, provs[k].fecha);
+        console.log(`  ${String(provs[k].nombre || k).padEnd(16)} · ${c.n} productos · ${c.med} medidos · ${c.pend} sin medir · ✅ dan ${c.dan} · 🔎 para revisar ${c.revisar}${c.viejos ? ` · 📅 ${c.viejos} de una lista anterior a la del ${provs[k].fecha}` : ''}`);   // revisión etapa 3, 29/10/2026
         if (aplicar) await db.patch('cyc/mlconfig/listasProv/' + k, c); }
       if (!aplicar) console.log('PRUEBA: agregá :go para guardar.'); return;
     }
@@ -25058,7 +25128,7 @@ async function main() {
         console.log(`\n=== TURNO: ${_esN ? 'Nissei (Paraguay)' : (_pv.nombre || _tu.k)} · vuelta empezada el ${new Date(_tu.desde).toISOString().slice(0, 16).replace('T', ' ')} UTC · ${_tu.med || 0} medidos en esta vuelta · ${_resta} min ===`);
         const _r = (_esN ? await correrPyCatMedir(db, products, labels, accounts, n, _go, null, { maxMin: _resta })
           : await correrPyCatMedir(db, products, labels, accounts, 5000, _go, null, { lista: _tu.k, nombre: _pv.nombre, rec: _pv.rec, maxMin: _resta })) || { quedan: 0, medidos: 0 };
-        if (!_esN && _go) await db.patch('cyc/mlconfig/listasProv/' + _tu.k, cuentaLista((await db.get('mlapi/listas/' + _tu.k)) || {}));
+        if (!_esN && _go) await db.patch('cyc/mlconfig/listasProv/' + _tu.k, cuentaLista((await db.get('mlapi/listas/' + _tu.k)) || {}, _pv.fecha));
         _tu.med = (Number(_tu.med) || 0) + (Number(_r.medidos) || 0);
         if (_r.quedan > 0) {
           if (_go) await db.set('cyc/mlconfig/medirTurno', _tu);
@@ -50656,6 +50726,10 @@ async function main() {
         const usd = Number(it.usd) || Number(c.usd) || 0;
         // ¿ya está publicado en alguna cuenta? por ficha vinculada
         const pid = c.prodId || null;
+        // Revisión etapa 3, 29/10/2026: lo que se vende SÓLO en el local (`sololocal`) no se publica: no se le propone cuenta (un
+        // `pasara` lo haría mandar a Full con el mínimo de lo nuevo en `decide_cajas.py`).
+        { const _pl = (c.prodId || it.prodId) ? products.find((p) => p && p.id === (c.prodId || it.prodId)) : null;
+          if (_pl && _pl.soloLocal) { console.log(`• ${nom} · ${u} u. · 🏪 sólo local (sololocal): no va a ML, no se le propone cuenta`); continue; } }
         const yaEn = pid ? [...new Set(Object.values(links).filter((e) => e && e.prodId === pid && !e.ignored).map((e) => ctaDe(e.cuenta)).filter(Boolean))] : [];
         console.log(`• ${nom} · ${u} u. · US$ ${usd.toFixed(2)} c/u`);
         if (!(precio > 0) || !(fee > 0) || !(usd > 0)) {
@@ -51028,9 +51102,16 @@ async function main() {
       if (sub === 'llego') {
         const [idArg, ...rest2] = resto.join(':').split(';');
         const cam = Object.entries(peds).filter(([, c]) => c && c.estado === 'camino').sort((a, b) => String(b[1].fecha).localeCompare(String(a[1].fecha)));
-        const hit = (!idArg || idArg === 'ultimo') ? cam[0] : cam.find(([id, c]) => id === idArg || c.fecha === idArg);
+        // SE PUEDE RETOMAR (revisión etapa 3, 29/10/2026): el pedido se cierra antes de sumar la oficina y queda `llegando` hasta terminar;
+        // cada aroma sumado queda en `sumado/<aroma>`. Si la corrida se cortó (otra de ml-sync la cancela, o falló la base), repetir
+        // `pvped:llego:<id>;go` suma SÓLO los aromas que faltaban, con lo que quedó anotado como llegado. Antes no se podía repetir.
+        const aMedias = Object.entries(peds).filter(([, c]) => c && c.estado === 'llego' && c.llegando);
+        let hit = (!idArg || idArg === 'ultimo') ? cam[0] : cam.find(([id, c]) => id === idArg || c.fecha === idArg);
+        if (!hit) hit = (!idArg || idArg === 'ultimo') ? aMedias[0] : aMedias.find(([id, c]) => id === idArg || c.fecha === idArg);
         if (!hit) { console.log(`❌ No encuentro un pedido en camino "${idArg || 'ultimo'}". En camino: ${cam.map(([id]) => id).join(', ') || 'ninguno'}`); return; }
         const [id, c] = hit;
+        const RETOMA = c.estado === 'llego';
+        if (RETOMA) console.log(`▶️ ${id} quedó a medias: lo retomo con lo que se anotó como llegado (no se vuelve a cerrar ni se suma dos veces).`);
         const cambios = {}, problemas = [], extraLl = {};
         const _OPT = /^(tester|regalo|apagar|flete)=(.+)$/i;
         for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = parseFloat(String(m[2]).replace(/\./g, '').replace(',', '.')) || 0; extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
@@ -51053,29 +51134,37 @@ async function main() {
           if (vino < pedido) falto.push({ v: it.v, u: pedido - vino });
         }
         for (const v of Object.keys(cambios)) if (!lista(c).some((x) => x.v === v) && cambios[v] > 0) llego.push({ v, u: cambios[v], extra: true });
-        console.log(`=== LLEGÓ EL PEDIDO AL PAULVIC ${id} (del ${c.fecha}) · llegó el ${fechaLl} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
-        for (const x of llego) { const pe = (lista(c).find((y) => y.v === x.v) || {}).u || 0; console.log(`  ${x.v}: pedidas ${pe} · llegaron ${x.u}${x.extra ? ' (no estaba en el pedido)' : x.u < pe ? '  ⚠️ faltaron ' + (pe - x.u) : ''}`); }
+        // Al retomar (revisión etapa 3, 29/10/2026) vale lo que quedó anotado en el pedido, no lo que se escriba ahora.
+        const LL = RETOMA ? (c.llego || []).filter(Boolean) : llego, FA = RETOMA ? (c.falto || []).filter(Boolean) : falto;
+        console.log(`=== LLEGÓ EL PEDIDO AL PAULVIC ${id} (del ${c.fecha}) · llegó el ${RETOMA ? c.fechaLlego : fechaLl} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+        for (const x of LL) { const pe = (lista(c).find((y) => y.v === x.v) || {}).u || 0; console.log(`  ${x.v}: pedidas ${pe} · llegaron ${x.u}${x.extra ? ' (no estaba en el pedido)' : x.u < pe ? '  ⚠️ faltaron ' + (pe - x.u) : ''}${RETOMA && (c.sumado || {})[sid(x.v)] != null ? ' · ya sumado' : ''}`); }
         if (!GO) { console.log('\nNo se guardó nada (falta ;go). Con ;go las que llegaron se SUMAN a la oficina.'); return; }
         // Primero se cierra el pedido (que deje de restar en Pedidos) y recién después se suma a la oficina,
         // releyendo cada clave justo antes: si la corrida se corta en el medio, se ve qué faltó.
-        await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: fechaLl, llego, falto: falto.length ? falto : null, ...extraLl });
+        if (!RETOMA) await db.patch('cyc/pedidospv/' + id, { estado: 'llego', fechaLlego: fechaLl, llego, falto: falto.length ? falto : null, llegando: { ts: Date.now(), por: 'chat' }, sumado: null, ...extraLl });
         // LO QUE NO VINO NO VIENE MÁS (17/10/2026, regla suya: *"los que pido de paulvic y no llegan que quede registro en el
         // pedido y tomarlos como que no vienen nunca más"*). Queda en el pedido (`falto`) y el aroma se marca para siempre en
         // `cyc/noconsigo/<prod>/nunca/<aroma>`: Pedidos no lo vuelve a pedir y cuenta como sin reposición (escasez). No se cae
         // sola al entrar mercadería; se saca si él lo vuelve a pedir a propósito (`pvped:<aroma>=<u>;go`) o con `pvped:nunca:-<aroma>;go`.
-        for (const x of falto) if (!(cambios[x.v] > 0)) await db.set('cyc/noconsigo/' + P.id + '/nunca/' + sid(x.v), { ts: Date.now(), ped: id, v: x.v, falto: x.u });
+        // "Llegó 0" sale de lo anotado como llegado (lo mismo que `cambios[aroma] = 0`, y sirve también al retomar).
+        for (const x of FA) if (!(((LL.find((y) => y.v === x.v) || {}).u || 0) > 0)) await db.set('cyc/noconsigo/' + P.id + '/nunca/' + sid(x.v), { ts: Date.now(), ped: id, v: x.v, falto: x.u });
         const kTot = P.id + '__' + sid(OFI_LOC), kVar = (v) => kTot + '__v__' + sid(v);
-        for (const x of llego) {
+        const yaSum = RETOMA ? (c.sumado || {}) : {};
+        for (const x of LL) {
           if (!(x.u > 0)) continue;
+          if (yaSum[sid(x.v)] != null) continue;   // retomado: este aroma ya se sumó en la corrida cortada
+          if (CORTAR) { console.log(`⚠️ Cancelaron la corrida: quedan aromas sin sumar a la oficina. Repetí pvped:llego:${id};go y sigue desde acá.`); return; }
           const antes = parseInt(await db.get('cyc/inventory/' + kVar(x.v))) || 0;
           const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
           await db.patch('cyc/inventory', { [kVar(x.v)]: antes + x.u, [kTot]: tA + x.u });
+          await db.set('cyc/pedidospv/' + id + '/sumado/' + sid(x.v), x.u);   // revisión etapa 3, 29/10/2026: para retomar sin sumar dos veces
           let seP = null; try { seP = await sinEtiqSumarBot(db, P.id, x.v, x.u, P); } catch { /* lo dice abajo */ }
           console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}${seP ? ` · 🏷️ sin etiqueta ${seP.antes} → ${seP.ahora}` : P.soloLocal ? ' · 🏪 sólo local: sin etiqueta de Full' : ' · ⚠️ no quedó sin etiqueta'}`);
         }
         await pvCosto(id, true);
+        await db.patch('cyc/pedidospv/' + id, { llegando: null, sumado: null });   // terminó (revisión etapa 3, 29/10/2026)
         const rel = await db.get('cyc/pedidospv/' + id);
-        console.log(rel && rel.estado === 'llego' ? `\n✓ Guardado y releído: llegó, y lo que vino está en la oficina.${falto.length ? ' Faltaron ' + falto.reduce((a, x) => a + x.u, 0) + ' u. (' + falto.map((x) => x.v).join(', ') + '): quedan anotadas en el pedido y marcadas "no viene más" — Pedidos no las vuelve a pedir.' : ''}` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
+        console.log(rel && rel.estado === 'llego' ? `\n✓ Guardado y releído: llegó, y lo que vino está en la oficina.${FA.length ? ' Faltaron ' + FA.reduce((a, x) => a + x.u, 0) + ' u. (' + FA.map((x) => x.v).join(', ') + '): quedan anotadas en el pedido y marcadas "no viene más" — Pedidos no las vuelve a pedir.' : ''}` : '\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.');
         return;
       }
       let fecha = hoyAR;
@@ -51107,8 +51196,11 @@ async function main() {
       const aDesc = items.map((it) => ({ ...it }));
       if (prev && !prev.desc && Number(prev.ts || Date.parse(String(prev.fecha || '') + 'T12:00:00-03:00')) > (Number(decP && decP.ts) || 0)) for (const it of lista(prev)) if (!it.desc) aDesc.push({ v: it.v, u: parseInt(it.u) || 0 });   // etapa 4 (20/10/2026): un aroma que la web ya descontó (`desc` en el renglón) no se descuenta dos veces
       await db.set('cyc/pedidospv/' + id, { ...(prev || {}), prodId: P.id, fecha, ts: (prev && prev.ts) || Date.now(), estado: 'camino', items: its });   // el número del pedido (20/10/2026) y lo demás no se pierden
-      for (const it of aDesc) { const r = await clDescontarPedBot(db, P.id, it.v, it.u); if (r) console.log(`  🧠 sale de lo decidido · ${r}`); }
-      await db.patch('cyc/pedidospv/' + id, { desc: true });
+      // Revisión etapa 3, 29/10/2026: `desc` sólo si se restó algo de lo decidido (antes siempre: si no se restaba nada, la web tampoco).
+      let _resto = false;
+      for (const it of aDesc) { const r = await clDescontarPedBot(db, P.id, it.v, it.u); if (r) { _resto = true; console.log(`  🧠 sale de lo decidido · ${r}`); } }
+      if (_resto) await db.patch('cyc/pedidospv/' + id, { desc: true });
+      else console.log('  🧠 no había nada decidido que restar: el pedido queda sin `desc` (Pedidos lo resta si hace falta)');
       { const NC = (await db.get('cyc/noconsigo/' + P.id + '/nunca')) || {}; const vuelve = items.filter((it) => NC[sid(it.v)]);
         if (vuelve.length) { await db.patch('cyc/noconsigo/' + P.id + '/nunca', Object.fromEntries(vuelve.map((it) => [sid(it.v), null]))); console.log(`  ↩︎ lo volviste a pedir: se saca "no viene más" de ${vuelve.map((it) => it.v).join(', ')}`); } }
       const rel = await db.get('cyc/pedidospv/' + id);
@@ -51691,9 +51783,25 @@ async function main() {
       const hit = Object.entries(peds).filter(([id, c]) => c && (id === idArg || String(c.num || '') === idArg));
       if (hit.length !== 1) { console.log(`❌ "${idArg}" agarra ${hit.length} pedido(s). Corré \`listaped\` para ver los que están en camino.`); return; }
       const [id, c] = hit[0];
-      if (c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+      // SE PUEDE RETOMAR (revisión etapa 3, 29/10/2026): el pedido se marca llegado ANTES de crear las fichas (como la web) y queda la
+      // marca `llegando` hasta que termina. Si la corrida se cortó en el medio (otra de ml-sync la cancela), repetir el MISMO comando
+      // sigue desde ahí: las fichas ya creadas se encuentran por su código de la lista (no se duplican) y la oficina se suma una sola vez.
+      // Antes el pedido quedaba "llegado" sin fichas ni oficina y ni el comando ni la web lo podían terminar.
+      const RETOMA = c.estado === 'llegado' && !!c.llegando && !c.sumoOfi;
+      if (c.estado !== 'camino' && !RETOMA) { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
+      if (RETOMA) console.log(`▶️ ${id} quedó a medias el ${new Date((Number(c.llegando && c.llegando.ts) || Date.now()) - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}: lo retomo (no se vuelve a marcar, se crean las fichas que falten y se suma la oficina).`);
       const fin = (await db.get('cyc/finanzas')) || {};
       const tc = Number(c.tc) || parseFloat(fin.tipo_cambio) || 0;
+      // ¿LA RECOMPRA SALIÓ MÁS CARA? (revisión etapa 3, 29/10/2026). Lo comprado en pesos (`costoPesos`) se compara en PESOS: lo pagado
+      // (`pc`) contra `cost`. Comparar dólares mezclaba el dólar del pedido (`pc ÷ tc`) con el de hoy (`costUSD` = pesos ÷ dólar de hoy,
+      // `sincCostoPesos`): con el dólar en suba, una recompra MÁS BARATA "subía" el costo (y bajaba los pesos); en baja, una más cara no
+      // subía. Lo de dólares sigue en dólares. Misma regla en `_listaLlego` de index.html: si se toca una, se toca la otra.
+      const tcHoyL = parseFloat(fin.tipo_cambio) || tc;
+      const recompra = (p, it) => {
+        const pc = Number(it.pc) || 0, nuO = tc > 0 ? Math.round(pc / tc * 100) / 100 : 0;
+        if (costoEnPesosBot(p)) { const ant = Number(p.cost) || 0; return { sube: pc > ant + 0.5, usd: tcHoyL > 0 ? Math.round(pc / tcHoyL * 10000) / 10000 : nuO, txt: `$${Math.round(ant).toLocaleString('es-AR')} → $${Math.round(pc).toLocaleString('es-AR')}` }; }
+        const an = parseFloat(p.costUSD) || 0; return { sube: nuO > an + 0.005, usd: nuO, txt: `US$ ${an.toFixed(2)} → ${nuO.toFixed(2)}` };
+      };
       const productsL = (await db.get('cyc/products')) || {};
       const prods = Object.values(productsL).filter((x) => x && x.name);
       const its = (c.items || []).filter(Boolean);
@@ -51711,7 +51819,8 @@ async function main() {
       console.log(`=== LLEGÓ EL PEDIDO A ${c.provNom || c.prov} ${id} (del ${c.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       for (const x of plan) {
         const u = llegoU(x.it), pe = parseInt(x.it.u) || 0, nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
-        const est = x.borrada ? 'probado con la ficha BORRADA: no se crea nada' : x.misma ? `${x.prob ? 'probado' : 'ya existe'}: ${x.misma.name}${nu > (parseFloat(x.misma.costUSD) || 0) + 0.005 ? ` (costo sube US$ ${(parseFloat(x.misma.costUSD) || 0).toFixed(2)} → ${nu.toFixed(2)})` : ''}` : `ficha nueva: ${String(x.nombre).slice(0, 60)} · US$ ${nu.toFixed(2)}${x.it.mi ? ' · catálogo ' + x.it.mi : ''}`;
+        const _rc = x.misma ? recompra(x.misma, x.it) : null;
+        const est = x.borrada ? 'probado con la ficha BORRADA: no se crea nada' : x.misma ? `${x.prob ? 'probado' : 'ya existe'}: ${x.misma.name}${_rc.sube ? ` (costo sube ${_rc.txt})` : ''}` : `ficha nueva: ${String(x.nombre).slice(0, 60)} · US$ ${nu.toFixed(2)}${x.it.mi ? ' · catálogo ' + x.it.mi : ''}`;
         console.log(`  ${u} de ${pe} u. · ${_nomIt(x.it)}${x.it.variante ? ' · 🎨 ' + x.it.variante : ''} → ${est}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`);
       }
       console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar).' : 'Oficina: se SUMA lo que llegó.');
@@ -51720,9 +51829,10 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const ofiAl = {}; for (const x of plan) if (x.prob && x.misma && !(x.misma.id in ofiAl)) ofiAl[x.misma.id] = parseInt(inv[x.misma.id + '__' + sid('Oficina Mati')]) || 0;
       const fresco = await db.get('cyc/compraslista/' + id);
-      if (!fresco || fresco.estado !== 'camino') { console.log(`⚠️ Mientras corría, el pedido ${id} dejó de estar en camino (lo marcó la web u otro comando): no toco nada.`); return; }
+      if (!fresco || (RETOMA ? !(fresco.estado === 'llegado' && fresco.llegando && !fresco.sumoOfi) : fresco.estado !== 'camino')) { console.log(`⚠️ Mientras corría, el pedido ${id} cambió de estado (lo marcó la web u otro comando): no toco nada.`); return; }
       const llegoTs = Date.now();
-      await db.patch('cyc/compraslista/' + id, { estado: 'llegado', llegoTs, ...(fresco.pagado !== true ? { pagado: false } : {}), ...(!fresco.ofiAlLlegar && Object.keys(ofiAl).length ? { ofiAlLlegar: ofiAl } : {}) });
+      // `llegando` (revisión etapa 3, 29/10/2026): marca de "el chat lo está cerrando"; se borra al terminar (ver RETOMA arriba).
+      if (!RETOMA) await db.patch('cyc/compraslista/' + id, { estado: 'llegado', llegoTs, llegando: { ts: llegoTs, por: 'chat' }, ...(fresco.pagado !== true ? { pagado: false } : {}), ...(!fresco.ofiAlLlegar && Object.keys(ofiAl).length ? { ofiAlLlegar: ofiAl } : {}) });
       const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
       const php = (await db.get('cyc/precios_hist_prod')) || {};
       const fichaDe = {}, subio = [], nuevas = [];
@@ -51732,19 +51842,20 @@ async function main() {
           fichaDe[i] = x.misma; const up = {};
           if (!x.misma.listaProv) up.listaProv = c.prov;
           if (x.prob && !x.misma.codLista && x.it.cod) up.codLista = String(x.it.cod);
-          const nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0, an = parseFloat(x.misma.costUSD) || 0;
-          if (nu > an + 0.005) {
+          const an = parseFloat(x.misma.costUSD) || 0, _rc = recompra(x.misma, x.it), nu = _rc.usd;   // revisión etapa 3, 29/10/2026: ver `recompra`
+          if (_rc.sube) {
             // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como la web y Paraguay): sube; el costo viejo queda en los meses con ventas.
             if (an > 0) { const meses = new Set(); for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) if (v && v.prodId === x.misma.id) meses.add(String(dk).slice(0, 7)); for (const ym of meses) if (!(php[ym] && php[ym][x.misma.id] != null)) await db.set(`cyc/precios_hist_prod/${ym}/${x.misma.id}`, an); }
             const dev = DEV_LIVE[x.misma.id] != null ? DEV_LIVE[x.misma.id] : (parseFloat(x.misma.devPct) || 0);
             Object.assign(up, { costUSD: nu, cost: Math.round(Number(x.it.pc) || 0), costoPesos: true, costFullUSD: Math.round((nu * (1 + dev / 100) + (parseFloat(x.misma.shipUSD) || 0)) * 100) / 100 });
-            subio.push(`${x.misma.name} US$ ${an.toFixed(2)} → ${nu.toFixed(2)}`);
+            subio.push(`${x.misma.name} ${_rc.txt}`);
           }
           if (Object.keys(up).length) await db.patch('cyc/products/' + x.misma.id, up);
           continue;
         }
         if (!x.nombre) continue;
-        if (CORTAR) { console.log('⚠️ Cancelaron la corrida: el pedido ya figura llegado; las fichas que faltan se crean repitiendo el comando con la web (Listas → Llegó no aplica) o a mano.'); break; }
+        // Revisión etapa 3, 29/10/2026: cortada, no se sigue con la oficina (se sumaría a medias): queda `llegando` y se retoma.
+        if (CORTAR) { console.log(`⚠️ Cancelaron la corrida: ${nuevas.length} ficha(s) nueva(s) creada(s) y la oficina SIN sumar. Repetí el MISMO comando (listaped:llego:${id}…;go): sigue desde acá sin duplicar nada.`); return; }
         const usd = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
         const pN = { id: 'p' + Date.now() + 'l' + i, name: String(x.nombre).slice(0, 90), costUSD: usd, cost: Math.round(Number(x.it.pc) || 0), costoPesos: true, costFullUSD: usd, origen: 'bsas', proveedor: c.provNom || c.prov, listaProv: c.prov, codLista: String(x.it.cod || ''), altaChat: Date.now() };
         if (x.it.mi) pN.mlCatalogo = x.it.mi;
@@ -51762,10 +51873,10 @@ async function main() {
         sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
         console.log(`  🏠 oficina · ${pf.name}${r.color ? ' · ' + r.color + ': ' + r.antes + ' → ' + r.ahora + ' (total ' + r.tA + ' → ' + r.tN + ')' : ': ' + r.antes + ' → ' + r.tN}${r.se ? ` · 🏷️ sin etiqueta ${r.se.antes} → ${r.se.ahora}` : ''}`);
       }
-      const quedan = {}; for (const [pid, q] of Object.entries(ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
+      const quedan = {}; for (const [pid, q] of Object.entries((RETOMA && fresco.ofiAlLlegar) || ofiAl)) if (NOSUMAR || !sumados.some((y) => y.prodId === pid) || aMano.some((y) => y.pf && y.pf.id === pid)) quedan[pid] = q;
       // Lo que llegó de cada renglón (`ul`) cuando faltó algo: la deuda con el proveedor (`listaDeudaUSD`) se cuenta con eso, no con lo pedido (revisión Plata 27/10/2026).
       const ulP = {}; if (faltoR.length) for (const [i, x] of plan.entries()) { const k = (c.items || []).indexOf(x.it); if (k >= 0) ulP['items/' + k + '/ul'] = llegoU(x.it); }
-      await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null, ...ulP });
+      await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null, llegando: null, ...ulP });   // `llegando: null`: terminó (revisión etapa 3, 29/10/2026)
       const rel = await db.get('cyc/compraslista/' + id);
       console.log(`\n${rel && rel.estado === 'llegado' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} llegado · ${nuevas.length} ficha(s) nueva(s)${nuevas.length ? ': ' + nuevas.map((x) => x.id + ' ' + x.name).join(' | ') : ''}${subio.length ? ' · costo subido: ' + subio.join(' · ') : ''}`);
       if (sumados.length) console.log(`✓ Sumado a la oficina: ${sumados.reduce((a, x) => a + x.u, 0)} u.${faltoR.length ? ' · faltaron ' + faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (anotadas en el pedido)' : ''}`);
@@ -51885,7 +51996,10 @@ async function main() {
       if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
       const it = Array.isArray(c.items) ? c.items : [];
       console.log(`=== ${id} · ${c.fecha || '?'} · ${c.estado || '?'} · US$ ${c.usdCrudo} · ${it.length} renglones · nota: ${String(c.nota || '').slice(0, 160)} ===`);
-      for (const x of it) console.log(`${x.cod}*${x.u}*${x.usd}   web ${x.usdWeb != null ? x.usdWeb : '?'} · ${String(x.nom || '').slice(0, 60)}${x.prodId ? ' · ficha ' + x.prodId : ''}`);
+      // Revisión etapa 3, 29/10/2026: SIN el precio pagado de cada renglón (es el ticket del mayorista y el registro es público, como
+      // `pybusca`). Va `?` en su lugar: el precio se copia de la foto del ticket. Con ticket, `usd` es lo pagado y la web es `usdWeb`;
+      // sin ticket, `usd` es el precio de la web del día que se pidió.
+      for (const x of it) { const web = c.ticket ? x.usdWeb : x.usd; console.log(`${x.cod}*${x.u}*?   web ${web != null ? web : '?'} · ${String(x.nom || '').slice(0, 60)}${x.prodId ? ' · ficha ' + x.prodId : ''}`); }
       console.log(`suma: US$ ${it.reduce((a2, x) => a2 + (Number(x.usd) || 0) * (Number(x.u) || 0), 0).toFixed(2)} · campos del ticket: ${Object.keys(c.ticket || {}).join(', ') || 'ninguno'}`);
       return;
     }
@@ -51972,18 +52086,22 @@ async function main() {
         return { prev: prev || null };
       };
       const guardar = async (id, prev, rec, items, sumarPor) => {
+        const idx = [];
         if (prev) {
           const its = (Array.isArray(prev.items) ? prev.items : []).map((x) => ({ ...x }));
           // Un renglón de reposición (prodId sin id) sólo se suma con otro de reposición: un nuevo puede
           // traer prodId (det=) y no es el mismo renglón.
           // Etapa 3 (20/10/2026): un renglón de reposición se suma sólo con el del MISMO color y la misma marca de descuento
           // (`desc`): uno sin descontar sumado a uno descontado haría que Pedidos restara de más (o de menos).
-          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor] && (sumarPor !== 'prodId' || (!x.id && String(x.variante || '') === String(it.variante || '') && !!x.desc === !!it.desc))); if (o) o.u = (parseInt(o.u) || 0) + it.u; else its.push(it); }
+          // Revisión etapa 3, 29/10/2026: un renglón con `dp` (descuento pendiente) no se suma con otro: va aparte, como en la web, así
+          // al marcarlo `desc` después no quedan marcadas unidades que nunca se descontaron. Devuelve dónde quedó cada renglón.
+          for (const it of items) { const o = its.find((x) => x && x[sumarPor] === it[sumarPor] && (sumarPor !== 'prodId' || (!x.id && !x.dp && !it.dp && String(x.variante || '') === String(it.variante || '') && !!x.desc === !!it.desc))); if (o) { o.u = (parseInt(o.u) || 0) + it.u; idx.push(its.indexOf(o)); } else { its.push(it); idx.push(its.length - 1); } }
           const upd = { items: its, usdCrudo: r2((parseFloat(prev.usdCrudo) || 0) + rec.usdCrudo), productos: its.length, unidades: (parseInt(prev.unidades) || 0) + rec.unidades };
           await db.patch('cyc/compraspy/' + id, upd);
-        } else await db.set('cyc/compraspy/' + id, rec);
+        } else { await db.set('cyc/compraspy/' + id, rec); items.forEach((it, j) => idx.push(j)); }
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(rel && rel.estado === 'camino' ? `\n✓ Guardado y releído: cyc/compraspy/${id} (en camino)` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);
+        return idx;
       };
       // Etapa 2 (20/10/2026): reparte los renglones en sus pedidos (proveedor y rubro) y mira TODOS antes de escribir:
       // si alguno de los de hoy ya llegó o ya tiene los pesos, no se escribe NINGUNO (nada a medias).
@@ -52065,8 +52183,10 @@ async function main() {
           } else if ((Array.isArray(p.variantes) ? p.variantes : Object.values(p.variantes || {})).length > 1) avisosColor.push(`${p.name}: tiene varios colores y no dijiste cuál (#color): va el código de la ficha (${p.codPy || 'sin código'})`);
           const usdBase = (pv && parseFloat(pv.usd) > 0) ? parseFloat(pv.usd) : parseFloat(p.nisseiUSD);
           const usd = usdBase > 0 ? r2(usdBase) : r2((parseFloat(p.costUSD) || 0) / RECARGO_PAR);
-          // `desc:1` = se descuenta de lo decidido al pedirlo (abajo, `clDescontarPedBot`): Pedidos no lo vuelve a restar.
-          items.push({ prodId: p.id, nom: String(p.name).slice(0, 120), cod: String((pv && pv.cod) || p.codPy || ''), u: pr.u, usd, ...(color ? { variante: color } : {}), desc: 1, ts: Date.now() });
+          // `desc:1` = se descontó de lo decidido al pedirlo (abajo, `clDescontarPedBot`): Pedidos no lo vuelve a restar.
+          // Revisión etapa 3, 29/10/2026: se escribe con `dp:1` (descuento pendiente, como la web) y pasa a `desc:1` SÓLO si el descuento
+          // restó algo. Antes iba `desc:1` siempre: si no se restaba nada, Pedidos tampoco lo restaba y se volvía a pedir.
+          items.push({ prodId: p.id, nom: String(p.name).slice(0, 120), cod: String((pv && pv.cod) || p.codPy || ''), u: pr.u, usd, ...(color ? { variante: color } : {}), dp: 1, ts: Date.now() });
           if (p.origen !== 'py') problemas.push(`"${pr.busca}" → ${p.name} no es de Paraguay (origen ${p.origen || 'bsas'}). Si es correcto, cambiale el origen primero.`);
         }
         { const vistos = new Set(); for (const it of items) { const k = it.prodId + '|' + (it.variante || ''); if (vistos.has(k)) problemas.push(`${it.nom}${it.variante ? ' · ' + it.variante : ''}: lo nombraste dos veces. Dejá uno solo.`); vistos.add(k); } }
@@ -52089,13 +52209,22 @@ async function main() {
         }
         for (const a of avisosColor) console.log(`  🎨 ${a}`);
         if (!GO) { console.log('\nNo se guardó nada (falta ;go).'); return; }
+        const _posR = new Map();   // revisión etapa 3, 29/10/2026: renglón → [pedido, índice] para marcarlo `desc` después
         for (const [gid, g] of G) {
           const crudo = r2(g.items.reduce((a, x) => a + x.usd * x.u, 0)), uds = g.items.reduce((a, x) => a + x.u, 0);
-          await guardar(gid, est[gid].prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', prov: g.prov, ...(g.rubro ? { rubro: g.rubro } : {}), usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: g.items.length, unidades: uds, items: g.items }, g.items, 'prodId');
+          const _ix = await guardar(gid, est[gid].prev, { fecha: hoyAR, ts: Date.now(), estado: 'camino', origen: 'chat', prov: g.prov, ...(g.rubro ? { rubro: g.rubro } : {}), usdCrudo: crudo, recargo: RECARGO_PAR, tcPedido: tc || null, productos: g.items.length, unidades: uds, items: g.items }, g.items, 'prodId');
+          g.items.forEach((it, j) => { if (_ix && _ix[j] != null && _ix[j] >= 0) _posR.set(it, [gid, _ix[j]]); });
         }
         // Lo pedido sale de lo decidido, igual que el "Ya lo pedí" de la web (`pyRepoRegistrar`), y lo cambiado a mano se borra
         // (etapa 3, 20/10/2026): antes desde el chat no se descontaba nada y Pedidos lo seguía pidiendo. Con color, de ESE color.
-        for (const it of items) { const r = await clDescontarPedBot(db, it.prodId, it.variante || '', it.u); if (r) console.log(`  🧠 ${it.nom.slice(0, 50)}${it.variante ? ' · ' + it.variante : ''}: sale de lo decidido · ${r}`); }
+        // Revisión etapa 3, 29/10/2026: `desc:1` sólo en el renglón al que de verdad se le restó algo; el resto queda `dp` y lo resta Pedidos.
+        for (const it of items) {
+          const r = await clDescontarPedBot(db, it.prodId, it.variante || '', it.u);
+          if (!r) { console.log(`  🧠 ${it.nom.slice(0, 50)}${it.variante ? ' · ' + it.variante : ''}: no había nada decidido que restar (queda pendiente: Pedidos lo resta si hace falta)`); continue; }
+          console.log(`  🧠 ${it.nom.slice(0, 50)}${it.variante ? ' · ' + it.variante : ''}: sale de lo decidido · ${r}`);
+          const ps = _posR.get(it);
+          if (ps) { try { await db.patch(`cyc/compraspy/${ps[0]}/items/${ps[1]}`, { desc: 1, dp: null }); } catch { console.log(`  ⚠️ ${it.nom.slice(0, 50)}: se descontó pero no pude marcarlo en el pedido (Pedidos puede restarlo dos veces)`); } }
+        }
         await armadoDescontar(items);
         await personalAlHist(G, X);
         return;
@@ -52184,10 +52313,19 @@ async function main() {
         // 05/10/2026: si los gastos del pedido ya están todos, la ficha nace con el recargo REAL.
         // Etapa 2 (20/10/2026): con ticket, contra lo PAGADO (`recargoFichasPedido`): la suma de las fichas = lo que costó el pedido.
         const _recReal = recargoFichasPedido(c).r;
-        const _recUsar = _recReal || RECARGO_PAR;
+        // EL ESTIMADO, CONTRA LO PAGADO (revisión etapa 3, 29/10/2026): `RECARGO_PAR` se mide contra el precio de la WEB (`paramcompra`,
+        // `recargoRealPedido`) y acá se aplica a lo PAGADO (con descuento): la ficha nacía más barata de lo que sale. Con el ticket se
+        // lleva a la misma base (× web ÷ pagado). Cuando estén todos los gastos, `aplicarCostosPedido` la pone en el real (para arriba o
+        // para abajo, es la primera compra). Misma cuenta que `pyRecargoEstimado` de index.html.
+        const _tkW = parseFloat(c.ticket && c.ticket.usdWeb) || 0, _tkP = parseFloat(c.ticket && c.ticket.usdPagado) || 0;
+        const _recEst = (_tkW > 0 && _tkP > 0 && RECARGO_PAR * _tkW / _tkP >= 1 && RECARGO_PAR * _tkW / _tkP <= 1.6) ? Math.round(RECARGO_PAR * _tkW / _tkP * 10000) / 10000 : RECARGO_PAR;
+        const _recUsar = _recReal || _recEst;
         {
           for (const it of (c.items || [])) {
             if (!it || !it.id) continue;
+            // UN RENGLÓN POR PRODUCTO NUEVO (revisión etapa 3, 29/10/2026): dos renglones del mismo candidato (o del mismo agregado `x<cód>`)
+            // armaban dos planes "crear" con la foto de antes y nacían DOS fichas. Se planea una vez; la oficina suma los dos renglones a ésa.
+            if (plan.some((x) => x.src && x.src.id === it.id)) continue;
             const k = cands[it.id];
             // Etapa 3 (20/10/2026): el proveedor, el link y la foto viajan con el renglón (del candidato si sigue vivo; si no, del
             // pedido). Sin esto la ficha de Elegancia nacía como Nissei y sin las fotos para comparar.
@@ -52209,7 +52347,7 @@ async function main() {
             plan.push(misma ? { src, estado: 'repe', rep: [misma] } : { src, estado: 'crear', par });
           }
           const cr = plan.filter((x) => x.estado === 'crear');
-          console.log(`Fichas a crear: ${cr.length}${_recReal ? ` · con el recargo REAL de este pedido (${((_recReal - 1) * 100).toFixed(1)}%)` : ` · con el ${RECARGO_PAR_PCT}% estimado (faltan gastos del pedido; cuando estén, sube solo si sale más caro)`}`);
+          console.log(`Fichas a crear: ${cr.length}${_recReal ? ` · con el recargo REAL de este pedido (${((_recReal - 1) * 100).toFixed(1)}%)` : ` · con el ${((_recEst - 1) * 100).toFixed(1)}% estimado sobre lo pagado (faltan gastos del pedido; cuando estén, se pone el real)`}`);
           cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${_recUsar} = US$ ${r2((parseFloat(x.src.usd) || 0) * _recUsar).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
           plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  = ya tiene ficha (mismo código o nombre), se engancha: ${x.src.nombre} → ${x.rep[0].name}`));
           cr.filter((x) => x.par && x.par.length).forEach((x) => console.log(`  ℹ️ se crea aunque se parece a: ${x.src.nombre} ~ ${x.par.slice(0, 3).map((p) => p.name).join(' | ')}`));
@@ -52228,6 +52366,14 @@ async function main() {
           for (const it of _itsP) { const u = _llegoU(it), pe = parseInt(it.u) || 0; console.log(`  ${u} de ${pe} u. · ${_nomIt(it)}${it.variante ? ' · 🎨 ' + it.variante : ''}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`); }
         }
         if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
+        // SE ADUEÑA DEL PEDIDO ANTES DE CREAR FICHAS (revisión etapa 3, 29/10/2026), como `pyReclamarLlegada` de la web: se relee el estado
+        // (la foto de `compras` es del principio de la corrida) y queda la marca `llegando` mientras se crean las fichas; la web no lo marca
+        // llegado si ve esa marca (de menos de 15 minutos). Antes un "Llegó" de la web en el medio creaba las mismas fichas otra vez.
+        if (!SOLOFICHAS) {
+          let _est = null; try { _est = await db.get('cyc/compraspy/' + id + '/estado'); } catch { _est = null; }
+          if (_est !== 'camino') { console.log(`⚠️ Mientras corría, el pedido ${id} dejó de estar en camino (${_est || 'no se pudo leer'}): no creo fichas ni toco nada.`); return; }
+          await db.set('cyc/compraspy/' + id + '/llegando', { ts: Date.now(), por: 'chat' });
+        }
         const hechas = [];
         // Revisión final: el nombre de la FICHA de cada renglón (la creada, o la que ya existía). El
         // comando `ofi` de abajo usaba el nombre del pedido (cortado a 120, y en las repetidas el de otra
@@ -52265,12 +52411,21 @@ async function main() {
         // Etapa 4: cortada a mitad, el pedido NO se marca llegado. Al repetir el comando, las fichas ya
         // creadas salen como "parecidas" y se enganchan; las que faltaban se crean.
         if (SOLOFICHAS) { const rel = await db.get('cyc/products'); const ok = hechas.filter((p) => rel && rel[p.id]); console.log(`\n✓ ${ok.length} de ${hechas.length} ficha(s) creada(s) y releída(s)${ok.length ? ': ' + ok.map((p) => p.name + ' · US$ ' + p.costUSD).join(' | ') : ''}. El pedido no se tocó.`); return; }
-        if (_pyCortado) { console.log(`\n⚠️ Cancelaron la corrida: ${hechas.length} ficha(s) creada(s) y el pedido ${id} NO quedó marcado llegado. Repetí el mismo comando.`); return; }
+        if (_pyCortado) { try { await db.set('cyc/compraspy/' + id + '/llegando', null); } catch { /* vence sola a los 15 min */ } console.log(`\n⚠️ Cancelaron la corrida: ${hechas.length} ficha(s) creada(s) y el pedido ${id} NO quedó marcado llegado. Repetí el mismo comando.`); return; }
         for (const x of plan.filter((y) => y.estado === 'repe')) {
           if (x.src.id && cands[x.src.id] && !cands[x.src.id].prodId) { try { await db.set(`cyc/candidatos_py/${x.src.id}/prodId`, x.rep[0].id); } catch { console.log(`⚠️ no pude enganchar ${x.src.nombre} a su ficha`); } }
         }
+        // EL RENGLÓN QUEDA CON SU FICHA (revisión etapa 3, 29/10/2026): los enganchados a una ficha que ya existía ("repe") y los agregados
+        // sin candidato (`x<cód>`) no tenían dónde quedar atados a su ficha: `aplicarCostosPedido` no la encontraba (el costo real de esta
+        // compra no se les aplicaba nunca) o la tomaba como "primera compra". Se anota `prodId` en el renglón.
+        { const upR = {};
+          (c.items || []).forEach((it, ix) => { if (!it || !it.id || it.prodId) return; const pl = plan.find((x) => x.src && x.src.id === it.id); if (!pl) return;
+            const fid = pl.estado === 'repe' ? pl.rep[0].id : (!cands[it.id] && pl.estado === 'crear' ? ((hechas.find((p) => p._srcId === it.id) || {}).id || null) : null);
+            if (fid) upR[ix + '/prodId'] = fid; });
+          if (Object.keys(upR).length) { try { await db.patch('cyc/compraspy/' + id + '/items', upR); } catch { console.log('⚠️ no pude anotar la ficha en los renglones enganchados/agregados: el costo real de esta compra no se les va a aplicar solo'); } } }
         await db.set('cyc/compraspy/' + id + '/estado', 'llego');
         await db.set('cyc/compraspy/' + id + '/fechaLlego', hoyAR);
+        try { await db.set('cyc/compraspy/' + id + '/llegando', null); } catch { /* vence sola a los 15 min */ }   // revisión etapa 3, 29/10/2026
         // D6 (29/09, eligió la b): foto de la oficina al llegar una reposición. La canasta sigue restando
         // lo llegado hasta que la oficina suba (o 7 días): si no, lo volvería a pedir sin contar.
         // A3 (21/10/2026): la foto se toma ANTES de sumar y se guarda sólo de los productos que NO se pudieron sumar (los que se
@@ -52521,16 +52676,37 @@ async function main() {
         // panel) — medido en 5 de 5 el 21/09.
         // Lo que no se pueda emparejar se guarda igual con el código de nombre y SE DICE: un
         // renglón que desaparece porque no encontré su nombre es el descarte mudo de siempre.
-        let itemsDet = null;
+        let itemsDet = null, personalDet = [];
         if (campos.det) {
           const yaIt0 = (ya && Array.isArray(ya.items)) ? ya.items : [];
+          // RENGLONES DEL PEDIDO SIN CÓDIGO (revisión etapa 3, 29/10/2026): el ticket se empareja por código, así que un renglón sin código
+          // salía como "no vino" y su línea del ticket quedaba como agregado nuevo (`x<cód>`): al llegar se creaba OTRA ficha del mismo
+          // producto. Primero se toma el código que la ficha tiene HOY (el del color, `pyVar`, o `codPy`); si igual falta, no se escribe
+          // (se carga con `pyprecio` y se repite) salvo `|sincodigo` (a propósito: ese renglón queda como "no vino").
+          const _codDe = (x) => {
+            if (!x || String(x.cod || '').replace(/\D/g, '') || !x.prodId) return String((x && x.cod) || '');
+            const pf = products.find((p) => p && p.id === x.prodId); const pv = pf && x.variante && pf.pyVar ? pf.pyVar[sid(String(x.variante).toLowerCase())] : null;
+            return String((pv && pv.cod) || (pf && pf.codPy) || '');
+          };
+          { const sinCod = yaIt0.filter((x) => x && !String(_codDe(x)).replace(/\D/g, ''));
+            if (sinCod.length && !partes.some((x) => /^sincodigo$/i.test(x))) { console.log(`❌ El pedido ${id} tiene ${sinCod.length} renglón(es) SIN código: ${sinCod.map((x) => `${x.u} × ${String(x.nom || '?').slice(0, 40)}`).join(' · ')}. El ticket no se puede emparejar con ellos (saldrían como "no vino" y al llegar se crearía otra ficha). Cargale el código a la ficha (pyprecio:<ficha>=<código>/<US$>, o #<color>) y repetí; o agregá |sincodigo si de verdad no vino. No guardo NADA.`); return; } }
+          // USO PERSONAL QUE VINO EN EL MISMO TICKET (revisión etapa 3, 29/10/2026). Va en el mensaje a Nissei y se paga junto, pero NO es de
+          // CYC (`cyc/py_personal_hist`, lo pasa ahí "Ya lo pedí"). Antes su renglón del ticket se volvía un agregado `x<cód>` (ficha y
+          // oficina de CYC al llegar) o, si se dejaba afuera, sus pesos entraban en el recargo de CYC. Ahora las unidades de los códigos de
+          // uso personal de ESE día salen del detalle (primero lo que pidió CYC en ese renglón, el resto es personal) y quedan en
+          // `personal` del pedido: su parte de los pesos de los dólares no entra en el recargo (`pyPersonalARS`).
+          let _hist = null; try { _hist = (await db.get('cyc/py_personal_hist')) || {}; } catch { _hist = null; }
+          if (!_hist) { console.log('❌ No pude leer lo de uso personal (py_personal_hist): no sé qué renglones del ticket no son de CYC. No guardo NADA.'); return; }
+          const _fPed = String((ya && ya.fecha) || fecha), presu = [];
+          for (const [ts, g] of Object.entries(_hist)) { if (!(Number(ts) > 0) || new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 10) !== _fPed) continue;
+            for (const v of Object.values(g || {})) if (v && String(v.cod || '').replace(/\D/g, '') && (parseInt(v.u) || 0) > 0) presu.push({ dig: String(v.cod).replace(/\D/g, ''), nom: String(v.nom || v.cod).slice(0, 80), u: parseInt(v.u) || 0, prov: v.prov }); }
           // Etapa 3 (20/10/2026): los candidatos se buscan SÓLO del proveedor de este pedido (`provPyDeBot`), y por el final
           // sólo con 5 dígitos o más del lado corto: `100572` de Elegancia "terminaba igual" que `7100572` de Nissei, y un
           // código corto (`20139`) pegaba con cualquiera que terminara así.
           const _provDet = (ya && (/^pyel/.test(id) || String(ya.prov || '').toLowerCase() === 'elegancia')) || (!ya && provPed === 'elegancia') ? 'elegancia' : 'nissei';
           const _finIg = (a, b) => { if (!a || !b) return false; if (a === b) return true; const [c1, c2] = a.length < b.length ? [a, b] : [b, a]; return c1.length >= 5 && c2.endsWith(c1); };
           const _candsProv = Object.entries(cands).filter(([, c]) => c && provPyDeBot(c) === _provDet);
-          const pool = [...yaIt0.map((x) => ({ cod: String(x.cod || ''), src: x, ped: true })),
+          const pool = [...yaIt0.map((x) => ({ cod: String(_codDe(x)), src: x, ped: true })),   // revisión etapa 3, 29/10/2026: `_codDe`
                         ..._candsProv.map(([cid, c]) => ({ cod: String(c.cod || c.codPy || ''), src: { ...c, id: cid, nom: c.nombre || c.nom } }))];
           const buscar = (cod) => {
             const c = String(cod).replace(/\D/g, '');
@@ -52540,11 +52716,15 @@ async function main() {
           itemsDet = []; const sinNombre = [];
           for (const tr of String(campos.det).split(';').map((x) => x.trim()).filter(Boolean)) {
             const m = tr.split('*').map((x) => x.trim());
-            const cod = m[0] || '', u = parseInt(m[1]) || 0, pu = num(m[2]);
+            const cod = m[0] || '', pu = num(m[2]); let u = parseInt(m[1]) || 0;
             // 4º campo opcional: el NOMBRE del ticket, para lo que se agregó en el momento y no estaba en el panel (20/10/2026).
             const nomTk = String(m.slice(3).join(' ') || '').trim().slice(0, 120);
             if (!cod || !(u > 0) || !(pu > 0)) { console.log(`  ⚠️ No entiendo "${tr}" — se espera codigo*unidades*precio. No guardo NADA.`); return; }
             const hit = buscar(cod);
+            // Uso personal (ver arriba): lo que pidió CYC en ese renglón va primero; lo que pasa de eso y es de uso personal sale del detalle.
+            { const dg = String(cod).replace(/\D/g, ''), pe = presu.find((x) => x.u > 0 && provPyDeBot({ prov: x.prov }) === _provDet && (x.dig === dg || _finIg(x.dig, dg)));
+              if (pe) { const libre = Math.max(0, u - (hit && hit.ped ? (parseInt(hit.src.u) || 0) : 0)), q = Math.min(pe.u, libre);
+                if (q > 0) { pe.u -= q; personalDet.push({ cod, nom: pe.nom, u: q, usd: pu }); u -= q; if (!(u > 0)) continue; } } }
             // Un renglón de reposición (prodId sin id) sigue siendo de reposición: no se le inventa un id,
             // si no "Llegó" lo trataría como nuevo y le crearía otra ficha (05/10/2026, pedido único).
             const _esRepoHit = hit && !hit.src.id && hit.src.prodId;
@@ -52553,7 +52733,9 @@ async function main() {
             if (hit) {
               // `variante`, `desc` y `ts` también (etapa 3, 20/10/2026): sin ellos el renglón perdía el color pedido y la marca de
               // "ya se descontó de lo decidido", y Pedidos lo volvía a restar.
-              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'ts']) if (hit.src[k] != null) o[k] = hit.src[k];
+              // `dp` también (revisión etapa 3, 29/10/2026): un renglón con el descuento PENDIENTE que perdía la marca quedaba como "ya
+              // descontado" para Pedidos (en los pedidos de la web) y no se restaba nunca.
+              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'dp', 'ts']) if (hit.src[k] != null) o[k] = hit.src[k];
               // EL PRECIO DE LA WEB QUEDA AL LADO DEL PAGADO (10/10/2026, él: "los pedidos que cargo en paraguay siempre
               // tienen descuento de lo que aparece en la web (…) quizás hay productos con más descuento que otro, o
               // algunos quizás nada"). El de la web es el que se guardó al hacer el pedido; si el ticket ya se había
@@ -52574,22 +52756,36 @@ async function main() {
             } else sinNombre.push(cod);
             itemsDet.push(o);
           }
+          // EL MISMO RENGLÓN DOS VECES EN EL TICKET (revisión etapa 3, 29/10/2026): dos líneas que van al mismo renglón (mismo candidato,
+          // mismo agregado `x<cód>` o la misma reposición y color) se juntan en uno (unidades sumadas, precio promedio por unidad). Antes
+          // quedaban dos renglones con el mismo `id` y al "Llegó" se creaban DOS fichas del mismo producto.
+          { const vis = new Map(), out = [];
+            for (const o of itemsDet) { const k = o.id ? 'i:' + o.id : 'p:' + o.prodId + '|' + (o.variante || '');
+              const y = vis.get(k); if (!y) { vis.set(k, o); out.push(o); continue; }
+              const uT = y.u + o.u; y.usd = Math.round((y.usd * y.u + o.usd * o.u) / uT * 10000) / 10000; y.u = uT; y._rep = (y._rep || 1) + 1; }
+            for (const o of out) if (o._rep) { console.log(`  🔁 ${String(o.nom).slice(0, 50)}: venía en ${o._rep} renglones del ticket → queda uno (${o.u} u., precio promedio)`); delete o._rep; }
+            itemsDet = out; }
           const sumDet = Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100;
           const uDet = itemsDet.reduce((a, x) => a + x.u, 0);
+          const _persUSD = Math.round(personalDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100;   // revisión etapa 3, 29/10/2026
           console.log(`  Detalle de la factura: ${itemsDet.length} producto(s) · ${uDet} unidades · US$ ${sumDet.toFixed(2)}`);
-          if (Math.abs(sumDet - usd) > 0.5) console.log(`  ⚠️ NO CIERRA: el detalle suma US$ ${sumDet.toFixed(2)} y pusiste usd=${usd.toFixed(2)}. Se guarda igual, pero uno de los dos está mal.`);
+          if (personalDet.length) console.log(`  🙋 Uso personal en el ticket (no es de CYC: no entra al pedido ni crea ficha, y su parte de los pesos no va al recargo): ${personalDet.map((x) => `${x.u} × ${String(x.nom).slice(0, 40)}`).join(' · ')} · US$ ${_persUSD.toFixed(2)}`);
+          if (Math.abs(sumDet + _persUSD - usd) > 0.5) console.log(`  ⚠️ NO CIERRA: el detalle suma US$ ${(sumDet + _persUSD).toFixed(2)}${_persUSD ? ' (con lo de uso personal)' : ''} y pusiste usd=${usd.toFixed(2)}. Se guarda igual, pero uno de los dos está mal.`);
           if (sinNombre.length) console.log(`  ⚠️ ${sinNombre.length} código(s) sin emparejar (quedan con el código de nombre): ${sinNombre.join(', ')}`);
           // LO QUE NO VINO Y LO QUE SE AGREGÓ (20/10/2026, él: "algunas cosas no tenían y entonces agregué otras. Vas a tener que
           // modificar el pedido"). Lo que estaba en el pedido y no figura en el ticket sale del pedido y su candidato vuelve a la
           // lista (se le saca `pedidoEn`); lo agregado que coincide con un candidato queda marcado viajando en este pedido.
           { const enDet = new Set(itemsDet.map((x) => String(x.cod).replace(/\D/g, '')));
-            const fuera = (ya && Array.isArray(ya.items) ? ya.items : []).filter((x) => x && !enDet.has(String(x.cod || '').replace(/\D/g, '')) && ![...enDet].some((c) => _finIg(String(x.cod || '').replace(/\D/g, ''), c)));
+            // Con el código de `_codDe` (revisión etapa 3, 29/10/2026): el renglón sin código guardado se compara con el de su ficha.
+            const fuera = (ya && Array.isArray(ya.items) ? ya.items : []).filter((x) => x && !enDet.has(_codDe(x).replace(/\D/g, '')) && ![...enDet].some((c) => _finIg(_codDe(x).replace(/\D/g, ''), c)));
             if (fuera.length) console.log(`  ✂️ No vinieron (salen del pedido${fuera.some((x) => x.id && cands[x.id]) ? ' y vuelven a la lista de candidatos' : ''}): ${fuera.map((x) => `${x.u} × ${String(x.nom || x.cod).slice(0, 40)}`).join(' · ')}`);
-            const nuevos = itemsDet.filter((x) => !(ya && Array.isArray(ya.items) && ya.items.some((y) => y && String(y.cod || '').replace(/\D/g, '').slice(-5) === String(x.cod).replace(/\D/g, '').slice(-5))));
+            const nuevos = itemsDet.filter((x) => !(ya && Array.isArray(ya.items) && ya.items.some((y) => y && _codDe(y).replace(/\D/g, '').slice(-5) === String(x.cod).replace(/\D/g, '').slice(-5))));
             if (nuevos.length) console.log(`  ➕ Agregados en el momento: ${nuevos.map((x) => `${x.u} × ${String(x.nom).slice(0, 40)}${x.agregado ? ' (nuevo, sin candidato)' : ''}`).join(' · ')}`);
             campos._fuera = fuera; campos._nuevos = nuevos; }
           const _webT = itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0);
-          for (const x of itemsDet) if (x.usdWeb > 0 && Math.abs(x.usdWeb - x.usd) >= 0.005) console.log(`    ${String(x.nom).slice(0, 50)}: web US$ ${x.usdWeb.toFixed(2)} → pagado US$ ${x.usd.toFixed(2)} (${x.usd < x.usdWeb ? '−' : '+'}${Math.abs((1 - x.usd / x.usdWeb) * 100).toFixed(1)}%)`);
+          // Revisión etapa 3, 29/10/2026: renglón por renglón SIN el precio pagado (es el ticket del mayorista y el registro es público, como
+          // `pybusca`/`pydet`): sólo si salió con descuento o más caro que la web. El total del pedido sigue abajo.
+          for (const x of itemsDet) if (x.usdWeb > 0 && Math.abs(x.usdWeb - x.usd) >= 0.005) console.log(`    ${String(x.nom).slice(0, 50)}: ${x.usd < x.usdWeb ? 'con descuento contra la web' : 'más caro que la web'}`);
           console.log(`  Descuento contra la web: US$ ${(_webT - sumDet).toFixed(2)} (${_webT > 0 ? ((1 - sumDet / _webT) * 100).toFixed(1) : '0'}%) · web US$ ${_webT.toFixed(2)} → pagado US$ ${sumDet.toFixed(2)}`);
         }
         // SI EL PEDIDO YA TIENE DETALLE GUARDADO, NO SE TOCA. Punto.
@@ -52642,7 +52838,9 @@ async function main() {
           despacho: (/^\d{4}-\d{2}-\d{2}$/.test(campos.despacho || '') ? campos.despacho : null) || (ya && ya.despacho) || null,
           // EL TICKET ES OBLIGATORIO PARA CERRAR EL PEDIDO (10/10/2026, regla suya): sólo `det=` (el ticket real del
           // mayorista, renglón por renglón) lo marca. Sin esto "Llegó" no cierra el pedido.
-          ...(itemsDet ? { ticket: { ts: Date.now(), productos: itemsDet.length, usdWeb: Math.round(itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0) * 100) / 100, usdPagado: Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100 } } : {}),
+          ...(itemsDet ? { ticket: { ts: Date.now(), productos: itemsDet.length, usdWeb: Math.round(itemsDet.reduce((a, x) => a + (x.usdWeb > 0 ? x.usdWeb : x.usd) * x.u, 0) * 100) / 100, usdPagado: Math.round(itemsDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100 },
+            // lo de uso personal que vino en el ticket (revisión etapa 3, 29/10/2026): fuera de `items` y del ticket; ver `pyPersonalARS`
+            personal: personalDet.length ? { usd: Math.round(personalDet.reduce((a, x) => a + x.usd * x.u, 0) * 100) / 100, u: personalDet.reduce((a, x) => a + x.u, 0), items: personalDet } : null } : {}),
           // Qué gastos se cargaron A PROPÓSITO (aunque sea 0): un 0 escrito no es lo mismo que uno que falta.
           pagosOk: [...new Set([...(((ya && ya.pagosOk) || [])), ...PY_GASTOS.filter((g) => campos[g.campo] != null).map((g) => g.k)])],
           // `ts` es la hora en que se hizo el pedido y la web la usa para saber qué viajaba ANTES de cada decisión de Pedidos:
@@ -52653,7 +52851,7 @@ async function main() {
           // recargo, no cuenta "en camino" en el Arqueo). Con |camino queda viajando y lleva "Ya llegó".
           estado: (ya && ya.estado) || (partes.some((x) => /^camino$/i.test(x)) ? 'camino' : 'historial'),
         };
-        const totARS = merc + cambio + envio + retira + otros + adelanto;
+        const totARS = merc + cambio + envio + retira + otros + adelanto - pyPersonalARS(rec);   // sin lo de uso personal (revisión etapa 3, 29/10/2026)
         const dolarMerc = merc / usd;                       // el dólar efectivo de la mercadería
         const faltaPy = recargoRealPedido(rec).falta || [];
         const fijos = envio + retira + otros + adelanto;
@@ -52675,10 +52873,12 @@ async function main() {
           console.log(`  ⚠️ Todavía falta: ${faltaPy.join(', ')}. Sin eso el recargo de este pedido no se puede medir (saldría de menos).`);
         } else if (tcRef > 0) {
           const puestoUSD = totARS / tcRef;
-          const rec1 = (puestoUSD / usd - 1) * 100;
-          console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${RECARGO_PAR_PCT}%)`);
-          console.log(`     · parte que ESCALA (los dólares): ${(((merc + cambio) / tcRef / usd - 1) * 100).toFixed(1)}%`);
-          console.log(`     · parte FIJA por pedido (envío${otros ? ' + otros' : ''}): ${money(Math.round(fijos))} = US$ ${(fijos / tcRef).toFixed(2)}, o sea ${((fijos / tcRef) / usd * 100).toFixed(1)}% en ESTE pedido`);
+          // Sin lo de uso personal (revisión etapa 3, 29/10/2026): ni sus dólares ni su parte de los pesos.
+          const _usdC = Math.max(0.01, usd - ((rec.personal && Number(rec.personal.usd)) || 0)), _persA = pyPersonalARS(rec);
+          const rec1 = (puestoUSD / _usdC - 1) * 100;
+          console.log(`  RECARGO REAL DE ESTA COMPRA: ${rec1.toFixed(1)}%  (el panel usa ${RECARGO_PAR_PCT}%)${_persA ? ` · sin lo de uso personal (${money(Math.round(_persA))} de los pesos)` : ''}`);
+          console.log(`     · parte que ESCALA (los dólares): ${(((merc + cambio - _persA) / tcRef / _usdC - 1) * 100).toFixed(1)}%`);
+          console.log(`     · parte FIJA por pedido (envío${otros ? ' + otros' : ''}): ${money(Math.round(fijos))} = US$ ${(fijos / tcRef).toFixed(2)}, o sea ${((fijos / tcRef) / _usdC * 100).toFixed(1)}% en ESTE pedido`);
           console.log(`       OJO: la parte fija NO cambia si el pedido es más grande. En un pedido del doble pesaría la mitad.`);
         } else {
           console.log(`  ⚠️ No hay tipo de cambio cargado en Finanzas, así que el recargo en % no se puede calcular. Se guarda igual.`);
@@ -52717,9 +52917,11 @@ async function main() {
         // `retira` se agregó el 21/09 y esta suma no lo tenía: el historial daba el recargo CORTO
         // justo por el gasto fijo más grande del pedido ($74.260 de $84.627). Un número que sale
         // menor de lo real es el lado peligroso — dice que comprar sale más barato de lo que sale.
-        const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0);
+        // Sin lo de uso personal que vino en el ticket (revisión etapa 3, 29/10/2026, `pyPersonalARS`): ni sus pesos ni sus dólares.
+        const _pA = pyPersonalARS(c), _pU = parseFloat(c.personal && c.personal.usd) || 0;
+        const totARS = (p.mercaderia || 0) + (p.cambista || 0) + (p.envio || 0) + (p.retira || 0) + (p.otros || 0) + (p.adelanto || 0) - _pA;
         const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || tcPanel || 0;
-        const usd = parseFloat(c.usdCrudo) || 0;
+        const usd = Math.max(0, (parseFloat(c.usdCrudo) || 0) - _pU);
         // Un pedido al que le falta algún gasto NO tiene recargo: con los pesos en cero daba "−100%" y
         // entraba al promedio como si fuera una compra completa (07/10/2026, el pedido del 05/10).
         const faltaC = recargoRealPedido(c).falta || [];
@@ -52733,7 +52935,7 @@ async function main() {
         // 27/10/2026 (él: "el que retira es un 10% del costo de los productos. lo único fijo es el correo"): el que retira ESCALA con lo
         // comprado (medido: 10,1% el 21/09, 10,6% el 26/10), va con los dólares; lo fijo es el correo (y otros/adelanto, que son ocasionales).
         const fijoUSD = ((p.envio || 0) + (p.otros || 0) + (p.adelanto || 0)) / tc;
-        const varPct = ((p.mercaderia || 0) + (p.cambista || 0) + (p.retira || 0)) / tc / usd - 1;
+        const varPct = ((p.mercaderia || 0) + (p.cambista || 0) - _pA + (p.retira || 0)) / tc / usd - 1;
         sumU += usd; sumFijoU += fijoUSD; sumVar += varPct * usd; n++;
       }
       console.log(`\n───── EL RECARGO MEDIDO ─────`);
