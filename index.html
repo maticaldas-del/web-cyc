@@ -1362,11 +1362,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <span id="db_corregir"></span>
       <input class="fin-input money" type="text" inputmode="numeric" id="f_corregir" placeholder="US$ 0" onchange="saveFin('corregir',this.value)" style="width:150px">
     </div>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding:11px 16px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r)">
-      <span class="fin-label">💸 Retiro cobrado este mes (Mati + Viejo)</span>
-      <span style="font-size:.62rem;color:var(--muted);flex:1;min-width:120px">Cuánto se llevaron de verdad este mes, en <strong>pesos</strong> (lo que dijo la tarjeta 💸 del cierre anterior × 2). Hay que cargarlo: el cobro del mes que viene se lo vuelve a sumar a lo que creció.</span>
-      <input class="fin-input money" type="text" inputmode="numeric" id="f_retiro_mes" placeholder="$0" onchange="saveRetiroMes(this.value)" style="width:150px">
-    </div>
+    <!-- 💸 "Retiro cobrado este mes": SACADO (29/10/2026, él: "esto sacarlo, y siempre vamos a cobrar lo que diga ahí en cobro de noviembre"). Desde noviembre el retiro es automático (`_retiroAuto`). -->
     <div id="retiros-mes-list" style="margin-top:12px"></div>
     <div id="recon-panel" style="margin-top:14px"></div>
     <!-- COMPARAR, adentro de Finanzas (21/10/2026, pedido suyo). Se arma al abrirlo. -->
@@ -3185,7 +3181,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.83';
+const APP_VERSION='27.84';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3198,6 +3194,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.84',f:'29/10',h:'01:36',c:[{n:2,t:'💸 Se sacó la casilla "Retiro cobrado este mes": desde noviembre el retiro es automático, lo que dice el 💸 cobro del cierre del mes anterior × 2 (en Gastos se ve, sin casilla)'}]},
   {v:'27.83',f:'29/10',h:'01:33',c:[{n:1,t:'💸 El cobro es redondo, de a $100.000 para abajo (1.699.000 → 1.600.000); lo que sobra queda en CYC'}]},
   {v:'27.82',f:'29/10',h:'01:31',c:[{n:1,t:'💸 Se sacó "cuánto cobrar" de abajo de Ventas de hoy: el cobro está en Finanzas → Arqueo, abajo de cerrar el mes'}]},
   {v:'27.81',f:'29/10',h:'01:29',c:[{n:2,t:'💸 "Cuánto cobrar" ya no adivina con las ventas de ML: muestra sólo lo del último mes cerrado (lo que creció CYC) y, si el mes no se cerró, dice que sale al cerrarlo'}]},
@@ -4639,8 +4636,8 @@ function _cobroCrec(ym){
   if(!B||!A||B.total==null||A.total==null)return null;
   const tc=parseFloat(B.tipoCambio)||curTC()||0;if(!tc)return null;
   const crecio=Math.round((Number(B.total)-Number(A.total))*tc);
-  const rr=(state.retiro_mes||{})[ym];const retCargado=rr!=null&&rr!=='';
-  const retiro=retCargado?Number(rr):retiroDefMes(ym,0);
+  const rv=_retiroMesVal(ym);const retCargado=rv!=null;
+  const retiro=retCargado?rv:retiroDefMes(ym,0);
   const cc=(state.cobro_corr||{})[ym]||{};const corr=Number(cc.ars)||0;
   const base=crecio+retiro-corr;
   // Redondo para abajo, de a $100.000 (29/10/2026, él: "1.699 → 1.6m"): lo que sobra queda en CYC y entra en el crecimiento del mes que viene.
@@ -4648,6 +4645,7 @@ function _cobroCrec(ym){
   return{ym,crecio,crecioUSD:Number(B.total)-Number(A.total),tc,retiro,retCargado,corr,corrNota:cc.nota||'',base,porSocio};
 }
 function renderCobroCrec(){
+  try{_retiroAutoGuardar();}catch(_){}
   const el=document.getElementById('arq-cobro-crec');if(!el)return;
   if(_arqViewYM){el.innerHTML='';return;}
   const ks=Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE).sort();
@@ -4658,9 +4656,24 @@ function renderCobroCrec(){
   el.innerHTML='<div class="card" style="padding:12px 14px;border-left:3px solid var(--green,#22c55e)">'
     +'<div style="font-weight:600">💸 Cobro de '+_ymLabel(sig)+': '+$(c.porSocio)+' cada uno <span style="color:var(--muted);font-weight:400">('+$(c.porSocio*2)+' el retiro)</span></div>'
     +'<div style="font-size:.74rem;color:var(--muted);margin-top:4px;line-height:1.5">Lo que creció CYC en '+_ymLabel(k)+' (todo: ML, local, perfumerías, deudas): '+$(c.crecio)+' (US$ '+Math.round(c.crecioUSD).toLocaleString('es-AR')+' al dólar '+c.tc+')'
-    +' + lo que ya sacaron ese mes '+$(c.retiro)+(c.retCargado?'':' (supuesto, no está cargado)')
+    +' + lo que ya sacaron ese mes '+$(c.retiro)+(c.retCargado?'':' (supuesto)')
     +(c.corr?' − lo viejo cargado tarde '+$(c.corr)+(c.corrNota?' ('+_esc(c.corrNota)+')':''):'')
     +' = '+$(c.base)+' ÷ 3.</div></div>';
+}
+// EL RETIRO ES AUTOMÁTICO desde noviembre 2026 (29/10/2026, él: "siempre vamos a cobrar lo que diga ahí en 'cobro de
+// noviembre'"): el de un mes = 2 × el cobro del cierre del mes anterior. No hay casilla. null = no hay cierre todavía.
+function _retiroAuto(ym){
+  if(!ym)return null;const pr=_puntMesPrev(ym);
+  if(pr<COBRO_CRECE_DESDE)return null;
+  const c=_cobroCrec(pr);return c?2*c.porSocio:null;
+}
+// El robot lee cyc/retiro_mes: se le deja escrito el automático (sólo si cambió).
+function _retiroAutoGuardar(){
+  for(const k of Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE)){
+    const sig=_mesSigYM(k),v=_retiroAuto(sig);if(v==null)continue;
+    const r=(state.retiro_mes||{})[sig];
+    if(r==null||r===''||Number(r)!==v){state.retiro_mes=state.retiro_mes||{};state.retiro_mes[sig]=v;fbSet('retiro_mes/'+sig,v);}
+  }
 }
 function _mesSigYM(ym){const p=ym.split('_').map(Number);const d=new Date(p[0],p[1],1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');}
 function _ymLabel(ym){const M=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];const p=ym.split('_').map(Number);return M[p[1]-1]||ym;}
@@ -6818,7 +6831,7 @@ function renderRetirosPorMes(){
   const el=document.getElementById('retiros-mes-list');if(!el)return;
   const cur=_curYM();
   const months=[...new Set(Object.keys(state.ventaprod||{}).map(k=>k.substring(0,7)))]
-    .filter(ym=>ym!==cur)
+    .filter(ym=>ym!==cur&&_retiroAuto(ym)==null)
     .filter(ym=>{const r=state.retiro_mes&&state.retiro_mes[ym];return !(r!=null&&r!=='');}) // solo los que faltan
     .sort().reverse().slice(0,12);
   if(!months.length){el.innerHTML='';return;}
@@ -25510,6 +25523,7 @@ function _facVentanaBase(win,conArca){
 // Retiro real de un mes: si lo anotaste (retiro_mes[ym]) usamos ESE monto; si no,
 // el 15% por defecto. Devuelve null si no hay monto cargado (para decidir afuera).
 function _retiroMesVal(ym){
+  const au=_retiroAuto(ym);if(au!=null)return au;
   const r=state.retiro_mes&&state.retiro_mes[ym];
   return (r!=null&&r!=='')?Math.round(Number(r)||0):null;
 }
@@ -26462,6 +26476,8 @@ function renderComprasRetiro(){
   {const t=el.previousElementSibling;if(t&&t.classList.contains('stitle'))t.style.display='';}
   const ym=String(getKey('cmp','mes')).substring(0,7);
   const rv=_retiroMesVal(ym);
+  const _au=_retiroAuto(ym);
+  if(_au!=null){el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;font-size:.78rem"><strong>Retiro de los socios (Mati + papá): ${fmt(_au)}</strong> · ${fmt(Math.round(_au/2))} cada uno<br><span style="font-size:.62rem;color:var(--muted)">Automático: lo que dijo el 💸 cobro del cierre de ${_ymLabel(_puntMesPrev(ym))} en el Arqueo. No es un gasto.</span></div>`;return;}
   let sug=0;try{sug=retiroDefMes(ym,_netoMesData(ym).tot);}catch(e){}
   const col=rv!=null?'var(--green)':'var(--amber)';
   el.innerHTML=`<div style="background:var(--surface);border:1px solid ${rv!=null?'var(--border)':'var(--amber)'};border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
