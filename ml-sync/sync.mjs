@@ -39819,6 +39819,24 @@ async function main() {
       // al dólar del Arqueo). Es el mismo campo que "Cuánto nos costó" del ✏️ de la web; la ganancia la calcula la web (monto − costo).
       // NOMBRE Y "QUÉ SE LLEVÓ" (28/10/2026, él: "cambiale el nombre. ponele Mari y adentro del detalle qué se llevó… así con todos"):
       // `=nombre <texto>` cambia `nom` · `=det <texto>` cambia `det` (lo que se ve como "🛍️ se llevó: …"; `=det -` lo borra).
+      // ARRANCAR DE CERO (29/10/2026, él: "en deuda perfumería cargá 1.132.000, eso deben hoy. Lo que está anotado borralo. Arrancamos de
+      // cero"): `=desde <pesos>` deja la deuda en ese monto, sin cuotas, sin pagos y sin movimientos. Lo de antes no se pierde del todo: se
+      // guarda una copia en `cyc/debencuotas_archivo/<id>/<ts>` (no se ve en la web), por si hay que mirar qué había.
+      const mds = String(resto).trim().match(/^desde\s*\$?\s*([\d.,]+)$/i);
+      if (mds) {
+        let cand2 = lista.filter(([id]) => id === quien);
+        if (!cand2.length) { const pal = _n(quien).split(' ').filter(Boolean); cand2 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cand2.length !== 1) { console.log(`❌ "${quien}" agarra ${cand2.length} deudas${cand2.length ? ': ' + cand2.map(([id, d]) => `${d.nom} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        const [id, d] = cand2[0]; const nD = Math.round(parseFloat(mds[1].replace(/\./g, '').replace(',', '.')) || 0);
+        if (!(nD >= 0)) { console.log('❌ monto inválido'); return; }
+        console.log(`=== "${d.nom}" ARRANCA DE CERO ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  falta hoy ${money(Math.round(saldo(d)))} → ${money(nD)} · se sacan ${Object.keys(d.movs || {}).length} movimiento(s) y ${Object.keys(d.pagos || {}).length} pago(s) (copia en el archivo)`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        const tsA = Date.now(); await db.set(`cyc/debencuotas_archivo/${id}/${tsA}`, d);
+        await db.patch(`cyc/debencuotas/${id}`, { monto: nD, n: 1, pagadas: 0, pagos: null, movs: null, vence1: null, frec: null, cadaDias: null, costo: null, ts: tsA, fecha0: new Date(tsA - 3 * 3600e3).toISOString().slice(0, 10), editado: tsA });
+        const r2 = await db.get(`cyc/debencuotas/${id}`);
+        console.log(r2 && Number(r2.monto) === nD && !r2.movs ? `  ✓ guardado y releído: falta ${money(nD)}` : '  ⚠️ no lo pude releer bien');
+        return;
+      }
       const mnd = String(resto).trim().match(/^(nombre|det)\s+(.+)$/i);
       if (mnd) {
         let cand1 = lista.filter(([id]) => id === quien);
