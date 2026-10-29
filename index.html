@@ -3193,7 +3193,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.02';
+const APP_VERSION='28.03';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3206,6 +3206,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.03',f:'29/10',h:'18:20',c:[{n:2,t:'📥 Lo que nos deben en dos grupos: 🛒 Ventas a cobrar (con la ganancia total) y 💵 Préstamos (sin ganancia). Las ventas viejas sin costo dicen "costo sin cargar".'}]},
   {v:'28.02',f:'29/10',h:'17:55',c:[{n:2,t:'📥 Lo que nos deben: Mercadería Perfumería y Deuda Perfumería quedan juntas en una tarjeta PERFUMERÍA (afuera la ganancia en pesos y el total); adentro, Mercadería y MercadoPago.'}]},
   {v:'28.01',f:'29/10',h:'17:40',c:[{n:1,t:'📥 Lo que nos deben: al lado del % de ganancia de cada deuda va la ganancia en pesos en verde (+$X).'}]},
   {v:'28.00',f:'29/10',h:'17:25',c:[{n:1,t:'📥 Mercadería Perfumería: cada producto dejado muestra sólo el nombre; tocándolo se abre ahí mismo el detalle (nombre entero, cuánto paga, costo, ganancia y la nota).'}]},
@@ -7186,7 +7187,7 @@ function renderCuotas(){
     // (como en toda la app: el 25% que se le gana a la perfumería se ve 25%, no 20%) y, en una deuda de mercadería dejada (renglones con
     // ganancia), afuera se ve la ganancia en pesos de lo que tiene costo cargado, no un % que deja afuera la deuda vieja sin costo.
     const pct=d.sinGan?null:gan!=null&&costo>0?Math.round(gan/costo*100):gmV-gmG>0?Math.round(gmG/(gmV-gmG)*100):null;
-    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':gm.length&&gan==null?`<span style="font-size:.7rem;font-weight:700;color:${gmG>=0?'var(--green)':'var(--red)'}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda que no tiene costo no entra.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'};white-space:nowrap">${pct}%${gan!=null?` <span style="font-weight:600">${gan>=0?'+':'−'}${_pesos(Math.abs(gan))}</span>`:''}</span>`:'';
+    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':d.tipo==='venta'&&!(Number(d.costo)>0)&&!gm.length?'<span style="font-size:.64rem;color:var(--muted)" title="Venta vieja sin el costo cargado: la ganancia no se sabe">costo sin cargar</span>':gm.length&&gan==null?`<span style="font-size:.7rem;font-weight:700;color:${gmG>=0?'var(--green)':'var(--red)'}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda que no tiene costo no entra.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${pct>=0?'var(--green)':'var(--red)'};white-space:nowrap">${pct}%${gan!=null?` <span style="font-weight:600">${gan>=0?'+':'−'}${_pesos(Math.abs(gan))}</span>`:''}</span>`:'';
     const bord=atr?'var(--red)':fin?'rgba(34,197,94,.55)':ab?'var(--border2)':'var(--border)',bg=atr?'background:rgba(239,68,68,.08);':fin?'background:rgba(34,197,94,.07);':'';
     const venceTxt=fin?'':v?`<span style="color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></span>`:(cuotaFija(d)?'':'<span style="color:var(--amber)">sin fecha (✏️)</span>');
     const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">
@@ -7220,7 +7221,18 @@ function renderCuotas(){
   const d0=d=>d;
   window._cuotaPerfIds=[_pM,_pD].filter(Boolean).map(d=>d.id);
   const _lista=act.filter(d=>d!==_pM&&d!==_pD);
-  const _filas=(_pM||_pD?[_perfG()]:[]).concat(_lista.map(fila));
+  // 🛒 VENTAS A COBRAR / 💵 PRÉSTAMOS (29/10/2026, él eligió 1a 2a: "los que tienen ganancia son Ventas y los que no tienen son deudores"):
+  // `tipo` lo marca Claude (`debenmov:<id>=tipo venta|prestamo;go`); sin marca, venta = tiene costo o ganancia. PERFUMERÍA va en Ventas.
+  const _esVenta=d=>d.tipo?d.tipo==='venta':!d.sinGan&&(Number(d.costo)>0||Object.values(d.movs||{}).some(x=>x&&x.gan!=null));
+  const _ven=_lista.filter(_esVenta),_pre=_lista.filter(d=>!_esVenta(d));
+  const _sumR=a=>a.reduce((t,d)=>t+(Number(d.resta)||0),0);
+  const _ganV=_ven.reduce((t,d)=>t+(Number(d.costo)>0?d.monto-Number(d.costo):0)+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0)
+    +[_pM].filter(Boolean).reduce((t,d)=>t+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0),0);
+  const _sec=(tit,tot,extra)=>`<div style="display:flex;align-items:baseline;gap:8px;margin:${tit.startsWith('🛒')?'0':'10px'} 2px 0;font-size:.74rem;font-weight:700">${tit}<span style="flex:1"></span>${extra||''}<span style="font-family:'DM Mono',monospace">${_pesos(tot)}</span></div>`;
+  const _filas=[];
+  if(_pM||_pD||_ven.length){_filas.push(_sec('🛒 Ventas a cobrar',_sumR(_ven)+[_pM,_pD].filter(Boolean).reduce((t,d)=>t+(Number(d.resta)||0),0),`<span style="color:var(--green);font-size:.68rem">+${_pesos(_ganV)}</span>`));
+    if(_pM||_pD)_filas.push(_perfG());_ven.forEach(d=>_filas.push(fila(d)));}
+  if(_pre.length){_filas.push(_sec('💵 Préstamos',_sumR(_pre),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'));_pre.forEach(d=>_filas.push(fila(d)));}
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+_filas.join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b></div>`
     +(pag.length?`<div style="font-size:.74rem;font-weight:700;color:var(--green);margin:16px 0 6px">✅ Pagadas (${pag.length})${pp>1?` <span style="font-weight:400;color:var(--muted);font-size:.66rem">· página ${pg} de ${pp}</span>`:''}</div>

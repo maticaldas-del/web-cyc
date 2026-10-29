@@ -40238,6 +40238,20 @@ async function main() {
         console.log(r2 && Number(r2.monto) === nD && !r2.movs ? `  ✓ guardado y releído: falta ${money(nD)}` : '  ⚠️ no lo pude releer bien');
         return;
       }
+      // VENTA O PRÉSTAMO (29/10/2026, él: "los que tienen ganancia son Ventas y los que no tienen son deudores… primo, gastón, seba son ventas
+      // también, pero no tengo el costo"; eligió 1a 2a): `=tipo venta|prestamo` (o `-` para volver a lo automático). Sin marca, la web pone
+      // en 🛒 Ventas a cobrar lo que tiene costo o ganancia y en 💵 Préstamos lo demás.
+      const mtp = String(resto).trim().match(/^tipo\s+(venta|prestamo|préstamo|-)$/i);
+      if (mtp) {
+        let cT = lista.filter(([id]) => id === quien);
+        if (!cT.length) { const pal = _n(quien).split(' ').filter(Boolean); cT = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cT.length !== 1) { console.log(`❌ "${quien}" agarra ${cT.length} deudas${cT.length ? ': ' + cT.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        const [id, d] = cT[0]; const tv = mtp[1] === '-' ? null : /^v/i.test(mtp[1]) ? 'venta' : 'prestamo';
+        console.log(`=== TIPO DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} === ${d.tipo || 'automático'} → ${tv || 'automático'}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch(`cyc/debencuotas/${id}`, { tipo: tv }); const rt = await db.get(`cyc/debencuotas/${id}/tipo`);
+        console.log((rt || null) === tv ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer'); return;
+      }
       const mnd = String(resto).trim().match(/^(nombre|det)\s+(.+)$/i);
       if (mnd) {
         let cand1 = lista.filter(([id]) => id === quien);
@@ -40245,7 +40259,7 @@ async function main() {
         if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
         const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
-        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${d[campo] || '—'} → ${val || '—'}`);
+        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] || '—')} → ${campo === 'nom' && !d.fija ? String(val || '').slice(0, 1) + '···' : (val || '—')}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
         const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
