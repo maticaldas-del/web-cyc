@@ -4046,3 +4046,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **Qué es:** el % de una deuda era ganancia ÷ lo que paga (25% sobre el costo se veía 20%) y en Mercadería Perfumería sólo miraba los renglones con costo, sin decirlo. Ahora: % sobre el costo (como `pctGananciaVP`), afuera la ganancia en pesos de lo dejado y adentro cuánto de la deuda no tiene costo cargado. El robot (`debenmov`) dice lo mismo.
 - **Dónde vive:** `index.html` (tarjeta de deuda: `pct`, `pctTxt`, renglón 🛍️) · `sync.mjs` (`debenmov`).
 - **Qué chequear:** Mercadería Perfumería arriba "gan. $7.916" y adentro "25% sobre el costo · $1.613.400 sin costo cargado".
+- 29/10 (v27.98, él: *"el total a cobrar en blanco tipo negrita, que diga +x en verde la ganancia y el % de ganancia al producto"*): cada producto dejado muestra el total en blanco/negrita y debajo "+$ganancia · %" en verde (sobre el costo).
