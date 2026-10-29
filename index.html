@@ -2549,7 +2549,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2603,7 +2603,8 @@ function startApp(){
     state.fact_cancel=d.fact_cancel||{};  // facturación de ventas canceladas/devueltas por cuenta y mes (para igualar a ML)
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
-    state.cobro_corr=d.cobro_corr||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
+    state.cobro_corr=d.cobro_corr||{};
+    state.costocongelado=d.costocongelado||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
     // EL NETO DE CADA PUBLICACIÓN, que escribe `netoweb` todas las noches. Existe para poder
@@ -3181,7 +3182,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.87';
+const APP_VERSION='27.88';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3194,6 +3195,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.88',f:'29/10',h:'13:10',c:[{n:2,t:'🧊 Un mes cerrado queda congelado: el costo de cada venta es el que tenía al cerrarlo (un reclamo nuevo o un cambio de envío ya no cambian octubre)'}]},
   {v:'27.87',f:'29/10',h:'13:09',c:[{n:2,t:'📊 Resumen: "Valor de Stock" ahora es el mismo número que el "Stock total" del Arqueo (suma Oficina CYC y vendedores, que antes faltaban)'}]},
   {v:'27.86',f:'29/10',h:'12:48',c:[{n:1,t:'🛒 Pedidos siempre se abre en Bs As → 🏬 De siempre'}]},
   {v:'27.85',f:'29/10',h:'01:37',c:[{n:1,t:'Arqueo: se sacó el aviso "Ojo: Oficina Mati ahora sale de las u. que contaste…"'}]},
@@ -4649,6 +4651,7 @@ function _cobroCrec(ym){
 }
 function renderCobroCrec(){
   try{_retiroAutoGuardar();}catch(_){}
+  try{if(!_arqViewYM)Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&!(state.costocongelado||{})[k]).forEach(k=>congelarMes(k));}catch(_){}
   const el=document.getElementById('arq-cobro-crec');if(!el)return;
   if(_arqViewYM){el.innerHTML='';return;}
   const ks=Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE).sort();
@@ -4677,6 +4680,17 @@ function _retiroAutoGuardar(){
     const r=(state.retiro_mes||{})[sig];
     if(r==null||r===''||Number(r)!==v){state.retiro_mes=state.retiro_mes||{};state.retiro_mes[sig]=v;fbSet('retiro_mes/'+sig,v);}
   }
+}
+// Congela el costo de cada venta del mes (2a del 29/10). Se llama al cerrar el mes; los cierres de octubre en adelante que
+// todavía no lo tienen se congelan solos la primera vez que se abre el Arqueo.
+async function congelarMes(ym){
+  if(!ym||(state.costocongelado||{})[ym])return;
+  const m={};
+  Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.entries(state.ventaprod[k]||{}).forEach(([id,v])=>{
+    if(!v||v.cancelada)return;m[id]=Math.round(efectivoCostoVP({...v,id,_dateKey:k})*100)/100;}));
+  if(!Object.keys(m).length)return;
+  state.costocongelado=state.costocongelado||{};state.costocongelado[ym]=m;
+  try{await fbSet('costocongelado/'+ym,m);}catch(_){delete state.costocongelado[ym];}
 }
 function _mesSigYM(ym){const p=ym.split('_').map(Number);const d=new Date(p[0],p[1],1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');}
 function _ymLabel(ym){const M=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];const p=ym.split('_').map(Number);return M[p[1]-1]||ym;}
@@ -11026,7 +11040,7 @@ async function saveSnapshot(){
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),
     prodValues};
-  await fbSet('snapshots/'+key,snap);await log('Cerró mes: '+label);toast('Mes '+label+' guardado ✓');
+  await fbSet('snapshots/'+key,snap);try{await congelarMes(key);}catch(_){}await log('Cerró mes: '+label);toast('Mes '+label+' guardado ✓');
   if(!state.snapshots)state.snapshots={};state.snapshots[key]=snap;try{_btnCerrarTxt();checkCierrePendiente();}catch(_){}   // 29/10: que se vea cerrado en el acto
 }
 
@@ -14058,6 +14072,9 @@ function ventaEstimadaVP(v){return !!(v&&!v.cancelada&&v.netoEstimado);}
 function gestDivVP(v){return ventaEstimadaVP(v)?0:gestDeVenta(v);}
 function efectivoCostoVP(v){
   if(v&&v.cancelada)return 0;
+  // 🧊 MES CERRADO = CONGELADO (29/10/2026, él eligió 2a): el costo de cada venta de un mes cerrado es el que tenía al cerrarlo
+  // (`cyc/costocongelado/<AAAA_MM>/<id>`, lo escribe `congelarMes`). Un reclamo o un envío nuevo ya no lo mueven.
+  {const fz=v&&v._dateKey&&v.id&&state.costocongelado&&state.costocongelado[v._dateKey.substring(0,7)];if(fz&&fz[v.id]!=null)return Number(fz[v.id])||0;}
   const c=_efectivoCostoVP(v)+(ventaEstimadaVP(v)?gestDeVenta(v):0);
   return ventaSinCostoVP(v)?Math.max(Number(v.neto)||0,c):c;
 }

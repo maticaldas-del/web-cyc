@@ -592,9 +592,11 @@ async function armarCostoWeb(db, vp) {
     const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
     return g > 0 ? g * q : 0;
   };
+  const congel = (await db.get('cyc/costocongelado').catch(() => null)) || {};   // 🧊 mes cerrado congelado (2a del 29/10), igual que la web
   return (v, dk) => {
     if (!v || v.cancelada) return { costo: 0, sinCosto: false, gest: 0 };
     const ym = String(dk || '').slice(0, 7);
+    { const fz = congel[ym]; if (fz && v.id && fz[v.id] != null) return { costo: Number(fz[v.id]) || 0, sinCosto: false, gest: 0, congelado: true }; }
     const p = prodDe(v);
     const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoPct(ym)) / 100;
     const gest = gestDe(v, p);
