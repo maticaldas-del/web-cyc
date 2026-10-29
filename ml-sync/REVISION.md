@@ -865,6 +865,10 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   que una venta real a la prueba (precio nuevo) siga contando (Naipes Casino 28/10 09:04 a $7.290).
 
 ## 2 · PLATA (martes)
+### 💸 Cobro por crecimiento (29/10/2026; él eligió 1a: *"cobrar lo que crece cyc dividido 3"*, sin promedio de meses)
+- **Qué es:** `_cobroCrec(ym)` (index.html): (patrimonio del cierre − el del anterior) × dólar del cierre + el retiro de ESE mes (el arqueo se hace después de retirar) − `cyc/cobro_corr/<ym>` {ars, nota} (lo viejo que se cargó tarde: no es crecimiento) ÷ 3. Tarjeta `arq-cobro-crec` abajo de "Cerrar el mes" (`renderCobroCrec`); desde el cierre de octubre es el retiro supuesto del mes siguiente (`_retiroTarjetaDe`). `cyc/cobro_corr` en `CYC_KEYS`.
+- **Qué chequear:** octubre da (3.059.248 + 1.800.000) ÷ 3 ≈ $1.620.000 c/u menos la corrección; que la misma cuenta salga en `cierrevs`; que el retiro de un mes cerrado nunca se calcule de su propio cierre.
+
 ### 📸 El botón de cerrar el mes dice si ya está cerrado (29/10/2026, v27.76; él: *"ya cerré octubre y parece que no se dio cuenta la app. dice que todavía no cerré el mes"*)
 - **Qué es:** el cierre de octubre estaba guardado (`cyc/snapshots/2026_10`, `cierrevs` lo ve), pero el botón seguía diciendo "📸 Cerrar Octubre 2026". Ahora `_btnCerrarTxt` dice "✅ Octubre 2026 ya está cerrado" y `saveSnapshot` deja el cierre en `state.snapshots` en el acto y redibuja el botón y el aviso de Inicio.
 - **Qué chequear:** con el mes cerrado, el botón en ✅ y el aviso rojo de Inicio apagado; el 1/11 el botón vuelve a "Cerrar Noviembre".
