@@ -4033,6 +4033,11 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **Dónde vive:** `index.html` (`renderMetLocal`, llamado desde `renderMetricas`; `met-local`).
 - **Qué chequear:** que lo vendido en el mes coincida con los movimientos de Mercadería del mes en Lo que nos deben; que los KPIs de ML no cambien.
 
+### 🏪 Métricas a fondo del local + selector ML · Perfumería · Todo (29/10/2026, v28.08-28.09; él: *"quiero ver qué perfumería le vendemos más, con barras. ganancia local y ml juntas. deudas. todo… igual de profundo que las métricas de ml"* y *"quiero seguir viendo métricas ml como siempre… pero también la de la perfumería y que se mezclen cuando necesito"*)
+- **Qué es:** `renderMetLocal` muestra: ganancia de ML (la de los KPIs) + perfumerías + otras ventas juntas con barra de partes; perfumerías (vendido, ganancia, cobrado, falta); a qué perfumería le vendemos más con barras (período y desde siempre, con lo que tiene sin pagar cada una); mes a mes vendido y cobrado; productos con ganancia y %; deudas de hoy (ventas, préstamos, atrasadas, con barras); otras ventas del período. Arriba de Métricas `metVista`: 📦 ML (la de siempre, sin el local), 🏪 Perfumería (sólo el local), 🔀 Todo; se recuerda por aparato (`cyc_metvista`).
+- **Dónde vive:** `index.html` (`renderMetLocal`, `metVista`, `#met-vista`).
+- **Qué chequear:** en 📦 ML todo igual que antes (nada del local); que lo que oculta la vista no se quede oculto al volver (la carga del Día se respeta).
+
 ### 🏠 Oficina ML / 🏪 Oficina Local en el Stock total del Arqueo (29/10/2026, v28.06; él: *"esto es detalle. que vaya adentro de oficina local o oficina ml… que se abra al clickearlo. en la oficina hay mercadería que se vendió/hubo en ML y mercadería que nunca estuvo en full"*)
 - **Qué es:** "En la oficina" se parte en Oficina ML (unidades de la Oficina_Mati de fichas con publicación en `mllinks`) y Oficina Local (`of_viejo` + vendedores + lo de la oficina que nunca tuvo publicación). Las dos suman `stockLocalFin` como antes (sin unidades contadas, `of_mia` entero va a ML). El detalle de cada renglón (oficinas, en camino, Full por cuenta) se abre tocándolo (`arqDet`, queda abierto al redibujar).
 - **Dónde vive:** `index.html` (HTML del Stock total: `bk_ofi_ml`, `bk_ofi_local`, `det_*`; bloque 🏠/🏪 en `updateArqueo`; `arqDet`, `_arqDetPinta`).
