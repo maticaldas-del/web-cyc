@@ -4093,3 +4093,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - 29/10 (privacidad): `debenmov` imprimía el nombre de cada deudor en el registro público de GitHub. Ahora sólo la inicial ("G···") y el id; las fijas del negocio (Mercadería / Deuda Perfumería) siguen con su nombre (`_tapaNom`).
 - 29/10 (v28.04): con costo o ganancia una deuda es venta SIEMPRE (Mari, con el Redmi Watch, había quedado en Préstamos por la marca).
 - 29/10 (v28.05, él con MercadoPago: *"y este va a préstamos"*): se deshizo la tarjeta que juntaba la perfumería; Mercadería va en Ventas y MercadoPago en Préstamos, las dos con "🛍️ PERFUMERÍA ·" adelante.
+- 29/10 (v28.12, él: *"esto es métrica de local, no de perfumería… local tiene más cosas"*): el botón y el título vuelven a ser 🏪 Local, con perfumerías + deudas + otras ventas a cuenta; lo único que no está es lo mezclado con ML (vive en 🔀 ML + Local).
