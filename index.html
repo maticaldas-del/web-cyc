@@ -7472,12 +7472,15 @@ function cupoPalabrasGrandes(){
 }
 // La ficha manda sobre la palabra: si alguien dijo expreso que este producto es grande (o que no
 // lo es), esa decisión no la pisa un filtro de texto.
+// Revisión etapa 3, 29/10/2026: la palabra va ENTERA en el nombre (o en plural). Con `includes` suelto "tender" agarraba "extender" (un
+// "Extender Wifi" contaba como Tender: cupo de grandes y caja aparte). Misma regla que `esGrandeFullBot` del robot: si se toca una, la otra.
 function esGrandeFull(p){
   if(!p)return false;
   if(p.grandeFull===true)return true;
   if(p.grandeFull===false)return false;
-  const n=normTxt(p.name||'');
-  return cupoPalabrasGrandes().some(w=>w&&n.includes(w));
+  const nP=s=>normTxt(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const n=' '+nP(p.name||'')+' ';
+  return cupoPalabrasGrandes().some(w=>{const x=nP(w);return !!x&&(n.includes(' '+x+' ')||n.includes(' '+x+'s ')||n.includes(' '+x+'es '));});
 }
 // Cuántas unidades de ESTA caja van a cada cupo.
 function cupoDeCaja(items,filas){
@@ -7874,7 +7877,7 @@ function renderOfiCaja(){
       const vr=_ver[l];
       const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
-      const tit=vr?(`${vr.txt} · ${vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
+      const tit=vr?(`${vr.txt} · ${vr.k==='pasa'?`no entra en el cupo de Full de ${l}: ${vr.det}`:vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
       const gC=_ganCta[l]||0;
       return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
         +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
@@ -7893,18 +7896,22 @@ function renderOfiCaja(){
     const p=f.p;
     // Marcado "mandale igual": entra aunque todavía no exista la publicación (ver repoExtraDe).
     if(repoExtraDe(p.id,ofiFiltroCuenta))return true;
+    // Sólo las publicaciones vivas (sin ocultas ni "no la vendemos más"), igual que el reparto (revisión etapa 3, 29/10/2026).
     if((p.variantes||[]).length){
-      const pv=_pubVar[p.id]||(_pubVar[p.id]=cuentasPorVariante(p));
+      const pv=_pubVar[p.id]||(_pubVar[p.id]=cuentasPorVariante(p,null,true));
       if(!f.variante)return Object.values(pv).some(x=>x.has(ofiFiltroCuenta));  // fila "sin variante"
       return !!(pv[f.variante]&&pv[f.variante].has(ofiFiltroCuenta));
     }
-    return cuentasConPublicacion(p).includes(ofiFiltroCuenta);
+    return cuentasConPublicacion(p,true).includes(ofiFiltroCuenta);
   };
   // Y se saca lo marcado "no se manda más a esta cuenta". La marca ya sacaba a la cuenta del
   // reparto, pero el renglón seguía apareciendo igual porque la lista muestra TODO lo que hay en
   // casa para poder cargar a mano. El 25/08/2026 le seguían saliendo en Adriana el P47, las Cartas
   // Casino y el Termómetro pincha, que ya estaban marcados: "esto no va en adriana".
-  const vis=armando?filas.filter(f=>f.hay>0&&publicaLaCuenta(f)&&!noRepoDe(f.p.id,ofiFiltroCuenta)):filas;
+  // Revisión etapa 3, 29/10/2026: lo que YA está cargado en la caja se ve siempre (si no, una publicación que pasó a oculta o a "no la
+  // vendemos más" dejaba unidades adentro de la caja sin renglón para verlas ni sacarlas, y salían al cerrarla).
+  const _cargada=cajaDe(ofiFiltroCuenta);
+  const vis=armando?filas.filter(f=>f.hay>0&&((publicaLaCuenta(f)&&!noRepoDe(f.p.id,ofiFiltroCuenta))||(_cargada[_ck(f.p.id,f.variante)]||0)>0)):filas;
   // Se suma SOLO lo que sigue estando en pantalla: si una fila desapareció (porque ya se despachó)
   // su número no puede seguir contando en la caja.
   const cajaAct=armando?cajaDe(ofiFiltroCuenta):{};
@@ -8075,7 +8082,9 @@ function renderOfiCaja(){
       const _vr=cajaVeredicto(cv);
       const col=_vr.col, veredicto=_vr.txt;
       const pctLl=Math.round(cv.lleno*100);
-      const linea=cv.topeCupo
+      const linea=cv.sePasa   // revisión etapa 3, 29/10/2026
+        ?`no entra en el cupo de Full: ${_vr.det} · sacá lo que sobra o usá "Cargar lo que entra en el cupo"`
+        :cv.topeCupo
         ?`usa todo el cupo de Full que queda (${cv.uTot} u.): esperar no la llena más, lo vendido no devuelve cupo`
         :cv.llena
         ?`la caja ya va llena (${pctLl}%)`
@@ -9805,6 +9814,11 @@ function cajasVerdes(filas){
 const CAJA_ESPERA_DIAS=7;
 function cajaVeredicto(cv){
   if(!cv||!(cv.uTot>0))return null;
+  // SE PASA DEL CUPO (revisión etapa 3, 29/10/2026): ML no deja entrar más que el cupo que queda. Antes una caja de 25 con 10 de cupo, o
+  // cualquier caja con el cupo en 0, salía MANDALA YA (y en "📦 N cajas para mandar ya", que es lo que arma el chat de Chrome). Primero
+  // hay que sacar lo que sobra (o usar "Cargar lo que entra en el cupo"); no es verde.
+  if(cv.sePasa){const s=cv.sePasa;return{k:'pasa',col:'var(--amber)',txt:'Se pasa del cupo',
+    det:[s.peq?`sobran ${s.peq} chicos/medianos (quedan ${s.estPeq})`:'',s.gra?`sobran ${s.gra} grandes (quedan ${s.estGra})`:''].filter(Boolean).join(' · ')+(s.viejo?` · el cupo es de hace ${s.dias} días: miralo de nuevo`:'')};}
   if(cv.llena||cv.perdida>=cv.extra)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
   if(cv.perdida>=cv.extra*0.5)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
   return{k:'rojo',col:'var(--red)',txt:'Podés esperar y juntar más'};
@@ -9871,12 +9885,17 @@ function convieneCaja(filas,cuenta){
   // TOPE DEL CUPO (29/10/2026, él con Ayelen: "¿por qué dice que gano 400.000 al vender y me dice que espere? ¿tiene sentido?"): la caja
   // de Ayelen iba al 5% de la caja pero usaba los 24 lugares que le quedaban en el cupo de Full. Esperar no la llena más: lo vendido no
   // devuelve cupo (18/10). Si la caja ya ocupa todo el cupo que queda, cuenta como llena y el veredicto es mandarla.
-  let topeCupo=false;try{const cr=cupoRestante(cuenta),cd=cupoDeCaja(items,filas);
-    topeCupo=!!cr&&((cr.estPeq!=null&&cd.peq>0&&cd.peq>=cr.estPeq)||(cr.estGra!=null&&cd.gra>0&&cd.gra>=cr.estGra));}catch(_){}
+  // Revisión etapa 3, 29/10/2026: (1) si la caja SE PASA del cupo que queda, no es "usa todo el cupo": va `sePasa` (cuántas sobran) y el
+  // veredicto "Se pasa del cupo" (antes un cupo en 0 o una caja de 25 con 10 de cupo daban MANDALA YA). (2) "Usa todo el cupo" pide un
+  // cupo de esta semana (`viejo` = 7+ días: no se confía) y que quede algo (más de 0).
+  let topeCupo=false,sePasa=null;try{const cr=cupoRestante(cuenta),cd=cupoDeCaja(items,filas);
+    if(cr){const sP=cr.estPeq!=null&&cd.peq>cr.estPeq?cd.peq-cr.estPeq:0,sG=cr.estGra!=null&&cd.gra>cr.estGra?cd.gra-cr.estGra:0;
+      if(sP||sG)sePasa={peq:sP,gra:sG,estPeq:cr.estPeq,estGra:cr.estGra,dias:cr.dias,viejo:!!cr.viejo};
+      else topeCupo=!cr.viejo&&((cr.estPeq>0&&cd.peq>0&&cd.peq>=cr.estPeq)||(cr.estGra>0&&cd.gra>0&&cd.gra>=cr.estGra));}}catch(_){}
   const extra=topeCupo?0:_cc*(1-lleno);
   const diasPago=gCero>0?_cc/gCero:null;
   return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,
-    perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9||topeCupo,topeCupo,costo:_cc,espera:D,
+    perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9||topeCupo,topeCupo,sePasa,costo:_cc,espera:D,
     sinMedida:oc.sinDim,
     vecesElEnvio:_cc>0?gTotal/_cc:0};
 }
@@ -9904,11 +9923,13 @@ function cajasDe(e){
 // después cuando lo activo sigue normal"): mientras está en pausa no sale (la salida queda 30 días adelante para que la escasez y
 // el viaje no la cuenten como que llega pronto); al reanudarla, la fecha pasa a ser HOY y sale el próximo día hábil a las 12.
 // Misma regla en el robot (`envSalidaTs` de sync.mjs, con `pausado`).
+// Revisión etapa 3, 29/10/2026: al reanudar ya NO se pisa `e.ts` (es cuándo se armó: el cupo de Full lo compara con la hora de la lectura,
+// y pisarlo restaba ese envío dos veces). La hora de reanudar va en `e.reanudado` y manda acá (en el robot también).
 const ENV_PAUSA_DIAS=30;
 function envSalidaTs(e){
   if(!e||!e.fecha)return 0;
   if(e.pausado)return Date.now()+ENV_PAUSA_DIAS*864e5;
-  const f=String(e.fecha).slice(0,10),ts=Number(e.ts)||0,dT=ts?new Date(ts):null;
+  const f=String(e.fecha).slice(0,10),ts=Number(e.reanudado||e.ts)||0,dT=ts?new Date(ts):null;
   const mismo=dT&&`${dT.getFullYear()}-${String(dT.getMonth()+1).padStart(2,'0')}-${String(dT.getDate()).padStart(2,'0')}`===f;
   const d=new Date(f+'T12:00:00');if(isNaN(d))return 0;
   const tarde=mismo&&(dT.getHours()>=12);
@@ -10056,8 +10077,10 @@ async function setEnvioPausa(id,on){
     if(!e.fechaArmada){e.fechaArmada=e.fecha;await fbSet('envios_full/'+id+'/fechaArmada',e.fecha);}
     const cajas=cajasDe(e);
     if(Array.isArray(e.cajasDet)&&e.cajasDet.some(c=>c&&!c.recibida&&c.fecha))await _guardarCajas(id,cajas.map(c=>c&&!c.recibida&&c.fecha?{...c,fecha:hoy}:c));
-    e.fecha=hoy;e.ts=Date.now();e.pausado=null;
-    await fbSet('envios_full/'+id+'/fecha',hoy);await fbSet('envios_full/'+id+'/ts',e.ts);await fbSet('envios_full/'+id+'/pausado',null);
+    // Revisión etapa 3, 29/10/2026: la hora de reanudar va en `reanudado`, NO en `ts` (ver envSalidaTs: el cupo de Full compara `ts` con la
+    // hora de la lectura y pisarlo restaba este envío otra vez).
+    e.fecha=hoy;e.reanudado=Date.now();e.pausado=null;
+    await fbSet('envios_full/'+id+'/fecha',hoy);await fbSet('envios_full/'+id+'/reanudado',e.reanudado);await fbSet('envios_full/'+id+'/pausado',null);
     await log('Envío ('+(e.cuenta||'?')+'): ▶️ reanudado, sale desde el '+hoy);
     toast('▶️ Envío reanudado: '+envSaleTxt(e),'ok',3500);
   }
@@ -15770,11 +15793,15 @@ function ventasHistoricas(p,cuenta,variante){
   const desdeDias=Math.max(1,(Date.now()-tMin)/86400000+1);
   return{u,dias,vDia:u/dias,gan,ganDia:gan/dias,desdeDias};
 }
-function cuentasConPublicacion(p){
+// `soloVivas` (revisión etapa 3, 29/10/2026): para Armar caja (a qué cuenta se le puede MANDAR) tampoco cuentan las publicaciones
+// ocultas (`ignored`) ni las de "no la vendemos más": el robot (`pedidostodo`, que arma `decide_cajas.py`) ya las saca, y acá quedaban
+// como cuenta que recibe con "sin decidir" para siempre. Las pantallas que muestran DÓNDE ESTÁ la mercadería siguen viéndolas.
+function cuentasConPublicacion(p,soloVivas){
   const s=new Set();
   Object.values(state.mllinks||{}).forEach(e=>{
     if(!e||e.prodId!==p.id)return;
     if((e.status||'')==='closed')return;   // cerrada = no vende nunca más
+    if(soloVivas&&(e.ignored||e.noVendemosMas))return;
     if(e.cuenta&&LOCS.includes(e.cuenta))s.add(e.cuenta);
   });
   return [...s];
@@ -15817,12 +15844,13 @@ function ventasPorCuentaVar(p,varDeMla){
 // pantalla decía "ninguna cuenta lo necesita" porque miraba el total.
 // Qué cuentas publican CADA variante (por su publicación, no por el producto): con un aroma por
 // publicación, una cuenta puede tener algunos aromas y otros no.
-function cuentasPorVariante(p,varDeMla){
+function cuentasPorVariante(p,varDeMla,soloVivas){
   const mapa=varDeMla||_varPorMla(p);
   const out={};
   Object.entries(state.mllinks||{}).forEach(([mla,e])=>{
     if(!e||e.prodId!==p.id)return;
     if((e.status||'')==='closed')return;
+    if(soloVivas&&(e.ignored||e.noVendemosMas))return;   // ver `cuentasConPublicacion` (revisión etapa 3, 29/10/2026)
     const va=mapa[mla];if(!va)return;
     if(!e.cuenta||!LOCS.includes(e.cuenta))return;
     (out[va]=out[va]||new Set()).add(e.cuenta);
@@ -15848,7 +15876,7 @@ function _pisoCeroAplica(c){
 function _repartoVariantes(p,hayTotal,tr){
   const varDeMla=_varPorMla(p);
   const ventasV=ventasPorCuentaVar(p,varDeMla);
-  const pubV=cuentasPorVariante(p,varDeMla);
+  const pubV=cuentasPorVariante(p,varDeMla,true);   // sólo las publicaciones vivas reciben (revisión etapa 3, 29/10/2026)
   const filas=[];
   let repartido=0;
   for(const va of (p.variantes||[])){
@@ -15933,7 +15961,7 @@ function repartoOficina(){
     if(hay<=0)return;
     if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay,tr)); return; }
     const ventas=ventasPorCuenta(p);
-    const reales=cuentasConPublicacion(p);
+    const reales=cuentasConPublicacion(p,true);   // sólo las publicaciones vivas reciben (revisión etapa 3, 29/10/2026)
     // Se suman las cuentas marcadas "mandale igual": todavía no tienen la publicación hecha pero
     // él quiere que el producto le aparezca en la caja para acordarse de mandarlo y publicarlo.
     const publicadas=[...new Set([...reales,...cuentasExtra(p)])].filter(l=>!noRepoDe(p.id,l));

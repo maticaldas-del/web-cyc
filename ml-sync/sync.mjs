@@ -118,6 +118,49 @@ const norm = (s) => (s || '')
   .replace(/\s+/g, ' ').trim();
 // mismas claves de inventario que la app: prodId__Cuenta y prodId__Cuenta__v__Variante
 const sid = (s) => String(s).replace(/[^a-z0-9]/gi, '_');
+// QUÉ ES "GRANDE" PARA EL CUPO DE FULL, UNA SOLA CUENTA (revisión etapa 3, 29/10/2026). Regla suya: grande = sólo los Tenders, con la lista
+// de palabras de `cyc/mlconfig/cupoGrandes` (la ficha la pisa con `grandeFull`). La palabra va ENTERA en el nombre (o en plural): con
+// `includes` suelto "tender" agarraba "extender" (un "Extender Wifi" contaba como Tender: cupo de grandes y caja aparte). Estaba copiada
+// en cuatro lugares (cupo, pedidostodo, la tabla de stock antiguo y el supervisor de almacenamiento); ahora todos llaman a ésta. Misma
+// regla que `esGrandeFull` de la web (index.html): si se toca una, la otra.
+const CUPO_GRANDES_DEF = ['tendedero', 'tender'];
+function palabrasGrandesDe(cfg) {
+  const c = cfg && cfg.cupoGrandes;
+  const a = (Array.isArray(c) ? c : (typeof c === 'string' ? c.split(',') : null)) || CUPO_GRANDES_DEF;
+  const lim = a.map((w) => norm(String(w || ''))).filter(Boolean);
+  return lim.length ? lim : CUPO_GRANDES_DEF;
+}
+function nombreTienePalabra(nombre, w) {
+  const x = norm(String(w || '')); if (!x) return false;
+  const n = ' ' + norm(nombre || '') + ' ';
+  return n.includes(' ' + x + ' ') || n.includes(' ' + x + 's ') || n.includes(' ' + x + 'es ');
+}
+function esGrandeFullBot(p, palabras) {
+  if (!p) return false;
+  if (p.grandeFull === true) return true;
+  if (p.grandeFull === false) return false;
+  return (palabras || CUPO_GRANDES_DEF).some((w) => nombreTienePalabra(p.name, w));
+}
+// LO QUE QUEDA DEL CUPO DE FULL DE UNA CUENTA (revisión etapa 3, 29/10/2026): lo leído en ML (`cyc/mlconfig/cupoFull/<cuenta>`, con la hora
+// en que se LEYÓ) menos lo despachado DESPUÉS de esa lectura (lo vendido no devuelve cupo, medido el 18/10). Misma cuenta que `cupoRestante`
+// de la web: si se toca una, la otra. La usan `pedidostodo` (para `decide_cajas.py`) y `cajaarmar` (que la vuelve a mirar al cargar la caja).
+// Sin cupo cargado devuelve null: no se inventa un cupo.
+function cupoRestanteBot(cfg, envios, cta, prIdx) {
+  const todo = (cfg && cfg.cupoFull) || {};
+  const cu = todo[cta] || todo[String(cta || '').toLowerCase()];
+  if (!cu || !(Number(cu.ts) > 0)) return null;
+  const pal = palabrasGrandesDe(cfg);
+  let mP = 0, mG = 0;
+  for (const e of Object.values(envios || {})) {
+    if (!e || e.cuenta !== cta || !(Number(e.ts) > Number(cu.ts))) continue;
+    for (const cj of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) for (const it of ((cj && cj.items) || [])) {
+      if (!it || !(it.u > 0)) continue;
+      if (esGrandeFullBot((prIdx || {})[it.prodId], pal)) mG += it.u; else mP += it.u;
+    }
+  }
+  const est = (b, m) => (b !== null && b !== '' && Number.isFinite(Number(b))) ? Math.max(0, Math.round(Number(b) - m)) : null;
+  return { ts: Number(cu.ts), dias: Math.floor((Date.now() - Number(cu.ts)) / 864e5), mandP: mP, mandG: mG, estPeq: est(cu.peq, mP), estGra: est(cu.gra, mG) };
+}
 
 // Fecha local Argentina (UTC-3) → clave YYYY_MM_DD que usa la app.
 // PSICOLOGÍA DEL PRECIO (10/10/2026, él eligió 1a 2a 3a 4b). Los números redondos que el comprador "ve" (y por los que
@@ -1143,23 +1186,33 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   // primera marcaba "llegó completa" también a la segunda, que seguía en el camión. Ahora cada caja
   // marcada DESCUENTA primero lo que ya usó, y recién lo que sobra se reparte entre las abiertas.
   const marcadasAntes = [];
+  // DESDE CUÁNDO PUEDE LLEGAR UNA CAJA (revisión etapa 3, 29/10/2026): desde que SALE (lun-vie 12 hs, `envSalidaTs`; reanudada, desde que se
+  // reanudó), no desde las 0 hs del día en que se armó. Una entrada a Full anterior a la salida no puede ser de esta caja. Sin fecha
+  // válida, como antes (las 0 hs de `fecha`).
+  const salidaDeCaja = (e, c) => envSalidaTs((c && c.fecha) || e.fecha, (c && c.fecha) ? 0 : (e.reanudado || e.ts), false)
+    || (Date.parse(((c && c.fecha) || e.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0);
   for (const [id, e] of Object.entries(envios)) {
     if (!e || !e.cuenta || !labels.includes(e.cuenta)) continue;
     const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : [];
     cajas.forEach((c, i) => {
       if (c && c.recibida) {
         const itemsM = (c.items || []).filter((x) => x && x.prodId && x.u > 0);
-        if (itemsM.length) marcadasAntes.push({ id, i, e, c, items: itemsM, fecha: e.fecha || '' });
+        if (itemsM.length) marcadasAntes.push({ id, i, e, c, items: itemsM, fecha: e.fecha || '', salida: salidaDeCaja(e, c) });
         return;
       }
       if (!c || c.recibida) return;
+      // ⏸️ UN ENVÍO EN PAUSA NO ESTÁ VIAJANDO (revisión etapa 3, 29/10/2026): sigue en la oficina. Antes entraba como abierta con su fecha
+      // de armado, se llevaba las entradas de una caja MÁS NUEVA del mismo producto (la que de verdad llegó) y se marcaba "llegó" estando en
+      // la oficina, mientras la que llegó quedaba en rojo. No se mira hasta que se reanuda (ahí sale ese día y cuenta desde su salida).
+      if (e.pausado) return;
       const items = (c.items || []).filter((x) => x && x.prodId && x.u > 0);
       if (!items.length) return;   // sin contenido no hay nada que cruzar
-      abiertas.push({ id, i, e, c, items, fecha: e.fecha || '' });
+      abiertas.push({ id, i, e, c, items, fecha: e.fecha || '', salida: salidaDeCaja(e, c) });
     });
   }
   if (!abiertas.length) return { marcadas: [], mirados: 0, msg: null };
-  abiertas.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  // De la que salió antes a la que salió después (antes, por la fecha de armado).
+  abiertas.sort((a, b) => (a.salida - b.salida) || (a.fecha || '').localeCompare(b.fecha || ''));
   // UNA CAJA DE MÁS DE 45 DÍAS YA NO SE MIRA SOLA (etapa 3, 29/09/2026). Seguía abierta (perdida o con
   // un renglón que no se puede leer) y estiraba la ventana de su producto: en uno que vende mucho se
   // pasaban los 1.000 movimientos y NINGUNA caja nueva de ese producto se podía marcar (se contaba dos
@@ -1541,7 +1594,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   //    marcaron dentro de la ventana que se leyó: una marcada antes tiene sus entradas antes, y
   //    ésas ya no están en la lista.
   let descontadas = 0;
-  marcadasAntes.sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  marcadasAntes.sort((a, b) => (a.salida - b.salida) || (a.fecha || '').localeCompare(b.fecha || ''));
   for (const mb of marcadasAntes) {
     const o = porCta[mb.e.cuenta]; if (!o) continue;
     const usadas = Array.isArray(mb.c.recUsadas) ? mb.c.recUsadas : null;
@@ -1554,7 +1607,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
     }
     const recF = String(mb.c.recFecha || '');
     if (!recF) continue;
-    const desdeMb = Date.parse((mb.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+    const desdeMb = mb.salida;   // revisión etapa 3, 29/10/2026: desde que salió (antes, las 0 hs del día en que se armó)
     // Lo que se va consumiendo se anota, para guardárselo a la caja (decisión 3, arriba).
     const calc = []; let esperado = 0, usado = 0, ciegoMb = false;
     for (const it of mb.items) {
@@ -1600,25 +1653,37 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   // las abiertas, cada caja marcada por el robot con faltantes (hace 60 días o menos) toma lo libre
   // posterior a su despacho hasta tapar lo que le faltaba, de la más vieja a la más nueva — el mismo
   // orden de siempre. Las marcadas a mano no: ahí el faltante lo confirmó él con ML.
+  // Revisión etapa 3, 29/10/2026: LAS MARCADAS A MANO TAMBIÉN (`cajallego…!<renglón>=<u>`). Él confirma el faltante con lo que ML decía
+  // ESE día, pero ML a veces da de alta la unidad días después: quedaba libre y se la llevaba la caja siguiente, que se marcaba "llegó
+  // completa" escondiendo SU faltante de verdad (medido con la función real: caja 111 con 1 de 10 que llegó tarde + caja 222 con 9 de 10 →
+  // la 222 salía completa). Y sólo con entradas que llegan ANTES de que la caja siguiente de ese producto pueda haber llegado (su salida +
+  // MIN_DIAS_COMPLETA): una posterior puede ser de esa otra caja y no se le saca.
   const rellenos = [];
+  const sigSalida = (mb, pid) => {   // la salida de la próxima caja (abierta o marcada) de ese producto en esa cuenta
+    let t = Infinity;
+    for (const x of [...abiertas, ...marcadasAntes]) if (x !== mb && x.e.cuenta === mb.e.cuenta && x.salida > mb.salida && x.salida < t && x.items.some((y) => y.prodId === pid)) t = x.salida;
+    return t;
+  };
   for (const mb of marcadasAntes) {
-    if (!mb.c.recAuto || !Array.isArray(mb.c.recUsadas) || !Array.isArray(mb.c.faltan) || !mb.c.faltan.length) continue;
+    if (!Array.isArray(mb.c.faltan) || !mb.c.faltan.length) continue;
+    if (mb.c.recAuto && !Array.isArray(mb.c.recUsadas)) continue;
     const recF = String(mb.c.recFecha || '');
     if (!recF || recF < limMano) continue;
     if (!porCta[mb.e.cuenta]) continue;
-    const desdeMb = Date.parse((mb.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+    const desdeMb = mb.salida;   // desde que salió (antes, las 0 hs del día en que se armó)
     const extra = [], faltanN = [];
     for (const f of mb.c.faltan) {
       if (!f || !f.prodId) continue;
       const pide = Number(f.pide) || 0;
       const falta = Math.max(0, pide - (Number(f.llego) || 0));
       const k1 = kR(mb.e.cuenta, f.prodId, f.variante || '');
+      const hastaSig = sigSalida(mb, f.prodId) + MIN_DIAS_COMPLETA * 86400e3;
       let q = 0;
       if (falta > 0 && !sinLeer[k1] && !sinLeerProd[mb.e.cuenta + '|' + f.prodId]) {
         let queda = falta;
         for (const e of (recEnt[k1] || [])) {
           if (queda <= 0) break;
-          if (e.ts < desdeMb || e.left <= 0) continue;
+          if (e.ts < desdeMb || e.left <= 0 || e.ts >= hastaSig) continue;
           const t = Math.min(queda, e.left); e.left -= t; queda -= t; q += t;
           extra.push({ k: k1, op: e.op, q: t });
         }
@@ -1636,7 +1701,9 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   for (const ab of abiertas) {
     // Sólo cuentan las entradas POSTERIORES al despacho de esta caja. Las de antes son de una caja
     // anterior (ya marcada) y acreditárselas a ésta la daría por llegada sin que haya llegado.
-    const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+    // Revisión etapa 3, 29/10/2026: "despacho" = cuando SALE (`salidaDeCaja`), y los días (los 3 mínimos para marcarla) también desde
+    // ahí. Antes era las 0 hs del día en que se armó: una armada el viernes a la tarde (sale el lunes) ya "tenía" 3 días el lunes.
+    const desdeCaja = ab.salida;
     const faltan = [];
     const reng = [];
     let algo = false, ultima = 0, hayCiego = false;
@@ -1722,7 +1789,7 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
     const nuevoE = {};
     for (const ab of abiertas) {
       const key = ab.id + '__' + ab.i;
-      const desdeCaja = Date.parse((ab.fecha || '1970-01-01') + 'T00:00:00-03:00') || 0;
+      const desdeCaja = ab.salida;   // revisión etapa 3, 29/10/2026: desde que SALE, igual que el marcado de arriba
       const yaMarcada = !soloAnotar && marcadas.includes(ab);
       let ciego = false; const its = [];
       for (const it of ab.items) {
@@ -1811,8 +1878,8 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   // buscada por seguimiento + contenido, y sólo si sigue marcada por el robot con los MISMOS faltantes.
   let rellenadas = 0;
   if (rellenos.length) {
-    console.log(`↩️ ${rellenos.length} caja(s) marcada(s) con faltantes recibieron lo que llegó tarde${DRY ? ' (prueba: no se escribe)' : ''} → `
-      + rellenos.map((r) => `${r.mb.e.cuenta} ${r.mb.fecha}${r.mb.c.track ? ' (' + r.mb.c.track + ')' : ''}: +${r.extra.reduce((a, x) => a + x.q, 0)} u.${r.faltanN ? '' : ' · ya quedó completa'}`).join(' · '));
+    console.log(`↩️ ${rellenos.length} caja(s) marcada(s) con faltantes recibieron lo que llegó tarde${DRY ? ' (prueba: no se escribe)' : soloAnotar ? ' (sólo datos: no se escribe; la corrige Claude con cajallego)' : ''} → `
+      + rellenos.map((r) => `${r.mb.e.cuenta} ${r.mb.fecha}${r.mb.c.track ? ' (' + r.mb.c.track + ')' : ''}${r.mb.c.recAuto ? '' : ' (marcada a mano)'}: +${r.extra.reduce((a, x) => a + x.q, 0)} u.${r.faltanN ? '' : ' · ya quedó completa'}`).join(' · '));
     if (!DRY && !soloAnotar) {
       const porEnvR = {};
       for (const r of rellenos) (porEnvR[r.mb.id] = porEnvR[r.mb.id] || []).push(r);
@@ -1826,13 +1893,16 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
             const cand = [];
             arr.forEach((c, j) => { if (c && String(c.track || '') === tr && firmaCajaMano(c) === fi) cand.push(j); });
             const j = cand.includes(mb.i) ? mb.i : (cand.length === 1 ? cand[0] : -1);
-            if (j < 0 || !arr[j].recibida || !arr[j].recAuto || !Array.isArray(arr[j].recUsadas)
+            // Revisión etapa 3, 29/10/2026: una marcada a mano también (sus entradas de base: las que ya tenía guardadas o las que se le
+            // ubicaron en esta vuelta, `mb.calc`; sin ninguna de las dos no se escribe: guardar sólo lo de hoy dejaría libres las de antes).
+            const baseU = j < 0 ? null : (Array.isArray(arr[j].recUsadas) ? arr[j].recUsadas : (!arr[j].recAuto && Array.isArray(mb.calc) ? mb.calc : null));
+            if (j < 0 || !arr[j].recibida || !baseU
               || String(arr[j].recFecha || '') !== String(mb.c.recFecha || '')
               || JSON.stringify(arr[j].faltan || null) !== JSON.stringify(mb.c.faltan || null)) {
-              console.log(`ℹ️ la caja ${tr || '(sin seguimiento)'} del envío ${id} cambió mientras corría la vuelta: no se le devuelve nada`);
+              console.log(`ℹ️ la caja ${tr || '(sin seguimiento)'} del envío ${id} cambió mientras corría la vuelta (o no tiene sus entradas ubicadas): no se le devuelve nada`);
               continue;
             }
-            arr[j] = { ...arr[j], faltan: r.faltanN, recUsadas: [...arr[j].recUsadas, ...r.extra] };
+            arr[j] = { ...arr[j], faltan: r.faltanN, recUsadas: [...baseU, ...r.extra] };
             cambio = true; rellenadas++;
           }
           if (cambio) await db.set('cyc/envios_full/' + id + '/cajasDet', arr);
@@ -2527,6 +2597,8 @@ async function reposicionFullML(db, accounts, labels, DRY) {
 // el lunes"). Devuelve el momento en que SALE (12:00 de acá = 15:00 UTC): armada un día hábil antes de las 12, ese día; si no, el
 // próximo día hábil. La hora sale de `ts` si es del mismo día que `fecha`; sin hora, se toma como armada a la mañana. Misma regla
 // que `envSalidaTs` de la web (index.html): si se toca una, la otra.
+// Revisión etapa 3, 29/10/2026: al reanudar un envío en pausa la web ya NO pisa `e.ts` (es cuándo se armó, y el cupo de Full lo compara con
+// la hora de la lectura: pisarlo lo restaba dos veces); guarda la hora en `e.reanudado`. Los que llaman pasan `e.reanudado || e.ts`.
 function envSalidaTs(fecha, ts, pausado) {
   // ⏸️ envío en pausa (26/10/2026, botón de la web): no sale; 30 días adelante, igual que `ENV_PAUSA_DIAS` de la web.
   if (pausado) return Date.now() + 30 * 864e5;
@@ -6298,7 +6370,7 @@ async function calcCerebro(db, o) {
     if (!e || !e.cuenta) continue;
     for (const c of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) {
       if (!c || c.recibida) continue;
-      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : e.ts, e.pausado) || hoyTs;
+      const tsC = envSalidaTs(c.fecha || e.fecha, c.fecha ? 0 : (e.reanudado || e.ts), e.pausado) || hoyTs;   // `reanudado`: ver envSalidaTs
       for (const it of (c.items || [])) {
         if (!it || !it.prodId || !(Number(it.u) > 0)) continue;
         const kP = it.prodId + '__' + sidL(e.cuenta);
@@ -10875,8 +10947,7 @@ function tablaAntiguoDe(e, p, lotes, cfg) {
   cfg = cfg || {};
   let tam = e && e.inv ? (((lotes || {})[e.inv] || {}).tam || (cfg.tamFull || {})[e.inv]) : null;
   if (!tam) {
-    const pal = (Array.isArray(cfg.cupoGrandes) ? cfg.cupoGrandes : (typeof cfg.cupoGrandes === 'string' ? cfg.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
-    tam = p && (p.grandeFull === true || (p.grandeFull !== false && pal.some((w) => w && norm(p.name || '').includes(norm(String(w).trim()))))) ? 'grande' : 'pequeno';
+    tam = esGrandeFullBot(p, palabrasGrandesDe(cfg)) ? 'grande' : 'pequeno';   // revisión etapa 3, 29/10/2026: la palabra entera (ver `esGrandeFullBot`)
   }
   return { tam, tabla: (cfg.stockAntiguo || {})[tam] || STOCK_ANTIGUO_TABLA[tam] || STOCK_ANTIGUO_TABLA.pequeno };
 }
@@ -18387,46 +18458,57 @@ async function main() {
       const _raw = String(process.env.BILLING_PROBE).slice('cajallego'.length).replace(/^:/, '');
       const APLICAR = /:go$/.test(_raw);
       const lista = _raw.replace(/:go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
-      if (!lista.length) { console.log('Usá: cajallego:<seguimiento>[!<palabras>=<u>][;otro][:go]'); return; }
+      if (!lista.length) { console.log('Usá: cajallego:<seguimiento>[!<palabras>=<u>[!<otro renglón>=<u>…]][;otro][:go]'); return; }
       const envios = (await db.get('cyc/envios_full')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
       const _nrm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const faltaDeC = (c) => (Array.isArray(c && c.faltan) ? c.faltan : []).reduce((a, x) => a + Math.max(0, (x.pide || 0) - (x.llego || 0)), 0);
+      const sumaF = (fs) => (fs || []).reduce((a, f) => a + Math.max(0, (f.pide || 0) - (f.llego || 0)), 0);
       console.log(`=== MARCAR COMO LLEGADA ${APLICAR ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
-      const hits = [];
+      // TODOS LOS FALTANTES DE LA CAJA (revisión etapa 3, 29/10/2026): `<seguimiento>!<renglón>=<u>!<otro>=<u>`, o la misma caja en dos
+      // términos (`seg!a=1;seg!b=2`). Antes se leía sólo el primer "!" y el resto se tiraba callado (y la relectura decía ✓): esas unidades
+      // quedaban como llegadas (salían del patrimonio sin reclamo). Y con dos términos, el segundo pisaba al primero. Ahora va UNA marca por
+      // caja con todos sus faltantes; si un término no se entiende o dos apuntan al mismo renglón, esa caja no se toca.
+      const hits = [], porCaja = new Map();
       for (const pedido of lista) {
-        const [busca, faltaTxt] = pedido.split('!');
-        let falta = null;
-        if (faltaTxt) {
-          const mm = /^(.+)=(\d+)$/.exec(faltaTxt.trim());
-          if (!mm) { console.log(`── ${busca}: el faltante "${faltaTxt}" no se entiende (va <palabras>=<unidades>). No se toca.`); continue; }
-          falta = { pals: mm[1].split('+').map(_nrm).map((x) => x.trim()).filter(Boolean), u: parseInt(mm[2]) };
+        const [busca0, ...faltaTxts] = pedido.split('!'); const busca = busca0.trim();
+        const faltas = []; let malF = false;
+        for (const ft of faltaTxts) {
+          const mm = /^(.+)=(\d+)$/.exec(ft.trim());
+          if (!mm) { console.log(`── ${busca}: el faltante "${ft}" no se entiende (va <palabras>=<unidades>). No se toca.`); malF = true; break; }
+          faltas.push({ pals: mm[1].split('+').map(_nrm).map((x) => x.trim()).filter(Boolean), u: parseInt(mm[2]) });
         }
         let found = 0;
         for (const [id, e] of Object.entries(envios)) {
           const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
           cajas.forEach((c, i) => {
             if (!c) return;
-            if (id !== busca.trim() && String(c.track || '') !== busca.trim()) return;
+            if (id !== busca && String(c.track || '') !== busca) return;
             found++;
-            if (c.recibida && !faltaDeC(c) && !falta) { console.log(`── ${busca}: ya está marcada llegada completa. Nada que hacer.`); return; }
-            let faltan = null;
-            if (falta) {
+            const kC = id + '#' + i, prev = porCaja.get(kC);
+            const malo = () => { if (prev) prev.mal = true; else porCaja.set(kC, { mal: true }); };
+            if (malF) { malo(); return; }
+            if (c.recibida && !faltaDeC(c) && !faltas.length && !prev) { console.log(`── ${busca}: ya está marcada llegada completa. Nada que hacer.`); return; }
+            const faltan = prev && prev.faltan ? [...prev.faltan] : [];
+            for (const falta of faltas) {
               const cand = (c.items || []).filter((it) => it && it.prodId && falta.pals.every((w) => _nrm(((pIdx[it.prodId] || {}).name || '') + ' ' + (it.variante || '')).includes(w)));
-              if (cand.length !== 1) { console.log(`── ${busca}: "${falta.pals.join(' ')}" agarra ${cand.length} renglones (tiene que ser 1). No se toca.`); return; }
+              if (cand.length !== 1) { console.log(`── ${busca}: "${falta.pals.join(' ')}" agarra ${cand.length} renglones (tiene que ser 1). No se toca.`); malo(); return; }
               const it = cand[0];
-              if (!(falta.u > 0 && falta.u <= (Number(it.u) || 0))) { console.log(`── ${busca}: faltante de ${falta.u} u. no cabe en el renglón (${it.u} u.). No se toca.`); return; }
-              faltan = [{ prodId: it.prodId, variante: it.variante || '', nombre: (pIdx[it.prodId] || {}).name || it.prodId, pide: Number(it.u) || 0, llego: (Number(it.u) || 0) - falta.u }];
+              if (!(falta.u > 0 && falta.u <= (Number(it.u) || 0))) { console.log(`── ${busca}: faltante de ${falta.u} u. no cabe en el renglón (${it.u} u.). No se toca.`); malo(); return; }
+              if (faltan.some((f) => f.prodId === it.prodId && (f.variante || '') === (it.variante || ''))) { console.log(`── ${busca}: dos faltantes para el mismo renglón (${(pIdx[it.prodId] || {}).name || it.prodId}${it.variante ? ' · ' + it.variante : ''}). No se toca.`); malo(); return; }
+              faltan.push({ prodId: it.prodId, variante: it.variante || '', nombre: (pIdx[it.prodId] || {}).name || it.prodId, pide: Number(it.u) || 0, llego: (Number(it.u) || 0) - falta.u });
             }
-            hits.push({ id, e, c, i, faltan });
+            if (prev) prev.faltan = faltan.length ? faltan : null;
+            else { const h = { id, e, c, i, faltan: faltan.length ? faltan : null }; porCaja.set(kC, h); hits.push(h); }
           });
         }
         if (!found) console.log(`── ${busca}: ninguna caja con ese seguimiento o id.`);
       }
+      for (let k = hits.length - 1; k >= 0; k--) if (hits[k].mal) { console.log(`── ${hits[k].c.track || hits[k].id}: uno de sus faltantes no se entendió: esa caja no se toca.`); hits.splice(k, 1); }
       for (const h of hits) {
         const u = (h.c.items || []).reduce((a, x) => a + (Number(x && x.u) || 0), 0);
         console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · seguimiento ${h.c.track || '—'} · ${u} u. · hoy: ${h.c.recibida ? 'marcada con ' + faltaDeC(h.c) + ' u. faltantes' : 'abierta'}`);
-        console.log(h.faltan ? `   → queda llegada con ${h.faltan[0].pide - h.faltan[0].llego} u. faltantes de ${h.faltan[0].nombre}${h.faltan[0].variante ? ' · ' + h.faltan[0].variante : ''}` : '   → queda llegada COMPLETA');
+        console.log(h.faltan ? `   → queda llegada con ${sumaF(h.faltan)} u. faltantes: ${h.faltan.map((f) => `${f.pide - f.llego} de ${f.nombre}${f.variante ? ' · ' + f.variante : ''}`).join(' · ')}` : '   → queda llegada COMPLETA');
       }
       if (!hits.length) return;
       if (!APLICAR) { console.log(`\nSOLO PRUEBA: no se tocó nada. Repetí con :go al final.`); return; }
@@ -18456,7 +18538,7 @@ async function main() {
       let ok = 0;
       for (const h of hits) {
         const c2 = ((desp[h.id] || {}).cajasDet || [])[h.i];
-        if (c2 && c2.recibida && faltaDeC(c2) === (h.faltan ? h.faltan[0].pide - h.faltan[0].llego : 0)) ok++;
+        if (c2 && c2.recibida && faltaDeC(c2) === sumaF(h.faltan)) ok++;
       }
       console.log(`\n✓ ${ok} de ${hits.length} quedaron como se pidió. Releído de la base: ${ok === hits.length ? 'quedó ✓' : '✗ NO quedaron todas'}`);
       return;
@@ -29245,16 +29327,8 @@ async function main() {
       const crudo = String(process.env.BILLING_PROBE).slice(4).replace(/^:/, '');
       const cfgU = (await db.get('cyc/mlconfig')) || {};
       const yaU = cfgU.cupoFull || {};
-      const palG = (Array.isArray(cfgU.cupoGrandes) ? cfgU.cupoGrandes
-        : (typeof cfgU.cupoGrandes === 'string' ? cfgU.cupoGrandes.split(',') : null)
-      ) || ['tendedero', 'tender'];
-      const esGrande = (p) => {
-        if (!p) return false;
-        if (p.grandeFull === true) return true;
-        if (p.grandeFull === false) return false;
-        const n = norm(p.name || '');
-        return palG.some((w) => w && n.includes(norm(String(w).trim())));
-      };
+      const palG = palabrasGrandesDe(cfgU);
+      const esGrande = (p) => esGrandeFullBot(p, palG);   // revisión etapa 3, 29/10/2026: la palabra entera (ver `esGrandeFullBot`)
       const verLista = () => {
         const gr = products.filter(esGrande);
         console.log(`\nQué cuenta como GRANDE hoy (palabras: ${palG.join(', ')}):`);
@@ -29277,7 +29351,7 @@ async function main() {
         }
         if (!hay) console.log('\n  Todavía no hay ninguno cargado.');
         verLista();
-        console.log('\nPara cargarlo:  cupo:ayelen=42/100;matias=163/100;go');
+        console.log('\nPara cargarlo:  cupo:ayelen=42/100@2026-10-29 09:31;matias=163/100@2026-10-29 09:35;go   (la hora en que lo viste en ML, hora de acá)');
         console.log('El primer número es "pequeños y medianos" y el segundo "grandes y extragrandes".');
         return;
       }
@@ -29285,37 +29359,49 @@ async function main() {
       const partes = crudo.split(';').map((x) => x.trim()).filter((x) => x && !/^go$/i.test(x));
       // SI UN SOLO TÉRMINO NO SE ENTIENDE, NO SE ESCRIBE NINGUNO. Media carga deja dos cuentas con
       // el cupo nuevo y dos con el viejo, y eso no se ve: es el error que ya mordió en `pedir`.
+      // LA HORA EN QUE SE LEYÓ (revisión etapa 3, 29/10/2026, como `ancla`): `cuenta=chicos/grandes@AAAA-MM-DD HH:MM`. El cupo que queda es
+      // lo leído menos lo despachado DESPUÉS de la lectura; se guardaba con la hora de esta corrida y una caja cerrada entre que el chat de
+      // Chrome lo leyó (9:30) y esta carga (9:52 u 11:52) no se descontaba nunca: el cupo daba de más y la caja siguiente no entraba en ML.
+      const ahoraU = Date.now(), _hAcaU = (t) => new Date(t - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ');
       const plan = [];
-      const malos = [];
+      const malos = [], sinHoraU = [];
       for (const t of partes) {
-        const m = t.match(/^([^=]+)=\s*(\d+)\s*\/\s*(\d+)\s*$/);
-        if (!m) { malos.push(`${t} — se escribe cuenta=chicos/grandes, ej ayelen=42/100`); continue; }
+        const m = t.match(/^([^=]+)=\s*(\d+)\s*\/\s*(\d+)\s*(?:@\s*(\d{4}-\d{2}-\d{2})[ T_](\d{1,2}):(\d{2}))?\s*$/);
+        if (!m) { malos.push(`${t} — se escribe cuenta=chicos/grandes[@AAAA-MM-DD HH:MM], ej ayelen=42/100@2026-10-29 09:31`); continue; }
         const cta = labels.find((l) => l.toLowerCase() === norm(m[1].trim()) || norm(l) === norm(m[1].trim()));
         if (!cta) { malos.push(`${t} — no conozco la cuenta "${m[1].trim()}" (son: ${labels.join(', ')})`); continue; }
-        plan.push({ cta, peq: parseInt(m[2], 10), gra: parseInt(m[3], 10) });
+        let tsL = ahoraU;
+        if (m[4]) {
+          const hh = String(m[5]).padStart(2, '0');
+          tsL = Date.parse(`${m[4]}T${hh}:${m[6]}:00-03:00`);
+          if (!Number.isFinite(tsL) || _hAcaU(tsL) !== `${m[4]} ${hh}:${m[6]}`) { malos.push(`${t} — fecha u hora imposible`); continue; }
+          if (tsL > ahoraU + 2 * 60e3) { malos.push(`${t} — la hora es FUTURA`); continue; }
+          if (tsL < ahoraU - 7 * 864e5) { malos.push(`${t} — más de 7 días atrás: que lo vuelva a mirar en ML`); continue; }
+        } else sinHoraU.push(cta);
+        plan.push({ cta, peq: parseInt(m[2], 10), gra: parseInt(m[3], 10), ts: Math.min(tsL, ahoraU) });
       }
       if (malos.length) {
         console.log('No escribí NADA. Estos términos no los entendí:');
         malos.forEach((x) => console.log('   ✗ ' + x));
         return;
       }
+      if (sinHoraU.length) console.log(`⚠️ ${sinHoraU.join(', ')}: sin "@<AAAA-MM-DD HH:MM>" uso la hora de esta corrida (${_hAcaU(ahoraU)}) como el momento en que se leyó. Una caja cerrada entre la lectura y ahora no se descuenta: pasá la hora.`);
       if (!plan.length) { console.log('No pasaste ninguna cuenta. Ej: cupo:ayelen=42/100;go'); return; }
       console.log(`=== ${GOU ? 'CARGANDO' : 'PRUEBA (no se escribe nada)'} EL CUPO DE FULL ===\n`);
       for (const x of plan) {
         const antes = yaU[x.cta] || {};
         console.log(`  ${x.cta.padEnd(8)} chicos y medianos ${String(antes.peq != null ? antes.peq : '—').padStart(5)} → ${String(x.peq).padStart(5)}`
-          + ` · grandes ${String(antes.gra != null ? antes.gra : '—').padStart(5)} → ${String(x.gra).padStart(5)}`);
+          + ` · grandes ${String(antes.gra != null ? antes.gra : '—').padStart(5)} → ${String(x.gra).padStart(5)} · leído ${_hAcaU(x.ts)}`);
       }
       verLista();
       if (!GOU) { console.log('\nAgregá `;go` para que quede guardado.'); return; }
-      const ts = Date.now();
-      for (const x of plan) await db.set('cyc/mlconfig/cupoFull/' + x.cta, { peq: x.peq, gra: x.gra, ts });
+      for (const x of plan) await db.set('cyc/mlconfig/cupoFull/' + x.cta, { peq: x.peq, gra: x.gra, ts: x.ts });   // la hora de la LECTURA
       // Releer y comparar: que el set no tire error no prueba que haya quedado (regla 6).
       const cfg2U = (await db.get('cyc/mlconfig/cupoFull')) || {};
       let ok = 0;
       for (const x of plan) {
         const g = cfg2U[x.cta] || {};
-        const bien = Number(g.peq) === x.peq && Number(g.gra) === x.gra;
+        const bien = Number(g.peq) === x.peq && Number(g.gra) === x.gra && Number(g.ts) === x.ts;
         if (bien) ok++;
         console.log(`  ${x.cta.padEnd(8)} releído: ${g.peq}/${g.gra} ${bien ? '✓' : '✗ NO quedó como pedí'}`);
       }
@@ -29875,17 +29961,31 @@ async function main() {
       const inv = (await db.get('cyc/inventory')) || {};
       const arm = (await db.get('cyc/cajas_armando')) || {};
       const prodsO = (await db.get('cyc/products')) || {};
+      // Revisión etapa 3, 29/10/2026: también lo decidido en la base, el cupo y los envíos (ver abajo).
+      const decB = (await db.get('cyc/claudedecide/caja')) || {};
+      const cfgA = (await db.get('cyc/mlconfig')) || {};
+      const envA = (await db.get('cyc/envios_full')) || {};
       const ckSafe = (s) => String(s || '').replace(/[.#$\[\]\/]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
       const OFI = sid('Oficina Mati');
-      const porCta = {}, problemas = [];
+      const porCta = {}, problemas = [], rechazadas = new Set();
       for (const l of txt.split('\n')) {
         const m = l.trim().match(/^caja:([^@]+)@([^#=]+)(?:#([^=]+))?=u\|(\d+)\|/);
         if (!m) continue;
         const [, pid, cta, va = '', nS] = m; let n = parseInt(nS, 10);
         if (!(n > 0)) continue;
-        if (soloCta && cta.toLowerCase() !== soloCta) continue;
+        if (soloCta && norm(cta) !== norm(soloCta)) continue;
+        const nom = `${(prodsO[pid] || {}).name || pid}${va ? ' · ' + va : ''}`;
+        // LO QUE YA SALIÓ NO SE VUELVE A CARGAR (revisión etapa 3, 29/10/2026). cajas.txt es la foto de la completa: al cerrar una caja la
+        // web le resta lo mandado a la decisión en la base (`cyc/claudedecide/caja/<id>__<cuenta>[__v__<color>]/u`, `_clCajaKey`), no a
+        // este archivo. Un segundo "armá la caja" el mismo día volvía a llenar la caja de una cuenta ya despachada (doble envío). Ahora va
+        // lo MENOS de las tres: el archivo, la oficina y lo que dice hoy la decisión en la base; sin decisión en la base no va (como en la web).
+        const kDec = pid + '__' + cta.toLowerCase().replace(/í/g, 'i') + (va ? '__v__' + sid(String(va).toLowerCase()) : '');
+        const dB = decB[kDec];
+        if (!dB || typeof dB !== 'object' || !Number.isFinite(Number(dB.u))) { problemas.push(`${nom}: no está decidido en la base (falta decido:archivo=cajas) → no va`); continue; }
+        const uB = Math.max(0, parseInt(dB.u) || 0);
+        if (uB < n) { problemas.push(`${nom}: el archivo dice ${n} y la decisión en la base ${uB} (ya salieron ${n - uB} en una caja) → van ${uB}`); n = uB; }
         const of = parseInt(inv[pid + '__' + OFI + (va ? '__v__' + sid(va) : '')]) || 0;
-        if (n > of) { problemas.push(`${(prodsO[pid] || {}).name || pid}${va ? ' · ' + va : ''}: decidí ${n} y en la oficina hay ${of} → van ${of}`); n = of; }
+        if (n > of) { problemas.push(`${nom}: decidí ${n} y en la oficina hay ${of} → van ${of}`); n = of; }
         if (!(n > 0)) continue;
         (porCta[cta] = porCta[cta] || {})[pid + '|' + ckSafe(va)] = n;
       }
@@ -29895,6 +29995,18 @@ async function main() {
         const tot = Object.values(items).reduce((a, x) => a + x, 0);
         console.log(`\n── ${cta}: ${tot} u. en ${Object.keys(items).length} productos${antes ? ` (reemplaza la caja cargada que tenía ${antes} u.)` : ''}`);
         for (const [k, n] of Object.entries(items)) { const [pid, va] = k.split('|'); console.log(`   ${String(n).padStart(3)} · ${((prodsO[pid] || {}).name || pid).slice(0, 55)}${va ? ' · ' + decodeURIComponent(va) : ''}`); }
+        // EL CUPO DE HOY SE VUELVE A MIRAR (revisión etapa 3, 29/10/2026): decide_cajas.py recortó con el cupo de la completa; si desde
+        // entonces se cargó una lectura nueva o salió otra caja de esa cuenta, la caja de este archivo puede no entrar. La misma cuenta que
+        // `cupoRestante` de la web (`cupoRestanteBot`). Si no entra, NO se carga (queda la caja que había) y se dice qué hacer: un recorte
+        // acá no sabría lo que más deja de cada unidad; `decide_cajas.py` con un pedidostodo nuevo sí.
+        const cr = cupoRestanteBot(cfgA, envA, cta, prodsO);
+        if (cr) {
+          const palA = palabrasGrandesDe(cfgA); let cP = 0, cG = 0;
+          for (const [k, n] of Object.entries(items)) { if (esGrandeFullBot(prodsO[k.split('|')[0]], palA)) cG += n; else cP += n; }
+          const pasa = [cr.estPeq != null && cP > cr.estPeq ? `${cP} chicos y medianos y quedan ${cr.estPeq}` : '', cr.estGra != null && cG > cr.estGra ? `${cG} grandes y quedan ${cr.estGra}` : ''].filter(Boolean);
+          console.log(`   cupo de Full de hoy: ${cr.estPeq ?? '?'} chicos y medianos · ${cr.estGra ?? '?'} grandes (leído hace ${cr.dias} día${cr.dias === 1 ? '' : 's'}${cr.dias >= 7 ? ' ⚠️ viejo: que lo vuelva a mirar' : ''}) · la caja lleva ${cP}/${cG}`);
+          if (pasa.length) { rechazadas.add(cta); console.log(`   ✋ NO LA CARGO: se pasa del cupo de hoy (${pasa.join(' · ')}). Correr pedidostodo → decide_cajas.py → decido:archivo=cajas;go y de nuevo cajaarmar.`); continue; }
+        } else console.log('   (sin cupo de Full cargado: no lo pude chequear)');
         if (GO) {
           await db.set('cyc/cajas_armando/' + cta, { items, ts: Date.now(), por: 'cajaarmar' });
           const rel = ((await db.get('cyc/cajas_armando/' + cta)) || {}).items || {};
@@ -29904,15 +30016,20 @@ async function main() {
       }
       // Una cuenta que ya no lleva nada se VACÍA si su caja la cargó este comando (28/10/2026: al corregir las cajas, Luciana y Adriana
       // quedaban con la caja vieja). Una caja que cargó él o el chat a mano (sin `por:'cajaarmar'`) no se toca: se avisa.
+      // Revisión etapa 3, 29/10/2026: con `cajaarmar:<cuenta>` sólo se mira ESA cuenta (antes `cajaarmar:ayelen` vaciaba la caja de
+      // Luciana que este comando había cargado a la mañana y que cajas.txt todavía pedía), una cuenta que no se cargó por el cupo queda
+      // como estaba, y "a mano" es todo lo que no dice `por:'cajaarmar'` (antes también se vaciaba lo que él cargó en las últimas 3 horas).
       for (const [cta, c] of Object.entries(arm)) {
         if (porCta[cta] || !c || !Object.keys(c.items || {}).length) continue;
+        if (soloCta && norm(cta) !== norm(soloCta)) continue;
+        if (rechazadas.has(cta)) continue;
         const nA = Object.values(c.items || {}).reduce((a, x) => a + (Number(x) || 0), 0);
-        if (c.por === 'cajaarmar' || Date.now() - (Number(c.ts) || 0) < 3 * 36e5) {
+        if (c.por === 'cajaarmar') {
           console.log(`\n── ${cta}: ya no lleva nada · se vacía la caja cargada (${nA} u.)`);
           if (GO) { await db.set('cyc/cajas_armando/' + cta, null); console.log(((await db.get('cyc/cajas_armando/' + cta)) == null) ? '   ✓ vaciada y releída' : '   ✗ no quedó vacía'); }
         } else console.log(`\n── ${cta}: tiene una caja cargada a mano (${nA} u.) y hoy no lleva nada: no la toco (vaciala desde Armar caja si no va)`);
       }
-      if (problemas.length) { console.log('\n⚠️ recortado a lo que hay en la oficina:'); problemas.forEach((x) => console.log('   ' + x)); }
+      if (problemas.length) { console.log('\n⚠️ recortado (a la oficina, a lo que ya salió o sin decisión en la base):'); problemas.forEach((x) => console.log('   ' + x)); }
       if (!Object.keys(porCta).length) console.log('  (nada para cargar)');
       return;
     }
@@ -37497,9 +37614,8 @@ async function main() {
         if (t) return t;
         return esGrandeS(p) ? 'grande' : 'pequeno';
       };
-      const palGS = (Array.isArray(cfgSup.cupoGrandes) ? cfgSup.cupoGrandes
-        : (typeof cfgSup.cupoGrandes === 'string' ? cfgSup.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
-      const esGrandeS = (p) => p && (p.grandeFull === true || (p.grandeFull !== false && palGS.some((w) => w && norm(p.name || '').includes(norm(String(w).trim())))));
+      const palGS = palabrasGrandesDe(cfgSup);
+      const esGrandeS = (p) => esGrandeFullBot(p, palGS);   // revisión etapa 3, 29/10/2026: la palabra entera (ver `esGrandeFullBot`)
       // Ventas por producto×cuenta (todas sus publicaciones): para el stock de antes y su ritmo.
       const porClave = {};
       for (const [mla, arr] of Object.entries(porMla)) {
@@ -46188,11 +46304,12 @@ async function main() {
         };
         for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
           if (!c || c.recibida) continue; nAb++;
-          const t0 = env.pausado ? 0 : envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : env.ts); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
+          const t0 = env.pausado ? 0 : envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : (env.reanudado || env.ts)); const dd = t0 > 0 ? Math.max(0, (ahoraI - t0) / 864e5) : null;
           const uC = (c.items || []).reduce((s2, it) => s2 + (Number(it && it.u) || 0), 0), eC = entradoCaja(id, ci, c);
           // Etapa 6 (14/10/2026): la caja que ML ya dio de alta ENTERA va a la lista lista para `cajallego`, tenga la edad
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
-          if (entC && uC > 0 && eC >= uC && c.track) completas.push({ txt: `${env.cuenta || '?'} …${String(c.track).slice(-4)} (${uC} u.)`, track: String(c.track) });
+          // Revisión etapa 3, 29/10/2026: una caja en PAUSA no (está en la oficina; lo "entrado" sería de otra caja).
+          if (entC && uC > 0 && eC >= uC && c.track && !env.pausado) completas.push({ txt: `${env.cuenta || '?'} …${String(c.track).slice(-4)} (${uC} u.)`, track: String(c.track) });
           if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}` : 'no pude leer lo que ML dio de alta'}`);
         }
         console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
@@ -46886,14 +47003,16 @@ async function main() {
     // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
     if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
       // `cyc/compraslista` al final (20/10/2026, decisión 1a): lo ya probado pedido a una lista viaja como Paraguay (`LIviaja`).
-      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio', 'cyc/compraslista'];
+      // `cyc/claudedecide/caja` al final (revisión etapa 3, 29/10/2026): lo que dice HOY cada decisión de caja (la web le resta lo que se
+      // despacha) sale en `cajadec [..]` y `decide_cajas.py` no vuelve a pedir lo que ya salió.
+      const ks = ['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/envios_full', 'cyc/products', 'cyc/stockhist', 'cyc/compraspy', 'cyc/pedidospv', 'cyc/pedidos_papelera', 'cyc/notraer', 'cyc/proveedores', 'cyc/finanzas/tipo_cambio', 'cyc/claudedecide/ped', 'cyc/cajasentrado', 'cyc/autoprecio', 'cyc/compraslista', 'cyc/claudedecide/caja'];
       // Una lectura que FALLA no es un nodo vacío (revisión 9, 13/10/2026): con `{}` salían 0 ventas o 0 en camino y los
       // scripts pedían de más. Si algo no se leyó, se dice y no se imprime nada (decide_pedidos.py rechaza un log con ⚠️ NO LEÍ).
       const FALLO = Symbol('fallo');
       const R = await Promise.all(ks.map((k) => db.get(k).catch(() => FALLO)));
       const noLei = ks.filter((k, i) => R[i] === FALLO);
       if (noLei.length) { console.log(`⚠️ NO LEÍ: ${noLei.join(' · ')} — no armo la lista a medias`); return; }
-      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP, CLI] = R.map((x) => x || {});
+      const [I, L, VP, ENV, PR, SH, CPY, PV, PAP, NT, PROV, TC, CD, CE, AP, CLI, CDC] = R.map((x) => x || {});
       // Lo que no vino del Paulvic "no viene más" (17/10/2026): `cyc/noconsigo/<prod>/nunca/<aroma>` → el renglón dice NUNCA y no se pide.
       let NCp; try { NCp = (await db.get('cyc/noconsigo')) || {}; } catch { console.log('⚠️ NO LEÍ: cyc/noconsigo — no armo la lista a medias'); return; }
       const nuncaPD = {}; for (const [pid, r] of Object.entries(NCp)) for (const k of Object.keys((r && r.nunca) || {})) nuncaPD[pid + '#' + k] = true;
@@ -46958,14 +47077,18 @@ async function main() {
       if (clP.fallo.size) console.log(`⚠️ ${clP.fallo.size} venta(s) barata(s) sin poder leer su línea de tiempo: cuentan como venta`);
       const ent = {};   // lo que ML ya dio de alta de cajas abiertas
       for (const [ck, x] of Object.entries(CE)) for (const it of ((x && x.items) || [])) if (it && it.p) { const kk = ck + '|' + it.p + '|' + (it.v || ''); ent[kk] = (ent[kk] || 0) + (Number(it.q) || 0); }
-      const cam = {};   // pid -> {tot, v:{}}
+      const cam = {};   // pid -> {tot, v:{}, cta:{<cuenta>:u}, vc:{<color>:{<cuenta>:u}}}
+      // Revisión etapa 3, 29/10/2026: también POR CUENTA (`cta`, `vc`): `decide_cajas.py` mira el camino de la cuenta que recibe
+      // (`camcta [..]`); antes sólo tenía el total de las 4.
       for (const [eid, env] of Object.entries(ENV)) (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).forEach((c, ci) => {
         if (!c || c.recibida) return;
         for (const it of (c.items || [])) {
           if (!it || !it.prodId) continue;
           const ya = ent[`${eid}__${ci}|${it.prodId}|${it.variante || ''}`] || 0;
-          const u = Math.max(0, (Number(it.u) || 0) - ya); const o = cam[it.prodId] || (cam[it.prodId] = { tot: 0, v: {} });
+          const u = Math.max(0, (Number(it.u) || 0) - ya); const o = cam[it.prodId] || (cam[it.prodId] = { tot: 0, v: {}, cta: {}, vc: {} });
           o.tot += u; if (it.variante) o.v[it.variante] = (o.v[it.variante] || 0) + u;
+          const cE = String((env && env.cuenta) || '');
+          if (cE) { o.cta[cE] = (o.cta[cE] || 0) + u; if (it.variante) { const w = o.vc[it.variante] || (o.vc[it.variante] = {}); w[cE] = (w[cE] || 0) + u; } }
         }
       });
       const viaPy = {}; for (const c of Object.values(CPY)) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) viaPy[it.prodId] = (viaPy[it.prodId] || 0) + (Number(it.u) || 0);
@@ -47025,6 +47148,22 @@ async function main() {
       const ctasPub = {}; for (const [m, e] of Object.entries(L)) if (e && e.prodId && !e.ignored && !e.noVendemosMas && /^MLA/i.test(m) && (e.status || '') !== 'closed' && C4.includes(e.cuenta)) (ctasPub[e.prodId] = ctasPub[e.prodId] || new Set()).add(e.cuenta);
       for (const [k, x] of Object.entries(rxP || {})) { const i = k.lastIndexOf('__'); if (i < 0 || !x) continue; const C = C4.find((c) => c.toLowerCase() === k.slice(i + 2).toLowerCase()); if (C) (ctasPub[k.slice(0, i)] = ctasPub[k.slice(0, i)] || new Set()).add(C); }
       const ctasDe = (pid) => C4.filter((c) => (ctasPub[pid] || new Set()).has(c) && !(nrP || {})[pid + '__' + c.toLowerCase()] && !(nrP || {})[pid + '__' + c]);
+      // LO DE CADA CUENTA PARA `decide_cajas.py` (revisión etapa 3, 29/10/2026): dónde está publicado DE VERDAD el producto (`pub [..]`,
+      // sin `pasara` ni `nomandar`) y cada color (`pubV [..]`), el Full y el camino de cada cuenta por color (`fullcta`/`camcta`) y lo que
+      // dice HOY cada decisión de caja en la base (`cajadec [..]`). Con eso: la cuenta que publica y está en 0 recibe su mínimo aunque otra
+      // tenga, no se manda un color que esa cuenta no publica (sin publicación no hay código de etiqueta ni se lee la llegada) y no se
+      // vuelve a pedir una decisión a mano que ya salió. Sólo una publicación DE UN COLOR (el `variant` fijado o el color del título) deja
+      // afuera a los otros colores; una con colores adentro (`invVar` sólo trae los que ya tienen stock en Full) o sin color en el título
+      // cuenta para todos: no se sabe su lista entera y no se adivina (si no, un color nuevo adentro de esa publicación no recibiría nunca
+      // su primera caja). Así queda como hasta ahora para esas.
+      const pubR = {}; for (const [m, e] of Object.entries(L)) if (e && e.prodId && !e.ignored && !e.noVendemosMas && /^MLA/i.test(m) && (e.status || '') !== 'closed' && C4.includes(e.cuenta)) (pubR[e.prodId] = pubR[e.prodId] || []).push(e);
+      const ab2 = (c) => c.slice(0, 2);
+      const brN = (o) => C4.filter((c) => (Number((o || {})[c]) || 0) > 0).map((c) => ab2(c) + Number(o[c])).join(' ');   // {Ayelen:3} → "Ay3"
+      const pubVDe = (p, va) => C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c && ((e.invVar && Object.keys(e.invVar).length)
+        ? true
+        : (() => { const cv = e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []); return !cv || cv === va; })())));
+      const cajaDecTxt = (pid, va) => C4.map((c) => { const d = CDC[pid + '__' + c.toLowerCase() + (va ? '__v__' + sid(String(va).toLowerCase()) : '')];
+        return d && typeof d === 'object' && Number.isFinite(Number(d.u)) ? ab2(c) + Math.max(0, parseInt(d.u) || 0) : ''; }).filter(Boolean).join(' ');
       const grupos = { bsas: [], py: [], paulvic: [] }; const fuera = [];
       for (const p of prods) {
         if (PAP[p.id]) { fuera.push(`🗑️ ${p.name}`); continue; }
@@ -47101,7 +47240,8 @@ async function main() {
         // va aparte en su renglón (` · ultv` del color) y Pedidos usa el suyo (`ped:<id>#<color>=venta`).
         const uvC = (p.variantes || []).map((va) => ultV(p.id, va)).filter((x) => x > 0);
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
-        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '');
+        const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '')
+          + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
@@ -47117,7 +47257,7 @@ async function main() {
           const manoTxt = mo && mo.u != null ? ` · mano ${Math.max(0, parseInt(mo.u) || 0)}${esBsasP && Number((ofP || {})[p.id]) > (Number(mo.ts) || 0) ? ' vencida' : ''}` : '';
           if (!sv.t180 && !fv && !cv && !mv && !pvx && !lix && !manoTxt) continue;
           const camV = cambiosDe(mlasP.filter(([mla, e]) => colorMla(mla, e) === va).map(([mla]) => mla)), hV = histD(sv);
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -47127,22 +47267,19 @@ async function main() {
       // cupo, medido el 18/10). Sin cupo cargado sale "?" y decide_cajas no recorta esa cuenta (no se inventa un cupo).
       try {
         const cfgPT = (await db.get('cyc/mlconfig')) || {};
-        const palPT = (Array.isArray(cfgPT.cupoGrandes) ? cfgPT.cupoGrandes : (typeof cfgPT.cupoGrandes === 'string' ? cfgPT.cupoGrandes.split(',') : null)) || ['tendedero', 'tender'];
-        const grandePT = (pp) => !!pp && (pp.grandeFull === true || (pp.grandeFull !== false && palPT.some((w) => w && norm(pp.name || '').includes(norm(String(w).trim())))));
+        const palPT = palabrasGrandesDe(cfgPT);
+        const grandePT = (pp) => esGrandeFullBot(pp, palPT);   // revisión etapa 3, 29/10/2026: la palabra entera (ver `esGrandeFullBot`)
         const prPT = {}; for (const pp of Object.values(PR)) if (pp && pp.id) prPT[pp.id] = pp;
         for (const c of C4) {
-          const cu = (cfgPT.cupoFull || {})[c] || (cfgPT.cupoFull || {})[c.toLowerCase()];
-          if (!cu || !(Number(cu.ts) > 0)) { console.log(`CUPO ${c} peq ? gra ? · sin cargar`); continue; }
-          let mP = 0, mG = 0;
-          for (const e of Object.values(ENV)) {
-            if (!e || e.cuenta !== c || !(Number(e.ts) > Number(cu.ts))) continue;
-            for (const cj of (Array.isArray(e.cajasDet) ? e.cajasDet : [])) for (const it of ((cj && cj.items) || [])) { if (!it || !(it.u > 0)) continue; if (grandePT(prPT[it.prodId])) mG += it.u; else mP += it.u; }
-          }
-          const est = (b, m) => Number.isFinite(Number(b)) && b !== null && b !== '' ? Math.max(0, Math.round(Number(b) - m)) : '?';
-          console.log(`CUPO ${c} peq ${est(cu.peq, mP)} gra ${est(cu.gra, mG)} · leído hace ${Math.floor((Date.now() - Number(cu.ts)) / 864e5)} d · mandado después ${mP}/${mG}`);
+          const cr = cupoRestanteBot(cfgPT, ENV, c, prPT);   // la misma cuenta que `cajaarmar` y que `cupoRestante` de la web
+          if (!cr) { console.log(`CUPO ${c} peq ? gra ? · sin cargar`); continue; }
+          console.log(`CUPO ${c} peq ${cr.estPeq ?? '?'} gra ${cr.estGra ?? '?'} · leído hace ${cr.dias} d · mandado después ${cr.mandP}/${cr.mandG}`);
         }
         _grandePT = grandePT;
-      } catch (eC) { console.log(`CUPO ? · no pude leer el cupo de Full (${String(eC.message || eC).slice(0, 50)}): decide_cajas no recorta`); }
+      // Revisión etapa 3, 29/10/2026: si `cyc/mlconfig` no se pudo leer, antes salía "CUPO ?" y NINGÚN producto decía GRANDE: los Tenders iban
+      // al cupo de los chicos y en la misma caja que ellos, sin que nadie se enterara. Una lectura que falla no es un nodo vacío: NO LEÍ, y
+      // `decide_cajas.py` (y `decide_pedidos.py`) no arman nada con este log.
+      } catch (eC) { console.log(`⚠️ NO LEÍ: cyc/mlconfig (el cupo de Full y qué productos son GRANDES: ${String(eC.message || eC).slice(0, 50)}) — decide_cajas no arma cajas`); }
       // 🛒 EL RITMO A PRECIO NORMAL (27/10/2026, él eligió 1a: "todas las ventas que cuente sin 🔥 escasez, ⏳ sin reposición, 📦 sobra,
       // liquidando y remate. y que mire los últimos 365 días… para que si hay algún producto que no se vende hace mucho siga apareciendo").
       // Por producto y por color: los días con stock en Full a precio NORMAL (la estrategia de ese día —una 🪜/💸/🏷️ se sigue hasta de
