@@ -3222,7 +3222,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.12';
+const APP_VERSION='28.13';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3235,6 +3235,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.13',f:'29/10',h:'20:50',c:[{n:1,t:'📊 Métricas → 🔀 ML + Local ya no muestra los botones de ML (Línea de todo, KPIs, Tendencia…).'},{n:2,t:'📊 Métricas → 🔀 ML + Local: gráfico de líneas como el de ML (azul ML, naranja Local, la suma punteada), con Diario/Acumulativo y Vendido/Ganancia; la tabla queda abajo sin barras.'}]},
   {v:'28.12',f:'29/10',h:'20:35',c:[{n:1,t:'📊 Métricas: el botón vuelve a ser 🏪 Local (perfumerías, otras ventas a cuenta y deudas, sin nada de ML). Lo mezclado con ML sigue en 🔀 ML + Local.'}]},
   {v:'28.11',f:'29/10',h:'20:25',c:[{n:1,t:'📊 Métricas → 🏪 Perfumería: queda sólo lo de las perfumerías (se sacó la ganancia junto con ML, las deudas de personas y las otras ventas; lo mezclado está en 🔀 ML + Local).'}]},
   {v:'28.10',f:'29/10',h:'20:15',c:[{n:2,t:'📊 Métricas: "Todo" pasa a ser 🔀 ML + Local mezclados: por día (o por mes en períodos largos), cuánto vendió y ganó ML, cuánto el local y la suma, con barras de cada uno; arriba los totales y cuánto deja cada $100.'}]},
@@ -24972,11 +24973,17 @@ function renderMetTodo(curKeys,prevKeys,lbl){
   const etq=b=>porMes?`${NM[+b.slice(5,7)]} ${b.slice(2,4)}`:`${b.slice(8,10)}/${b.slice(5,7)}`;
   const mxV=Math.max(1,...bs.map(b=>fila[b].mv+fila[b].lv)),mxG=Math.max(1,...bs.map(b=>Math.max(0,fila[b].mg)+Math.max(0,fila[b].lg)));
   const apil=(a,b,mx)=>`<div style="display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--border);margin-top:2px"><div style="width:${(Math.max(0,a)/mx*100).toFixed(1)}%;background:#3b82f6"></div><div style="width:${(Math.max(0,b)/mx*100).toFixed(1)}%;background:#ec4899"></div></div>`;
+  const _mtA=window._mtAcum!==false,_mtG=!!window._mtGan;   // de entrada acumulativo y vendido, como el de ML
   let h=`<div style="display:flex;gap:8px;flex-wrap:wrap">
     ${box('💵 Vendido total',_pesos(T.mv+T.lv),`📦 ML ${_pesos(T.mv)} · 🛍️ Local ${_pesos(T.lv)} (${pct(T.lv,T.mv+T.lv)})`)}
     ${box('💰 Ganancia total',`<span style="color:var(--green)">+${_pesos(T.mg+T.lg)}</span>`,`📦 ML ${_pesos(T.mg)} · 🛍️ Local ${_pesos(T.lg)} (${pct(T.lg,T.mg+T.lg)})`)}
     ${box('📊 Cuánto deja cada $100',pct(T.mg+T.lg,T.mv+T.lv),`ML ${pct(T.mg,T.mv)} · Local ${pct(T.lg,T.lv)}`)}</div>
-    <div style="font-size:.6rem;color:var(--muted);margin:8px 0 4px"><span style="color:#3b82f6">■</span> ML · <span style="color:#ec4899">■</span> Local · ${porMes?'por mes':'por día'} (arriba vendido, abajo ganancia)</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 6px">
+      <button class="vbtn${_mtA?'':' active'}" onclick="window._mtAcum=false;renderMetricas()">Diario</button><button class="vbtn${_mtA?' active':''}" onclick="window._mtAcum=true;renderMetricas()">Acumulativo</button>
+      <span style="width:8px"></span>
+      <button class="vbtn${_mtG?'':' active'}" onclick="window._mtGan=false;renderMetricas()">💵 Vendido</button><button class="vbtn${_mtG?' active':''}" onclick="window._mtGan=true;renderMetricas()">💰 Ganancia</button></div>
+    <div style="position:relative;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px"><canvas id="met-todo-chart"></canvas></div>
+    <div style="font-size:.7rem;font-weight:700;margin:12px 0 4px">${porMes?'Por mes':'Por día'}</div>
     <div style="display:grid;grid-template-columns:4em 1fr 1fr 1fr;gap:2px 8px;font-size:.6rem;color:var(--muted);padding:2px 0"><span></span><span style="text-align:right">📦 ML</span><span style="text-align:right">🛍️ Local</span><span style="text-align:right">Total</span></div>`;
   for(const b of bs.slice().reverse()){const o=fila[b];
     h+=`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.64rem">
@@ -24985,15 +24992,28 @@ function renderMetTodo(curKeys,prevKeys,lbl){
         <span style="text-align:right">${_pesos(o.mv)}<br><span style="color:var(--green)">+${_pesos(o.mg)}</span></span>
         <span style="text-align:right">${o.lv?_pesos(o.lv):'—'}<br><span style="color:var(--green)">${o.lv?'+'+_pesos(o.lg):''}</span></span>
         <b style="text-align:right">${_pesos(o.mv+o.lv)}<br><span style="color:var(--green)">+${_pesos(o.mg+o.lg)}</span></b></div>
-      ${apil(o.mv,o.lv,mxV)}${apil(o.mg,o.lg,mxG)}</div>`;}
+      </div>`;}
   el.innerHTML=h;
+  // 29/10/2026 (él: "esto que no sea en barra, sino como está en ML. por ejemplo azul ML y naranja local uno arriba del otro"): líneas como el de ML.
+  try{const cv=document.getElementById('met-todo-chart');if(cv&&typeof Chart!=='undefined'){
+    if(window._mtChart){window._mtChart.destroy();window._mtChart=null;}
+    const acc=a=>{let t=0;return a.map(v=>t+=v);};
+    let sML=bs.map(b=>_mtG?fila[b].mg:fila[b].mv),sLo=bs.map(b=>_mtG?fila[b].lg:fila[b].lv);
+    if(_mtA){sML=acc(sML);sLo=acc(sLo);}const sTo=sML.map((v,k)=>v+sLo[k]);
+    window._mtChart=new Chart(cv,{type:'line',data:{labels:bs.map(etq),datasets:[
+      {label:'📦 ML',data:sML,borderColor:'#3b82f6',backgroundColor:'#3b82f622',fill:true,tension:.35,cubicInterpolationMode:'monotone',pointRadius:2,borderWidth:2},
+      {label:'🛍️ Local',data:sLo,borderColor:'#f59e0b',backgroundColor:'#f59e0b22',fill:true,tension:.35,cubicInterpolationMode:'monotone',pointRadius:2,borderWidth:2},
+      {label:'Total',data:sTo,borderColor:'#e5e7eb99',borderDash:[6,5],fill:false,tension:.35,cubicInterpolationMode:'monotone',pointRadius:0,borderWidth:1.5}]},
+      options:{responsive:true,aspectRatio:innerWidth<=640?1.3:2.6,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${Math.round(c.raw).toLocaleString('es-AR')}`}}},
+        scales:{y:{beginAtZero:true,grid:{color:'#2a2a30'},ticks:{callback:v=>'$'+Math.round(v/1000)+'k'}},x:{grid:{display:false}}}}});}}catch(e){console.warn('met-todo-chart',e);}
 }
 function metVista(v){if(v)try{localStorage.setItem('cyc_metvista',v);}catch(e){}
   let cur='ml';try{cur=localStorage.getItem('cyc_metvista')||'ml';}catch(e){}if(v)cur=v;
   document.querySelectorAll('[data-metv]').forEach(b=>b.classList.toggle('active',b.dataset.metv===cur));
   const wrap=document.querySelector('#page-metricas .page-wrap');if(!wrap)return;
   let enML=false;for(const ch of wrap.children){
-    if(ch.id==='met-indice'){enML=true;ch.style.display=cur==='local'?'none':'';continue;}
+    if(ch.id==='met-indice'){enML=true;ch.style.display=cur==='ml'?'':'none';continue;}   // el índice (Línea de todo, KPIs…) es sólo de ML (29/10, él)
     if(ch.id==='met-todo-t'||ch.id==='met-todo'){ch.style.display=cur==='todo'?'':'none';enML=false;continue;}
     if(ch.id==='met-local-t'||ch.id==='met-local'){ch.style.display=cur==='local'?'':'none';enML=false;continue;}
     if(ch.tagName==='FOOTER')continue;
