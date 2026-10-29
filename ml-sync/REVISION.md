@@ -4028,6 +4028,11 @@ dos veces con el valor a mano del Arqueo; (3) que lo apartado para la perfumerí
 tenga costo, unidades y perfumería, y que lo que salió de una oficina se haya restado; (5) lo que él pidió en el mes y todavía falta.
 Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lista de deudas" y "🛍️ Mercadería Perfumería".
 
+### 🛒 Ventas a cobrar / 💵 Préstamos (29/10/2026, v28.03; él eligió 1a 2a: *"los que tienen ganancia son Ventas y los que no tienen son deudores… primo, gastón, seba son ventas también, pero no tengo el costo"*; Mari, Matías, Adriana y Andrea préstamos)
+- **Qué es:** cada deuda tiene `tipo` (`debenmov:<id>=tipo venta|prestamo|-;go`); sin marca, venta = tiene costo o ganancia. La web muestra dos grupos con su total (Ventas con la ganancia sumada; PERFUMERÍA va entera en Ventas, aunque adentro tenga MercadoPago). Venta sin costo = "costo sin cargar" (no suma ganancia).
+- **Dónde vive:** `sync.mjs` (`debenmov`, `mtp`) · `index.html` (`renderCuotas`: `_esVenta`, `_sec`; `pctTxt`).
+- **Qué chequear:** que la suma de los dos grupos sea "falta cobrar"; si se carga el costo de Primo/Gastón/Seba, que pase a mostrar la ganancia.
+
 ### 🛍️ Una sola tarjeta PERFUMERÍA en Lo que nos deben (29/10/2026, v28.02; él: *"unificar en PERFUMERÍA. en la tarjeta antes de clickear que muestre sólo los pesos de ganancia. adentro… Mercadería y MercadoPago"*)
 - **Qué es:** la web junta a la vista "Mercaderia Perfumeria" (→ Mercadería) y "Deuda Perfumeria" (→ MercadoPago) en una tarjeta: afuera +$ganancia y el total; adentro las dos con su detalle. Los datos siguen separados (`debenmov:mercaderia perfumeria…` / `debenmov:deuda perfumeria…` como antes).
 - **Dónde vive:** `index.html` (`renderCuotas`: `_perfG`, `_cuotaPerfIds`; `cuotaToggle`).
