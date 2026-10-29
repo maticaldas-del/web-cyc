@@ -4778,6 +4778,9 @@ const stockOficina=p=>p?getQ(p.id,OFI):0;
 // `cyc/sinetiq/<prodId>` = {t: u. sin variante, v: {<variante>: u.}} lo carga Claude (`ofi:<palabra>=+N!se`, `sinetiq:<palabra>=0`).
 // Armar caja NO cambia la cuenta: sólo muestra cuántas de las que tenés todavía hay que etiquetar. Nunca más que lo que hay en casa.
 function sinEtiq(prodId,variante){
+  // Revisión etapa 3, 29/10/2026: lo que se vende SÓLO en el local (`soloLocal`, comando `sololocal`) no lleva etiqueta de Full: 0 en la
+  // tarjeta 🏷️, en los chips de Contar lo que hay y en el aviso de Armar caja (el robot tampoco lo anota, `sinEtiqSumarBot`).
+  {const _p=prodById(prodId);if(_p&&_p.soloLocal)return 0;}
   const r=(state.sinetiq||{})[prodId]||{};
   const n=variante?(parseInt((r.v||{})[sid(String(variante))])||0):(parseInt(r.t)||0);
   const of=variante?getQV(prodId,OFI,variante):getQ(prodId,OFI);
@@ -4799,6 +4802,7 @@ function renderSinEtiqCard(){
   const el=document.getElementById('ofi-sinetiq-card');if(!el)return;
   const filas=[];
   for(const p of state.products||[]){
+    if(p.soloLocal)continue;   // revisión etapa 3, 29/10/2026: sólo local = no va a Full, no se etiqueta (ver sinEtiq)
     if((p.variantes||[]).length){for(const v of p.variantes){const n=sinEtiq(p.id,v);if(n>0)filas.push({pid:p.id,nom:p.name,v,n,ctas:_sinEtiqCtas(p,v)});}}
     const n0=sinEtiq(p.id,'');
     if(n0>0&&!(p.variantes||[]).length)filas.push({pid:p.id,nom:p.name,v:'',n:n0,ctas:_sinEtiqCtas(p,'')});
@@ -4811,7 +4815,9 @@ function renderSinEtiqCard(){
   const ord=k=>{const i=LOCS.indexOf(k.split(' · ')[0]);return i<0?99:i;};
   const ks=Object.keys(grp).sort((a,b)=>ord(a)-ord(b)||a.length-b.length||a.localeCompare(b));
   const tot=vis.reduce((a,f)=>a+f.n,0);
-  const fila=f=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b><button type="button" class="btn btn-sm" style="flex:none;white-space:nowrap;padding:3px 8px;font-size:.66rem;border-color:rgba(34,197,94,.45);color:var(--green)" title="Ya les pegaste la etiqueta de Full a estas ${f.n} u.: pasan a listas para la caja" onclick="sinEtiqListo('${f.pid}','${escHtml(String(f.v||'')).replace(/'/g,'&#39;')}')">✅ Etiquetadas</button></div>`;
+  // Revisión etapa 3, 29/10/2026: el botón pregunta cuántas (sinEtiqListo) y el color va como JSON (como setOfiVar): con `&#39;` adentro
+  // de onclick="…" el navegador lo volvía a `'` y un color con apóstrofo rompía el botón.
+  const fila=f=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0 4px 10px;border-top:1px solid rgba(245,158,11,.18);font-size:.74rem"><span style="flex:1;min-width:0;word-break:break-word">${escHtml(f.nom)}${f.v?` <span style="color:var(--accent2);font-weight:700">· ${escHtml(f.v)}</span>`:''}</span><b style="flex:none;font-family:'DM Mono',monospace">${fmtN(f.n)}</b><button type="button" class="btn btn-sm" style="flex:none;white-space:nowrap;padding:3px 8px;font-size:.66rem;border-color:rgba(34,197,94,.45);color:var(--green)" title="¿Ya les pegaste la etiqueta de Full? Te pregunto cuántas (de estas ${f.n}) y sólo ésas pasan a listas para la caja" onclick="sinEtiqListo('${f.pid}',${JSON.stringify(String(f.v||'')).replace(/"/g,'&quot;')})">✅ Etiquetadas</button></div>`;
   el.innerHTML=`<div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.4);border-radius:12px;padding:12px 14px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><strong style="font-size:.82rem;color:var(--amber)">🏷️ Sin terminar / sin etiqueta${sel?' · '+escHtml(sel):''}</strong><span style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--amber)">${fmtN(tot)} u.</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin:3px 0 8px;line-height:1.45">Están en la oficina y Armar caja ya las cuenta, pero hay que etiquetarlas antes de meterlas en la caja. Todo lo que se carga a la oficina entra acá; cuando las etiquetes tocá ✅ Etiquetadas.</div>
@@ -6312,8 +6318,12 @@ async function updProdName(id,val){
   if(sueltas.length&&!confirm('⚠️ Hay '+sueltas.length+' venta(s) vieja(s) de "'+p.name+'" cargada(s) con ese nombre exacto (sin vínculo por ID). Si renombrás ahora, esas ventas dejan de matchear el producto.\n\n¿Renombrar igual?')){renderProds();return;}
   const oldName=p.name;p.name=newName;
   await fbSet('products/'+id+'/name',newName);
+  // Revisión etapa 3, 29/10/2026: el nombre que pone él queda FIJO (`nombreFijo`). Sin la marca, `nombreml:go` (cada noche, las fichas
+  // de los últimos 30 días) le volvía a poner el título de ML a la mañana siguiente, y `vincular`/`publicar` también lo pisaban.
+  let _nfMal=false;p.nombreFijo=true;try{await fbSet('products/'+id+'/nombreFijo',true);}catch(e){_nfMal=true;}
   await log('Renombró: "'+oldName+'" → "'+newName+'"');
-  renderInv();renderProds();if(currentPage==='ventaprod')renderVentaProd();syncPedidosDebounced();toast('Renombrado ✓');
+  renderInv();renderProds();if(currentPage==='ventaprod')renderVentaProd();syncPedidosDebounced();
+  toast(_nfMal?'Renombrado, pero no pude dejarlo fijo: esta noche puede volver al nombre de ML. Escribilo de nuevo.':'Renombrado ✓',_nfMal?'err':'ok',_nfMal?7000:undefined);
 }
 // Alterna el origen del producto: define en qué sección de Pedidos aparece (BS AS / Paraguay)
 async function toggleProdOrigen(id){
@@ -8605,6 +8615,7 @@ function renderBuzonCard(){
 // esas ya estaban etiquetadas). Con transacción: dos aparatos sumando a la vez no se pisan. El robot hace lo mismo en `ofi:`.
 async function sinEtiqSumar(pid,variante,n){
   n=Math.round(Number(n)||0);if(!pid||!n)return;
+  {const _p=prodById(pid);if(_p&&_p.soloLocal)return;}   // revisión etapa 3, 29/10/2026: sólo local = sin etiqueta de Full (ver sinEtiq)
   const sub=variante?'v/'+sid(String(variante)):'t';
   const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
   const loc=x=>Math.max(0,(parseInt(x)||0)+n);
@@ -8613,12 +8624,33 @@ async function sinEtiqSumar(pid,variante,n){
   try{renderSinEtiqCard();}catch(_){}
 }
 // ✅ YA LO ETIQUETÉ (25/10/2026, él: "que haya un botón para que pasen a etiquetadas, ya que el chat en local imprime las etiquetas
-// y quiere poner que ese producto ya se etiquetó y no tiene forma de hacerlo"). Pone en 0 lo sin etiqueta de ESE renglón.
-async function sinEtiqListo(pid,variante){
-  const r=(state.sinetiq||{})[pid];if(r){if(variante){if(r.v)delete r.v[sid(String(variante))];}else delete r.t;}
-  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+(variante?'v/'+sid(String(variante)):'t')).set(null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}
+// y quiere poner que ese producto ya se etiquetó y no tiene forma de hacerlo").
+// Revisión etapa 3, 29/10/2026: ya NO pone el renglón en 0: pregunta CUÁNTAS se etiquetaron (viene lleno con todas) y resta sólo ésas.
+// El chat de Chrome baja las etiquetas de lo que lleva la caja (PROMPT_CAJAS, paso 4: "como mucho N"): con 10 sin etiqueta y una caja de
+// 4, el botón dejaba las 10 "etiquetadas" y las 6 sin etiqueta pasaban a "con etiqueta" sin que él lo dijera (regla del 26/10). La cuenta
+// es sobre lo que se VE (lo guardado, como mucho lo que hay en la oficina) y va con transacción: dos aparatos no se pisan.
+async function sinEtiqListo(pid,variante,n){
+  const vis=sinEtiq(pid,variante||'');
+  if(n==null){
+    const _p=prodById(pid);
+    const crudo=prompt(`¿Cuántas etiquetaste de ${_p?_p.name:'este producto'}${variante?' · '+variante:''}?\n\nHay ${vis} sin etiqueta. Poné sólo las que ya tienen pegada la etiqueta de Full (si fueron todas, dejá ${vis}).`,String(vis));
+    if(crudo===null)return;
+    n=parseInt(String(crudo).replace(/[^\d]/g,''))||0;
+  }
+  n=Math.max(0,Math.round(Number(n)||0));
+  if(!n){toast('No cambié nada (0 etiquetadas)','info',2500);return;}
+  if(n>vis){toast(`Hay ${vis} sin etiqueta: no puedo marcar ${n}. No cambié nada.`,'err',5000);return;}
+  const of=variante?getQV(pid,OFI,variante):getQ(pid,OFI);
+  const sub=variante?'v/'+sid(String(variante)):'t';
+  const resta=x=>Math.max(0,Math.min(parseInt(x)||0,of)-n);
+  let quedan=0;
+  if(db){try{const tr=await db.ref('cyc/sinetiq/'+pid+'/'+sub).transaction(v=>resta(v)||null);quedan=parseInt(tr&&tr.snapshot&&tr.snapshot.val())||0;await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}
     catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}}
-  toast('🏷️ Listo: etiquetadas','ok',2500);
+  else{const r0=(state.sinetiq||{})[pid]||{};quedan=resta(variante?(r0.v||{})[sid(String(variante))]:r0.t);}
+  const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
+  if(variante){r.v=r.v||{};if(quedan)r.v[sid(String(variante))]=quedan;else delete r.v[sid(String(variante))];}
+  else{if(quedan)r.t=quedan;else delete r.t;}
+  toast(`🏷️ ${n} etiquetada${n===1?'':'s'}${quedan?` · quedan ${quedan} sin etiqueta`:' · no queda ninguna sin etiqueta'}`,'ok',3500);
   try{renderSinEtiqCard();}catch(_){}
   try{if(typeof renderOfiContar==='function')renderOfiContar();}catch(_){}
 }
@@ -10081,24 +10113,34 @@ async function _deshacerCaja(id,i){
   }catch(err){toast('No la deshice: '+(err.message||err),'err');return;}
   // Devolver a la oficina, con la misma cuenta que se usó al descontar.
   // entra:false (20/10/2026 · etapa 3): es la misma mercadería volviendo, no una compra: no apaga "No lo consigo" ni el reloj de Bs As.
-  for(const it of items)await ofiMover(it.prodId,it.variante||'',{delta:it.u,entra:false});    // c3: sobre la base
+  // Revisión etapa 3, 29/10/2026: CADA renglón con su try/catch. La caja ya salió de la base (arriba): si uno fallaba (sin señal, la app
+  // cerrada a mitad) se cortaba el resto y esas unidades no quedaban ni en camino ni en la oficina, sin aviso; tampoco se devolvía lo
+  // decidido ni se limpiaba el envío. Ahora sigue con los demás, hace la limpieza igual y dice cuáles hay que sumar a mano (como cerrar caja).
+  const _noVolvio=[];let _uNo=0;
+  for(const it of items){
+    try{await ofiMover(it.prodId,it.variante||'',{delta:it.u,entra:false});}    // c3: sobre la base
+    catch(err){_uNo+=it.u;_noVolvio.push(`${((state.products||[]).find(p=>p.id===it.prodId)||{}).name||it.prodId}${it.variante?' · '+it.variante:''}: ${it.u} u. (${String((err&&(err.message||err.code))||err).slice(0,40)})`);}
+  }
   // Lo que se descontó de mis decisiones al cerrarla vuelve (16/10/2026: él deshizo la caja de Adriana y
   // Armar caja quedó vacía, porque cerrar resta lo mandado y deshacer no lo devolvía).
   {const _malC=[];for(const it of items)if(!await clDevolverCaja(it.prodId,e.cuenta,it.variante||'',it.u))_malC.push(`${((state.products||[]).find(p=>p.id===it.prodId)||{}).name||it.prodId}${it.variante?' · '+it.variante:''}`);
    clAvisarFallo(_malC,'devolver','Armar caja');}   // etapa 4 (20/10/2026): si no se pudo devolver, se dice
-  if(!quedan.length){
-    // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
-    await fbSet('envios_full/'+id,null);
-    delete state.envios_full[id];
-  } else {
-    e.cajasDet=quedan;e.cajas=quedan.length;e.seguimientos=quedan.map(b=>b.track).filter(Boolean);
-    await fbSet('envios_full/'+id+'/cajas',quedan.length);
-    await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
-  }
+  try{
+    if(!quedan.length){
+      // Era la única caja del envío: se borra el envío entero, si no queda un renglón vacío.
+      await fbSet('envios_full/'+id,null);
+      delete state.envios_full[id];
+    } else {
+      e.cajasDet=quedan;e.cajas=quedan.length;e.seguimientos=quedan.map(b=>b.track).filter(Boolean);
+      await fbSet('envios_full/'+id+'/cajas',quedan.length);
+      await fbSet('envios_full/'+id+'/seguimientos',e.seguimientos.length?e.seguimientos:null);
+    }
+  }catch(err){toast('⚠️ La caja se deshizo pero no pude acomodar el envío: '+String((err&&(err.message||err.code))||err).slice(0,60)+'. Avisale a Claude.','err',7000);}
   renderCajasEnCamino();renderOfiCaja();renderOfiContar();
   syncOfiMati();
-  await log('Caja deshecha: '+uTot+' u. volvieron a la oficina');
-  toast(`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,'ok',4000);
+  if(_noVolvio.length)alert('⚠️ Se cortó la conexión: estos renglones NO volvieron a tu oficina (la caja ya no está en camino). Sumalos en Contar lo que hay:\n\n'+_noVolvio.join('\n'));
+  await log('Caja deshecha: '+(uTot-_uNo)+' u. volvieron a la oficina'+(_uNo?` · ${_uNo} u. NO volvieron (hay que sumarlas a mano)`:''));
+  toast(_uNo?`Deshecha · ${uTot-_uNo} u. volvieron a tu oficina · ${_uNo} u. hay que sumarlas a mano`:`Deshecha ✓ · ${uTot} u. volvieron a tu oficina`,_uNo?'err':'ok',_uNo?7000:4000);
 }
 // Etapa 4 (30/09/2026): las cajas de un envío se tocan con una TRANSACCIÓN sobre la base, buscando la
 // caja por seguimiento y contenido (no por su posición). Antes se escribía la lista ENTERA desde la
@@ -15884,6 +15926,9 @@ function repartoOficina(){
   const filas=[];
   const tr=enTransito();   // lo que ya va en camino a cada cuenta
   (state.products||[]).forEach(p=>{
+    // Revisión etapa 3, 29/10/2026: lo que se vende SÓLO en el local (`soloLocal`) no va a Full: no sale en Armar caja (salía como
+    // "No está publicado en ninguna cuenta", como si faltara publicarlo) ni puede entrar en una caja al cerrarla.
+    if(p.soloLocal)return;
     const hay=stockOficina(p);
     if(hay<=0)return;
     if((p.variantes||[]).length){ filas.push(..._repartoVariantes(p,hay,tr)); return; }
@@ -16074,6 +16119,7 @@ async function syncPedidosAuto(){
     // "PAUSADOS POR PRECIO" SE SACÓ EL 01/10/2026, decisión suya: *"sacar eso de precios TODO. ya que si no da no lo compro"*.
     // Lo que estaba pausado vuelve a Pedidos; si el precio no da, simplemente no lo compra.
     if(noTraerDe(p.id))continue;   // "no traer más"
+    if(p.soloLocal)continue;   // revisión etapa 3, 29/10/2026: sólo se vende en el local (`sololocal`): no se compra para ML (como el robot en `pedidostodo`)
     const {vendidos,vendidosNorm,diasHistorial,dConS,vDia,hist,remate,pocasVentas,rn,reg}=pedVentasNorm(p);
     // Antes acá decía `if(vendidos===0)continue` a secas, y ése era el renglón que dejaba afuera
     // para siempre a lo que no vendió POR FALTA DE STOCK. Ahora sólo se saltea si tampoco hay

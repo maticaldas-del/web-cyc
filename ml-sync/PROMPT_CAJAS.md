@@ -44,8 +44,10 @@ como mucho N (si la caja lleva menos unidades que N, las de la caja). Lo que ya 
 4. Si ML sólo da las etiquetas DESPUÉS de confirmar el envío: pará, decile a Matías "confirmá el envío de <cuenta> y escribime
    'etiquetas'", y cuando lo diga, bajá las de esa cuenta con estas mismas reglas.
 5. Cuando Matías te diga que ya las pegó (o te pida marcarlas): en el panel, Mi oficina → Contar lo que hay, tarjeta "🏷️ Sin
-   terminar / sin etiqueta", tocá ✅ Etiquetadas en el renglón de ESE producto (y color). Es lo único del panel que tocás; si no
-   estás seguro de cuál renglón es, no toques y preguntá.
+   terminar / sin etiqueta", tocá ✅ Etiquetadas en el renglón de ESE producto (y color). Te pregunta CUÁNTAS: poné el número de
+   etiquetas que bajaste para ese renglón (las que pegó), NO el total del renglón. Ej.: el renglón dice 10 y la caja lleva 4 → bajaste
+   4 → poné 4 (quedan 6 sin etiqueta). Es lo único del panel que tocás; si no estás seguro de cuál renglón es o de cuántas pegó, no
+   toques y preguntá.
 6. Lo que no puedas arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja): dejalo
    escrito en Mi oficina → Contar lo que hay → "📬 Mensaje para Claude", corto y sin datos de compradores. Claude lo lee en la
    próxima vuelta. Además decíselo a Matías.

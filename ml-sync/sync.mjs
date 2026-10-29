@@ -256,8 +256,10 @@ function ofiColorDeFicha(p, va) {
 // oficina? así voy viendo las etiquetas que tengo que hacer"). La regla del 25/10 ("todo lo que sube la oficina pasa a sin etiqueta")
 // estaba en la web y en `ofi:`, pero NO en los "llegó" del robot (`pyped:llego`, listas y `pvped:llego`): el pedido de Paraguay del
 // 19/10 sumó 12 u. a la oficina y ninguna a `cyc/sinetiq`. Mismo nodo que la web: `cyc/sinetiq/<prod>/{t | v/<color>}`.
-async function sinEtiqSumarBot(db, pid, va, u) {
-  if (!pid || !(u > 0)) return null;
+// Revisión etapa 3, 29/10/2026: `prod` (la ficha, si se tiene) — lo que se vende SÓLO en el local (`soloLocal`) no lleva etiqueta de Full:
+// no se anota (la tarjeta 🏷️ de Contar lo que hay lo pedía etiquetar para una caja a la que nunca va).
+async function sinEtiqSumarBot(db, pid, va, u, prod) {
+  if (!pid || !(u > 0) || (prod && prod.soloLocal)) return null;
   const sk = 'cyc/sinetiq/' + pid + '/' + (va ? 'v/' + sid(va) : 't');
   const a = parseInt(await db.get(sk)) || 0;
   await db.set(sk, a + u); await db.set('cyc/sinetiq/' + pid + '/ts', Date.now());
@@ -282,7 +284,7 @@ async function ofiSumarBot(db, p, va, delta, inv) {
   await db.patch('cyc/inventory', upd);
   if (inv) Object.assign(inv, upd);
   try { await db.set('cyc/ofientro/' + p.id, Date.now()); } catch { /* no frena */ }
-  let se = null; try { se = await sinEtiqSumarBot(db, p.id, color || '', delta); } catch { console.log(`   ⚠️ ${p.name}: no pude anotarlo sin etiqueta (cyc/sinetiq)`); }
+  let se = null; try { se = await sinEtiqSumarBot(db, p.id, color || '', delta, p); } catch { console.log(`   ⚠️ ${p.name}: no pude anotarlo sin etiqueta (cyc/sinetiq)`); }
   return { color, antes, ahora, tA, tN, se };
 }
 // Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
@@ -29016,30 +29018,42 @@ async function main() {
           } catch (e) { console.log(`⚠️ ${label}: no pude leer un lote (${e.message || e})`); }
         }
       }
-      const cambios = [], iguales = [], sinDato = [];
+      const cambios = [], iguales = [], sinDato = [], _nmCol = [], _nmDup = [];
+      // Revisión etapa 3, 29/10/2026: los nombres que ya usan las fichas (y los que se ponen en esta corrida). Dos fichas con el mismo
+      // nombre no se pueden elegir en `ofi:`, `sinetiq:` ni `cajaitems` (van por nombre); `renombrar` y la web ya lo frenaban.
+      const _nmUsados = new Map(); for (const x of Object.values(prods)) if (x && x.id && x.name) _nmUsados.set(norm(x.name), x);
       for (const p of pys) {
         const ls = (porProd[p.id] || []).map((l) => tit[l.mla]).filter(Boolean);
-        const act = ls.filter((x) => x.st === 'active'); const usar = act.length ? act : ls;
+        // Revisión etapa 3, 29/10/2026: una ficha CON COLORES sólo toma lo que comparten 2+ títulos distintos. El título de una sola
+        // publicación nombra un color ("… Negro") y la ficha tiene varios; el del catálogo también es de un color. Se usan todos los
+        // títulos leídos (activos o no): así un color pausado también entra en lo común. Misma regla que `nombreDeML`.
+        const _nmConCol = (Array.isArray(p.variantes) ? p.variantes : Object.values(p.variantes || {})).length > 0;
+        const act = ls.filter((x) => x.st === 'active'); const usar = _nmConCol ? ls : (act.length ? act : ls);
         const distintos = [...new Set(usar.map((x) => x.t))];
         let nuevo = null, de = '';
-        if (distintos.length === 1) { nuevo = distintos[0]; de = 'su publicación'; }
+        if (distintos.length === 1 && !_nmConCol) { nuevo = distintos[0]; de = 'su publicación'; }
         else if (distintos.length > 1) {
           const pal = distintos.map((t) => t.split(/\s+/)); const com = [];
           for (let i = 0; i < Math.min(...pal.map((x) => x.length)); i++) { const w = pal[0][i]; if (pal.every((x) => x[i] === w)) com.push(w); else break; }
           if (com.length >= 3) { nuevo = com.join(' '); de = `lo que comparten sus ${distintos.length} publicaciones`; }
         }
-        if (!nuevo) {
+        if (!nuevo && !_nmConCol) {
           const c = Object.values(cands).find((x) => x && x.prodId === p.id && x.mlTit && !(x.mlReparos && String(x.mlReparos).length));
           if (c) { nuevo = String(c.mlTit).trim(); de = 'el catálogo de ML (no tiene publicación)'; }
         }
-        if (!nuevo) { sinDato.push(p); continue; }
+        if (!nuevo) { (_nmConCol ? _nmCol : sinDato).push(p); continue; }
         nuevo = nuevo.slice(0, 90);
         if (nuevo === String(p.name || '').trim()) { iguales.push(p); continue; }
+        const _nmOtra = _nmUsados.get(norm(nuevo));
+        if (_nmOtra && _nmOtra.id !== p.id) { _nmDup.push({ p, nuevo, otra: _nmOtra }); continue; }
+        _nmUsados.set(norm(nuevo), p);
         cambios.push({ p, nuevo, de });
       }
-      console.log(`Fichas creadas en los últimos ${DIAS_NOM} días: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}\n`);
+      console.log(`Fichas creadas en los últimos ${DIAS_NOM} días: ${pys.length} · ya iguales a ML: ${iguales.length} · a cambiar: ${cambios.length} · sin título de ML: ${sinDato.length}${_nmCol.length ? ` · con colores sin 2 títulos: ${_nmCol.length}` : ''}${_nmDup.length ? ` · chocan con otra ficha: ${_nmDup.length}` : ''}\n`);
       for (const c of cambios) console.log(`  ${c.p.name}\n    → ${c.nuevo}   (de ${c.de})`);
       if (sinDato.length) { console.log('\nSin publicación ni catálogo confiable (quedan como están):'); sinDato.forEach((p) => console.log(`  · ${p.name}`)); }
+      if (_nmCol.length) { console.log('\nCon colores y sin dos títulos de ML que compartan el nombre (el de una sola publicación es de un color: quedan como están):'); _nmCol.forEach((p) => console.log(`  · ${p.name}`)); }
+      if (_nmDup.length) { console.log('\nEl nombre de ML ya lo tiene otra ficha (quedan como están; si es el mismo producto, hay que quedarse con una):'); _nmDup.forEach((x) => console.log(`  · ${x.p.name} → "${x.nuevo}" = ${x.otra.id} · ${x.otra.name}`)); }
       if (!GO) { console.log('\nNo se guardó nada (falta :go).'); return; }
       const peds = (await db.get('cyc/pedidos_py')) || {};
       let ok = 0, pedOk = 0;
@@ -29704,9 +29718,11 @@ async function main() {
       if (choca) { console.log(`🔴 Ya hay otra ficha que se llama así: ${choca.id} · "${choca.name}". No toco nada.`); return; }
       console.log(`${go ? 'APLICANDO' : 'PRUEBA'}: "${pr.name}" → "${nuevo}" (${rid})`);
       if (!go) { console.log('Para aplicar, agregá :go al final.'); return; }
-      await db.patch('cyc/products/' + rid, { name: nuevo });
+      // Revisión etapa 3, 29/10/2026: un nombre puesto a mano queda FIJO (`nombreFijo`). Nadie lo escribía y `nombreml:go` (cada noche,
+      // fichas de 30 días) le volvía a poner el título de ML al otro día; `vincular`/`publicar` (`nombreDeML`) también lo pisaban.
+      await db.patch('cyc/products/' + rid, { name: nuevo, nombreFijo: true });
       const rel = (await db.get('cyc/products/' + rid + '/name')) || '';
-      console.log(rel === nuevo ? `✓ Releído de la base: "${rel}"` : `✗ NO quedó: la base dice "${rel}"`);
+      console.log(rel === nuevo ? `✓ Releído de la base: "${rel}" (queda fijo: el nombre de ML ya no lo pisa)` : `✗ NO quedó: la base dice "${rel}"`);
       return;
     }
     // BILLING_PROBE=ventasdesde:<id o palabra>=<AAAA-MM-DD|->[:go] → LAS VENTAS ANTERIORES NO CUENTAN PARA EL RITMO (03/10/2026).
@@ -29741,7 +29757,7 @@ async function main() {
       // Etapa 2 (20/10/2026): `pesosArg` (punto de miles, coma decimal, y "1505.5" es decimal). Antes "1505.5" daba 15055.
       const costoPesosArg = pesosArg(arg('costo'));
       const MLA = arg('mla').toUpperCase();
-      if (!nombre) { console.log('Usá: nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|go]'); return; }
+      if (!nombre) { console.log('Usá: nuevoprod:<nombre>[|costo=<pesos>][|mla=<MLA>][|origen=py][|go]'); return; }
       if (MLA && !/^MLA\d+$/.test(MLA)) { console.log(`"${MLA}" no parece un número de publicación (tiene que ser MLA seguido de números).`); return; }
 
       const finN = (await db.get('cyc/finanzas')) || {};
@@ -29783,6 +29799,10 @@ async function main() {
       // 3. La ficha. Campo por campo y explícitos, para que no queden restos.
       const nid = 'p' + Date.now();
       const costUSD = costoPesosArg > 0 ? Math.round((costoPesosArg / tcN) * 100) / 100 : 0;
+      // Revisión etapa 3, 29/10/2026: lo comprado en pesos queda con el costo FIJO en pesos (regla del 27/10: `cost` + `costoPesos:true`,
+      // como `poncosto` y las llegadas de las listas). Sin esto el costo flotaba con el dólar ($10.000 a 1.500 = US$ 6,67 → a 1.650 se
+      // leía $11.000) y `costopesos` no lo arreglaba nunca (pide `cost`). Lo de Paraguay sigue en dólares: `|origen=py`.
+      const esPyN = /^py$/i.test(arg('origen'));
       const ficha = {
         id: nid,
         name: nombre,
@@ -29790,9 +29810,11 @@ async function main() {
         shipUSD: 0,          // explícito: vacío hace que la web lo deduzca y salga un resto de redondeo
         costFullUSD: costUSD, // sin reclamos ni envío todavía, es el mismo número — pero ESCRITO
         variantes: [],
+        ...(esPyN ? { origen: 'py' } : {}),
+        ...(costoPesosArg > 0 && !esPyN ? { cost: Math.round(costoPesosArg), costoPesos: true } : {}),
       };
       console.log(`  ficha            : ${nid} · "${nombre}"`);
-      console.log(`  costo de compra  : ${costoPesosArg > 0 ? $n(costoPesosArg) + ' = US$ ' + costUSD : '🔴 SIN CARGAR (queda en 0)'}`);
+      console.log(`  costo de compra  : ${costoPesosArg > 0 ? $n(costoPesosArg) + ' = US$ ' + costUSD + (esPyN ? ' (Paraguay: en dólares)' : ' (fijo en pesos)') : '🔴 SIN CARGAR (queda en 0)'}`);
       console.log(`  envío/embalaje   : US$ 0 (explícito)`);
       console.log(`  costo full       : US$ ${ficha.costFullUSD}`);
       if (MLA && eN) console.log(`  se vincula a     : ${MLA} · ${eN.cuenta || '?'} · ${eN.status || '?'} · ${eN.title || ''}`);
@@ -29826,8 +29848,12 @@ async function main() {
     const nombreDeML = async (p, titulo) => {
       const t = String(titulo || '').trim();
       if (!t || /^MLA\d+$/i.test(t)) { console.log('  nombre: ML no dio título, queda como está.'); return false; }
+      // Revisión etapa 3, 29/10/2026: un nombre puesto a mano (web o `renombrar`, `nombreFijo`) no se pisa con el de ML. Y si otra ficha ya
+      // se llama así no se cambia: dos fichas con el mismo nombre no se pueden elegir en `ofi:`, `sinetiq:` ni `cajaitems` (van por nombre).
+      if (p.nombreFijo) { console.log(`  nombre: "${p.name}" lo puso él a mano (nombreFijo), queda como está.`); return false; }
       if ((p.variantes || []).length) { console.log(`  nombre: tiene ${p.variantes.length} variantes, no se cambia (el título es de un solo color).`); return false; }
       if ((p.name || '') === t) { console.log('  nombre: ya es el de ML.'); return false; }
+      { const _nmChoca = products.find((x) => x && x.id !== p.id && norm(x.name || '') === norm(t)); if (_nmChoca) { console.log(`  nombre: otra ficha ya se llama "${t}" (${_nmChoca.id}), queda como está.`); return false; } }
       await db.patch('cyc/products/' + p.id, { name: t, nombreViejo: p.name || null });
       const v = (await db.get('cyc/products/' + p.id + '/name')) || '';
       console.log(`  nombre: "${p.name}" → "${t}" ${v === t ? '✓' : '✗ no quedó'}`);
@@ -30453,8 +30479,8 @@ async function main() {
         }
         // el nombre EXACTO como está en la ficha (por si vino con otra mayúscula o acento)
         const vaExacta = (destino.variantes || []).find((v) => norm(v) === norm(x.va)) || x.va;
-        const yaEsta = e.prodId === destino.id && e.variant === vaExacta && !e.ignored;
-        console.log(`  ${yaEsta ? '=' : '→'} ${x.mla} · ${e.cuenta || '?'} · ${e.status || '?'}${e.ignored ? ' · OCULTA' : ''}`);
+        const yaEsta = e.prodId === destino.id && e.variant === vaExacta && !e.ignored && !e.noVendemosMas;
+        console.log(`  ${yaEsta ? '=' : '→'} ${x.mla} · ${e.cuenta || '?'} · ${e.status || '?'}${e.ignored ? ' · OCULTA' : ''}${e.noVendemosMas ? ' · marcada "no la vendemos más"' : ''}`);
         console.log(`      ${String(e.title || '').slice(0, 78)}`);
         console.log(`      producto : ${actual ? actual.name : '(ninguno)'} → ${destino.name}`);
         console.log(`      variante : ${e.variant || '(la adivina del título: ' + (varianteDeTitulo(e.title || '', destino.variantes) || 'NINGUNA') + ')'} → "${vaExacta}"`);
@@ -30467,11 +30493,13 @@ async function main() {
       let ok = 0, _tcF = null;
       for (const x of plan) {
         const _antes = linksF[x.mla] || {};
-        await db.patch('cyc/mllinks/' + x.mla, { prodId: x.prodId, variant: x.variant, ignored: null, manual: true });
+        // Revisión etapa 3, 29/10/2026: también se saca `noVendemosMas` (`nomas` pone las dos marcas). Se borraba sólo `ignored` y
+        // decía ✓, pero la publicación seguía afuera de activar, la planilla y el cerebro: el mismo error que `vincular` arregló el 13/10.
+        await db.patch('cyc/mllinks/' + x.mla, { prodId: x.prodId, variant: x.variant, ignored: null, noVendemosMas: null, manual: true });
         const ver = (await db.get('cyc/mllinks/' + x.mla)) || {};
-        const bien = ver.prodId === x.prodId && ver.variant === x.variant && !ver.ignored;
+        const bien = ver.prodId === x.prodId && ver.variant === x.variant && !ver.ignored && !ver.noVendemosMas;
         if (bien) ok++;
-        console.log(`  releído ${x.mla}: ${ver.prod || ''} producto ${ver.prodId === x.prodId ? '✓' : '✗'} · variante "${ver.variant || ''}" ${ver.variant === x.variant ? '✓' : '✗'}`);
+        console.log(`  releído ${x.mla}: ${ver.prod || ''} producto ${ver.prodId === x.prodId ? '✓' : '✗'} · variante "${ver.variant || ''}" ${ver.variant === x.variant ? '✓' : '✗'}${_antes.noVendemosMas ? ` · "no la vendemos más" ${ver.noVendemosMas ? 'SÍ ✗' : 'sacada ✓'}` : ''}`);
         // Las ventas viejas de esta publicación siguen a la vinculación, como en la web (20/10/2026 · etapa 4): si cambió
         // la ficha se mueven enteras; si sólo cambió la variante, sólo la variante.
         if (bien) {
@@ -36225,34 +36253,81 @@ async function main() {
       const mlas = (_c[0] || '').split(',').map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
       if (!mlas.length) { console.log('Usá: cerrarpub:MLA123,MLA456[:go]'); return; }
       const links = (await db.get('cyc/mllinks')) || {};
+      // Revisión etapa 3, 29/10/2026: (1) LO QUE VIENE TAMBIÉN FRENA. ML sólo cuenta lo que ya está adentro de Full: una caja en camino a
+      // esa cuenta (cajasDet sin recibir, menos lo que ML ya dio de alta en `cyc/cajasentrado`) o cargada en la caja a medio armar
+      // (`cyc/cajas_armando/<cuenta>`) llegaría a una publicación cerrada (no se vende, paga Full, hay que retirarla). Justo cuando Full
+      // queda en 0 —el momento de "cerrar al vaciarse"— suele haber una caja viajando. (2) LAS GEMELAS SE CIERRAN CON SU CLÁSICA (con los
+      // mismos frenos y releídas): si no, `alinearGemelas` las deja sueltas y esa cuenta sigue contando como "publica" (Armar caja, `publicar`).
+      let _cpEnv, _cpEnt, _cpArm;
+      try { [_cpEnv, _cpEnt, _cpArm] = await Promise.all(['cyc/envios_full', 'cyc/cajasentrado', 'cyc/cajas_armando'].map((k) => db.get(k))); }
+      catch (er) { console.log(`❌ no pude leer las cajas en camino o a medio armar (${String(er.message || er).slice(0, 60)}): sin saber si viene mercadería no cierro nada.`); return; }
+      _cpEnv = _cpEnv || {}; _cpEnt = _cpEnt || {}; _cpArm = _cpArm || {};
+      const _cpNrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      // Unidades de ESE producto (y color, si la publicación es de un color; un renglón sin color cuenta: puede ser de éste) que vienen a esa cuenta.
+      const _cpPend = (e, cta) => {
+        if (!e || !e.prodId) return { u: 0, txt: '' };
+        const c0 = _cpNrm(cta || e.cuenta), col = e.variant ? _cpNrm(e.variant) : '';
+        const mismo = (v) => !col || !v || _cpNrm(v) === col;
+        let cam = 0, arm = 0;
+        for (const [eid, env] of Object.entries(_cpEnv)) {
+          if (!env || _cpNrm(env.cuenta) !== c0) continue;
+          (Array.isArray(env.cajasDet) ? env.cajasDet : Object.values(env.cajasDet || {})).forEach((cj, i) => {
+            if (!cj || cj.recibida) return;
+            const r = _cpEnt[eid + '__' + i], rIt = r && String(r.track || '') === String(cj.track || '') ? (Array.isArray(r.items) ? r.items : Object.values(r.items || {})) : [];
+            for (const it of (Array.isArray(cj.items) ? cj.items : Object.values(cj.items || {}))) {
+              if (!it || it.prodId !== e.prodId || !mismo(it.variante)) continue;
+              const u = Number(it.u) || 0, x = rIt.find((y) => y && y.p === it.prodId && (y.v || '') === (it.variante || ''));
+              cam += Math.max(0, u - (x ? Math.min(Number(x.q) || 0, u) : 0));
+            }
+          });
+        }
+        for (const [ctaA, a] of Object.entries(_cpArm)) {
+          if (_cpNrm(ctaA) !== c0) continue;
+          for (const [k, u] of Object.entries((a && a.items) || {})) {
+            const j = String(k).indexOf('|'), pid = j >= 0 ? k.slice(0, j) : k;
+            const va = (j >= 0 ? k.slice(j + 1) : '').replace(/%(2E|23|24|5B|5D|2F)/g, (m0, h) => String.fromCharCode(parseInt(h, 16)));
+            if (pid === e.prodId && mismo(va)) arm += Math.max(0, Number(u) || 0);
+          }
+        }
+        return { u: cam + arm, txt: [cam ? `${cam} u. en camino a Full` : '', arm ? `${arm} u. en la caja a medio armar` : ''].filter(Boolean).join(' + ') };
+      };
+      const cola = [...mlas], _cpGem = {};   // gemela → su Clásica
+      const _cpSumarGemelas = (mla) => { for (const [g, x] of Object.entries(links)) if (x && x.gemelaDe === mla && x.status !== 'closed' && !cola.includes(g)) { cola.push(g); _cpGem[g] = mla; } };
       console.log(`=== CERRAR PUBLICACIONES EN ML · ${mlas.length} ${GO ? '(APLICANDO)' : '(PRUEBA)'} ===\n`);
       const toks = {};
       const tokDe = async (label) => { if (toks[label]) return toks[label]; const acc = accounts[label]; if (!acc?.refresh_token) return null;
         try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); toks[label] = tR.access_token; return tR.access_token; } catch { return null; } };
-      let cerradas = 0, frenadas = 0, ya = 0;
-      for (const mla of mlas) {
+      let cerradas = 0, frenadas = 0, ya = 0, frenCam = 0;
+      const gemVivas = [];
+      for (let qi = 0; qi < cola.length; qi++) {
+        const mla = cola[qi];
         const e = links[mla] || {};
+        const _gTxt = _cpGem[mla] ? ` (gemela de ${_cpGem[mla]})` : '';
         const orden = e.cuenta && labels.includes(e.cuenta) ? [e.cuenta, ...labels.filter((l) => l !== e.cuenta)] : labels;
         let b = null, tk = null, cta = null;
         for (const label of orden) { const t = await tokDe(label); if (!t) continue;
           try { const it = await mlGet('/items/' + mla + '?attributes=id,status,title,available_quantity,inventory_id,shipping,variations,seller_id', t); if (it && it.id) { b = it; tk = t; cta = label; break; } } catch { /* otra cuenta */ } }
-        if (!b) { console.log(`  ✗ ${mla} · ML no la encontró en ninguna cuenta`); continue; }
+        if (!b) { console.log(`  ✗ ${mla}${_gTxt} · ML no la encontró en ninguna cuenta`); if (_cpGem[mla]) gemVivas.push(mla); continue; }
         const nom = String(b.title || '').slice(0, 50);
-        if (b.status === 'closed') { console.log(`  · ${mla} · ${cta} · ya estaba cerrada · ${nom}`); ya++; if (GO && e.status !== 'closed') await db.patch('cyc/mllinks/' + mla, { status: 'closed' }); continue; }
+        if (b.status === 'closed') { console.log(`  · ${mla}${_gTxt} · ${cta} · ya estaba cerrada · ${nom}`); ya++; if (GO && e.status !== 'closed') await db.patch('cyc/mllinks/' + mla, { status: 'closed' }); _cpSumarGemelas(mla); continue; }
         // ¿mercadería en Full?
         let full = 0, fullTxt = '';
         const invs = (Array.isArray(b.variations) && b.variations.length ? b.variations.map((v) => v.inventory_id) : [b.inventory_id]).filter(Boolean);
         for (const iv of invs) { try { const st = await mlGet('/inventories/' + iv + '/stock/fulfillment', tk); const a = Number(st?.available_quantity) || 0, n = Number(st?.not_available_quantity) || 0; full += a + n; if (a + n) fullTxt += ` ${a} a la venta${n ? ' + ' + n + ' no disponibles' : ''}`; } catch { fullTxt += ' (no pude leer el stock de Full)'; full += 9999; } }
-        if (full > 0) { console.log(`  ⚠️ ${mla} · ${cta} · ${b.status} · EN FULL:${fullTxt} · ${nom}\n       NO la cierro: tiene mercadería en Full. Que se venda o retirarla, y después se cierra.`); frenadas++; continue; }
-        if (!GO) { console.log(`  · ${mla} · ${cta} · ${b.status} · 0 en Full · ${nom} → se cerraría`); cerradas++; continue; }
+        if (full > 0) { console.log(`  ⚠️ ${mla}${_gTxt} · ${cta} · ${b.status} · EN FULL:${fullTxt} · ${nom}\n       NO la cierro: tiene mercadería en Full. Que se venda o retirarla, y después se cierra.`); frenadas++; if (_cpGem[mla]) gemVivas.push(mla); continue; }
+        // ¿mercadería que VIENE? (revisión etapa 3, 29/10/2026, ver arriba)
+        const pend = _cpPend(e, cta);
+        if (pend.u > 0) { console.log(`  ⚠️ ${mla}${_gTxt} · ${cta} · ${b.status} · 0 en Full pero VIENEN ${pend.txt} · ${nom}\n       NO la cierro: llegarían a una publicación cerrada (no se venden y pagan Full). Que lleguen y se vendan, o sacalas de la caja (cajaitems / Armar caja), y después se cierra.`); frenadas++; frenCam++; if (_cpGem[mla]) gemVivas.push(mla); continue; }
+        if (!GO) { console.log(`  · ${mla}${_gTxt} · ${cta} · ${b.status} · 0 en Full · nada en camino · ${nom} → se cerraría`); cerradas++; _cpSumarGemelas(mla); continue; }
         let det = '';
         try { const rp = await fetch(ML_API + '/items/' + mla, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'closed' }) });
           if (!rp.ok) det = rp.status + ' ' + (await rp.text()).slice(0, 200); _anotarEscrituraML(rp, mla, 'cerrar publicación (no se vende más en esta cuenta)', det); } catch (er) { det = String(er.message || er).slice(0, 120); }
         let st2 = '?'; try { st2 = (await mlGet('/items/' + mla + '?attributes=status', tk)).status; } catch { /* abajo */ }
-        if (st2 === 'closed') { await db.patch('cyc/mllinks/' + mla, { status: 'closed' }); cerradas++; console.log(`  ✓ ${mla} · ${cta} · cerrada (releída de ML) · ${nom}`); }
-        else console.log(`  ✗ ${mla} · ${cta} · NO quedó cerrada (ML dice ${st2})${det ? ' · ' + det : ''} · ${nom}`);
+        if (st2 === 'closed') { await db.patch('cyc/mllinks/' + mla, { status: 'closed' }); cerradas++; console.log(`  ✓ ${mla}${_gTxt} · ${cta} · cerrada (releída de ML) · ${nom}`); _cpSumarGemelas(mla); }
+        else { console.log(`  ✗ ${mla}${_gTxt} · ${cta} · NO quedó cerrada (ML dice ${st2})${det ? ' · ' + det : ''} · ${nom}`); if (_cpGem[mla]) gemVivas.push(mla); }
       }
-      console.log(`\n${GO ? cerradas + ' cerradas' : cerradas + ' se cerrarían'} · ${frenadas} frenadas por tener mercadería en Full · ${ya} ya cerradas.`);
+      console.log(`\n${GO ? cerradas + ' cerradas' : cerradas + ' se cerrarían'} · ${frenadas} frenadas por tener mercadería en Full o en camino${frenCam ? ` (${frenCam} por lo que viene)` : ''} · ${ya} ya cerradas${Object.keys(_cpGem).length ? ` · ${Object.keys(_cpGem).length} gemela(s) sumadas con su Clásica` : ''}.`);
+      if (gemVivas.length) console.log(`⚠️ GEMELAS QUE QUEDARON VIVAS con su Clásica cerrada: ${gemVivas.map((g) => `${g} (de ${_cpGem[g]})`).join(', ')}. Cerralas cuando se pueda (cerrarpub:${gemVivas.join(',')}:go).`);
       if (!GO) console.log('PRUEBA: no se tocó nada. Agregá ":go" para cerrar (va por ml-sync).');
       return;
     }
@@ -46954,6 +47029,9 @@ async function main() {
       for (const p of prods) {
         if (PAP[p.id]) { fuera.push(`🗑️ ${p.name}`); continue; }
         if (NT[p.id] && !NT[p.id].permitido) { fuera.push(`🚫 no traer · ${p.name}`); continue; }
+        // Revisión etapa 3, 29/10/2026: lo que se vende SÓLO en el local (`sololocal`) no se compra para ML ni va a Full: afuera como la
+        // papelera. Con esto `decide_pedidos.py` y `decide_cajas.py` (leen este log) tampoco lo ven.
+        if (p.soloLocal) { fuera.push(`🏪 sólo local · ${p.name}`); continue; }
         const pv = /paulvic/i.test(provN[p.proveedorId] || '') || /paulvic/i.test(p.name || '');
         (pv ? grupos.paulvic : p.origen === 'py' ? grupos.py : grupos.bsas).push(p);
       }
@@ -47126,7 +47204,7 @@ async function main() {
         console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);
         arr.forEach(ln);
       }
-      console.log(`\n════ FUERA (papelera / no traer) · ${fuera.length} ════\n${fuera.join('\n')}`);
+      console.log(`\n════ FUERA (papelera / no traer / sólo local) · ${fuera.length} ════\n${fuera.join('\n')}`);
       const nG = grupos.bsas.length + grupos.py.length + grupos.paulvic.length;
       console.log(`\nCUENTA: ${prods.length} fichas = ${nG} para decidir + ${fuera.length} fuera ${nG + fuera.length === prods.length ? '✓' : '⚠️ NO CIERRA'}`);
       return;
@@ -50855,8 +50933,8 @@ async function main() {
           const antes = parseInt(await db.get('cyc/inventory/' + kVar(x.v))) || 0;
           const tA = parseInt(await db.get('cyc/inventory/' + kTot)) || 0;
           await db.patch('cyc/inventory', { [kVar(x.v)]: antes + x.u, [kTot]: tA + x.u });
-          let seP = null; try { seP = await sinEtiqSumarBot(db, P.id, x.v, x.u); } catch { /* lo dice abajo */ }
-          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}${seP ? ` · 🏷️ sin etiqueta ${seP.antes} → ${seP.ahora}` : ' · ⚠️ no quedó sin etiqueta'}`);
+          let seP = null; try { seP = await sinEtiqSumarBot(db, P.id, x.v, x.u, P); } catch { /* lo dice abajo */ }
+          console.log(`  🏠 oficina · ${x.v}: ${antes} → ${antes + x.u}${seP ? ` · 🏷️ sin etiqueta ${seP.antes} → ${seP.ahora}` : P.soloLocal ? ' · 🏪 sólo local: sin etiqueta de Full' : ' · ⚠️ no quedó sin etiqueta'}`);
         }
         await pvCosto(id, true);
         const rel = await db.get('cyc/pedidospv/' + id);
@@ -51194,6 +51272,7 @@ async function main() {
         // Etapa 4: la variante y el total del producto van en UN solo patch. Eran dos escrituras y,
         // cortada la corrida entre las dos, quedaba el total sumado sin la variante (y al repetir, doble).
         const _ofiUpd = { [key]: ahora || null };
+        let _ofiTotN = null;
         if (o.va) {
           const tA = GO ? (parseInt(await db.get('cyc/inventory/' + kTot(o.p.id))) || 0) : (parseInt(inv[kTot(o.p.id)]) || 0);
           // Revisión final: el total nunca queda abajo de la suma de sus colores (como `ofiMover` en la web).
@@ -51201,13 +51280,21 @@ async function main() {
           const tN = Math.max(0, tA + dv, sumV);
           totTxt = ` · total del producto ${tA} → ${tN}`;
           if (tN !== tA) _ofiUpd[kTot(o.p.id)] = tN || null;
+          _ofiTotN = tN;
         }
         if (GO) await db.patch('cyc/inventory', _ofiUpd);
+        // Revisión etapa 3, 29/10/2026: la foto `inv` se pone al día con lo escrito (el color y el total). Sin esto, dos colores del
+        // MISMO producto en un comando (`ofi:p47@negro=2;p47@rojo=0;go`, con 5 + 3 = 8) sumaban los colores con la foto vieja y el
+        // total quedaba en 5 con los colores en 2: 3 u. "sin color" que no existen (Arqueo, Armar caja y Pedidos), y ninguna pantalla
+        // las podía bajar. La web (`ofiMover`) ya lo hacía bien: relee `state.inventory` después de cada escritura.
+        inv[key] = ahora; if (_ofiTotN != null) inv[kTot(o.p.id)] = _ofiTotN;
         // 1b (16/10/2026): entró mercadería a la oficina → se anota el día. La regla de Bs As cuenta los 10 días
         // sin conseguirlo desde lo último que pasó: el pedido o esta entrada.
         if (GO && dv > 0) { try { await db.set('cyc/ofientro/' + o.p.id, Date.now()); } catch { /* no frena el conteo */ } }
         let seTxt = '';
-        if (o.se && dv > 0) {
+        // Revisión etapa 3, 29/10/2026: lo de `sololocal` no lleva etiqueta de Full (igual que `sinEtiqSumarBot`).
+        if (o.se && dv > 0 && o.p.soloLocal) seTxt = ' · 🏪 sólo local: sin etiqueta de Full';
+        else if (o.se && dv > 0) {
           const sk = 'cyc/sinetiq/' + o.p.id + '/' + (o.va ? 'v/' + sid(o.va) : 't');
           const sA = parseInt(await db.get(sk)) || 0;
           if (GO) { await db.set(sk, sA + dv); await db.set('cyc/sinetiq/' + o.p.id + '/ts', Date.now()); }
@@ -51312,9 +51399,28 @@ async function main() {
     if (/^buzon(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).replace(/^buzon:?/, ''); const GOb = /(^|;)go$/.test(raw) && !DRY;
       const B = (await db.get('cyc/buzon')) || {};
+      // Revisión etapa 3, 29/10/2026: el buzón es texto libre y el registro de GitHub es PÚBLICO (CLAUDE §11). Antes de imprimir se tapan
+      // los mails, los teléfonos, el número de un DNI/CUIT, las tiras de 7+ números seguidos (pedidos de ML, documentos) y lo que sigue a
+      // "código" (el de una devolución nunca va al registro). Quedan los MLA (son nuestras publicaciones) y los códigos de Nissei (7
+      // números que empiezan con 7). En los renglones fijos de la RUTINA (cupo/mp/pedido/visto y los que empiezan con un código) sólo se
+      // tapan las tiras de 10+ números: ahí van la plata de Mercado Pago y los códigos que Claude carga. Lo guardado no se toca.
+      const _taparBz = (txt) => {
+        let n = 0; const tap = (r) => { n++; return r; };
+        const t = String(txt || '').split('\n').map((ln) => {
+          const fijo = /^\s*(rutina|cupo|mp|pedido|visto)\b/i.test(ln) || /^\s*\d{5,8}\s*·/.test(ln);
+          return ln
+            .replace(/[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/gi, () => tap('[mail tapado]'))
+            .replace(/\b(dni|cuit|cuil)(\s*[:#°nº.]*\s*)[\d.\- ]{7,13}\d/gi, (m0, w, sp) => tap(w + sp + '[tapado]'))
+            .replace(/(c[oó]d(?:igo|\.)?)((?:\s+(?:de|del|la|el|es|para|retirar|recibir|devoluci[oó]n|retiro|seguridad|entrega|autorizaci[oó]n)\b)*\s*[:#=]?\s*)([^\s,;·]*\d[^\s,;·]*)/gi,
+              (m0, w, sp, val) => (/^MLA\d+$/i.test(val) ? m0 : tap(w + sp + '[tapado]' + (val.match(/[.):\]]+$/) || [''])[0])))
+            .replace(/(?:\+?54[\s-]*)?(?:9[\s-]*)?(?:\(?0?\d{2,4}\)?[\s-]*)?(?:15[\s-]*)?\b\d{3,4}[\s-]\d{4}\b/g, () => tap('[teléfono tapado]'))
+            .replace(/(MLA)?(\d{7,})/gi, (m0, mla, d) => (mla || (d.length === 7 && d[0] === '7') || (fijo && d.length < 10) ? m0 : tap('[número tapado]')));
+        }).join('\n');
+        return { t, n, nota: n ? `  (🔒 tapé ${n} dato${n === 1 ? '' : 's'} para el registro público: si hacía falta, que lo diga por el chat)` : '' };
+      };
       // `ver=<ts>[,<ts>]` (26/10/2026): el mensaje ENTERO (la lista lo corta en 600 letras y el chat de compras deja 120 dudas en uno).
       const mV = raw.match(/ver=([\d,]+)/);
-      if (mV) { for (const t of mV[1].split(',').filter(Boolean)) console.log(B[t] ? `=== [${t}] ===\n${String(B[t].t || '')}\n` : `  ${t}: no existe`); return; }
+      if (mV) { for (const t of mV[1].split(',').filter(Boolean)) { const z = B[t] ? _taparBz(B[t].t) : null; console.log(z ? `=== [${t}] ===\n${z.t}\n${z.nota}` : `  ${t}: no existe`); } return; }
       const mL = raw.match(/leido=([\d,]+)/);
       if (mL) {
         const tss = mL[1].split(',').filter(Boolean);
@@ -51326,8 +51432,8 @@ async function main() {
       const sin = L.filter((x) => !x.leido), leid = L.filter((x) => x.leido).slice(-5);
       const f = (t) => new Date((Number(t) || 0) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
       console.log(`=== 📬 BUZÓN · ${sin.length} sin leer ===`);
-      for (const x of sin) console.log(`  [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 600)}`);
-      if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${String(x.t || '').slice(0, 200)}`); }
+      for (const x of sin) { const z = _taparBz(x.t); console.log(`  [${x.k}] ${f(x.ts)} · ${z.t.slice(0, 600)}${z.nota}`); }
+      if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) { const z = _taparBz(x.t); console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${z.t.slice(0, 200)}${z.nota}`); } }
       return;
     }
 
@@ -51397,7 +51503,8 @@ async function main() {
         ops.push({ p, va, delta: m[3] === '+' ? n : m[3] === '-' ? -n : null, fijo: m[3] ? null : n });
       }
       if (!DIJO_S) for (const o of ops) {
-        const a0 = parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0;
+        // Revisión etapa 3, 29/10/2026: contra lo que se VE (nunca más que la oficina), igual que la cuenta de abajo.
+        const a0 = Math.min(parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0, parseInt(inv[kOfi(o.p.id, o.va)]) || 0);
         if ((o.fijo != null && o.fijo < a0) || (o.delta != null && o.delta < 0)) problemas.push(`${o.p.name}${o.va ? ' · ' + o.va : ''}: bajar lo sin etiqueta (${a0} → ${o.fijo != null ? o.fijo : a0 + o.delta}) es pasarlo a "con etiqueta": sólo si él lo dijo → agregá ;dijo=<lo que dijo> (regla del 26/10)`);
       }
       if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
@@ -51407,9 +51514,13 @@ async function main() {
         const antes = GO ? (parseInt(await db.get(sk)) || 0) : (parseInt(o.va ? ((se[o.p.id] || {}).v || {})[sid(o.va)] : (se[o.p.id] || {}).t) || 0);
         const ofi = parseInt(inv[kOfi(o.p.id, o.va)]) || 0;
         // Nunca más sin etiqueta que lo que hay en la oficina.
-        const ahora = Math.min(ofi, Math.max(0, o.fijo != null ? o.fijo : antes + o.delta));
+        // Revisión etapa 3, 29/10/2026: se resta desde lo que se VE (lo guardado, como mucho la oficina). Lo guardado queda de más cuando
+        // salen unidades marcadas (cerrar caja y `ofi:-N` no lo bajan): con 10 guardadas y 6 en la oficina, "etiqueté 2" (=-2) daba
+        // 10 − 2 = 8 → recortado a 6, o sea que no bajaba nada. Ahora 6 − 2 = 4.
+        const _baseSE = Math.min(antes, ofi);
+        const ahora = Math.min(ofi, Math.max(0, o.fijo != null ? o.fijo : _baseSE + o.delta));
         if (GO) { await db.set(sk, ahora || null); await db.set('cyc/sinetiq/' + o.p.id + '/ts', Date.now()); }
-        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes} → ${ahora} sin etiqueta (en la oficina ${ofi})${o.fijo == null && antes + o.delta > ofi ? ' · ⚠️ recortado a lo que hay en la oficina' : ''}`);
+        console.log(`  ${o.p.name}${o.va ? ' · ' + o.va : ''}: ${antes}${_baseSE < antes ? ` (guardadas de más: cuento desde ${_baseSE})` : ''} → ${ahora} sin etiqueta (en la oficina ${ofi})${o.fijo == null && _baseSE + o.delta > ofi ? ' · ⚠️ recortado a lo que hay en la oficina' : ''}`);
       }
       console.log(GO ? '\n✓ Guardado. La tarjeta de Contar lo que hay se actualiza sola.' : '\nNo se guardó nada (falta ;go).');
       return;
