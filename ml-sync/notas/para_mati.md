@@ -8,6 +8,16 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 29/10 (1a 2a 3a 4a 5b 6 7a 8a 9a 10b 11 12 13a 14a 15b 16a 17a)
+- **Hecho:** 1a saldos de MP fuera del registro (`ancla:buzon=<ts>;go`) · 2a mes cerrado congelado (`cyc/costocongelado`) · 3a lo hace solo el cobro por crecimiento · 4a ventas sin factura no se caen a los 45 días · 5b afuera · 6 Valor de Stock = Stock total del Arqueo · 7a y 14a prompt `PROMPT_ANTIGUEDAD.md` para el chat de Chrome (se lo pasé) · 11 regla en CEREBRO fila 6 (bajar cuando el stock dura más que los días que faltan para pagar) · 15b regla en CEREBRO (cupón de ML cuenta a nuestro precio).
+- **8a Abismo:** hoy ya GANA la caja a $14.990 y deja 40%: no hace falta descuento. Si el 07/11 no se vendió, al local.
+- **9a Teikirisi y 1.4 Sexy Men:** esperan a $14.990; **el 07/11** las que queden van al local junto con la Rose (pedírselo en el aviso de las 12:30 del 07/11).
+- **10b VS Coconut:** sigue con el descuento; **avisarle 1 semana antes de pagar stock antiguo para que lo retire** (la fecha sale de 7a).
+- **12 Panel solar (MLA3110101636, $10.990, 30,6%):** él pide bajar hasta el 0% (≈$8.790), pero el robot dice 71 días en Full y F13 frena abajo del 35% hasta los 90 (17/11). Si el chat de Chrome (7a) confirma 90+ días o fecha de pago cercana, se abre y se baja en escalera hasta el 0%.
+- **13a Centímetro:** cada publicación sigue su camino; el 03/11 se mide cada una por su plata por día.
+- **16a P47 azul Matías:** queda a $10.990; **el 08/11**, si queda alguna, un escalón como descuento hacia la caja.
+- **17a Codera:** cuando entre la caja (~02/11), las tres a $20.290.
+
 ### Del 27/10 a la noche — contestó 1a 2a 3b 4b (28/10)
 - **Hecho:** 1a salida "vende muchísimo menos" en el robot (F14) · 2a piso 35% para todo · 3b niveles como están · 4b Mezcla como está.
 
@@ -66,7 +76,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - 24 de 28 probados quedaron "Nissei no lo tiene" (`nohabia`). Si la pasada del catálogo trae su código con precio, la marca se cae sola; los que sigan marcados al terminar, revisarlos (sobre todo los que venden).
 - **Preguntas de compradores (Ayelen):** medidas y hueco de la mentonera · qué es el color "Ab" del metatarso · aumento del espejo 8".
 
-### Revisión de Plata del 27/10 (6 decisiones, para cuando digas "resolvamos")
+### ~~Revisión de Plata del 27/10~~ → RESUELTAS el 29/10 (ver arriba)
 1. **Saldos de Mercado Pago en el registro público:** el robot muestra los números de las 4 cuentas al leer el buzón y al cargarlos (el registro lo puede ver cualquiera). (a) sugerida: que el robot los tome directo del mensaje del buzón y no los muestre nunca · (b) dejarlo así (es plata tuya, no de terceros).
 2. **Un mes ya cobrado sigue cambiando:** un reclamo nuevo o un cambio del envío recalcula el costo de las ventas viejas de ese producto. (a) sugerida: congelar el mes al cerrarlo · (b) aceptarlo.
 3. **El retiro del día 1º usa números que todavía se mueven** (cancelaciones tardías, el VEP ~día 9, la factura de Sancor). (a) sugerida: cargarlo el 1º y ajustar la diferencia en el retiro siguiente · (b) cargarlo el día 10.
@@ -142,7 +152,7 @@ bajando del techo **en la primera venta se queda** (freno F14; techo95 anota �
 stock antiguo o 30 días sin vender; **🔙 `vendiocaro`** devuelve al precio más caro que vendió lo que bajó de más; Pedidos, cajas y escasez
 usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 
-## 28/10 · De la completa de las 03:00
+## 28/10 · De la completa de las 03:00 → RESUELTAS el 29/10 (ver arriba)
 1. Fecha del stock antiguo de 7 productos: el robot les cuenta la edad desde que empezó a mirarlos (13-19/08), pero la línea de stock muestra que desde entonces no les entró nada y que venían con stock seguido desde junio-julio, así que tendrían 100 a 130 días y no 50 a 70: Pendrive 16 (27 u.), Panel solar (5), VS Coconut (13), Paulvic Luna (12), Debutante Mujer (8), Privé (4 de las 7) y Jules (6). Si es así, varios pagan desde el 10-12/11 y a los 180 días unos $3.250 por unidad por mes. (a) sugerida: que el chat de Chrome mire mañana en ML la antigüedad del stock en Full de esos 7, y con eso cargo las fechas y decido bajar o retirar antes del 07/11 · (b) esperar el cobro del 10-12/11 y decidir ahí.
 2. Abismo (Paulvic, 1 sola de 203 días, si sigue el 10/11 paga unos $3.250): con un descuento a $14.190 le gana la caja y deja ~29%, que es lo que pide su regla de los 15 días antes de pagar, pero el robot lo frena porque falta certeza de que $14.990 deje menos que su mejor precio. (a) sugerida: autorizarlo (descuento a $14.190 hasta el 07/11 y retiro al local si no se vende) · (b) esperar a $14.990 y retiro al local el 07/11, como la Rose.
 3. Paulvic que ya pagan stock antiguo: Teikirisi (1, 220 días) y 1.4 Sexy Men (2, 211 días) están a $14.990 sin vender hace más de un mes y si siguen el 10/11 pagan unos $3.250 cada una (la caja la ganan otros abajo del costo). (a) sugerida: lo mismo que eligió con la Rose, esperar a $14.990 hasta el 07/11 y retirar al local las que no se vendan, junto con la Rose y el Indigo · (b) dejarlas en ML pagando.
@@ -165,10 +175,10 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 - **Para contarle (sin decisión):** el Centímetro Rosa se subió a $10.190 a las 06:07 por una venta mal leída (una compra vieja de $3.990 pagada hoy). Se deja como prueba de techo; volver a $6.790 sólo con su autorización. El error está arreglado en el robot (miraba la hora de la venta y no el precio cobrado; 4 lugares).
 - **Tachado contra liso (medición agendada, `vistas:30` sección E):** de 16 publicaciones que tuvieron días con tachado y días sin tachado al mismo precio final, con tachado tuvieron +35% de visitas (mediana), 10,1 ventas cada 100 visitas contra 6,8, y 0,65 ventas por día contra 0,27. Son pocos días por publicación y se mezclan fechas: apoya la regla de siempre (toda baja primero como descuento propio con el tachado), no cambia nada.
 
-## 28/10 · De la vuelta de las 13:52
+## 28/10 · De la vuelta de las 13:52 → RESUELTA el 29/10 (15b)
 - **¿Una venta con plata que pone ML (cupón) cuenta como "vendió a este precio" para subir +50%?** Caso: Sábanas 1½ Beige, 3 juegos a $18.990, pero ML puso $7.000 y el comprador pagó unos $16.660 por juego (menos que los $17.990 de antes de la suba). (a) sugerida: cuenta lo que pagó el comprador, así que una venta con cupón de ML no dispara el +50% · (b) cuenta lo que cobramos nosotros. Hoy no cambia nada (la Sábana vende menos de 1 por semana y no sube igual).
 
-## 29/10 · De la completa de las 03:00
+## 29/10 · De la completa de las 03:00 → RESUELTAS el 29/10 (16a 17a, ver arriba)
 1. **P47 azul en Matías** (3 u. de 174 días, sin reposición en esa cuenta): a $10.990 venden ~1 por semana y dejan ~$3.400 cada una; el 04/11 cumplen 180 días y desde el 12/11 cada una que quede paga ~$3.250. La regla de los 15 días antes de pagar pide ganar la caja (ML pide $7.245, deja ~$450 cada una). (a) sugerida: quedan a $10.990 y, si el 08/11 queda alguna, un escalón como descuento hacia la caja · (b) ganar la caja ya (unos $8.800 menos entre las 3).
 2. **Codera:** las dos de talle S/M subieron a $20.290 (escasez que vendió). La de talle Único sigue a $30.790 con el mismo stock. Cuando entre la caja (~02/11): (a) sugerida: dejar las tres al precio más caro que venda, empezando por igualar todas a $20.290 · (b) dejar la de talle Único como está.
 - **Para contarle (sin decisión):** la Recortadora 4 en 1 estaba en $32.999 con descuento a $29.990 (21% en el peor caso). Por su regla del 28/10 ("abajo del 35% aumentar ya") salió del descuento y cruzó a $48.990 (37%). Sigue esperando los 90 días (16/11) que eligió el 27/10 para bajar en escalera.
