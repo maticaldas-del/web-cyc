@@ -4914,7 +4914,17 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // los perfumes siguen con su 10% de F12 hasta los 15 días antes del stock antiguo). Sin saber la edad, no se baja del 35%.
       // Salida SÓLO SUYA: 🔐 !bajocero o un 🧨 remate autorizado.
       { const mgPeor = d.mgPA != null && Number.isFinite(Number(d.mgPA)) ? Number(d.mgPA) : (d.mgA != null && Number.isFinite(Number(d.mgA)) ? Number(d.mgA) : null);
-        if (mgPeor != null && mgPeor < BAJAR_MIN_PCT_JOVEN - 0.05 && !antiguo15 && !suya('bajocero') && !remOk && !renueva0) {
+        // 🧲 LIQUIDACIÓN DE LO QUE NO SE VENDE (29/10/2026, él eligió 1a 2a 3a: "ir a los extremos… lo que tiene sobrestock, está debajo
+        // del 35% o no se vende al 35% hace un tiempo, buscar vender lo máximo posible, así hacemos caja y eso lo ubicamos en productos
+        // que sí dan bien"): con stock 25+ de los últimos 30 días y CERO ventas, F13 se abre aunque lleve menos de 90 días, pero de a UN
+        // escalón por semana (≤15%, F5/F7 siguen) hasta el primero que vende; piso 0% (F0) y perfumes 10% (F12) siguen. Lo que vende
+        // abajo del 35% NO entra: sube (3a).
+        const liq30 = (() => { if (!lin) return false; const k30 = kDia(ahora - 30 * 864e5); let dd = 0, uu = 0;
+          for (const k of ks) { if (k < k30) continue; const x = lin[k]; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; } return dd >= 25 && uu === 0; })();
+        const bajoSemana = camb.some((c) => !c.rev && c.a < c.de * 0.99 && ahora - c.ts < 7 * 864e5);
+        if (liq30 && bajoSemana && mgPeor != null && mgPeor < BAJAR_MIN_PCT_JOVEN - 0.05 && !antiguo15 && !suya('bajocero') && !remOk && !renueva0)
+          return { regla: 'F13', txt: `🧲 liquidación (no vendió en 30 días): ya bajó esta semana, el próximo escalón abajo del ${BAJAR_MIN_PCT_JOVEN}% va a los 7 días (regla suya del 29/10)` };
+        if (mgPeor != null && mgPeor < BAJAR_MIN_PCT_JOVEN - 0.05 && !antiguo15 && !suya('bajocero') && !remOk && !renueva0 && !liq30) {
           if (edad13 == null) return { regla: 'F13', sinDato: true, txt: `a ${$(a)} queda en ${mgPeor}% y no sé cuántos días lleva la unidad más vieja en Full: abajo del ${BAJAR_MIN_PCT_JOVEN}% se baja sólo con 90+ días (regla suya del 27/10)` };
           if (edad13 < EDAD_LIBERA_CERO) return { regla: 'F13', txt: `a ${$(a)} queda en ${mgPeor}% en el peor caso y su unidad más vieja lleva ${edad13} d en Full: con menos de ${EDAD_LIBERA_CERO} días nunca abajo del ${BAJAR_MIN_PCT_JOVEN}% (regla suya del 27/10; a los ${EDAD_LIBERA_CERO} días se abre hasta el 0%, faltan ${EDAD_LIBERA_CERO - edad13} d). Salida SÓLO SUYA: 🔐 !bajocero con su autorización` };
         } }
