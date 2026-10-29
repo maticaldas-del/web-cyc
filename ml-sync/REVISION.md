@@ -867,6 +867,7 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 ## 2 · PLATA (martes)
 ### 💸 Cobro por crecimiento (29/10/2026; él eligió 1a: *"cobrar lo que crece cyc dividido 3"*, sin promedio de meses)
 - **Qué es:** `_cobroCrec(ym)` (index.html): (patrimonio del cierre − el del anterior) × dólar del cierre + el retiro de ESE mes (el arqueo se hace después de retirar) − `cyc/cobro_corr/<ym>` {ars, nota} (lo viejo que se cargó tarde: no es crecimiento) ÷ 3. Tarjeta `arq-cobro-crec` abajo de "Cerrar el mes" (`renderCobroCrec`); desde el cierre de octubre es el retiro supuesto del mes siguiente (`_retiroTarjetaDe`). `cyc/cobro_corr` en `CYC_KEYS`.
+- **Un solo número:** "💸 cuánto cobrar" de Ventas de hoy (`_homeCobroHtml`), con el mes cerrado, muestra `_cobroCrec`; en el mes en curso dice que es sólo ML.
 - **Qué chequear:** octubre da (3.059.248 + 1.800.000) ÷ 3 ≈ $1.620.000 c/u menos la corrección; que la misma cuenta salga en `cierrevs`; que el retiro de un mes cerrado nunca se calcule de su propio cierre.
 
 ### 📸 El botón de cerrar el mes dice si ya está cerrado (29/10/2026, v27.76; él: *"ya cerré octubre y parece que no se dio cuenta la app. dice que todavía no cerré el mes"*)
