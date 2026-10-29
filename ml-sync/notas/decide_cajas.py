@@ -191,6 +191,27 @@ for cta in sorted({o['cta'] for o in out}):
             o['cola']=f"✂️ por el cupo de Full de {cta} ({cu['gra'] if o['grande'] else cu['peq']} {b}) entran {d} de {o['q']} (faltan {o['q']-d}) · "+o['cola']
             recortes.append(f"{o['nom']} → {cta}: {o['q']} → {d}")
             o['q']=d
+# LOS GRANDES VAN EN CAJA APARTE (28/10/2026, él: "los tenders son productos grandes, ML no permite mandar juntos. los tenders se mandan
+# en cajas solos"): si a una cuenta le va algo chico, los grandes de esa cuenta quedan en 0 (van en su propia caja). Igual que la web.
+for cta in set(o['cta'] for o in out):
+    if any(o['cta']==cta and o['q']>0 and not o['grande'] for o in out):
+        for o in out:
+            if o['cta']==cta and o['grande'] and o['q']>0:
+                o['cola']=f"📦 grande: va en caja aparte (ML no deja mezclarlo con chicos), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (caja aparte)");o['q']=0
+# LAS DECISIONES A MANO DE LA VUELTA NO SE PISAN (28/10/2026, error mío: al rearmar las cajas pisé las de la completa —Cartas Casino 0,
+# Paulvic 0, Tendedero 0— y mandaba 97 Cartas recién subidas de precio). Si el cajas.txt anterior tiene un renglón con motivo escrito
+# a mano (no el texto automático "vende … · hay … en Full"), se queda ese, salvo que el producto no tuviera nada en la oficina antes.
+_prev={}
+if os.path.exists('cajas.txt'):
+    for l in open('cajas.txt'):
+        mm=re.match(r'(caja:[^=]+)=u\|(\d+)\|(.*)',l.strip())
+        if mm: _prev[mm.group(1)]=(int(mm.group(2)),mm.group(3))
+_auto=re.compile(r'^(✂️|📦 grande|vende |vendió |al precio de hoy|agotado|nuevo|sin ventas|nunca vendió)')
+mantenidos=[]
+for o in out:
+    pv=_prev.get(o['cab'])
+    if pv and not _auto.match(pv[1]) and pv[0]!=o['q'] and len(sys.argv)<3:
+        mantenidos.append(f"{o['nom']} → {o['cta']}: queda {pv[0]} (decisión anterior: {pv[1][:80]})");o['q']=pv[0];o['cola']=pv[1]
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
 out=[f"{o['cab']}=u|{o['q']}|{o['cola']}" for o in out]
@@ -198,6 +219,7 @@ bad=[x for x in out if ';' in x]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('cajas.txt','w').write('\n'.join(out)+'\n')
 print(len(out),'renglones de caja ·',nOfi,'productos con mercadería en la oficina');print('\n'.join(res))
+if mantenidos: print('🔒 DECISIONES ANTERIORES QUE SE QUEDAN (para pisarlas: correr con un 2º argumento cualquiera) ·',len(mantenidos),*mantenidos,sep='\n  ')
 print(f"estirados a {T_LARGO} días (venden parejo, sin prueba abierta): {len(largos)}",*largos,sep='\n  ')
 if SIN_ESTIRAR is None: print('⚠️ no encontré sin_estirar.txt: todo quedó en 37 días')
 if CUPO: print('cupo de Full leído: '+' · '.join(f"{c} {v['peq'] if v['peq'] is not None else '?'}/{v['gra'] if v['gra'] is not None else '?'}" for c,v in CUPO.items()))

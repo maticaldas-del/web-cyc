@@ -3183,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.74';
+const APP_VERSION='27.75';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3196,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.75',f:'29/10',h:'21:10',c:[{n:2,t:'📦 Armar caja: los grandes (Tenders) ya no se cargan junto con los chicos: ML no deja mezclarlos, van en su propia caja'}]},
   {v:'27.74',f:'28/10',h:'20:20',c:[{n:1,t:'📋 Listas: los proveedores en un desplegable; el elegido muestra su dirección (abre el mapa). En Productos nuevos, ordenar por más % de ganancia, más rotación o ⭐ el que más vende y más gana'}]},
   {v:'27.73',f:'28/10',h:'20:10',c:[{n:1,t:'📄 "Verlo en la lista" en las listas copiadas de la web (Once): muestra la foto del mayorista grande, nombre, precio y un botón para buscarlo en su web'}]},
   {v:'27.72',f:'28/10',h:'19:55',c:[{n:1,t:'📍 Pedidos → Bs As → Listas de Tito: "Direcciones de los mayoristas", cada una abre el mapa'}]},
@@ -7633,6 +7634,10 @@ function cajaLlenarCupoPlan(cands,topePeq,topeGra){
     const d=dado[c.key]||0;
     if(d<c.u)fuera.push({nombre:c.nombre,falta:c.u-d,dado:d,grande:!!c.grande});
   }
+  // LOS GRANDES VAN EN CAJA APARTE (28/10/2026, él: "los tenders son productos grandes, ML no permite mandar juntos. los tenders se mandan en
+  // cajas solos"): si en la caja hay chicos, los grandes quedan afuera (van en su propia caja, cuando no haya chicos para esa cuenta).
+  {const hayPeq=orden.some(c=>!c.grande&&(dado[c.key]||0)>0);
+   if(hayPeq)for(const c of orden)if(c.grande&&(dado[c.key]||0)>0){fuera.push({nombre:c.nombre,falta:dado[c.key],dado:0,grande:true,aparte:true});lib.gra+=dado[c.key];delete dado[c.key];}}
   const usado={peq:0,gra:0};
   for(const c of orden){const d=dado[c.key]||0;if(d>0)usado[c.grande?'gra':'peq']+=d;}
   return {items:dado,usadoPeq:usado.peq,usadoGra:usado.gra,
@@ -7795,7 +7800,7 @@ function renderOfiCaja(){
       const gC=_ganCta[l]||0;
       return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
         +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
-        +(gC>0?`<div style="font-size:.7rem;color:var(--green);font-weight:700" title="Lo que deja vender ${u?'la caja a medio armar':'lo que entra en el cupo'} (ganancia por unidad de hoy)">💵 ${fmt(Math.round(gC))}</div>`:'')+`</button>`;
+        +(gC>0?`<div style="font-size:.7rem;color:var(--green);font-weight:700" title="Lo que dejan esas unidades CUANDO SE VENDAN (ganancia por unidad de hoy). No es lo que se pierde si esperás: eso lo dice 'Podés esperar / Mandala ya'">💵 ${fmt(Math.round(gC))} <span style="font-weight:400;color:var(--muted)">al venderse</span></div>`:'')+`</button>`;
     }).join('');
   // Con una cuenta elegida se entra en MODO ARMAR CAJA: se listan TODOS los productos que hay en
   // casa (no solo los que la cuenta "necesita"), cada uno con una casilla para poner cuántos van
