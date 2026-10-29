@@ -3183,7 +3183,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='27.76';
+const APP_VERSION='27.77';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3196,6 +3196,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'27.77',f:'29/10',h:'01:05',c:[{n:1,t:'📸 Fotos por color: si la publicación de ese color todavía no tiene foto (recién creada), usa la del mismo color en otra cuenta y nunca la de otro color (el P47 negro mostraba uno rojo)'}]},
   {v:'27.76',f:'29/10',h:'00:30',c:[{n:2,t:'📦 Armar caja: si la caja ya usa todo el cupo de Full que queda, dice MANDALA YA (antes decía "esperá y juntá más", y esperar no la llena: lo vendido no devuelve cupo)'},{n:2,t:'📸 Arqueo: con el mes ya cerrado, el botón dice "✅ Octubre ya está cerrado" (antes seguía diciendo "Cerrar Octubre")'}]},
   {v:'27.75',f:'29/10',h:'21:10',c:[{n:2,t:'📦 Armar caja: los grandes (Tenders) ya no se cargan junto con los chicos: ML no deja mezclarlos, van en su propia caja'}]},
   {v:'27.74',f:'28/10',h:'20:20',c:[{n:1,t:'📋 Listas: los proveedores en un desplegable; el elegido muestra su dirección (abre el mapa). En Productos nuevos, ordenar por más % de ganancia, más rotación o ⭐ el que más vende y más gana'}]},
@@ -4935,15 +4936,21 @@ async function verFoto(prodId,nombre,variante,cuenta){
 function fotoDeProducto(p,variante,cuenta){
   if(!p)return null;
   if(variante){
-    const e=pubDeVariante(p.id,cuenta||'',variante,(x)=>!!x.foto);
+    const e=pubDeVariante(p.id,cuenta||'',variante,(x)=>!!x.foto)
+      // La publicación de ESA cuenta todavía sin foto (recién creada): la del mismo color en otra cuenta.
+      ||(cuenta?pubDeVariante(p.id,'',variante,(x)=>!!x.foto):null);
     if(e&&e.foto)return {url:e.foto,fuente:'ml-var'};
   }
+  // Con color pedido, nunca la foto de una publicación de OTRO color (29/10, él: "¿por qué el p47 negro
+  // en la foto es rojo?" — la de Ayelen recién creada no tenía foto y caía en la primera del producto).
+  const vars=variante?((p.variantes)||[]):[];
+  const deOtroColor=(e)=>{if(!variante)return false;const pv=e.variant||_matchProdVariant(e.title||'',vars);return !!pv&&normTxt(pv)!==normTxt(variante);};
   if(p.fotoUrl)return {url:p.fotoUrl,fuente:'mano'};
   if(p.foto)return {url:null,fuente:'subida'};   // está guardada aparte: la abre verFoto, no se puede mostrar inline
   const L=state.mllinks||{};
   let cerrada=null;
   for(const e of Object.values(L)){
-    if(!e||e.prodId!==p.id||e.ignored||!e.foto)continue;
+    if(!e||e.prodId!==p.id||e.ignored||!e.foto||deOtroColor(e))continue;
     // Gana una publicación VIVA: la foto de una cerrada puede ser de una versión que ya no vendés.
     if((e.status||'')==='closed'){if(!cerrada)cerrada=e.foto;continue;}
     return {url:e.foto,fuente:'ml'};
