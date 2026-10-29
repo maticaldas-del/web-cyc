@@ -4028,6 +4028,11 @@ dos veces con el valor a mano del Arqueo; (3) que lo apartado para la perfumerí
 tenga costo, unidades y perfumería, y que lo que salió de una oficina se haya restado; (5) lo que él pidió en el mes y todavía falta.
 Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lista de deudas" y "🛍️ Mercadería Perfumería".
 
+### 🛍️ Una sola tarjeta PERFUMERÍA en Lo que nos deben (29/10/2026, v28.02; él: *"unificar en PERFUMERÍA. en la tarjeta antes de clickear que muestre sólo los pesos de ganancia. adentro… Mercadería y MercadoPago"*)
+- **Qué es:** la web junta a la vista "Mercaderia Perfumeria" (→ Mercadería) y "Deuda Perfumeria" (→ MercadoPago) en una tarjeta: afuera +$ganancia y el total; adentro las dos con su detalle. Los datos siguen separados (`debenmov:mercaderia perfumeria…` / `debenmov:deuda perfumeria…` como antes).
+- **Dónde vive:** `index.html` (`renderCuotas`: `_perfG`, `_cuotaPerfIds`; `cuotaToggle`).
+- **Qué chequear:** que el total de la tarjeta sea la suma de las dos y que "falta cobrar" no cambie.
+
 ### 🏷️ Oficina ML y Oficina Local (29/10/2026, v27.95, él: *"OFICINA CYC quiero que se llame oficina LOCAL y oficina mía que sea OFICINA ML"*)
 - **Qué es:** sólo nombres que se ven (menú, títulos, Arqueo, avisos de "Llegó"); las claves de la base no cambian (`Oficina_Mati`, `of_mia`, `of_viejo`, `cyc/oficyc`). `debenmov` acepta `de=local`/`de=ml`.
 - **Qué chequear:** que no quede "Mi oficina"/"Oficina CYC" a la vista (los comentarios y el historial de cambios quedan como estaban).
