@@ -40278,7 +40278,7 @@ async function main() {
       const [id, d] = cand[0]; const signo = m[1] === '+' ? 1 : -1, antes = saldo(d), despues = Math.max(0, antes + signo * monto);
       console.log(`=== MOVIMIENTO EN "${d.nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
-      if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / montoU * 100)}%)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
+      if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
       console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? '  ⚠️ devolvió más de lo que debía' : ''}`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
       // Un pago CON producto (`=-N|prod=…[|local=…]`) marca pagado el producto dejado que corresponde (el más viejo sin pagar): queda en verde.
