@@ -41697,6 +41697,70 @@ async function main() {
     //   · qué precio haría falta para el piso,
     //   · las últimas ventas con su precio, para ver a qué precio vende de verdad.
     // Solo LEE.
+    // BILLING_PROBE=ofi35 (29/10/2026, él: "qué producto de mi oficina no llega al 35%, ni vs competidores en ML ni vs la venta más
+    // alta de los últimos 30 días. Así lo que no da ya lo bajo al local y lo vendo acá"). SOLO LEE. Para cada ficha con unidades en la
+    // Oficina Mati: el % del peor caso (misma cuenta que `unapub`: comisión que pide ML a ESE precio, envío 0 abajo de $33.000 y el peor
+    // de Full arriba, impuestos de la cuenta) a (1) el precio de la competencia = el techo con Full de `techofull` (lo más caro que se
+    // puede cobrar contra los otros vendedores del catálogo) y (2) el precio más caro que se vendió en 30 días (cualquier publicación
+    // de la ficha, sin canceladas). No da = ninguno de los dos llega al 35%.
+    if (/^ofi35(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const MIN = 35;
+      const fin = (await db.get('cyc/finanzas')) || {}; const tc = parseFloat(fin.tipo_cambio) || 0;
+      if (!(tc > 0)) { console.log('⚠️ Sin dólar cargado no mido nada.'); return; }
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const [inv, links, vp, techo, npAll] = await Promise.all(['cyc/inventory', 'cyc/mllinks', 'cyc/ventaprod', 'cyc/techofull', 'cyc/netopub'].map((r) => db.get(r).then((x) => x || {}).catch(() => ({}))));
+      const ofiK = '__' + sid('Oficina Mati');
+      const uOfi = {};
+      for (const [k, q] of Object.entries(inv)) { const i = k.indexOf(ofiK); if (i < 0) continue; const n = parseInt(q) || 0; if (n > 0) uOfi[k.slice(0, i)] = (uOfi[k.slice(0, i)] || 0) + n; }
+      // las variantes se guardan aparte: si hay alguna, el total sale de ellas (la clave sin variante puede ser el total o vieja)
+      for (const pid of Object.keys(uOfi)) { const vs = Object.entries(inv).filter(([k]) => k.startsWith(pid + ofiK + '__v__')); if (vs.length) uOfi[pid] = vs.reduce((a, [, q]) => a + Math.max(0, parseInt(q) || 0), 0); }
+      const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const desde = Date.now() - 30 * 864e5;
+      const maxVenta = {};
+      for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
+        if (!v || v.cancelada || !v.prodId || (v.ts || 0) < desde) continue; const q = v.qty || 1; const pu = (v.total || 0) / q;
+        if (pu > (maxVenta[v.prodId] || 0)) maxVenta[v.prodId] = pu;
+      }
+      const pubsDe = {};
+      for (const [mla, e] of Object.entries(links)) { if (!e || !e.prodId || e.ignored || (e.status || '') === 'closed' || e.gemelaTipo || e.gemelaDe) continue; (pubsDe[e.prodId] = pubsDe[e.prodId] || []).push({ mla, ...e }); }
+      const toks = {}; for (const l of labels) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[l].refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[l] = t.access_token; } catch { /* */ } }
+      const items = {};
+      for (const l of labels) { if (!toks[l]) continue; const ids = []; for (const pid of Object.keys(uOfi)) for (const x of pubsDe[pid] || []) if (x.cuenta === l) ids.push(x.mla);
+        for (let k = 0; k < ids.length; k += 20) { try { const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,listing_type_id,category_id,site_id', toks[l]); for (const r of arr || []) if (r && r.code === 200 && r.body) items[r.body.id] = { ...r.body, cuenta: l }; } catch { /* */ } } }
+      const feeC = {};
+      const fee = async (b, pr) => { const k = b.listing_type_id + '|' + b.category_id + '|' + Math.round(pr); if (feeC[k] !== undefined) return feeC[k];
+        let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(pr)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, toks[b.cuenta]); const x = Array.isArray(d) ? d[0] : d; if (typeof x?.sale_fee_amount === 'number') o = x.sale_fee_amount; } catch { o = null; }
+        feeC[k] = o; return o; };
+      const filas = [], sinPub = [], sinDato = [];
+      for (const [pid, u] of Object.entries(uOfi)) {
+        const p = pIdx[pid]; if (!p) continue;
+        if (p.soloLocal || p.sololocal) continue;
+        const ps = (pubsDe[pid] || []).map((x) => items[x.mla]).filter((b) => b && b.listing_type_id !== 'gold_pro');
+        if (!ps.length) { sinPub.push({ p, u }); continue; }
+        const b = ps.find((x) => x.status === 'active') || ps[0];
+        const costo = costoPesos(p, 1, tc).costo; const m = (mlExtraPct(b.cuenta) + monoP) / 100;
+        const npU = npAll[b.id] || {};
+        const mgA = async (pr) => { if (!(pr > 0)) return null; const com = await fee(b, pr); if (com == null) return null;
+          const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+          const mlx = pr * m; const neto = pr - com - env; return (neto - costo - mlx) / (costo + mlx + env) * 100; };
+        const tf = techo[b.id] || null; const pComp = tf && tf.t ? Number(tf.t) : null;
+        const pVen = maxVenta[pid] || null;
+        const mc = await mgA(pComp), mv = await mgA(pVen), mh = await mgA(Number(b.price) || 0);
+        if (mc == null && mv == null) { sinDato.push({ p, u, b, mh }); continue; }
+        filas.push({ p, u, b, costo, pComp, pVen, mc, mv, mh, da: (mc != null && mc >= MIN) || (mv != null && mv >= MIN) });
+      }
+      const $ = (n) => n == null ? '—' : money(Math.round(n)); const pc = (x) => x == null ? '—' : x.toFixed(0) + '%';
+      const no = filas.filter((f) => !f.da).sort((a, b) => b.u * b.costo - a.u * a.costo);
+      console.log(`=== 🏠 OFICINA: ¿LLEGA AL ${MIN}%? · ${Object.keys(uOfi).length} fichas con unidades en la oficina · SOLO LEE ===`);
+      console.log(`(competencia = lo más caro que se puede cobrar contra los otros vendedores del catálogo · venta = la más cara de 30 días)\n`);
+      console.log(`── ❌ NO LLEGAN AL ${MIN}% NI CONTRA LA COMPETENCIA NI A LA VENTA MÁS CARA (${no.length}) · candidatos al local ──`);
+      for (const f of no) console.log(`  · ${String(f.p.name).slice(0, 55)} · ${f.u} u. en la oficina · costo ${$(f.costo)} · competencia ${$(f.pComp)} → ${pc(f.mc)} · venta más cara ${$(f.pVen)} → ${pc(f.mv)} · hoy ${$(f.b.price)} → ${pc(f.mh)} (${f.b.cuenta})`);
+      console.log(`\n── ✅ SÍ LLEGAN (${filas.length - no.length}) ──`);
+      for (const f of filas.filter((x) => x.da)) console.log(`  · ${String(f.p.name).slice(0, 55)} · ${f.u} u. · competencia ${pc(f.mc)} · venta más cara ${pc(f.mv)}`);
+      if (sinDato.length) { console.log(`\n── ❓ SIN COMPETENCIA MEDIDA NI VENTAS EN 30 DÍAS (${sinDato.length}): sólo el % de hoy ──`); for (const x of sinDato) console.log(`  · ${String(x.p.name).slice(0, 55)} · ${x.u} u. · hoy ${$(x.b.price)} → ${pc(x.mh)} (${x.b.cuenta})`); }
+      if (sinPub.length) { console.log(`\n── 📭 EN LA OFICINA SIN PUBLICACIÓN EN ML (${sinPub.length}) ──`); for (const x of sinPub) console.log(`  · ${String(x.p.name).slice(0, 55)} · ${x.u} u.`); }
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('unapub')) {
       const _u = String(process.env.BILLING_PROBE).split(':');
       let MLA = (_u[1] || '').trim().toUpperCase();
