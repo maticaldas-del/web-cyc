@@ -37,6 +37,7 @@ PASO 2 · COPIAR LA LISTA
          listamedir:Imega:go
 
 QUÉ NO HACER
+ - NO copies productos de MARCA REAL conocida (Samsung, JBL, Apple, Sony, Xiaomi, Lattafa, L'Oréal, etc.): en el Once son imitaciones y no se pueden vender en ML. Sí: genéricos o con marcas inventadas. Si ya se cargó uno, se saca con:  lista:<mayorista>|borrar;<nombre exacto o código>;<otro>;go
  - No cargues datos de personas (nombres, teléfonos, CUIT): sólo el nombre del negocio, productos y precios.
  - No compres nada ni escribas al mayorista.
  - No inventes un precio: si no está claro, salteá ese producto.
