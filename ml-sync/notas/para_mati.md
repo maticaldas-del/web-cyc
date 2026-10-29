@@ -167,3 +167,8 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 
 ## 28/10 · De la vuelta de las 13:52
 - **¿Una venta con plata que pone ML (cupón) cuenta como "vendió a este precio" para subir +50%?** Caso: Sábanas 1½ Beige, 3 juegos a $18.990, pero ML puso $7.000 y el comprador pagó unos $16.660 por juego (menos que los $17.990 de antes de la suba). (a) sugerida: cuenta lo que pagó el comprador, así que una venta con cupón de ML no dispara el +50% · (b) cuenta lo que cobramos nosotros. Hoy no cambia nada (la Sábana vende menos de 1 por semana y no sube igual).
+
+## 29/10 · De la completa de las 03:00
+1. **P47 azul en Matías** (3 u. de 174 días, sin reposición en esa cuenta): a $10.990 venden ~1 por semana y dejan ~$3.400 cada una; el 04/11 cumplen 180 días y desde el 12/11 cada una que quede paga ~$3.250. La regla de los 15 días antes de pagar pide ganar la caja (ML pide $7.245, deja ~$450 cada una). (a) sugerida: quedan a $10.990 y, si el 08/11 queda alguna, un escalón como descuento hacia la caja · (b) ganar la caja ya (unos $8.800 menos entre las 3).
+2. **Codera:** las dos de talle S/M subieron a $20.290 (escasez que vendió). La de talle Único sigue a $30.790 con el mismo stock. Cuando entre la caja (~02/11): (a) sugerida: dejar las tres al precio más caro que venda, empezando por igualar todas a $20.290 · (b) dejar la de talle Único como está.
+- **Para contarle (sin decisión):** la Recortadora 4 en 1 estaba en $32.999 con descuento a $29.990 (21% en el peor caso). Por su regla del 28/10 ("abajo del 35% aumentar ya") salió del descuento y cruzó a $48.990 (37%). Sigue esperando los 90 días (16/11) que eligió el 27/10 para bajar en escalera.
