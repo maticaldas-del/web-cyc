@@ -39063,6 +39063,7 @@ async function main() {
       const cw = await armarCostoWeb(db, vp);
       const compras = (await db.get('cyc/compras')) || {};
       const retM = (await db.get('cyc/retiro_mes')) || {};
+      const debC = (await db.get('cyc/debencuotas')) || {};
       const $ = (n) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('es-AR');
       const u = (n) => (n < 0 ? '−US$ ' : 'US$ ') + Math.abs(Math.round(n)).toLocaleString('es-AR');
       const F = (s, ks) => ks.reduce((a, k) => a + (parseFloat((s.finanzas || {})[k]) || 0), 0);
@@ -39078,10 +39079,19 @@ async function main() {
           for (const v of Object.values(ents || {})) { if (!v) continue; if (v.cancelada) { canc++; continue; } const c = cw(v, dk); if (c.sinCosto) sinC++; neto += Number(v.neto) || 0; costo += c.sinCosto ? Math.max(Number(v.neto) || 0, c.costo || 0) : (c.costo || 0); } }
         let gastos = 0, nG = 0; for (const x of Object.values(compras)) if (x && x.tipo !== 'mercaderia' && String(x.dayKey || '').startsWith(k1)) { gastos += Number(x.monto) || 0; nG++; }
         const rr = retM[k1]; const ret = rr != null && rr !== '' ? Number(rr) : null;
-        const genera = neto - costo - gastos, esperado = genera - (ret || 0);
+        // El local (29/10/2026): la ganancia de lo dejado en las perfumerías y de las otras ventas a cuenta, igual que `_metLocalDia` de la web.
+        let ganLoc = 0;
+        { const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const D = Object.values(debC || {}).filter((d) => d && typeof d === 'object' && d.nom);
+          const M = D.find((d) => /perfumeria/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
+          const kOf = (f) => String(f || '').slice(0, 10).replace(/-/g, '_');
+          if (M) for (const x of Object.values(M.movs || {})) if (x && Number(x.m) > 0 && x.prodNom && kOf(x.f).startsWith(k1) && x.gan != null) ganLoc += Number(x.gan) || 0;
+          for (const d of D) { if (d === M || /perfumeria/.test(_n(d.nom)) || !(Number(d.costo) > 0)) continue;
+            if (kOf(d.fecha0 || (d.ts ? new Date(Number(d.ts)).toISOString() : '')).startsWith(k1)) ganLoc += (Number(d.monto) || 0) - Number(d.costo); } }
+        const genera = neto - costo - gastos + ganLoc, esperado = genera - (ret || 0);
         const crecioU = Number(B.total) - Number(A.total), crecio = crecioU * tc;
         console.log(`■ ${k1} (contra ${k0}) · dólar ${tc}${tc0 && tc0 !== tc ? ` (el anterior ${tc0})` : ''}`);
-        console.log(`   el negocio generó ${$(genera)} (neto ${$(neto)} − costo ${$(costo)} − gastos ${$(gastos)} en ${nG}) · retiro ${ret == null ? 'SIN CARGAR' : $(ret)} → debería crecer ${$(esperado)}`);
+        console.log(`   el negocio generó ${$(genera)} (neto ${$(neto)} − costo ${$(costo)} − gastos ${$(gastos)} en ${nG}${ganLoc ? ` + local ${$(ganLoc)}` : ''}) · retiro ${ret == null ? 'SIN CARGAR' : $(ret)} → debería crecer ${$(esperado)}`);
         console.log(`   creció el patrimonio ${$(crecio)} (${u(crecioU)}) · DIFERENCIA ${$(crecio - esperado)} (${u((crecio - esperado) / (tc || 1))})${canc ? ` · ${canc} canceladas afuera` : ''}${sinC ? ` · ${sinC} ventas sin costo` : ''}`);
         const d = (a, b) => u(b - a);
         // Revisión Plata 27/10/2026: las partes tienen que sumar lo que creció. Lo vendido sin reporte (`vsrUSD`) es plata, la
@@ -39094,6 +39104,20 @@ async function main() {
         if (tc0 && tc && tc0 !== tc) console.log(`   ojo: el dólar pasó de ${tc0} a ${tc}: lo que está en pesos (MP, efectivo) cambia en dólares sin que pase nada`);
         console.log('');
       }
+      return;
+    }
+    // BILLING_PROBE=recon → lo último que calculó la web en "🔍 ¿Cierra el mes?" en vivo (29/10/2026, él: "¿qué tan lejos está el arqueo?").
+    // La web lo deja en cyc/recon_vivo cada vez que se abre el Arqueo (mes sin cerrar, contra el último cierre). SOLO LEE.
+    if (process.env.BILLING_PROBE === 'recon') {
+      const r = (await db.get('cyc/recon_vivo')) || null;
+      if (!r) { console.log('Todavía no hay nada: la web lo guarda al abrir el Arqueo.'); return; }
+      const $ = (n) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(Number(n) || 0)).toLocaleString('es-AR');
+      const hace = r.ts ? Math.round((Date.now() - r.ts) / 6e4) : null;
+      console.log(`=== 🔍 ¿Cierra el mes? ${r.ym} contra el cierre ${r.base} · calculado hace ${hace} min · dólar ${r.tc} ===`);
+      console.log(`neto ML ${$(r.neto)} − costo ${$(r.costo)} − gastos ${$(r.gastos)} + ganancia local ${$(r.ganLocal)} = generó ${$(r.genera)}`);
+      console.log(`− retiro ${$(r.retiro)}${r.retSupuesto ? ' (supuesto)' : ''} = debería crecer ${$(r.esperado)}`);
+      console.log(`creció el patrimonio ${$(r.crecio)} (US$ ${r.baseTotal} → US$ ${r.total})`);
+      console.log(`DIFERENCIA ${$(r.dif)} (${r.dif < 0 ? 'falta' : 'sobra'})`);
       return;
     }
     if (/^cobromes(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {

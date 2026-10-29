@@ -2586,7 +2586,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -3222,7 +3222,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.17';
+const APP_VERSION='28.18';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3235,6 +3235,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.18',f:'29/10',h:'22:40',c:[{n:3,t:'🔍 ¿Cierra el mes?: ahora suma la ganancia del local (lo dejado en las perfumerías y las otras ventas a cuenta). Antes cada entrega al local se veía como plata que sobraba.'}]},
   {v:'28.17',f:'29/10',h:'22:15',c:[{n:2,t:'📊 Métricas → 🔀 ML + Local: en la Tendencia, ML abajo relleno de azul y el local arriba relleno de naranja (la línea de arriba es el total), como agua y aceite.'}]},
   {v:'28.16',f:'29/10',h:'22:00',c:[{n:1,t:'📊 Métricas → 🏪 Local: sin el botón 💚 Neto (en el local es igual al Total).'}]},
   {v:'28.15',f:'29/10',h:'21:45',c:[{n:1,t:'📊 Métricas: se sacó 🏢 Ganancia CYC (es la ganancia dividida en 3) y la pantalla se llama "Métricas" (ya no es sólo ML).'}]},
@@ -10700,7 +10701,11 @@ function renderReconciliacion(){
   // resta la que ya existía hasta ese mes: así el mes sólo carga con SU parte (lo que H suma este mes).
   const arcaPrevFalta=(snap.arcaARS==null&&(endSnap?Number(endSnap.arcaARS)>0:cArq.arcaDeuda>0))?arcaDeudaARS(snapKey).ars:0;
   const dP=Math.round((arqNow-snap.total)*tc)+arcaPrevFalta;  // cuánto creció el patrimonio (pesos, aprox)
-  const genera=P.neto-P.costo-P.gastos;         // lo que generó el negocio
+  // EL LOCAL TAMBIÉN GENERA (29/10/2026, él: "ahora sí debería dar exacto el arqueo, porque antes no tenía en cuenta local"): lo que se le
+  // deja a las perfumerías y las otras ventas a cuenta suben "Deben a CYC" y bajan la oficina; la diferencia es su ganancia, que el patrimonio
+  // ya refleja. Sin sumarla acá, cada entrega al local se leía como "Sobra". Los préstamos (sin costo ni ganancia) son neutros.
+  _metLocMemo=null;let ganLocal=0;{const LD=_metLocalDia();Object.keys(LD).forEach(k=>{if(_mesesEval.some(m=>k.startsWith(m)))Object.values(LD[k]).forEach(o=>ganLocal+=o.g||0);});}
+  const genera=P.neto-P.costo-P.gastos+ganLocal;         // lo que generó el negocio (ML + local)
   // Retiro de cada mes: el cargado, o el supuesto de ese mes (`retiroDefMes`).
   let retiroUsado=0,_retFaltan=0;
   for(const x of _Ps){const rr=state.retiro_mes&&state.retiro_mes[x.m];if(rr!=null&&rr!==''){retiroUsado+=Number(rr)||0;}else{retiroUsado+=x.P.retiro;_retFaltan++;}}
@@ -10712,6 +10717,8 @@ function renderReconciliacion(){
   if(Math.abs(dif)<=umbral){col='#22c55e';verdict='✓ Cierra bien';expl='Los números cuadran: lo que ganó el negocio se ve reflejado en el patrimonio.';}
   else if(dif<0){col='#ef4444';verdict='🔴 Falta plata';expl=`Salieron <strong>${fmt(-dif)}</strong> que no están anotados. Revisá: gastos sin cargar, retiros de más, o pérdidas/roturas de stock este mes.`;}
   else{col='#f59e0b';verdict='🟡 Sobra';expl=`El patrimonio creció <strong>${fmt(dif)}</strong> más que la ganancia. Puede ser un valor cargado de más en el arqueo, o plata que entró y no es de ventas.`;}
+  if(!_arqViewYM&&!endSnap){try{const r={ym,base:snapKey,esperado:Math.round(esperado),crecio:Math.round(dP),dif:Math.round(dif),genera:Math.round(genera),ganLocal:Math.round(ganLocal),neto:Math.round(P.neto),costo:Math.round(P.costo),gastos:Math.round(P.gastos),retiro:Math.round(retiroUsado),retSupuesto:retReal==null,tc,total:Math.round(arqNow*100)/100,baseTotal:Number(snap.total)};
+    const o=state.recon_vivo||{};if(o.ym!==r.ym||Math.abs((o.dif||0)-r.dif)>1000||Date.now()-(o.ts||0)>36e5){r.ts=Date.now();state.recon_vivo=r;fbSet('recon_vivo',r).catch(()=>{});}}catch(_){}}   // para que el robot pueda leerlo (recon)
   const mesLbl=MONTHS[parseInt(mm,10)-1]+' '+yy;
   const row=(lbl,val,extra='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${lbl}</span><span style="font-family:'DM Mono',monospace;${extra}">${val}</span></div>`;
   el.innerHTML=card(`
@@ -10724,7 +10731,7 @@ function renderReconciliacion(){
       ${row('Creció el patrimonio (arqueo)',fmt(dP))}
       <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
     </div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>${_mesesEval.length>1?`<span style="color:var(--amber)">Suma ${_mesesEval.length} meses (${_mesesEval.map(m=>MONTHS[parseInt(m.split('_')[1],10)-1]).join(' + ')}): el último cierre es ${state.snapshots[snapKey].label||snapKey}. Cerrá el mes anterior para ver uno solo.</span><br>`:''}El negocio generó ${fmt(genera)} · retiro ${retReal!=null?'cobrado':'supuesto ('+retiroDefTxt(ym)+')'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).${arcaPrevFalta>0?`<br><span style="color:var(--amber)">La deuda con ARCA de los meses anteriores (${fmt(arcaPrevFalta)}) no se le cobra a este mes: es un ajuste de una sola vez. Acá cuenta sólo lo que H suma este mes.</span>`:''}</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:10px;line-height:1.5">${expl}<br>${_mesesEval.length>1?`<span style="color:var(--amber)">Suma ${_mesesEval.length} meses (${_mesesEval.map(m=>MONTHS[parseInt(m.split('_')[1],10)-1]).join(' + ')}): el último cierre es ${state.snapshots[snapKey].label||snapKey}. Cerrá el mes anterior para ver uno solo.</span><br>`:''}El negocio generó ${fmt(genera)}${ganLocal?` (ML ${fmt(genera-ganLocal)} + local ${fmt(ganLocal)})`:''} · retiro ${retReal!=null?'cobrado':'supuesto ('+retiroDefTxt(ym)+')'} ${fmt(retiroUsado)}${retReal==null?' <span style="color:var(--amber)">(cargá el retiro real arriba para precisión)</span>':''}. Patrimonio pasado a pesos al dólar ${fmt(tc)} (aprox).${arcaPrevFalta>0?`<br><span style="color:var(--amber)">La deuda con ARCA de los meses anteriores (${fmt(arcaPrevFalta)}) no se le cobra a este mes: es un ajuste de una sola vez. Acá cuenta sólo lo que H suma este mes.</span>`:''}</div>
   `,col);
 }
 
