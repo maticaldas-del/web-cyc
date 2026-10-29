@@ -1136,7 +1136,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         <button class="ht-ped-b" onclick="event.stopPropagation();homeArqIr('deudas')" title="Ver deudas">📥<span> Ver deudas</span></button>
       </div>
     </div>
-    <div class="nav-card nc4 ht" onclick="goPage('metricas')" title="Ventas diarias por cuenta. Gráficos y análisis mensual.">
+    <div class="nav-card nc4 ht" onclick="goPage('metricas')" title="Métricas de ML y del local. Gráficos y análisis mensual.">
       <span class="nc-icon">📊</span>
       <div class="nc-title">Métricas</div>
       <div class="nc-desc">gráficos</div>
@@ -1879,8 +1879,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <button class="back-btn" onclick="goPage('home')">← Inicio</button>
       <div class="ph-logo" id="met-logo"></div>
       <div>
-        <div class="ph-title">Métricas ML</div>
-        <div class="ph-sub">Ventas diarias por cuenta · Gráficos</div>
+        <div class="ph-title">Métricas</div>
+        <div class="ph-sub">ML y local · Gráficos</div>
       </div>
     </div>
     <div class="ph-right">
@@ -1917,7 +1917,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
       <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
       <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <button class="vbtn"        id="met-field-gananciaCYC" onclick="setMetField('gananciaCYC')" title="Ganancia de CYC = Ganancia − Gastos − Retiro de los dueños. Es el mismo número que 'Ganancia real CYC' del Resumen. El retiro y los gastos del mes se restan enteros el primer día del mes con ventas: no se reparte nada. OJO: sólo resta los gastos CARGADOS — lo que falta cargar (intereses, obra social, lo que cobra Full por almacenamiento) hace que se vea MÁS ALTA de la real.">🏢 Ganancia CYC</button>
+      <!-- 🏢 Ganancia CYC se sacó el 29/10/2026 (él: "sacar ganancia de CYC, ya que es ganancia dividido 3") -->
     </div>
     <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
     <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
@@ -2060,7 +2060,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   <div class="stitle" id="met-local-t">🏪 Local <span id="met-local-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-local"></div>
 
-  <footer>CYC · Métricas ML · datos independientes</footer>
+  <footer>CYC · Métricas · datos independientes</footer>
 </div>
 </div>
 
@@ -3222,7 +3222,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.14';
+const APP_VERSION='28.15';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3235,6 +3235,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.15',f:'29/10',h:'21:45',c:[{n:1,t:'📊 Métricas: se sacó 🏢 Ganancia CYC (es la ganancia dividida en 3) y la pantalla se llama "Métricas" (ya no es sólo ML).'}]},
   {v:'28.14',f:'29/10',h:'21:30',c:[{n:3,t:'📊 Métricas → 🏪 Local y 🔀 ML + Local armadas igual que ML: mismos KPIs, Tendencia (con período anterior, año pasado y proyección), % de Ganancia y Participación, con sus propios números. En Local las "cuentas" son Soares, Sarmiento, Ceballos y Otras ventas; en ML + Local son ML y Local. Abajo sigue el detalle de cada una.'}]},
   {v:'28.13',f:'29/10',h:'20:50',c:[{n:1,t:'📊 Métricas → 🔀 ML + Local ya no muestra los botones de ML (Línea de todo, KPIs, Tendencia…).'},{n:2,t:'📊 Métricas → 🔀 ML + Local: gráfico de líneas como el de ML (azul ML, naranja Local, la suma punteada), con Diario/Acumulativo y Vendido/Ganancia; la tabla queda abajo sin barras.'}]},
   {v:'28.12',f:'29/10',h:'20:35',c:[{n:1,t:'📊 Métricas: el botón vuelve a ser 🏪 Local (perfumerías, otras ventas a cuenta y deudas, sin nada de ML). Lo mezclado con ML sigue en 🔀 ML + Local.'}]},
@@ -24198,7 +24199,7 @@ function getAllPrevMetKeys(scope){
   return[];
 }
 
-const MET_FIELD_IDS={total:'met-field-total',neto:'met-field-neto',ganancia:'met-field-ganancia',gananciaCYC:'met-field-gananciaCYC'};
+const MET_FIELD_IDS={total:'met-field-total',neto:'met-field-neto',ganancia:'met-field-ganancia'};
 // Clic en una métrica apagada → la suma al gráfico. Clic en una prendida → la saca.
 // Nunca se apagan todas: si querés dejar una sola, apagás las otras.
 function setMetField(field){
@@ -27358,7 +27359,7 @@ const FNAV_PAGES=[
   {id:'resumen',   icon:'📋', label:'Resumen'},
   {id:'inventario',icon:'🧮', label:'Arqueo'},
   {id:'ventaprod', icon:'🏷️', label:'Ventas x Producto'},
-  {id:'metricas',  icon:'📊', label:'Métricas ML'},
+  {id:'metricas',  icon:'📊', label:'Métricas'},
   {id:'pedidos',   icon:'🚚', label:'Pedidos'},
   {id:'compras',   icon:'🛒', label:'Compras y Gastos'},
 ];
@@ -27710,7 +27711,7 @@ window.addEventListener('beforeunload',e=>{if(_borr.size){e.preventDefault();e.r
   <button class="fnav-item" data-page="facturas"   onclick="goPage('facturas');fnavOpen=false;_syncFnav()">🧾 Facturas<span class="fnav-n" id="fn-n-fac"></span></button>
   <button class="fnav-item" data-page="compras"    onclick="goPage('compras');fnavOpen=false;_syncFnav()">🛒 Compras y Gastos<span class="fnav-n" id="fn-n-gastos"></span></button>
   <div class="fnav-sec">Mirar</div>
-  <button class="fnav-item" data-page="metricas"   onclick="goPage('metricas');fnavOpen=false;_syncFnav()">📊 Métricas ML</button>
+  <button class="fnav-item" data-page="metricas"   onclick="goPage('metricas');fnavOpen=false;_syncFnav()">📊 Métricas</button>
   <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">🔄 Rotación de Stock</button>
   <button class="fnav-item" data-page="inventario" data-tab="productos" onclick="fnavIrFichas()">🗂️ Fichas de productos</button>
   <div class="fnav-sec">Todos los días</div>
