@@ -4908,20 +4908,20 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // hasta 0%"): con la unidad más vieja a 15 días o menos de pagar stock antiguo, el perfume SÍ baja hasta el 0% (F0 sigue).
       // Revisión etapa 8, 28/10/2026: el 10% es en el PEOR caso (CEREBRO 8b y REVISION etapa 1); se medía con el margen normal (`mgA`).
       if (esPerfume && !antiguo15 && mgPeorD != null && mgPeorD < PERFUME_MIN_PCT && !suya('bajocero')) return { regla: 'F12', txt: `perfume: a ${$(a)} queda en ${mgPeorD}% en el peor caso y un perfume no se vende abajo del ${PERFUME_MIN_PCT}% (regla suya del 26/10): ${antiguoCerca ? 'está por pagar stock antiguo → AVISARLE para que lo retire a la perfumería del local' : 'se queda en el escalón del 10% o más; si llega cerca de pagar stock antiguo, avisarle para retirarlo'}` };
+      // 🧲 LIQUIDACIÓN DE LO QUE NO SE VENDE (29/10/2026, él eligió 1a 2a 3a: "ir a los extremos… lo que tiene sobrestock, está debajo
+      // del 35% o no se vende al 35% hace un tiempo, buscar vender lo máximo posible, así hacemos caja y eso lo ubicamos en productos
+      // que sí dan bien"): con stock 25+ de los últimos 30 días y CERO ventas, F13 se abre aunque lleve menos de 90 días, pero de a UN
+      // escalón por semana (≤15%, F5/F7 siguen) hasta el primero que vende; piso 0% (F0) y perfumes 10% (F12) siguen. Lo que vende
+      // abajo del 35% NO entra: sube (3a).
+      const liq30 = (() => { if (!lin) return false; const k30 = kDia(ahora - 30 * 864e5); let dd = 0, uu = 0;
+        for (const k of ks) { if (k < k30) continue; const x = lin[k]; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; } return dd >= 25 && uu === 0; })();
+      const bajoSemana = camb.some((c) => !c.rev && c.a < c.de * 0.99 && ahora - c.ts < 7 * 864e5);
       // ── F13 · 35% HASTA LOS 90 DÍAS (27/10/2026, él con el Paulvic Hot: "nunca abajo del 35% si lleva menos de 90 días. si pasa los
       // 90 días de stock se habilita bajar hasta 0%"). Con la unidad más vieja en Full de menos de 90 días (y no a 15 de pagar stock
       // antiguo) ninguna baja deja menos del 35% en el peor caso, aunque sobre o lleve !piso. A los 90 días se abre hasta el 0% (F0 sigue;
       // los perfumes siguen con su 10% de F12 hasta los 15 días antes del stock antiguo). Sin saber la edad, no se baja del 35%.
       // Salida SÓLO SUYA: 🔐 !bajocero o un 🧨 remate autorizado.
       { const mgPeor = d.mgPA != null && Number.isFinite(Number(d.mgPA)) ? Number(d.mgPA) : (d.mgA != null && Number.isFinite(Number(d.mgA)) ? Number(d.mgA) : null);
-        // 🧲 LIQUIDACIÓN DE LO QUE NO SE VENDE (29/10/2026, él eligió 1a 2a 3a: "ir a los extremos… lo que tiene sobrestock, está debajo
-        // del 35% o no se vende al 35% hace un tiempo, buscar vender lo máximo posible, así hacemos caja y eso lo ubicamos en productos
-        // que sí dan bien"): con stock 25+ de los últimos 30 días y CERO ventas, F13 se abre aunque lleve menos de 90 días, pero de a UN
-        // escalón por semana (≤15%, F5/F7 siguen) hasta el primero que vende; piso 0% (F0) y perfumes 10% (F12) siguen. Lo que vende
-        // abajo del 35% NO entra: sube (3a).
-        const liq30 = (() => { if (!lin) return false; const k30 = kDia(ahora - 30 * 864e5); let dd = 0, uu = 0;
-          for (const k of ks) { if (k < k30) continue; const x = lin[k]; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; } return dd >= 25 && uu === 0; })();
-        const bajoSemana = camb.some((c) => !c.rev && c.a < c.de * 0.99 && ahora - c.ts < 7 * 864e5);
         if (liq30 && bajoSemana && mgPeor != null && mgPeor < BAJAR_MIN_PCT_JOVEN - 0.05 && !antiguo15 && !suya('bajocero') && !remOk && !renueva0)
           return { regla: 'F13', txt: `🧲 liquidación (no vendió en 30 días): ya bajó esta semana, el próximo escalón abajo del ${BAJAR_MIN_PCT_JOVEN}% va a los 7 días (regla suya del 29/10)` };
         if (mgPeor != null && mgPeor < BAJAR_MIN_PCT_JOVEN - 0.05 && !antiguo15 && !suya('bajocero') && !remOk && !renueva0 && !liq30) {
@@ -4986,7 +4986,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // No frena lo que tiene otra explicación de precio (sobra de verdad, sin reposición, liquidando con sobra, remate autorizado) ni
       // la escasez mientras no baje del precio de antes. 2a (21/10/2026): pasados los 15 días de la última suba no frena: decide F4.
       const f7Vencido = !!(ultSuba && ahora - ultSuba.ts >= F4_ESPERA_DIAS * 864e5 && p0 >= ultSuba.a * 0.98);
-      if (!f7Vencido && !exento && !escAbre && !suya('sinlinea') && !antesDeActivar && !renueva && !ventana15) {   // revisión etapa 8: `ventana15` (15 días antes del stock antiguo)
+      if (!f7Vencido && !exento && !escAbre && !suya('sinlinea') && !antesDeActivar && !renueva && !ventana15 && !liq30) {   // revisión etapa 8: `ventana15` (15 días antes del stock antiguo)
         const t95 = tags.some((x) => techookDeTecho95(x) && x.ts > ahora - 60 * 864e5);
         if (!t95) {
           if (!lin || !(cu > 0)) return { regla: 'F7', sinDato: true, txt: 'no pude leer la línea de tiempo o el costo: sin saber si tiene línea de techo no bajo' };
@@ -4999,7 +4999,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // (si la suba deja igual o más, se queda; si deja menos, baja un escalón — el tamaño lo frena F2).
       // Revisión etapa 1 (24/10): en un descuento manda el precio que VE el comprador (`p0v`, como F2), no la lista; y renovar el mismo
       // descuento al mismo `p0v` no es una baja (`esEscalon`, como F3).
-      if (ultSuba && ahora - ultSuba.ts < 60 * 864e5 && p0v >= ultSuba.a * 0.98 && a < ultSuba.a * 0.995 && esEscalon && !suya('sincerteza') && !ventana15) {   // revisión etapa 8: `ventana15`
+      if (ultSuba && ahora - ultSuba.ts < 60 * 864e5 && p0v >= ultSuba.a * 0.98 && a < ultSuba.a * 0.995 && esEscalon && !suya('sincerteza') && !ventana15 && !liq30) {   // revisión etapa 8: `ventana15`
         const lad = await escalera();
         if (!lad.ok) {
           const yLad = lad.por ? ` (la escalera de escasez no aplica: ${lad.por})` : '';

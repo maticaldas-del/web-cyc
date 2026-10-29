@@ -80,6 +80,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 ## 1 · PRECIOS (lunes)
 ### 🧲 Liquidación de lo que no se vende (29/10/2026, él eligió 1a 2a 3a)
 - **Qué es:** en `frenosBajas` F13: `liq30` = 25+ días con stock en los últimos 30 y 0 unidades vendidas → se puede bajar del 35% aunque la unidad más vieja tenga menos de 90 días, pero `bajoSemana` frena un segundo escalón abajo del 35% antes de 7 días. F0 (0%), F5/F7 (escalera ≤15%) y F12 (perfumes) siguen.
+- `liq30` también abre F7 (sin línea de techo: 30 días sin vender ya es 🔴) y F4 (deshacer una suba: la suba fracasó). `liquidables` (robot) lista lo que entra con el escalón de la semana y el `entrarpromo` listo.
 - **Qué chequear:** algo que vendió 1 en 30 días NO entra; un perfume sin ventas igual frena en 10%; dos bajas en la misma semana abajo del 35% → la segunda frenada.
 
 ### 🪜 F14 · salida "vende muchísimo menos" (28/10/2026, él eligió la 1a; con el Filtro: *"si lo hubiéramos dejado al precio que vendió nos hubiéramos perdido muchísimas ventas y ganancia. habría que afinar"*)
