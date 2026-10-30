@@ -39174,6 +39174,36 @@ async function main() {
       console.log(`DIFERENCIA ${$(r.dif)} (${r.dif < 0 ? 'falta' : 'sobra'})`);
       return;
     }
+    // BILLING_PROBE=ventasdias[:N] → los últimos N días (21): compras, facturado y ganancia de cada día, y HOY contra los días anteriores
+    // A LA MISMA HORA (30/10/2026, él: "estamos vendiendo muy poco, ¿no? hoy no llegamos a 300.000"). SOLO LEE.
+    if (/^ventasdias(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const N = Math.max(3, Math.min(90, Number(String(process.env.BILLING_PROBE).split(':')[1]) || 21));
+      const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
+      const cw = await armarCostoWeb(db, vp);
+      const $ = (n) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('es-AR');
+      const ahora = Date.now(), ar = new Date(ahora - 3 * 36e5), minHoy = ar.getUTCHours() * 60 + ar.getUTCMinutes();
+      const DS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+      const filas = [];
+      for (let i = N - 1; i >= 0; i--) {
+        const d = new Date(ar.getTime() - i * 864e5); const k = `${d.getUTCFullYear()}_${String(d.getUTCMonth() + 1).padStart(2, '0')}_${String(d.getUTCDate()).padStart(2, '0')}`;
+        let c = 0, f = 0, g = 0, cH = 0, fH = 0, gH = 0;
+        for (const v of Object.values(vp[k] || {})) { if (!v || v.cancelada) continue; const x = cw(v, k); const gan = (Number(v.neto) || 0) - (Number(x.costo) || 0);
+          c++; f += Number(v.total) || 0; g += gan;
+          const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts) { const t = new Date(ts - 3 * 36e5); if (t.getUTCHours() * 60 + t.getUTCMinutes() <= minHoy) { cH++; fH += Number(v.total) || 0; gH += gan; } } }
+        filas.push({ k, dw: DS[d.getUTCDay()], c, f, g, cH, fH, gH, hoy: i === 0 });
+      }
+      console.log(`=== 📅 VENTAS DÍA POR DÍA · últimos ${N} días · hasta las ${String(Math.floor(minHoy / 60)).padStart(2, '0')}:${String(minHoy % 60).padStart(2, '0')} en la columna "a esta hora" · SOLO LEE ===`);
+      console.log('día            compras   facturado    ganancia   │ a esta hora: compras  facturado  ganancia');
+      for (const r of filas) console.log(`${r.k.slice(5).replace('_', '/')} ${r.dw}${r.hoy ? ' HOY' : '    '}  ${String(r.c).padStart(5)}  ${$(r.f).padStart(11)} ${$(r.g).padStart(11)}   │ ${String(r.cH).padStart(5)}  ${$(r.fH).padStart(11)} ${$(r.gH).padStart(10)}`);
+      const ant = filas.filter((r) => !r.hoy), hoy = filas[filas.length - 1];
+      const prom = (a, key) => a.length ? a.reduce((t, r) => t + r[key], 0) / a.length : 0;
+      const u7 = ant.slice(-7), mismoDia = ant.filter((r) => r.dw === hoy.dw);
+      console.log(`\nHOY a esta hora: ${hoy.cH} compras · ${$(hoy.fH)} facturado · ${$(hoy.gH)} de ganancia`);
+      console.log(`promedio a esta hora · últimos 7 días: ${prom(u7, 'cH').toFixed(1)} compras · ${$(prom(u7, 'fH'))} · ${$(prom(u7, 'gH'))} de ganancia`);
+      if (mismoDia.length) console.log(`promedio a esta hora · los ${hoy.dw} anteriores (${mismoDia.length}): ${prom(mismoDia, 'cH').toFixed(1)} compras · ${$(prom(mismoDia, 'fH'))} · ${$(prom(mismoDia, 'gH'))} de ganancia`);
+      console.log(`día entero · promedio de los ${ant.length} anteriores: ${prom(ant, 'c').toFixed(1)} compras · ${$(prom(ant, 'f'))} · ${$(prom(ant, 'g'))} de ganancia · últimos 7: ${$(prom(u7, 'f'))} · ${$(prom(u7, 'g'))}`);
+      return;
+    }
     if (/^cobromes(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const nAR = new Date(Date.now() - 3 * 36e5);
       const ym = (String(process.env.BILLING_PROBE).split(':')[1]) || `${nAR.getUTCFullYear()}_${String(nAR.getUTCMonth() + 1).padStart(2, '0')}`;
