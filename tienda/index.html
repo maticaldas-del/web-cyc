@@ -241,7 +241,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function tarjeta(p) {
     var mas = p.f.length > 1 ? '<span class="mas">' + p.f.length + ' fotos</span>' : "";
     return '<article class="card' + (pedido[p.id] ? " en" : "") + '" data-id="' + p.id + '">' +
-      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.webp")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + '</div>' +
+      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + '</div>' +
       '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + pesos(p.p) + '</div><div class="cuotas">3 cuotas sin interés de ' + pesos(Math.ceil(p.p / 3)) + '</div><div class="slot">' + cantHtml(p.id) + '</div></div></article>';
   }
 
@@ -377,7 +377,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 
   function ver(id) {
     var p = POR_ID[id]; if (!p) return;
-    $("galeria").innerHTML = p.f.map(function (u, i) { return '<img src="' + esc(foto(u, "-F.webp")) + '"' + respaldo(u) + ' alt="Foto ' + (i + 1) + ' de ' + p.f.length + '" referrerpolicy="no-referrer">'; }).join("");
+    $("galeria").innerHTML = p.f.map(function (u, i) { return '<img src="' + esc(foto(u, "-F.jpg")) + '"' + respaldo(u) + ' alt="Foto ' + (i + 1) + ' de ' + p.f.length + '" referrerpolicy="no-referrer">'; }).join("");
     $("galeria").scrollLeft = 0; $("gal").classList.toggle("varias", p.f.length > 1); $("galNum").textContent = p.f.length > 1 ? "1/" + p.f.length : ""; $("tVer").textContent = p.n.length > 40 ? p.n.slice(0, 38) + "…" : p.n;
     $("verNom").textContent = p.n; $("verPrecio").textContent = pesos(p.p);
     $("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);
