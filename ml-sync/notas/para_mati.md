@@ -8,6 +8,12 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 30/10 (3a 4b 5b 6a 7a 8b 9a 10a 11a 12a 13a 14a 15a 16b 17b 18b 19a 20 después 21b 22a 23a 24a 25a+cupo 26a 27a 28 29a 30a)
+- **Hecho (v28.29):** 3a Bad Boy/212 fuera de "en camino" con `pylocal` (octubre NO se toca, 4b: "el arqueo de octubre ya cerró, no se modifica nada") · 9a dejar de la Oficina Local baja el valor a mano · 10a lo de la perfumería en papelera/no traer/sólo local se pide sólo para ella · 11a lo que viaja la cubre · 12a qué es la Oficina Local · 13a devolver de más queda en negativo · 14a % del local contra 25% · 15a el salto de `oficyc:listo` va a `cobro_corr` · 16b ¿Cierra el mes? hasta la hora del cierre · 23a sin etiqueta por cuenta · 24a Tenders en su caja · 25a envío pausado cuenta como en camino y ocupa cupo · 26a costos de Paraguay con el ticket · 27a la recompra más barata baja el costo · 28 lo que no había tachado en rojo, lo pagado y no llegado en rojo para reclamar (`pyped:reclamo`) · 29a compra de prueba sólo sin competencia medida · 8b Teikirisi, 1.4 Sexy Men y Rose vuelven a $14.990 hasta el 07/11.
+- **Se dejan como están:** 5b Pendrive 16 espera la antigüedad real · 6a Good a $21.990 hasta el 16/11 · 7a Transparent y Only Glow esperan sus 30 días · 17b nombres viejos · 18b deudas de personas · 21b precios de proveedores en el registro · 22a fichas viejas con su nombre.
+- **Pendiente:** 19a revisar todo lo público y decirle cuántos datos hay · 20 cómo queda armado (público/privado): "hay que analizarlo más tarde".
+- **Nuevo (30/10, él):** la deuda de la perfumería se cobra por PLATA, no por producto: "cobramos 200.000 de deuda o de mercadería y vos restás", se tachan los productos del más viejo al más nuevo y el que queda a medias se llena hasta el % pagado.
+
 ### ✅ Contestó la lista de las 12:30 del 29/10 (1a 2a 3a 4a 5b 6 7a 8a 9a 10b 11 12 13a 14a 15b 16a 17a)
 - **Hecho:** 1a saldos de MP fuera del registro (`ancla:buzon=<ts>;go`) · 2a mes cerrado congelado (`cyc/costocongelado`) · 3a lo hace solo el cobro por crecimiento · 4a ventas sin factura no se caen a los 45 días · 5b afuera · 6 Valor de Stock = Stock total del Arqueo · 7a y 14a prompt `PROMPT_ANTIGUEDAD.md` para el chat de Chrome (se lo pasé) · 11 regla en CEREBRO fila 6 (bajar cuando el stock dura más que los días que faltan para pagar) · 15b regla en CEREBRO (cupón de ML cuenta a nuestro precio).
 - **8a Abismo:** hoy ya GANA la caja a $14.990 y deja 40%: no hace falta descuento. Si el 07/11 no se vendió, al local.
@@ -186,51 +192,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 ## 29/10 · De la vuelta de las 9:52
 - **Pregunta de un comprador que no sé contestar** (Ayelen · Mentonera Facial V Lifting, `MLA4095170164`, hace 4 días): pregunta si la mentonera tiene una apertura o hueco en la zona del mentón o si es cerrada de una sola pieza, y si hay una versión de la otra forma. Pasame la respuesta y la contesto.
 
-### Revisión de Mercadería del 29/10 (8 decisiones, para cuando digas "resolvamos")
-1. **Nombre de las fichas viejas:** al vincular una publicación nueva a una ficha de más de 30 días, ¿se le cambia el nombre al de ML? (a) sugerida: no, las viejas quedan como las conocés · (b) sí, siempre el de ML.
-2. **"Sin etiqueta" por cuenta:** cada cuenta tiene su código de etiqueta distinto; hoy se cuenta por producto y color, sin cuenta. (a) sugerida: llevarlo por cuenta · (b) dejarlo así.
-3. **Tenders:** se ponen en 0 cada noche mientras la cuenta tenga productos chicos para mandar (van en caja aparte). (a) sugerida: que salgan en su propia caja cuando juntan 1 caja llena o se cortan en 14 días · (b) que esperen a que no haya chicos.
-4. **Envío pausado:** (a) sugerida: cuenta como "en camino" (no se vuelve a pedir lo mismo) pero NO resta cupo hasta que sale · (b) no cuenta para nada mientras está pausado.
-5. **Costos antes del ticket de Paraguay:** hoy se ponen con el precio de la web y después sólo pueden subir. (a) sugerida: poner los costos recién con el ticket · (b) dejarlo así.
-6. **Recompra más barata de un probado:** hoy el costo no baja ("sólo sube"). (a) sugerida: que baje al que pagaste (el viejo queda en los meses que ya vendió) · (b) que siga sin bajar.
-7. **Lo pagado en Paraguay que no vino:** (a) sugerida: reclamarlo y, si no se recupera, repartir su costo en lo que llegó · (b) dejarlo sólo anotado como faltante.
-8. **Precios de proveedores en el registro público:** las listas y los tickets muestran precios en el registro del robot (cualquiera lo puede leer). (a) sugerida: no imprimirlos más (sólo cuántos y qué %) · (b) dejarlo así.
-
-## 29/10 · Compra de prueba al 35% de lo que dejó de pedirse (preguntado en el chat)
-**RESUELTA 29/10** (él: *"descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en stock en Full"*): prueba para todo lo que se vendía y nunca se probó al 35% con stock (ni (a) ni (b): regla nueva en Pedidos).
-Con la regla nueva (competencia → venta más cara de 365 días) salen de Pedidos 33 renglones que vendían bien pero nunca a 35%. Los que tienen stock ya están a la venta a un precio de 35%+ (la prueba corre sola). Los que están en 0 subieron de precio sin mercadería: la prueba no puede pasar.
-1. (a) prueba sólo donde no hay competencia medida: Sábanas (todos los colores), B39, Pizarra Violeta, Linterna Azul, Funda colchón, Sony ZX: 19 renglones, 51 u., ~$492.000 · (b) también los que la competencia vende más barato (Estimulador, Termómetro Cable, Victoria's Secret, Cool Water, Halloween Kiss Sexy, Midnight Fantasy, Paulvic Acqua/Miss): +14 renglones, +74 u., +~$849.000 · (c) ninguno.
-
-## 29/10 · De la vuelta de las 15:52
-- **Comunicador Motorola Talkabout (Ayelen, `MLA2230485519`, 1 u. en Full) sigue pausado:** es nuevo y nadie confirmó que su catálogo de ML (MLA22570574) sea exactamente ese modelo. La otra publicación del mismo comunicador ya está activa a $126.990. (a) sugerida: te paso las fotos del catálogo para que confirmes y la activo · (b) dejarla pausada y vender sólo por la otra.
-
-### Revisión del Local del 30/10 (12 decisiones; 7, 9, 11 y 12 resueltas el 30/10 — quedan 1-6, 8 y 10)
-1. **Los 2 perfumes del local que vienen en el pedido de Paraguay** (Bad Boy y 212) se cuentan dos veces: como mercadería en camino y como deuda del local ($247.588). Por eso el cobro de octubre pudo dar ~$100.000 de más por socio (1,6M en vez de 1,5M). (a) sugerida: sacarlos de "en camino", dejar sólo la deuda y corregir octubre · (b) borrar la deuda y cargarla cuando se los entregues.
-2. **Oficina Local mientras la contás:** dejarle algo a una perfumería "de la oficina local" no baja el valor que está a mano en el Arqueo. (a) sugerida: que lo baje también · (b) no dejar nada de ahí hasta terminar de contar.
-3. **Algo en la papelera, "no traer" o "sólo local" que pide la perfumería:** hoy no le llega a Tito. (a) sugerida: que se pida sólo para la perfumería (0 para ML) · (b) que nunca se pida por Pedidos.
-4. **Lo de la perfumería que viene viajando:** (a) sugerida: lo que viaja la cubre primero (no se vuelve a pedir) · (b) se sigue pidiendo hasta que llega.
-5. **Qué es la Oficina Local:** (a) sugerida: lo "sólo local" + lo contado de la Oficina Local + lo apartado para la perfumería; lo nuevo que todavía no publicaste sigue en ML · (b) como está (todo lo que no tiene publicación).
-6. **Nombres de deudores que ya quedaron en el registro público** (de antes de este arreglo): (a) sugerida: limpiarlos y borrar esas corridas viejas · (b) dejarlo.
-7. ~~**Día de una venta en cuotas**~~ ✅ RESUELTA 30/10 (él: 7a): cuenta el día que se vendió (`fecha=` en `debenmov:nueva`; las viejas usan el día de carga).
-8. **Si alguien devuelve de más:** (a) sugerida: queda en negativo, como "lo que debemos" · (b) como hoy (queda en 0 y el resto se pierde).
-9. ~~**Retiro de un mes ya cobrado**~~ ✅ RESUELTA 30/10 (él: 9a): queda congelado al empezar el mes (`cyc/retiro_congelado`); la corrección va al retiro del mes siguiente.
-10. **El % de las perfumerías** sale en rojo porque se compara con el 35% de ML y la regla del local es costo + 25%. (a) sugerida: compararlas contra 25% · (b) dejar 35% para todo.
-11. ~~**Mercadería que la perfumería devuelve**~~ ✅ RESUELTA 30/10 (él: 11a): `debenmov:mercaderia perfumeria=devuelve|prod=|local=|u=|a=<local|ml>;go`; `=desde` en Mercadería Perfumería queda prohibido.
-12. ~~**Persea**~~ ✅ RESUELTA 30/10 (él: 12b): primero lo fijado para Full; la perfumería se lleva lo que sobra (`fijo_q` en decide_cajas.py).
-
 ## 30/10 · ¿Es peligroso que CYC sea público?
 1. **Revisar qué se ve hoy en público** (archivos, historial y registros del robot) buscando datos de personas o del negocio que no deberían estar: (a) sugerida: sí, y le digo cuántos encontré · (b) no por ahora.
 2. **Cómo queda armado:** (a) sugerida: sigue público y se saca del repo lo más sensible del negocio (montos de monotributo, costos, proveedores), que queda en la base con su cuenta · (b) privado y el robot se muda a un servidor propio (~US$ 5-10/mes, trabajo grande) · (c) privado pagándole a GitHub (cientos de dólares por mes, a medir).
 
-### Revisión de Choques y fallas del 30/10 (4 decisiones, para cuando digas "resolvamos")
-⚠️ Antes del 1/11: el retiro de noviembre se congela la primera vez que se abre el Arqueo en noviembre. Si octubre tiene que corregirse (la decisión 1 del Local, los 2 perfumes contados dos veces), conviene resolverlo hoy; si no, la corrección va al retiro de diciembre (no se pierde, se corre un mes).
-1. **Octubre quedó congelado con ventas provisorias** (sin costo cargado o con el neto todavía estimado): esas quedaron con ganancia $0 o con el envío restado dos veces para siempre. Desde hoy lo provisorio no se congela. (a) sugerida: volver a congelar octubre con lo de hoy · (b) dejarlo así.
-2. **Nombres de personas en el registro público:** el texto de cada comando sale entero en GitHub (ej. `debenmov:nueva=<nombre>|det=…`), y hay nombres de deudores en las notas del repo. (a) sugerida: las deudas de personas se mueven siempre por su número (c…), las nuevas las cargás vos desde la web, y en los archivos cambio los nombres por "una persona" · (b) dejarlo así.
-3. **¿Cierra el mes? cuando se cierra antes de fin de mes** (octubre se cerró el 29): lo ganado del 29 al 31 cuenta en octubre pero la plata está en el patrimonio de noviembre → octubre marca "falta" y noviembre "sobra". (a) sugerida: cerrar el mes el último día a la noche o el 1º temprano (el aviso lo dice) · (b) que cuente la ganancia hasta el momento del cierre.
-4. **Oficina Local al pasar a "contada"** (`oficyc:listo`): el salto entre el valor a mano y lo contado entra entero al crecimiento de noviembre (y al retiro de diciembre). (a) sugerida: anotar ese salto con `cobrocorr` en el mes en que se hace · (b) que cuente como crecimiento.
-## 30/10 · De la completa de las 03:00
-1. **Pendrive 16 GB (Matías, 27 en Full, sin reposición):** a $24.490 no vende hace 14 días y lo ve ~1 persona por día. **Seguridad de que $24.490 es el techo: 42%.** Tu regla del 29/10 con este mismo pendrive es bajar cuando el stock dura más que lo que falta para pagar stock antiguo, pero sin techo seguro necesito tu autorización. (a) sugerida: autorizo un descuento a $20.990 (−14%), cerca de donde vendía ~1 por día · (b) esperar la antigüedad real que trae el chat de Chrome.
-2. **Paulvic Good (22 en Full, 11 llegaron el 29/10):** vendió 3 a $21.990 del 14 al 17/10 (Día de la Madre) y ninguna desde el 17/10. **Seguridad de techo: 57%.** Ninguna unidad llega a pagar stock antiguo (ML vende primero las viejas). (a) sugerida: queda a $21.990 hasta el 16/11 (30 días sin vender = techo) y ahí descuento a $18.790 · (b) descuento ya a $18.790 (−14,6%).
-3. **Transparent y Only Glow (Paulvic a $21.990 sin vender):** están arriba del mejor precio medido ($14.360) y bajar de ahí pide 95% (Transparent 12%, Only Glow sin número). (a) sugerida: esperar a que cumplan 30 días sin vender (05/11 y 06/11) y ahí entra la liquidación a $18.790 · (b) autorizar ya ese escalón.
-4. **Teikirisi, 1.4 Sexy Men y Rose:** el 29/10 entraron en la liquidación a $12.690, pero vos habías dicho esperar a $14.990 hasta el 07/11. (a) sugerida: dejar el descuento hasta el 07/11 (a $12.690 deja más o menos lo mismo que la perfumería con costo + 25%) · (b) volver a $14.990.
-- **Para contarle (sin decisión):** hay lanzamientos que casi nadie ve (0 o 1 visita por día): Sacapelusas, Micrófono Fifine, Mouse Pad Redragon, Animale For Men y los Auriculares Xiaomi con cable (el título dice "Modelo Desconhecido"). Bajar el precio no lo arregla: conviene mirar título y fotos.

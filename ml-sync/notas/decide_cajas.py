@@ -107,8 +107,9 @@ for l in L:
         nc=re.search(r' · neto \$(\d+) costo \$(\d+)',m.group(11))
         gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
-                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),hoy=hoy_de(m.group(11)),
-                 fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11));P.append(cur);continue
+                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
+                 fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11),
+                 soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
@@ -143,7 +144,7 @@ FIJO={
   ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son blancas/celestes (él 25/10, con foto) y la publicación es la NEGRA. Van al local: en ML no llega al 35%'),
   ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
 }
-out=[];res=[];sin=[];amano=[];nOfi=0;largos=[]
+out=[];res=[];sin=[];amano=[];nOfi=0;largos=[];soloPerfFuera=[]
 # Revisión etapa 3, 29/10/2026: lo que CALCULA este script lleva esta marca al final del motivo. Así se distingue, sin adivinar por el
 # comienzo del texto, de lo que escribí a mano en cajas.txt (ver "LAS DECISIONES A MANO" más abajo).
 AUTO_TAG=' · (cuenta automática)'
@@ -178,6 +179,12 @@ def perf_txt(r): return f" · 🛍️ {r} para la perfumería (quedan en la ofic
 def perf_cero(cab,cta,nom,r,grande):
     return dict(cab=cab,q=0,cola=f"🛍️ las {r} de la oficina quedan para la perfumería (no van a Full)"+AUTO_TAG,cta=cta,nom=nom,gan=None,grande=grande,enCero=False,dias=None,casa=0,perf0=True,dec=None)
 for p in P:
+    # 🛍️ SÓLO PARA LA PERFUMERÍA (30/10/2026, 3a de la revisión del Local): lo de la papelera o "sólo local" que la perfumería pide entra al log
+    # de pedidostodo (`SOLOPERF`) para que Pedidos se lo pida a Tito, pero NO va a Full (antes ni estaba en el log). Lo de "no traer" sí sigue:
+    # lo que ya hay se puede mandar, sólo no se compra más para ML.
+    if p.get('soloPerf') in ('papelera','sololocal'):
+        if p['casa']>0 or any(x['casa']>0 for x in p['vars']): soloPerfFuera.append(f"{p['n']} ({'papelera' if p['soloPerf']=='papelera' else 'sólo local'}): no va a Full")
+        continue
     if p['casa']<=0 and not any(x['casa']>0 for x in p['vars']):
         if p.get('perfR'):   # todo apartado para la perfumería (revisión etapa 9, ver `perf_cero`): un 0 en cada cuenta que lo puede recibir
             _pv0='paulvic' in p['n'].lower(); _cs=['Adriana'] if _pv0 else (p['ctas'] or [])
@@ -259,8 +266,12 @@ def _base_motivo(mot):
     # cuántas eran ANTES de recortarlas (None si no tenía prefijo).
     q0=None
     while True:
-        mm=re.match(r'^📦 grande: va en caja aparte \(ML no deja mezclarlo con chicos\), quedan (\d+) para esa caja · (.*)$',mot) or re.match(r'^✂️ por el cupo de Full de \w+ \([^)]*\) entran \d+ de (\d+) \(faltan \d+\) · (.*)$',mot)
-        if not mm: return mot,q0
+        mm=re.match(r'^📦 grande: (?:va en caja aparte \(ML no deja mezclarlo con chicos\)|espera a juntar una caja llena \([^)]*\)), quedan (\d+) para esa caja · (.*)$',mot) or re.match(r'^✂️ por el cupo de Full de \w+ \([^)]*\) entran \d+ de (\d+) \(faltan \d+\) · (.*)$',mot)
+        if not mm:
+            # 30/10/2026: el grande que sale en su propia caja no cambia las unidades (sólo se saca el prefijo para no repetirlo)
+            ms=re.match(r'^📦 grande: sale en SU PROPIA caja \(ML no deja mezclarlo con chicos\), porque .*? · (.*)$',mot)
+            if not ms: return mot,q0
+            mot=ms.group(1); continue
         q0=int(mm.group(1)); mot=mm.group(2)
 def _es_auto(mot): return mot.endswith(AUTO_TAG.strip(' ·')) or bool(_auto_viejo.match(mot))
 mantenidos=[];cumplidas=[]
@@ -327,12 +338,29 @@ for cta in sorted({o['cta'] for o in out}):
             recortes.append(f"{o['nom']} → {cta}: {o['q']} → {d}")
             o['q']=d
 # LOS GRANDES VAN EN CAJA APARTE (28/10/2026, él: "los tenders son productos grandes, ML no permite mandar juntos. los tenders se mandan
-# en cajas solos"): si a una cuenta le va algo chico, los grandes de esa cuenta quedan en 0 (van en su propia caja). Igual que la web.
+# en cajas solos"). Hasta el 30/10 quedaban en 0 mientras la cuenta tuviera algo chico para mandar, y como casi siempre hay chicos, los
+# Tenders no salían nunca. 30/10/2026 (él eligió la 3a de la revisión de Mercadería: "que salgan en su propia caja cuando juntan 1 caja llena
+# o se cortan en 14 días"): con chicos en la caja de esa cuenta, los grandes SALEN en su propia caja (no se ponen en 0) si entre todos
+# llenan una caja (cada unidad gasta 1/`porcaja`, la misma cuenta que la barra de lugar de la web; sin medidas no se da por llena) o si
+# alguno está en 0 o se corta antes de CAJA_CORTE_DIAS (14). Si no, esperan en la oficina a juntar la caja. Sin chicos para esa cuenta, van
+# como siempre (esa caja ya es sólo de grandes). La web (Armar caja y `cajaarmar`) los deja afuera de la caja de los chicos: van en otra.
+_porcaja={p['id']:p.get('porcaja') for p in P}
+grandesSalen=[]
 for cta in set(o['cta'] for o in out):
     if any(o['cta']==cta and o['q']>0 and not o['grande'] for o in out):
-        for o in out:
-            if o['cta']==cta and o['grande'] and o['q']>0:
-                o['cola']=f"📦 grande: va en caja aparte (ML no deja mezclarlo con chicos), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (caja aparte)");o['q']=0
+        G=[o for o in out if o['cta']==cta and o['grande'] and o['q']>0]
+        if not G: continue
+        _pc=lambda o:_porcaja.get(o['cab'].split(':',1)[1].split('@',1)[0])
+        lugar=sum(o['q']/_pc(o) for o in G if _pc(o))   # fracción de caja que llenan (sin medidas no suman: no se inventa)
+        corta=[o for o in G if o.get('enCero') or (o.get('dias') is not None and o['dias']<CAJA_CORTE_DIAS)]
+        if lugar>=1 or corta:
+            por=(f"juntan una caja llena ({round(lugar*100)}% de una caja)" if lugar>=1 else f"{'está en 0' if corta[0].get('enCero') else 'se corta en '+str(round(corta[0]['dias']))+' días'} ({corta[0]['nom'][:30].replace(' · ',' ')})")
+            for o in G: o['cola']=f"📦 grande: sale en SU PROPIA caja (ML no deja mezclarlo con chicos), porque {por} · "+o['cola']
+            grandesSalen.append(f"{cta}: {sum(o['q'] for o in G)} u. de {len(G)} producto(s) en su propia caja, porque {por}")
+        else:
+            sinMed=sum(1 for o in G if not _pc(o))
+            for o in G:
+                o['cola']=f"📦 grande: espera a juntar una caja llena (hay para {round(lugar*100)}% de una caja{', '+str(sinMed)+' sin medidas' if sinMed else ''} y ninguno se corta en {CAJA_CORTE_DIAS} días), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (espera a juntar una caja llena de grandes)");o['q']=0
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
@@ -348,5 +376,7 @@ if SIN_ESTIRAR is None: print('⚠️ no encontré sin_estirar.txt: todo quedó 
 if CUPO: print('cupo de Full leído: '+' · '.join(f"{c} {v['peq'] if v['peq'] is not None else '?'}/{v['gra'] if v['gra'] is not None else '?'}" for c,v in CUPO.items()))
 else: print('⚠️ el log no trae el CUPO de Full (pedidostodo viejo): no recorté ninguna caja por el cupo')
 if recortes: print(f"✂️ RECORTADO POR EL CUPO (la regla de la web: 1 u. a cada uno y después por plata) · {len(recortes)}:",*recortes,sep='\n  ')
+if grandesSalen: print('📦 GRANDES QUE SALEN EN SU PROPIA CAJA (aparte de la de los chicos) ·',len(grandesSalen),*grandesSalen,sep='\n  ')
+if soloPerfFuera: print('🛍️ PEDIDO SÓLO PARA LA PERFUMERÍA (papelera / sólo local, no van a Full) ·',len(soloPerfFuera),*soloPerfFuera,sep='\n  ')
 if sin: print('SIN CUENTA:',*sin,sep='\n  ')
 if amano: print('DECIDIR A MANO (más de una cuenta):',*amano,sep='\n  ')
