@@ -29,7 +29,10 @@ def perf_de(t):
     return (int(m.group(1)),(m.group(2) or '').replace('_',' ')) if m else None
 def perf_mot(q,perf,mot):
     if q>0: return f"Hola Tito! Te pido {q+perf}: {q} para ML y {perf} para la perfumería. "+mot[len('Hola Tito! '):] if mot.startswith('Hola Tito! ') else mot
-    return f"Hola Tito! Te pido {perf} para la perfumería (para ML no hace falta)."
+    # Revisión etapa 9, 30/10/2026: con 0 para ML se dice POR QUÉ (antes siempre "para ML no hace falta", también cuando era "no lo compres").
+    return f"Hola Tito! Te pido {perf} para la perfumería. Para ML: "+(mot[len('Hola Tito! '):] if mot.startswith('Hola Tito! ') else mot)
+# Paulvic dados de baja en ML para siempre (24/10/2026; además "no vienen más" desde el 22/10). El mismo par que `BAJA_ML` de decide_cajas.py.
+BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}
 # 29/10/2026 (él: "descartar sólo con el producto probado. nunca teniendo en cuenta el competidor, porque ya sabemos que aunque esté perdiendo
 # puede vender igual. sí o sí hay que probar con productos en stock en Full"): lo que nunca vendió a 35% se descarta SÓLO si estuvo 30+ días con
 # stock al precio que deja 35% (o más caro) sin vender. Si no se probó, va una COMPRA DE PRUEBA: una semana de lo que vendía (mínimo 2) menos
@@ -217,16 +220,23 @@ res=[]
 for p in prods:
     if not p.get('perf'): continue
     pu,pva=p['perf']
-    # primero lo que hay en la Oficina CYC (no es de ML: es justo para esto)
+    # primero lo que hay en la Oficina CYC (no es de ML: es justo para esto). Revisión etapa 9, 30/10/2026: si pidió un color, `OFICYC` es
+    # lo de ESE color en la Oficina Local (pedidostodo; antes la suma de todos: 2 Azul "cubrían" 2 Rojo pedidos).
     if p.get('ocy'):
         r0=min(pu,p['ocy']); pu-=r0
         if r0: print(f"🛍️ {p['n']}: {r0} de la perfumería salen de la Oficina CYC")
     if p['vars']:
         _m=[v for v in p['vars'] if v['v'].lower()==pva.lower()]
-        tv=_m[0] if _m else max(p['vars'],key=lambda v:(v['v180'],v['casa']))
-        p['perf']=(pu,tv['v']); r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r)
+        if pva and not _m:
+            # Revisión etapa 9, 30/10/2026: pidió un color que no tiene renglón (ni ventas, ni stock, ni nada en camino). Antes se cambiaba por el
+            # color que más vende y se apartaban SUS unidades (pidió Rosa → 2 Azul apartados y pedidos como de ella, sin aviso). Ahora no se
+            # aparta nada de otro color y se pide ESE color sólo para ella (`perf_suelto`).
+            r=0; p['perf']=(pu,pva)
+        else:
+            tv=_m[0] if _m else max(p['vars'],key=lambda v:(v['v180'],v['casa']))
+            p['perf']=(pu,tv['v']); r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r); tv['perfOfi']=r
     else: r=min(pu,p['casa']); p['casa']-=r
-    p['perfOfi']=r; p['perf']=(pu-r,p['perf'][1] if not p['vars'] else p['perf'][1])
+    p['perfOfi']=r; p['perf']=(pu-r,p['perf'][1])
     if r: print(f"🛍️ {p['n']}: {r} de la perfumería ya están en la oficina (apartados){'' if pu-r else ': no hace falta comprar para ella'}")
 for p in prods:
     # Sin costo cargado no se puede decir que deja ganancia (antes 0 de costo = "rentable" y pedía de todo).
@@ -396,6 +406,10 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
     de=f" del {color}" if color else ''
     quien=f"El {color}" if color else "Este"
     if not rent:
+        # Revisión etapa 9, 30/10/2026: lo descartado por probado (`m35_rent`) decía "con lo que cuesta no nos deja ganancia". No es eso: estuvo
+        # 30+ días en Full a un precio que deja 35% (o más caro) y no se vendió ninguno.
+        mp=re.match(r'se probó (\d+) días con stock a \$(\d+)',str(motNo))
+        if mp: return "Hola Tito! "+quien+f" no lo compres: lo tuvimos {mp.group(1)} días en Full a ${mp.group(2)} (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más."
         return "Hola Tito! "+quien+" no lo compres: "+({'falta el costo':'todavía no tengo cargado cuánto cuesta.','todavía no sé cuánto deja en ML':'todavía no sé cuánto deja en ML.'}.get(motNo,(f"al precio de hoy deja {motNo.split(' ')[1].rstrip(',')} y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir." if str(motNo).startswith('deja ') else ('ni al precio de la competencia ni al más caro que vendimos en el año nos deja 35%.' if str(motNo).startswith('ni contra') else 'con lo que cuesta no nos deja ganancia.'))))
     mes=f"{r*30:.0f}"; b=str(b or '')
     if b.startswith('agotado'): base=f"está agotado y cuando había se vendían unos {mes} por mes"
@@ -416,6 +430,18 @@ def prueba_mot(q,r,p35,color=None):
     return (f"Hola Tito! Te pido {q}{de} de prueba: antes se vendían unos {r*30:.0f} por mes, pero nunca lo probamos a un precio que nos deje 35%"
             +(f" (${p35})" if p35 else '')+". Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.")
 def titoJ(mo): return "Hola Tito! "+mo
+# Revisión etapa 9, 30/10/2026: lo que pidió la perfumería de un color SIN renglón en el log (ni ventas, ni stock, ni nada en camino), o de un
+# producto con colores sin ningún renglón: antes se perdía sin aviso (o se pedía de otro color). Va como renglón de ESE color sólo para ella;
+# si no dijo el color, la ficha no lo tiene o no viene más, aviso y no se pide.
+def perf_suelto(p,pid):
+    if not p.get('perf') or p['perf'][0]<=0: return []
+    u,c=p['perf']
+    cf=colorFicha(p,c) if c else None
+    if not cf:
+        avisos.append(f"{p['n']}: la perfumería pide {u}{(' del '+c) if c else ''} y {'la ficha no tiene ese color' if c else 'no dijo de qué color (ningún color tiene datos)'}: decidilo a mano"); return []
+    if (pid,cf) in BAJA_ML:
+        avisos.append(f"{p['n']} #{cf}: la perfumería pide {u} pero no viene más: no lo pido (avisale a Matías)"); return []
+    return [f"ped:{pid}#{cf}=u|{u}|Hola Tito! Te pido {u} del {cf} para la perfumería (en ML este color no se vende ni hay)."]
 # EL JUICIO ES UN OBJETIVO, NO UNA COMPRA FIJA (20/10/2026, idea 1 del ayudante de ideas, chica y alta confianza): pedía la
 # cantidad tal cual aunque la mercadería ya hubiera llegado (Cortapelos 2 en 1 y 1 en 1 con 10 y 15 en la oficina, Lupa 75mm
 # con 10 en Full). Ahora pide lo que falta para TENER N (Full + oficina + camino); si ya está, avisa que se cumplió.
@@ -431,7 +457,10 @@ for p,q,d,rent in res:
         ex=f"Ya desconté {p['sinColor']} que están sin color." if p.get('sinColor') else ''
         filas=[]
         for v,qq,r,t,obj,b in d:
-            if not (qq or v['v180'] or v['full'] or v['casa'] or juDe(pid,v['v'])): continue
+            # Revisión etapa 9, 30/10/2026: el color que pidió la perfumería queda aunque para ML no tenga nada (antes, al apartar sus unidades de
+            # la oficina se quedaba sin renglón y lo que faltaba para ella no se pedía: Rosa con 2 apartadas y 5 pedidas → los otros 3, nunca).
+            _esPerf=bool(p.get('perf') and p['perf'][0]>0 and v['v'].lower()==p['perf'][1].lower())
+            if not (qq or v['v180'] or v['full'] or v['casa'] or juDe(pid,v['v']) or _esPerf): continue
             filas.append([v,qq,r,t,obj,b])
         for v in juiciosSinRenglon(p,[f[0]['v'] for f in filas]): filas.append([v,0,0,0,0,'nunca vendió'])
         # Juicio del producto ENTERO en un producto con colores: el total del juicio se reparte entre los colores según lo que
@@ -448,26 +477,33 @@ for p,q,d,rent in res:
         _perfVa=None
         if p.get('perf') and filas:
             _pv=p['perf'][1].lower(); _m=[f for f in filas if f[0]['v'].lower()==_pv]
-            _perfVa=_m[0][0]['v'] if _m else None
-            if _perfVa is None and p['perf'][0]>0: avisos.append(f"{p['n']}: la perfumería pide el color {p['perf'][1]} y no tiene renglón: decidilo a mano")
+            _perfVa=_m[0][0]['v'] if _m else None   # sin renglón: va aparte con `perf_suelto` (revisión etapa 9, 30/10/2026)
         for v,qq,r,t,obj,b in filas:
-            mot=moJt or tito(qq,r,t,obj,b,v.get('rent',rent),p['neto'],v['v'],ex,v.get('motNoRenta',p['motNoRenta']))
+            # Revisión etapa 9, 30/10/2026: "hay N" no cuenta lo apartado para la perfumería y Tito lo ve en la oficina: se dice.
+            exV=(ex+' ' if ex else '')+(f"Aparte hay {v['perfOfi']} del {v['v']} en la oficina apartadas para la perfumería (no las cuento para ML)." if v.get('perfOfi') else '')
+            mot=moJt or tito(qq,r,t,obj,b,v.get('rent',rent),p['neto'],v['v'],exV.strip(),v.get('motNoRenta',p['motNoRenta']))
             if not moJt and 'prueba' in v and qq>0: mot=prueba_mot(qq,r,v.get('prueba'),v['v'])   # el 35% de ESE color (revisión etapa 3, 29/10/2026)
             jv=juDe(pid,v['v'])
             if jv: qq,mot=juicioQ(jv[0],t,jv[1],p['n']+' #'+v['v'])
             # SÓLO ESTOS COLORES (16/10/2026, idea 11 del análisis): llegaban colores lentos en vez de los que se agotan.
             # NO VIENE MÁS (17/10/2026, regla suya): un aroma que se pidió al Paulvic y no vino no se vuelve a pedir.
             # 24/10/2026 (él): Invictus y Phantom los dio de baja ML para siempre por la marca del nombre (no es que no vengan)
-            if (p['id'],v['v']) in {('p1779912655490','Invictus'),('p1779912655490','Phantom')}: qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local."
+            if (p['id'],v['v']) in BAJA_ML: qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local."
             elif v.get('nunca'): qq,mot=0,f"Hola Tito! {v['v']}: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más."
             if v.get('mano') is not None and not v.get('manoVenc'): avisos.append(f"{p['n']} #{v['v']}: ✋ él lo cambió a mano a {v['mano']} en Pedidos: en la web manda eso (no lo que decido) hasta el pedido hecho")
-            if p.get('perf') and p['perf'][0]>0 and v['v']==_perfVa: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
+            if p.get('perf') and p['perf'][0]>0 and v['v']==_perfVa:
+                # Revisión etapa 9, 30/10/2026: lo que no viene más (Paulvic `nunca`, o dado de baja en ML) tampoco se pide para la perfumería:
+                # antes se sumaba después del "no te lo pido más" y el pedido al Paulvic llevaba un aroma que no manda.
+                if (p['id'],v['v']) in BAJA_ML or v.get('nunca'): avisos.append(f"{p['n']} #{v['v']}: la perfumería pide {p['perf'][0]} pero no viene más: no lo pido (avisale a Matías)")
+                else: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
         if p.get('perf') and not filas: avisos.append(f"{p['n']}: la perfumería pide {p['perf'][0]} pero no tiene ningún color con datos: decidilo a mano")
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
             # una decisión mía vieja, se borra (=auto) para que no quede pidiendo unidades de otro momento.
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tenía decisión vieja y ningún color con datos: la borro (=auto)")
+        # El color de la perfumería sin renglón va aparte (revisión etapa 9, 30/10/2026). Después del `=auto`: decido lo aplica en orden.
+        if _perfVa is None: N.extend(perf_suelto(p,pid))
         if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
     else:
         r,t,obj,b=d
@@ -475,17 +511,29 @@ for p,q,d,rent in res:
         if p.get('colores'):
             # Un producto con colores sin ningún dato por color no se puede escribir sin color (decido lo rechaza).
             jc=juiciosSinRenglon(p,[])
+            # Revisión etapa 9, 30/10/2026: lo que pide la perfumería tampoco se pierde acá (antes este `continue` lo salteaba sin aviso): va en
+            # el juicio de ese color o en su propio renglón (`perf_suelto`), siempre después del `=auto`.
+            _pp=False
             if jc:   # pero un juicio de color sí (etapa 3, 20/10/2026): va color por color
                 for v in jc:
-                    jv=juDe(pid,v['v']); qq,mot=juicioQ(jv[0],0,jv[1],p['n']+' #'+v['v']); N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
+                    jv=juDe(pid,v['v']); qq,mot=juicioQ(jv[0],0,jv[1],p['n']+' #'+v['v'])
+                    if p.get('perf') and p['perf'][0]>0 and v['v'].lower()==p['perf'][1].lower():
+                        _pp=True
+                        if (pid,v['v']) in BAJA_ML: avisos.append(f"{p['n']} #{v['v']}: la perfumería pide {p['perf'][0]} pero no viene más: no lo pido (avisale a Matías)")
+                        else: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
+                    N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
+                if not _pp: N.extend(perf_suelto(p,pid))
                 if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
                 continue
             if p['decidido']: N.append(f"ped:{pid}=auto"); avisos.append(f"{p['n']}: tiene colores sin datos por color y una decisión vieja: la borro (=auto)")
             elif q>0: avisos.append(f"{p['n']}: la cuenta pide {q} pero no sé de qué colores: decidilo a mano")
+            N.extend(perf_suelto(p,pid))
             continue
         ex=''
         if p.get('rem'): ex+=f"No cuento {p['rem']} que se remataron porque estaban parados. "
         if p.get('barata'): ex+=f"Cuento {p['barata']} que se vendieron baratas porque salían al toque. "
+        # Revisión etapa 9, 30/10/2026: "hay N" no cuenta lo apartado para la perfumería y Tito lo ve en la oficina: se dice.
+        if p.get('perfOfi'): ex+=f"Aparte hay {p['perfOfi']} en la oficina apartadas para la perfumería (no las cuento para ML). "
         mot=tito(q,r,t,obj,b,rent,p['neto'],None,ex.strip(),p['motNoRenta'])
         if 'prueba' in p and q>0: mot=prueba_mot(q,r,p.get('prueba'))
         if juDe(pid): q,mot=juicioQ(juDe(pid)[0],t,juDe(pid)[1],p['n'])
@@ -493,7 +541,10 @@ for p,q,d,rent in res:
         # lo guarda aparte y la web resta de lo decidido sólo lo que ENTRÓ después; antes volvía a restar la oficina y el camino (Te pido 15
         # con 10 en la oficina y 5 en camino → la web lo dejaba en 0 y el renglón desaparecía de Pedidos).
         if p.get('perf') and p['perf'][0]>0: q,mot=q+p['perf'][0],perf_mot(q,p['perf'][0],mot)
-        N.append(f"ped:{pid}=u|{q}|{mot}|cub={max(0,round(t-p['full']))}")
+        # Revisión etapa 9, 30/10/2026: `cub` también lleva lo apartado para la perfumería en la oficina (`perfOfi`). La web resta (oficina +
+        # camino − cub) como "lo que entró después": sin esto restaba otra vez lo apartado (Termómetro: Te pido 15 con 3 apartadas → la web 12 y
+        # "entraron 3 u."; lo pedido para ella, Te pido 3 con 2 apartadas → 1).
+        N.append(f"ped:{pid}=u|{q}|{mot}|cub={max(0,round(t-p['full']))+p.get('perfOfi',0)}")
         if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
 bad=[n for n in N if ';' in n]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)

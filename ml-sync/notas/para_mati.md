@@ -200,3 +200,20 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 **RESUELTA 29/10** (él: *"descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en stock en Full"*): prueba para todo lo que se vendía y nunca se probó al 35% con stock (ni (a) ni (b): regla nueva en Pedidos).
 Con la regla nueva (competencia → venta más cara de 365 días) salen de Pedidos 33 renglones que vendían bien pero nunca a 35%. Los que tienen stock ya están a la venta a un precio de 35%+ (la prueba corre sola). Los que están en 0 subieron de precio sin mercadería: la prueba no puede pasar.
 1. (a) prueba sólo donde no hay competencia medida: Sábanas (todos los colores), B39, Pizarra Violeta, Linterna Azul, Funda colchón, Sony ZX: 19 renglones, 51 u., ~$492.000 · (b) también los que la competencia vende más barato (Estimulador, Termómetro Cable, Victoria's Secret, Cool Water, Halloween Kiss Sexy, Midnight Fantasy, Paulvic Acqua/Miss): +14 renglones, +74 u., +~$849.000 · (c) ninguno.
+
+## 29/10 · De la vuelta de las 15:52
+- **Comunicador Motorola Talkabout (Ayelen, `MLA2230485519`, 1 u. en Full) sigue pausado:** es nuevo y nadie confirmó que su catálogo de ML (MLA22570574) sea exactamente ese modelo. La otra publicación del mismo comunicador ya está activa a $126.990. (a) sugerida: te paso las fotos del catálogo para que confirmes y la activo · (b) dejarla pausada y vender sólo por la otra.
+
+### Revisión del Local del 30/10 (12 decisiones, para cuando digas "resolvamos")
+1. **Los 2 perfumes del local que vienen en el pedido de Paraguay** (Bad Boy y 212) se cuentan dos veces: como mercadería en camino y como deuda del local ($247.588). Por eso el cobro de octubre pudo dar ~$100.000 de más por socio (1,6M en vez de 1,5M). (a) sugerida: sacarlos de "en camino", dejar sólo la deuda y corregir octubre · (b) borrar la deuda y cargarla cuando se los entregues.
+2. **Oficina Local mientras la contás:** dejarle algo a una perfumería "de la oficina local" no baja el valor que está a mano en el Arqueo. (a) sugerida: que lo baje también · (b) no dejar nada de ahí hasta terminar de contar.
+3. **Algo en la papelera, "no traer" o "sólo local" que pide la perfumería:** hoy no le llega a Tito. (a) sugerida: que se pida sólo para la perfumería (0 para ML) · (b) que nunca se pida por Pedidos.
+4. **Lo de la perfumería que viene viajando:** (a) sugerida: lo que viaja la cubre primero (no se vuelve a pedir) · (b) se sigue pidiendo hasta que llega.
+5. **Qué es la Oficina Local:** (a) sugerida: lo "sólo local" + lo contado de la Oficina Local + lo apartado para la perfumería; lo nuevo que todavía no publicaste sigue en ML · (b) como está (todo lo que no tiene publicación).
+6. **Nombres de deudores que ya quedaron en el registro público** (de antes de este arreglo): (a) sugerida: limpiarlos y borrar esas corridas viejas · (b) dejarlo.
+7. **Día de una venta en cuotas:** (a) sugerida: el día que se vendió · (b) el de la primera cuota (como hoy).
+8. **Si alguien devuelve de más:** (a) sugerida: queda en negativo, como "lo que debemos" · (b) como hoy (queda en 0 y el resto se pierde).
+9. **Retiro de un mes ya cobrado:** si después se corrige algo, hoy el retiro de ese mes se reescribe solo. (a) sugerida: congelarlo; la corrección va al mes siguiente · (b) que se reescriba.
+10. **El % de las perfumerías** sale en rojo porque se compara con el 35% de ML y la regla del local es costo + 25%. (a) sugerida: compararlas contra 25% · (b) dejar 35% para todo.
+11. **Mercadería que la perfumería devuelve sin vender** o una entrega mal cargada: hoy sólo existe "pagó". (a) sugerida: un comando de devolución que la vuelva a la oficina y saque esa ganancia · (b) dejarlo así.
+12. **Persea:** cuando la perfumería pide Persea, ahora gana el pedido de ella sobre lo que fijaste mandar a Full (3). (a) sugerida: primero la perfumería · (b) primero lo fijado para Full.
