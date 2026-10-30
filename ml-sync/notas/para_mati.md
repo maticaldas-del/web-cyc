@@ -8,6 +8,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ⏳ 30/10 · Paulvic que salieron de la Oficina ML sin aroma
+- 15 Paulvic al costo a las perfumerías (repartidos 5/5/5, cargados como deuda el 30/10). **Falta restarlos de la Oficina ML**: el robot pide el aroma de cada uno y él dijo "no anotar por ahora aromas". Hasta que pase los aromas, la oficina muestra 15 Paulvic de más (Armar caja podría querer mandarlos). Pedírselos en el aviso de las 12:30.
+
 ### ✅ Contestó la lista de las 12:30 del 30/10 (3a 4b 5b 6a 7a 8b 9a 10a 11a 12a 13a 14a 15a 16b 17b 18b 19a 20 después 21b 22a 23a 24a 25a+cupo 26a 27a 28 29a 30a)
 - **Hecho (v28.29):** 3a Bad Boy/212 fuera de "en camino" con `pylocal` (octubre NO se toca, 4b: "el arqueo de octubre ya cerró, no se modifica nada") · 9a dejar de la Oficina Local baja el valor a mano · 10a lo de la perfumería en papelera/no traer/sólo local se pide sólo para ella · 11a lo que viaja la cubre · 12a qué es la Oficina Local · 13a devolver de más queda en negativo · 14a % del local contra 25% · 15a el salto de `oficyc:listo` va a `cobro_corr` · 16b ¿Cierra el mes? hasta la hora del cierre · 23a sin etiqueta por cuenta · 24a Tenders en su caja · 25a envío pausado cuenta como en camino y ocupa cupo · 26a costos de Paraguay con el ticket · 27a la recompra más barata baja el costo · 28 lo que no había tachado en rojo, lo pagado y no llegado en rojo para reclamar (`pyped:reclamo`) · 29a compra de prueba sólo sin competencia medida · 8b Teikirisi, 1.4 Sexy Men y Rose vuelven a $14.990 hasta el 07/11.
 - **Se dejan como están:** 5b Pendrive 16 espera la antigüedad real · 6a Good a $21.990 hasta el 16/11 · 7a Transparent y Only Glow esperan sus 30 días · 17b nombres viejos · 18b deudas de personas · 21b precios de proveedores en el registro · 22a fichas viejas con su nombre.
