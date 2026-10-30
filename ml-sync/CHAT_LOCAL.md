@@ -30,21 +30,33 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Imega (mayorista que conoce Tito).  → IMEGA
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
 
-CUÁNDO HACÉS CADA COSA (30/10/2026, él: "yo le dije que todos los días mire los prompts y los corra… cada cuánto mira y hace cada cosa")
-Todos los días, al arrancar: abrí el panel → Mi oficina → 🤖 Textos para el chat de Chrome y copiá de nuevo "🧠 Todo (para un chat nuevo)".
-Si cambió algo respecto de ayer, manda lo nuevo. Después hacé lo que toca HOY según esta agenda (si una tarea no termina, al día siguiente
-seguís desde donde quedó, antes de empezar otra):
-- LUNES A VIERNES, 9:30 → RUTINA (incluye mirar la tienda). Es lo primero, siempre.
-- LUNES A VIERNES, después de la rutina → mirá en el panel (Oficina ML → Armar caja) si alguna caja dice "MANDALA YA". Si hay, hacé CAJAS
-  (cargar la planificación sin confirmar) y avisale a Matías que está para confirmar.
-- SÁBADO, 9:00 → GUAY completo: primero los probados que pide el panel, después el catálogo entero de Nissei desde la página 1, y al final
-  lo de ventas. Si no termina el sábado, sigue el domingo y el lunes después de la rutina.
-- LUNES, después de la rutina y las cajas → LISTAS (la vuelta de las listas de proveedores).
-- MIÉRCOLES, después de la rutina → ONCE (buscar 1 o 2 mayoristas nuevos del Once con precios en internet; una hora como mucho).
-- JUEVES, después de la rutina → IMEGA si hay lista nueva (si no cambió desde la última vez, no hace falta).
-- ANTIGÜEDAD → sólo si Matías lo pide (es de una vez).
-- Cualquier día, si Matías te pide otra cosa, eso va primero.
-Al terminar cada tarea dejá en el buzón un renglón "<TAREA> <fecha>: listo" (o hasta dónde llegaste), además de lo que pida esa tarea.
+CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
+No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
+1. Abrí el panel → Mi oficina → 🤖 Textos para el chat de Chrome y copiá de nuevo "🧠 Todo (para un chat nuevo)". Si algo cambió, manda lo nuevo.
+2. En Mi oficina → 📬 Mensaje para Claude está la línea "🤖 Última vez del chat de Chrome" (cuántos días hace que se hizo cada tarea).
+   Con eso decidís qué toca, en este orden de importancia:
+   a) RUTINA → si no dice "hoy". Siempre primero (cupo, Mercado Pago y el pedido de Nissei cambian todos los días).
+   b) CAJAS → si en Oficina ML → Armar caja alguna dice "MANDALA YA" (cargás la planificación sin confirmar y le avisás a Matías).
+   c) GUAY → si hace 7 días o más (o "nunca"). Es la más larga: si no termina, la próxima vez seguís desde la página donde quedó.
+   d) LISTAS → si hace 7 días o más.
+   e) ONCE → si hace 7 días o más (1 o 2 mayoristas nuevos, una hora como mucho).
+   f) IMEGA → si hace 14 días o más.
+   g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
+   ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
+3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
+   fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …".
+   Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
+
+REVISAR LA TIENDA (la tarea g; es lo que hacés cuando no queda nada más)
+- Abrí https://tiendacyc.github.io y andá página por página desde donde quedaste la última vez (lo dice tu último mensaje "TIENDA: …";
+  si no hay, desde la página 1). Revisá TODOS los productos de cada página, no una muestra.
+- En cada uno: ¿la foto es ESE producto (modelo, color, capacidad)? · ¿el nombre está en castellano y se entiende? · buscalo en
+  mercadolibre.com.ar: si el precio de la tienda es MÁS DEL DOBLE o MENOS DE LA MITAD que el más barato nuevo de ML, está mal · ¿es algo
+  grande o pesado (TV o monitor de más de 24", electrodomésticos grandes, muebles, bicis)? no tendría que estar · en ningún lado puede decir
+  Nissei, Paraguay, dólares, US$ ni costo.
+- Cada 3 páginas dejá un mensaje: "TIENDA: páginas 1-3 · 72 mirados · 70 bien · XXXXX=foto de otro color · YYYYY=precio el triple que ML"
+  (el código de 5 o 7 letras sale en el producto, "CYC XXXXX"). Al llegar a la última página, la próxima vez empezás de nuevo en la 1.
+- No tocás nada: sólo mirás y anotás.
 
 LA TIENDA DE CYC (para saber, 30/10/2026)
 - Hay una tienda pública por encargo (la tienda; la dirección la tiene Matías). La arma el robot solo, cada noche, con TODOS los productos de Nissei

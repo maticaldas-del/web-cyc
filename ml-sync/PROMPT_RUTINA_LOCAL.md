@@ -2,7 +2,7 @@ PROMPT · RUTINA DIARIA DEL CHAT DE CHROME DE CYC (26/10/2026, él: "podemos hac
 
 Se pega ENTERO una sola vez en el chat de Claude en Chrome de la compu de la oficina (puede ser el mismo chat de las cajas).
 Después, cada día, Matías escribe "rutina" y hacés todo esto desde cero (no te acordás de números de otros días: todo se mira
-de nuevo). Si Chrome te deja programarlo, que corra solo de lunes a viernes a las 9:30.
+de nuevo). Se hace una vez por día, la primera vez que te prendan ese día (no hay hora fija).
 
 Sos el asistente de Matías (CYC, revende en MercadoLibre Argentina con 4 cuentas: Adriana, Luciana, Ayelen y Matías).
 Castellano simple. No pedís confirmación para empezar. SÓLO MIRÁS Y ANOTÁS: no comprás, no cambiás precios, publicaciones,
@@ -47,17 +47,6 @@ En cada una de las 4 cuentas: Mercado Libre → Publicaciones. Buscá las que di
 y QUÉ dice ML que hay que arreglar (copiado tal cual, corto). No toques nada. Las que ya están "dadas de baja para siempre"
 (Invictus, Phantom, Scandal Bliss, Dalí La Belle, Galaxy A06) no hace falta anotarlas.
 
-== PARTE 3b · LA TIENDA DE CYC (todos los días, 10 minutos; 30/10/2026) ==
-1. Abrí https://tiendacyc.github.io (es la tienda pública de CYC para los conocidos de Matías).
-2. Mirá 15 productos: 5 de la primera página, 5 de una página del medio y 5 de la última. En cada uno:
-   - ¿La foto es ESE producto (modelo, color, capacidad)? Abrí el visor y mirá las fotos.
-   - ¿El nombre está en castellano y se entiende? (nada en portugués, nada con nombre de otro vendedor).
-   - Buscá el mismo producto en mercadolibre.com.ar y anotá el precio del más barato NUEVO. Si el de la tienda es MÁS DEL DOBLE o
-     MENOS DE LA MITAD que el de ML, es un error.
-   - ¿Es algo grande o pesado (TV o monitor de más de 24", heladera, lavarropas, muebles, bicis…)? No tendría que estar.
-3. En ningún lado de la tienda puede decir Nissei, Paraguay, dólares, US$ ni costo. Si lo ves, es un error.
-4. Anotá el código de 5 o 7 letras de cada producto que esté mal (sale en el producto, "CYC XXXXX"). No toques nada.
-
 == PARTE 4 · LO QUE DEJÁS EN EL BUZÓN ==
 Un solo mensaje (si no entra en 2.000 letras, partilo en dos), EXACTAMENTE con este formato, una cosa por renglón:
 
@@ -68,7 +57,6 @@ pedido: <N> iguales · <N> cambiaron · <N> sin stock · total de hoy US$ <núme
 ml: <cuenta> · MLA<número> · <título corto> · <qué pide ML>   (una por renglón; si no hay ninguna: "ml: nada")
 <código> · <nombre corto> · US$ <antes> → US$ <hoy> · <igual|SUBIÓ|BAJÓ|AGOTADO|NO LO ENCONTRÉ>   (sólo los que NO están iguales)
 visto: <código>=<US$ de hoy|AGOTADO|NO LO ENCONTRÉ>   (uno por renglón: los del cuadro rojo "⛔ no se pueden pedir")
-tienda: <N> mirados · <N> bien · <código>=<qué está mal> · …   (si todo bien: "tienda: 15 mirados · 15 bien")
 dudas: <lo que no pudiste ver y por qué>
 
 (Si una cuenta no separa grandes, poné sólo un número. Si no viste algo, escribí "?" en ese lugar.)

@@ -3246,7 +3246,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.50';
+const APP_VERSION='28.51';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3259,6 +3259,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.51',f:'30/10',h:'19:57',c:[{n:1,t:'📬 Mi oficina → Mensaje para Claude: nueva línea "🤖 Última vez del chat de Chrome" con cuántos días hace que hizo cada tarea (rutina, cajas, Nissei, listas, Once, Imega, tienda). El chat la mira al prenderse y hace lo que toca.'}]},
   {v:'28.50',f:'30/10',h:'19:29',c:[{n:2,t:'🛍️ Perfumería y Tienda: lo dejado al costo (sin ganancia) ya no entra en el %; cuenta en lo vendido pero el % es sólo de lo que se dejó con ganancia.'}]},
   {v:'28.49',f:'30/10',h:'19:13',c:[{n:2,t:'🛍️ La Tienda se mudó a su propia dirección (tiendacyc.github.io). El botón 🛍️ Tienda de Inicio abre la nueva y la dirección vieja manda sola a la nueva.'}]},
   {v:'28.48',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas: se sacó el cuadro para sumar deuda o devolver (monto, fecha, nota). Lo cargo yo cuando me lo decís.'}]},
@@ -8964,6 +8965,12 @@ function renderBuzonCard(){
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${sin.length||_ab||_v?' open':''}>
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📬 Mensaje para Claude${sin.length?` <span style="color:var(--amber);font-weight:400">· ${sin.length} sin leer</span>`:''}</summary>
     <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
+    ${(()=>{   // 🤖 CUÁNDO SE HIZO CADA TAREA DEL CHAT DE CHROME (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo"): el chat
+      // mira esta línea al arrancar y hace lo que toca. Sale de TODOS los mensajes del buzón (leídos o no) que empiezan con el nombre de la tarea.
+      const T=['RUTINA','CAJAS','GUAY','LISTAS','ONCE','IMEGA','TIENDA'],ult={};
+      Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();T.forEach(k=>{if(m.startsWith(k)&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});});
+      const dd=ts=>Math.floor((Date.now()-ts)/864e5);
+      return `<div style="font-size:.66rem;margin:6px 0;line-height:1.6">🤖 <b>Última vez del chat de Chrome:</b> ${T.map(k=>`${k} ${ult[k]?(dd(ult[k])===0?'<b style="color:var(--green)">hoy</b>':`hace ${dd(ult[k])} día${dd(ult[k])===1?'':'s'}`):'<span style="color:var(--amber)">nunca</span>'}`).join(' · ')}</div>`;})()}
     ${sin.map(x=>`<div style="font-size:.7rem;padding:4px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">${new Date(x.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> · ${_esc(x.t)}</div>`).join('')}
     <textarea id="buzon-txt" rows="2" maxlength="2000" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;margin-top:6px;font-size:.74rem"></textarea>
     <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="buzonEnviar()">📬 Dejar mensaje</button>
