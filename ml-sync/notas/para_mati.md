@@ -217,3 +217,7 @@ Con la regla nueva (competencia → venta más cara de 365 días) salen de Pedid
 10. **El % de las perfumerías** sale en rojo porque se compara con el 35% de ML y la regla del local es costo + 25%. (a) sugerida: compararlas contra 25% · (b) dejar 35% para todo.
 11. ~~**Mercadería que la perfumería devuelve**~~ ✅ RESUELTA 30/10 (él: 11a): `debenmov:mercaderia perfumeria=devuelve|prod=|local=|u=|a=<local|ml>;go`; `=desde` en Mercadería Perfumería queda prohibido.
 12. ~~**Persea**~~ ✅ RESUELTA 30/10 (él: 12b): primero lo fijado para Full; la perfumería se lleva lo que sobra (`fijo_q` en decide_cajas.py).
+
+## 30/10 · ¿Es peligroso que CYC sea público?
+1. **Revisar qué se ve hoy en público** (archivos, historial y registros del robot) buscando datos de personas o del negocio que no deberían estar: (a) sugerida: sí, y le digo cuántos encontré · (b) no por ahora.
+2. **Cómo queda armado:** (a) sugerida: sigue público y se saca del repo lo más sensible del negocio (montos de monotributo, costos, proveedores), que queda en la base con su cuenta · (b) privado y el robot se muda a un servidor propio (~US$ 5-10/mes, trabajo grande) · (c) privado pagándole a GitHub (cientos de dólares por mes, a medir).
