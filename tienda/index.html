@@ -60,12 +60,13 @@ header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bot
 @media (min-width: 1100px) { .grilla { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--sombra); }
 .card.en { border-color: var(--acc); }
-.foto { aspect-ratio: 1 / 1; background: var(--foto); display: block; width: 100%; border: 0; padding: 8px; position: relative; }
-.foto img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.foto { background: var(--foto); display: block; width: 100%; height: 0; padding: 100% 0 0; border: 0; position: relative; flex: none; overflow: hidden; }
+.foto img { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); object-fit: contain; display: block; }
 .foto .mas { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; border-radius: 999px; padding: 2px 7px; }
 .info { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-.nom { font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: calc(1.3em * 3); }
-.precio { font-weight: 750; font-size: 18px; }
+.nom { font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; height: calc(1.3em * 3); }
+.precio { font-weight: 750; font-size: 18px; margin-top: auto; }
+.slot { flex: none; }
 .cant { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; height: 40px; margin-top: auto; }
 .cant button { height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 20px; line-height: 1; }
 .cant span { text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
