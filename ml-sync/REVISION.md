@@ -991,6 +991,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 **Qué chequear:** que no aparezca ningún gasto con categoría o descripción "retiro de socios"
 (sería doble), y que el número de Gastos y el del Arqueo sean el mismo para cada mes.
 
+- 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
+
 ## 3 · MERCADERÍA (miércoles)
 ### 🔍 Revisión etapa 3 del 29/10/2026 (4 revisores en máximo · v27.90)
 - **Pedidos:** la web restaba otra vez oficina + camino de lo que ya decidió `decide_pedidos.py` y borraba el pedido (`decido:ped` guarda `cub`, la web resta sólo lo que entró después) · HOY con ventana de 60 días y el empujón de los últimos 30 · el 35% por color y con la misma cuenta de la app (neto − 2% − imp − costo) ÷ (costo + imp + envío) · con 1-2 ventas no se saca ritmo (se divide por la ventana, mínimo 30) · los colores heredan los cambios de precio de la publicación de varios colores · el riesgo de un color en 0 no lo tapa la oficina de otro color · remates clasificados 365 días · verde desde 35% · `decido` limpia los precios por color viejos · rojo = 14 días o menos · el camino del robot igual al de la web.

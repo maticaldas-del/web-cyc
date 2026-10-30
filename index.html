@@ -3245,7 +3245,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.43';
+const APP_VERSION='28.44';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3258,6 +3258,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.44',f:'30/10',h:'18:24',c:[{n:2,t:'🇵🇾 Recargo de Paraguay: ahora se mide contra lo que se pagó según el ticket, no contra el precio de la web. El descuento de Nissei sale aparte en los gastos del pedido (🎁) y ya no achica el %.'}]},
   {v:'28.43',f:'30/10',h:'18:11',c:[{n:1,t:'🔀 Métricas → ML + Local: al pasar el dedo por la Tendencia, ML y Local dicen qué % son del total (de lo vendido o de la ganancia, según lo que esté elegido).'}]},
   {v:'28.42',f:'30/10',h:'18:08',c:[{n:2,t:'🏪 El local se divide en dos: 🛍️ Perfumería (Mercadería y MercadoPago de las perfumerías) y 🏬 Tienda (todo lo que vendemos por afuera de la perfumería). En Métricas → 🏪 Local las dos son las "cuentas"; en Ver deudas las ventas que no son de la perfumería dicen 🏬 TIENDA.'}]},
   {v:'28.41',f:'30/10',h:'16:20',c:[{n:1,t:'🔒 La web publica sólo el Panel y la Tienda: las notas y el robot ya no se pueden abrir desde la dirección, y el Panel pide no aparecer en buscadores.'}]},
@@ -18583,7 +18584,8 @@ const PY_GASTOS=[{k:'mercaderia',nom:'Pesos de los dólares',campo:'merc'},{k:'e
 function pyGastoCargado(c,g){const _p=(c&&c.pagos)||{};const v=(Number(_p[g.k])||0)+(g.alt?(Number(_p[g.alt])||0):0);if(v>0)return true;return!!(g.cero&&Array.isArray(c&&c.pagosOk)&&c.pagosOk.includes(g.k));}
 // Base = precio de la WEB (decisión 4a del 20/10/2026): con ticket `ticket.usdWeb`, sin ticket `usdCrudo`. Misma cuenta que
 // `recargoRealPedido` de sync.mjs (el promedio de allá deja afuera el adelanto, decisión 7a; acá es el de ESE pedido y va).
-function pyBaseUSD(c){const w=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;return w>0?w:(parseFloat(c&&c.usdCrudo)||0);}
+// 1a del 30/10/2026, él: el recargo se mide contra lo PAGADO (ticket) y el descuento de Nissei va aparte; antes contra la web y el descuento lo achicaba: base = lo pagado del ticket si está.
+function pyBaseUSD(c){const pg=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0,w=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;return pg>0?pg:w>0?w:(parseFloat(c&&c.usdCrudo)||0);}
 // LO DE USO PERSONAL QUE VINO EN EL TICKET (revisión etapa 3, 29/10/2026): `c.personal.usd` (lo separa `compray det=` del robot). Su parte
 // de los pesos de los dólares (mercadería + cambista, por los dólares que costó contra los de CYC) no es de CYC: sale del recargo. Sin
 // correo ni el que retira. Misma cuenta que `pyPersonalARS` de sync.mjs: si se toca una, la otra.
@@ -18592,8 +18594,7 @@ function pyPersonalARS(c){const pu=parseFloat(c&&c.personal&&c.personal.usd)||0;
   return cyc+pu>0?Math.round(dol*pu/(cyc+pu)):0;}
 function pyRecargoReal(c){
   const falta=PY_GASTOS.filter(g=>!pyGastoCargado(c,g)).map(g=>g.nom);
-  const _uw=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0;
-  const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=_uw>0?_uw:(parseFloat(c&&c.usdCrudo)||0);
+  const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=pyBaseUSD(c);   // contra lo pagado (1a del 30/10/2026)
   if(!(tc>0))falta.push('el dólar del día del pedido');if(!(usd>0))falta.push('los dólares crudos');
   if(falta.length)return{r:null,falta};
   const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-pyPersonalARS(c);   // revisión etapa 3, 29/10/2026
@@ -18615,8 +18616,7 @@ function pyRecargoFichas(c){
 // EL ESTIMADO, CONTRA LO PAGADO (revisión etapa 3, 29/10/2026): sin todos los gastos, la ficha nace con `RECARGO_PY`, que se mide contra
 // el precio de la WEB, aplicado a lo PAGADO (con descuento): nacía más barata de lo que sale. Con el ticket se lleva a la misma base
 // (× web ÷ pagado). Cuando estén los gastos, el robot la pone en el real. Misma cuenta que `_recEst` de `pyped:llego` (sync.mjs).
-function pyRecargoEstimado(c){const w=parseFloat(c&&c.ticket&&c.ticket.usdWeb)||0,p=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0;
-  const r=w>0&&p>0?RECARGO_PY*w/p:RECARGO_PY;return r>=1&&r<=1.6?Math.round(r*10000)/10000:RECARGO_PY;}
+function pyRecargoEstimado(c){void c;return RECARGO_PY;}   // 1a del 30/10/2026: RECARGO_PY ya se mide contra lo pagado
 // 6.P3 (etapa 6, eligió la a, 21/10/2026): el dólar que se pagó contra el MEP y el cripto de ESE día (`cyc/dolarref`, lo guarda el
 // robot una vez por día desde el 21/10/2026). Positivo = se pagó más caro que ése. Sin dato de ese día no dice nada (no se inventa).
 function pyDolarRefDe(c){
@@ -18664,6 +18664,8 @@ function pyGastosChecklistHTML(c){
   // Revisión etapa 3, 29/10/2026: lo de uso personal que vino en el mismo ticket se pagó junto pero no es de CYC (`pyPersonalARS`):
   // se resta, así el total y los % siguen sumando el recargo real.
   const _pers=pyPersonalARS(c);
+  // EL DESCUENTO DE NISSEI, APARTE (1a del 30/10/2026): lo que la web pedía menos lo que se pagó. No entra en el recargo.
+  {const _w=parseFloat(c.ticket&&c.ticket.usdWeb)||0,_pg=parseFloat(c.ticket&&c.ticket.usdPagado)||0;if(_w>0&&_pg>0&&_w-_pg>0.5)filas+=`<div style="font-size:.66rem;padding:4px 0;border-bottom:1px dashed var(--border);color:var(--green)">🎁 Descuento de Nissei: ${fmtUS2(_w-_pg)} (${((1-_pg/_w)*100).toFixed(1).replace('.',',')}% menos que la web, ${fmtUS2(_w)} → ${fmtUS2(_pg)}) · no entra en el recargo</div>`;}
   if(_pers>0)filas+=fila(true,'🙋 Uso personal (no es de CYC)',fmtUS2(Number(c.personal&&c.personal.usd)||0),'−'+fmt(Math.round(_pers)),_base>0?'−'+_pct(_pers)+'%':'');
   const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-_pers;
   const recTxt=R.r?((R.r-1)*100).toFixed(1).replace('.',','):null;
