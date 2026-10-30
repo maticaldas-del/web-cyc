@@ -4249,6 +4249,8 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 
 - 30/10 (él: *"las ventas sin costo no cuentan en el %"*): lo dejado al costo (ganancia 0) suma en lo vendido pero no en el divisor del % (`_ganConCosto`, index.html): Ver deudas (renglón y detalle), `_metLocalDia` (Perfumería/Tienda/Todo) y `renderMetLocal`. Chequear: Perfumería da ~25% con lo que se dejó con ganancia; lo vendido no cambia.
 
+- 30/10 (él: *"primero liquidá MercadoPago… después la mercadería… si vuelve MercadoPago, volver a liquidar MercadoPago"*): `debenmov:perfumeria=-N` (sync.mjs) parte el cobro: a Deuda Perfumería hasta su saldo y el resto a Mercaderia Perfumeria (que lo reparte del más viejo al más nuevo). Probado sin grabar: $300.000 → todo a MercadoPago ($1.132.000 → $832.000). Chequear: con MercadoPago en 0 todo va a Mercadería.
+
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
 Él: *"agregar esa web de venta local a revisión y largala ahora. que revise todo en máximo esfuerzo"*. La tienda pública por encargo (`tienda/index.html`, `tienda/productos.json`; comando `tienda[;go]` en sync.mjs; `ml-tienda.yml` a mano y el paso de ml-daily cada noche; la dirección de la tienda no va en los textos del repo, 30/10).
 - **Lo que no se rompe nunca:** en la página, en `productos.json` y en el historial de ese archivo NO aparece Nissei, Paraguay, comprasparaguay, códigos de Nissei, nombres en portugués, US$, costos ni recargos (él: *"NADIE SABE QUE LO TRAEMOS DE PARAGUAY"*). Nada del panel (ni datos ni links) se ve desde la tienda.
