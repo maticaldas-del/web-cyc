@@ -30438,6 +30438,19 @@ async function main() {
     // códigos, proveedor, dólares ni costos, y un producto cuyo nombre tenga una palabra prohibida no entra. Sin `;go` muestra cuántos y
     // una muestra (sin costos); con `;go` escribe el archivo (`TIENDA_ARCHIVO` o `tienda/productos.json`; ml-daily lo sube a la rama de
     // la web). El número de WhatsApp (apagado si no hay) sale de `cyc/mlconfig/tiendaWa` (sólo dígitos).
+    // 📱 Número de WhatsApp de la tienda (30/10/2026, él: "2346534713"): `tienda:wa=<código de área + número, sin 0 ni 15>[;go]`
+    // guarda `cyc/mlconfig/tiendaWa` en el formato de wa.me (549 + número); `tienda:wa=-;go` lo saca y el botón se apaga.
+    if (/^tienda:wa=/.test(String(process.env.BILLING_PROBE || ''))) {
+      const rawW = String(process.env.BILLING_PROBE).replace(/^tienda:wa=/, ''); const GOw = /;go$/.test(rawW); const v = rawW.replace(/;go$/, '').trim();
+      if (v === '-') { if (GOw) await db.set('cyc/mlconfig/tiendaWa', null); console.log(GOw ? '✓ WhatsApp de la tienda apagado' : 'Prueba: apagaría el WhatsApp (falta ;go)'); return; }
+      let d = v.replace(/\D/g, ''); if (d.startsWith('549')) d = d.slice(3); else if (d.startsWith('54')) d = d.slice(2); d = d.replace(/^0/, '');
+      if (!/^\d{10}$/.test(d)) { console.log(`❌ "${v}": va el código de área + el número, 10 cifras, sin 0 ni 15 (ej. 2346534713). No escribo nada.`); return; }
+      const wa = '549' + d;
+      if (!GOw) { console.log(`Prueba: el botón abriría wa.me/${wa} (falta ;go)`); return; }
+      await db.set('cyc/mlconfig/tiendaWa', wa); const rr = await db.get('cyc/mlconfig/tiendaWa');
+      console.log(rr === wa ? `✓ WhatsApp de la tienda: wa.me/${wa} (sale en la tienda con la próxima corrida de "tienda;go", cada noche)` : '⚠️ no lo pude releer');
+      return;
+    }
     if (/^tienda(;go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const GOt = /;go$/.test(String(process.env.BILLING_PROBE));
       const TIENDA_DIAS = 30, GAN = 0.25;
@@ -30468,7 +30481,8 @@ async function main() {
       if (!tk) { console.log('❌ Sin token de ML: no escribo nada.'); return; }
       const [cands, prodsObj, links, sinSt, pycat, marcasNo, waRaw] = await Promise.all([
         db.get('cyc/candidatos_py'), db.get('cyc/products'), db.get('cyc/mllinks'), db.get('cyc/py_sinstock'), db.get('mlapi/pycat'),
-        db.get('cyc/mlconfig/marcasFrenadas'), db.get('cyc/mlconfig/tiendaWa')]);
+        // 30/10/2026 (él: "es totalmente aparte, así que se puede vender todo lo de marca acá"): en la tienda no se frena ninguna marca.
+        Promise.resolve({}), db.get('cyc/mlconfig/tiendaWa')]);
       if (!cands || !prodsObj) { console.log('❌ DATOS INCOMPLETOS (no pude leer los candidatos o las fichas): no escribo nada.'); return; }
       const hoy = Date.now(), fresco = (t) => Number(t) > 0 && hoy - Number(t) <= TIENDA_DIAS * 864e5;
       const fuera = {}; const no = (m) => { fuera[m] = (fuera[m] || 0) + 1; };

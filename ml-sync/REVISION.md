@@ -4219,3 +4219,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   - Se agrega uno de $20.000 → queda cubierto por el saldo y sobran $5.000.
 - **Qué chequear:** el primer cobro real (`debenmov:mercaderia perfumeria=-200000|cobró;go`), primero sin `;go`. En Ver deudas, que los renglones viejos que estaban en verde por la marca sigan en verde: si la plata pagada no alcanza para cubrirlos del más viejo al más nuevo, ahora salen a medias o abiertos, y eso es lo correcto con la regla nueva.
 
+- 30/10 (él: 1b misma dirección, 2a "es totalmente aparte, así que se puede vender todo lo de marca acá", y su WhatsApp): la tienda ya no frena ninguna marca (D&G y Calvin Klein entran) y `tienda:wa=<número>;go` (ml-sync) guarda `cyc/mlconfig/tiendaWa` como 549+número para el botón de WhatsApp. Chequear: que la próxima `tienda;go` traiga `wa` y el botón abra el chat.
