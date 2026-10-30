@@ -4118,3 +4118,8 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - 29/10 (v28.23, él: *"ordenar un poco esto. efectivo, después ML disponible total, abajo cuentas y a liquidar"*): `arq-sec-efectivo` en orden Efectivo → MercadoPago disponible (total, sólo lectura) + avisos → las 4 cuentas en un bloque sangrado y más chico (`.arq-mp-ctas`) → A liquidar. Mismos ids. Chequear en el teléfono.
 - 30/10 (v28.25, él: *"quiero que se vea normal, como si no tuviera ninguna estrategia buscada"*): Arqueo → Productos con una estrategia elegida ya no arma la lista compacta (`_prodEstrBar`); quedan las fichas normales filtradas y el panel se cierra al elegir.
 - 30/10: comando `ventasdias[:N]` (sólo lee): día por día compras, facturado y ganancia (costo de la web) y HOY contra los días anteriores a la misma hora.
+
+### Etapa 2 · 30/10/2026 · Ventas: tarjeta 📦 Costo mercadería (v28.26, pedido suyo)
+- **Qué es:** al lado de Neto, lo que costó traer a la oficina lo vendido en el período (proveedor + flete de la ficha, en pesos al dólar de la venta). Sin impuestos, cargos de ML ni % de devoluciones. Sólo informa.
+- **Dónde vive:** `costoMercaVP` (index.html, junto a `_efectivoCostoVP`) y los KPIs de Ventas (`mMerca`).
+- **Qué chequear:** que costo mercadería + impuestos/cargos ≈ neto − ganancia; que las ventas sin costo den 0 y se avise cuántas faltan; meses cerrados usan el costo del mes (`precios_hist_prod`), no el congelado.
