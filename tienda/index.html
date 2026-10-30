@@ -60,8 +60,8 @@ header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bot
 @media (min-width: 1100px) { .grilla { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--sombra); }
 .card.en { border-color: var(--acc); }
-.foto { background: var(--foto); display: block; width: 100%; height: 0; padding: 100% 0 0; border: 0; position: relative; flex: none; overflow: hidden; }
-.foto img { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); object-fit: contain; display: block; }
+.foto { background: var(--foto); display: block; width: 100%; height: 0; padding: 100% 0 0; border: 0; position: relative; flex: none; overflow: hidden; cursor: pointer; }
+.foto img { position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; width: calc(100% - 16px); height: calc(100% - 16px); max-width: none; object-fit: contain; display: block; }
 .foto .mas { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; border-radius: 999px; padding: 2px 7px; }
 .info { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .nom { font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; height: calc(1.3em * 3); }
@@ -204,7 +204,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function tarjeta(p) {
     var mas = p.f.length > 1 ? '<span class="mas">' + p.f.length + ' fotos</span>' : "";
     return '<article class="card' + (pedido[p.id] ? " en" : "") + '" data-id="' + p.id + '">' +
-      '<button class="foto" type="button" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(p.f[0]) + '" alt="">' + mas + '</button>' +
+      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(p.f[0]) + '" alt="">' + mas + '</div>' +
       '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + pesos(p.p) + '</div><div class="slot">' + cantHtml(p.id) + '</div></div></article>';
   }
 
@@ -317,7 +317,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function cerrar(d) { if (d.close) d.close(); else d.removeAttribute("open"); }
 
   document.addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) { if (e.target.tagName === "DIALOG") cerrar(e.target); return; }
+    var b = e.target.closest("button,[data-ver]"); if (!b) { if (e.target.tagName === "DIALOG") cerrar(e.target); return; }
     if (b.dataset.mas) return cambiar(b.dataset.mas, 1);
     if (b.dataset.menos) return cambiar(b.dataset.menos, -1);
     if (b.dataset.ver) return ver(b.dataset.ver);
