@@ -40816,7 +40816,10 @@ async function main() {
       const u = Math.max(1, parseInt(extra.u, 10) || 1);
       let montoU = mPct ? null : Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
       const LOCALES = ['soares', 'sarmiento', 'ceballos'];
-      let local = null; if (extra.local) { local = LOCALES.find((l) => _n(extra.local).includes(l)); if (!local) { console.log(`❌ local "${extra.local}": va soares, sarmiento o ceballos.`); return; } }
+      // `local=reparto` (30/10/2026, él con 16 Alfaparf: "se reparten así, no sé exacto a cuál va"): se deja sin perfumería (en Métricas
+      // Local sale como "Sin perfumería").
+      const sinLocal = /^(reparto|varias|todas|sin)/i.test(String(extra.local || '').trim());
+      let local = null; if (extra.local && !sinLocal) { local = LOCALES.find((l) => _n(extra.local).includes(l)); if (!local) { console.log(`❌ local "${extra.local}": va soares, sarmiento, ceballos o reparto (no se sabe a cuál).`); return; } }
       let prodF = null, costoU = null;
       if (extra.prod) {
         let pc = products.filter((x) => x.id === extra.prod);
@@ -40840,13 +40843,13 @@ async function main() {
       const [id, d] = cand[0]; const signo = m[1] === '+' ? 1 : -1, antes = saldo(d), despues = antes + signo * monto;   // 8a (30/10/2026): sin recortar a 0
       // Revisión etapa 9, 30/10/2026: lo que se deja en la perfumería (su deuda, o con `local=`) va con `u=`. Sin eso se tomaba 1: la plata
       // salía como de 1 unidad y lo que ella había pedido (`cyc/pedperf`) bajaba de a 1 aunque se le dejaran 3.
-      const esPerfD = /perfumer/.test(_n(d.nom)) || !!local;
+      const esPerfD = /perfumer/.test(_n(d.nom)) || !!local || sinLocal;
       if (signo > 0 && prodF && esPerfD && !extra.u) { console.log('❌ lo que se deja en la perfumería va con |u=<cuántas se dejaron>. No escribo nada.'); return; }
       // Revisión etapa 9, 30/10/2026: en MERCADERÍA Perfumería todo lo que se deja va con producto, perfumería y unidades (`|prod=|local=|u=`).
       // Un "+N" suelto quedaba sin costo, sin unidades y sin perfumería (lo "sin costo cargado" de Ver deudas, que Métricas Local no ve).
       // La otra (Deuda Perfumería = MercadoPago) sigue con +N solo.
       const esMercPerf = /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom));
-      if (signo > 0 && esMercPerf && (!prodF || !local || !extra.u)) { console.log(`❌ en ${_tapaNom(d)} lo que se deja va con |prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<unidades>:${!prodF ? ' falta prod=' : ''}${!local ? ' falta local=' : ''}${!extra.u ? ' falta u=' : ''}. No escribo nada.`); return; }
+      if (signo > 0 && esMercPerf && (!prodF || (!local && !sinLocal) || !extra.u)) { console.log(`❌ en ${_tapaNom(d)} lo que se deja va con |prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<unidades>:${!prodF ? ' falta prod=' : ''}${!local ? ' falta local=' : ''}${!extra.u ? ' falta u=' : ''}. No escribo nada.`); return; }
       console.log(`=== MOVIMIENTO EN "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
       if (prodF && signo > 0) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
