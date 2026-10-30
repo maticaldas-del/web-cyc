@@ -152,6 +152,9 @@ def txt_dias(D,por):
 def txt_stock(fd,cd,otras):   # lo de la cuenta que recibe y, si hay, lo de las otras (revisión etapa 3, 29/10/2026)
     return f"hay {fd} en Full y {cd} en camino"+(f" (y {otras} en las otras cuentas)" if otras>0 else '')
 # 🛍️ LO QUE PIDIÓ LA PERFUMERÍA queda en la oficina (29/10/2026, `cyc/pedperf`): esas unidades no van a Full.
+# 12b de la revisión etapa 9 (30/10/2026, él): lo FIJO de él para Full (el Persea de Luciana) va ANTES que lo que pide la perfumería: sus
+# unidades no se apartan; la perfumería se lleva lo que sobra.
+def fijo_q(pid,v): return max([q for (a,b,_c),(q,_m) in FIJO.items() if a==pid and b==v] or [0])
 for p in P:
     pm=p.get('perf')
     if not pm: continue
@@ -164,8 +167,8 @@ for p in P:
         # pidió Rosa y se quedaban 2 Azul en la oficina). El mismo cambio en decide_pedidos.py.
         if pva and not _m: continue
         tv=_m[0] if _m else max(p['vars'],key=lambda x:(x['s'][2],x['casa']))
-        r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r); tv['perfR']=r
-    else: r=min(pu,p['casa']); p['casa']-=r
+        r=min(pu,max(0,tv['casa']-fijo_q(p['id'],tv['v']))); tv['casa']-=r; p['casa']=max(0,p['casa']-r); tv['perfR']=r
+    else: r=min(pu,max(0,p['casa']-fijo_q(p['id'],''))); p['casa']-=r
     p['perfR']=r   # lo apartado (revisión etapa 9): va en el motivo y, si es todo, en un renglón en 0 que pisa la decisión de antes
     if r: print(f"🛍️ {p['n']}: {r} quedan en la oficina para la perfumería (no van a Full)")
 # Revisión etapa 9, 30/10/2026 (él, 29/10: "que no vaya a Full"): si TODO lo de la oficina de un producto (o de un color) quedó apartado para la

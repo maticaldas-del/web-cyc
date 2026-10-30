@@ -39138,9 +39138,11 @@ async function main() {
           // Revisión etapa 9, 30/10/2026: misma regla que `esVentaDeuda` de la web (con costo o ganancia anotada, o `tipo:'venta'`), el día de ACÁ
           // (antes la hora de Londres: lo cargado después de las 21 caía al día siguiente) y además cada producto dejado a una persona
           // (`debenmov:<persona>=…|prod=…`, ganancia en el movimiento): antes Ver deudas lo sumaba y esto no.
+          // 7a (30/10/2026): el día de una venta es el día en que se vendió. Las cargadas antes con `fecha0` = la primera cuota (a futuro) usan el día de carga.
+          const _fechaDeudaR = (d) => { const fc = d.ts ? new Date(Number(d.ts) - 3 * 3600e3).toISOString().slice(0, 10) : ''; return d.fecha0 && !(d.vence1 && d.fecha0 === d.vence1 && fc && d.fecha0 > fc) ? d.fecha0 : fc; };
           const esVentaD = (d) => (!d.sinGan && (Number(d.costo) > 0 || Object.values(d.movs || {}).some((x) => x && x.gan != null))) || d.tipo === 'venta';
           for (const d of D) { if (d === M || /perfumeria/.test(_n(d.nom)) || !esVentaD(d)) continue;
-            if (Number(d.costo) > 0 && kOf(d.fecha0 || (d.ts ? new Date(Number(d.ts) - 3 * 3600e3).toISOString() : '')).startsWith(k1)) ganLoc += (Number(d.monto) || 0) - Number(d.costo);
+            if (Number(d.costo) > 0 && kOf(_fechaDeudaR(d)).startsWith(k1)) ganLoc += (Number(d.monto) || 0) - Number(d.costo);
             for (const x of Object.values(d.movs || {})) if (x && Number(x.m) > 0 && x.gan != null && kOf(x.f).startsWith(k1)) ganLoc += Number(x.gan) || 0; } }
         const genera = neto - costo - gastos + ganLoc, esperado = genera - (ret || 0);
         const crecioU = Number(B.total) - Number(A.total), crecio = crecioU * tc;
@@ -40288,14 +40290,18 @@ async function main() {
         const fOk = (f) => /^\d{4}-\d{2}-\d{2}$/.test(f);
         const pagosF = String(kv.pagos || '').split(',').map((x) => x.trim()).filter(Boolean);
         if (!nom || !(cuota > 0) || (nC > 1 && (!frec || !fOk(kv.vence1 || ''))) || pagosF.some((f) => !fOk(f)) || pagosF.length > nC) {
-          console.log('❌ Usá: debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>|frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD[|pagos=AAAA-MM-DD,…][|costo=<pesos>];go'); return; }
+          console.log('❌ Usá: debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>|frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD[|fecha=AAAA-MM-DD (día de la venta, si no es hoy)][|pagos=AAAA-MM-DD,…][|costo=<pesos>];go'); return; }
         // Revisión etapa 9, 30/10/2026: el registro de GitHub es público: ni acá ni abajo sale el nombre entero ni lo que se llevó (inicial + id).
         const yaN = lista.find(([, d]) => _n(d.nom) === _n(nom));
         if (yaN) { console.log(`❌ Ya hay una deuda con ese nombre: ${_tapaNom(yaN[1])} (${yaN[0]}). No la duplico.`); return; }
+        // EL DÍA DE LA VENTA (7a de la revisión etapa 9, 30/10/2026, él): `fecha0` = el día en que se vendió (`fecha=AAAA-MM-DD`, o hoy de acá),
+        // no la primera cuota. Antes era `vence1` y una venta en cuotas caía en Métricas el día de la primera cuota (a futuro).
+        if (kv.fecha && !fOk(kv.fecha)) { console.log('❌ fecha=AAAA-MM-DD (el día en que se vendió)'); return; }
+        const f0N = kv.fecha || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         const ts0 = Date.now(), pagos = {}; pagosF.forEach((f, i) => { pagos[String(Date.parse(f + 'T12:00:00-03:00') + i)] = { f }; });
         const costo = Math.round(parseFloat(String(kv.costo || '').replace(/\./g, '').replace(',', '.')) || 0);
-        const dN = { nom, ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1, fecha0: kv.vence1 } : {}), ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
-        console.log(`=== DEUDA NUEVA "${_tapaNom({ nom })}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'con lo que se llevó anotado (no se imprime) · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
+        const dN = { nom, ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1 } : {}), fecha0: f0N, ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
+        console.log(`=== DEUDA NUEVA "${_tapaNom({ nom })}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'con lo que se llevó anotado (no se imprime) · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · vendida el ${f0N} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         const idN = 'c' + ts0; await db.set('cyc/debencuotas/' + idN, dN);
         const rN = await db.get('cyc/debencuotas/' + idN);
@@ -40315,6 +40321,9 @@ async function main() {
         if (!cand2.length) { const pal = _n(quien).split(' ').filter(Boolean); cand2 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
         if (cand2.length !== 1) { console.log(`❌ "${quien}" agarra ${cand2.length} deudas${cand2.length ? ': ' + cand2.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand2[0]; const nD = Math.round(parseFloat(mds[1].replace(/\./g, '').replace(',', '.')) || 0);
+        // 11a de la revisión etapa 9 (30/10/2026, él): en MERCADERÍA Perfumería no se arranca de cero: borraría qué producto se dejó, en qué
+        // perfumería y su ganancia. Lo que vuelve se saca con `=devuelve|prod=|local=|u=|a=`; lo que pagan, con `=-N|prod=|local=`.
+        if (/perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom))) { console.log(`❌ ${_tapaNom(d)} no se arranca de cero (se perdería qué se dejó y dónde). Lo que vuelve: =devuelve|prod=<ficha>|local=<…>|u=<n>|a=<local|ml>;go · lo que pagan: =-N|prod=<ficha>|local=<…>;go. No escribo nada.`); return; }
         if (!(nD >= 0)) { console.log('❌ monto inválido'); return; }
         console.log(`=== "${_tapaNom(d)}" ARRANCA DE CERO ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  falta hoy ${money(Math.round(saldo(d)))} → ${money(nD)} · se sacan ${Object.keys(d.movs || {}).length} movimiento(s) y ${Object.keys(d.pagos || {}).length} pago(s) (copia en el archivo)`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
@@ -40376,9 +40385,55 @@ async function main() {
       // ficha (lo pagado, puesto en la oficina: sin reclamos ni envío a Full) y la ganancia. SÓLO para verla en Ver deudas: no toca ventas,
       // métricas, cierres ni stock.
       const extra = {}; const notaP = [];
-      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u|de)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
+      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u|de|a)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
       // 29/10/2026 (él: "a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa.
       // tomás el costo del producto, le ponés un 25% y multiplicás por las unidades"): `=+25%|prod=…|local=…|u=N` → lo que paga c/u = costo × 1,25.
+      // DEVOLUCIÓN DE LA PERFUMERÍA (11a de la revisión etapa 9, 30/10/2026, él): `debenmov:mercaderia perfumeria=devuelve[@AAAA-MM-DD]|prod=<ficha>
+      // |local=<soares|sarmiento|ceballos>|u=<n>|a=<local|ml>;go` → lo que nos devolvió una perfumería sin vender. Se achica el renglón de lo dejado
+      // (unidades, plata y ganancia: la deuda baja y esa ganancia sale de Ver deudas, Métricas Local y ¿Cierra el mes?), del más viejo sin pagar de
+      // ESA perfumería, y la mercadería vuelve a la oficina que dice `a=`: Oficina Local (se suma acá a `cyc/oficyc`) u Oficina ML (se le avisa el
+      // `ofi:` que hay que correr, como `de=mati`). Lo ya pagado no se devuelve por acá.
+      const mDev = String(numF).trim().match(/^devuelve(?:@(\d{4}-\d{2}-\d{2}))?$/i);
+      if (mDev) {
+        const LOCd = ['soares', 'sarmiento', 'ceballos']; const locD = extra.local ? LOCd.find((l) => _n(extra.local).includes(l)) : null;
+        const aD = extra.a ? (/local|cyc/i.test(extra.a) ? 'local' : (/ml|mati/i.test(extra.a) ? 'ml' : null)) : null;
+        if (!extra.prod || !locD || !/^[1-9]\d*$/.test(String(extra.u || '').trim()) || !aD) { console.log('❌ Usá: debenmov:mercaderia perfumeria=devuelve[@AAAA-MM-DD]|prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<n>|a=<local|ml>;go (a = a qué oficina vuelve). No escribo nada.'); return; }
+        let candD = lista.filter(([id]) => id === quien);
+        if (!candD.length) { const pal = _n(quien).split(' ').filter(Boolean); candD = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (candD.length !== 1) { console.log(`❌ "${quien}" agarra ${candD.length} deudas${candD.length ? ': ' + candD.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        const [idD, dD] = candD[0];
+        if (!(/perfumer/.test(_n(dD.nom)) && /mercader/.test(_n(dD.nom)))) { console.log(`❌ =devuelve es sólo para Mercadería Perfumería (esto es ${_tapaNom(dD)}). No escribo nada.`); return; }
+        let pcD = products.filter((x) => x.id === extra.prod);
+        if (!pcD.length) { const pw = _n(extra.prod).split(' ').filter(Boolean); pcD = products.filter((x) => pw.every((w) => (' ' + _n(x.name) + ' ').includes(w))); }
+        if (pcD.length !== 1) { console.log(`❌ producto "${extra.prod}" agarra ${pcD.length} fichas${pcD.length ? ': ' + pcD.slice(0, 8).map((x) => `${x.name} (${x.id})`).join(' | ') : ''}. No escribo nada.`); return; }
+        const pD = pcD[0], uD = parseInt(extra.u, 10), fD = mDev[1] || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+        const ab = Object.entries(dD.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === pD.id && !x.pagado && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(a[0]) - Number(b[0]));
+        const hay = ab.reduce((t, [, x]) => t + Number(x.u), 0);
+        if (hay < uD) { console.log(`❌ en ${locD} hay ${hay} sin pagar de ${pD.name}${hay ? '' : ' (o ya está pagado: lo pagado no se devuelve por acá)'}; pidió devolver ${uD}. No escribo nada.`); return; }
+        console.log(`=== DEVOLUCIÓN EN "${_tapaNom(dD)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+        let falta = uD, bajaM = 0, bajaG = 0; const cambios = [];
+        for (const [k, x] of ab) { if (!falta) break; const uX = Number(x.u), q = Math.min(falta, uX), pu = Number(x.pu) > 0 ? Number(x.pu) : Number(x.m) / uX;
+          const gU = x.gan != null ? Number(x.gan) / uX : null, nuevoU = uX - q, nuevoM = Math.round(Number(x.m) - pu * q);
+          const pm = Number(x.pagadoM) || 0;
+          if (nuevoM < pm - 0.5) { console.log(`❌ el renglón del ${x.f} ya lleva pagado ${money(pm)}: devolviendo ${q} quedaría en ${money(nuevoM)}. Decidilo con Matías. No escribo nada.`); return; }
+          const devs = { ...(x.devs || {}) }; devs[String(Date.now() + cambios.length)] = { u: q, f: fD };
+          cambios.push([k, { u: nuevoU, m: nuevoM, ...(gU != null ? { gan: Math.round(gU * nuevoU) } : {}), devU: (Number(x.devU) || 0) + q, devs, ...(pm > 0 && nuevoM <= pm + 0.5 ? { pagado: fD, parcial: null } : {}) }]);
+          bajaM += Number(x.m) - nuevoM; if (gU != null) bajaG += gU * q;
+          console.log(`  ↩️ ${q} × ${x.prodNom} dejado el ${x.f}: ${uX} → ${nuevoU} u. · ${money(Number(x.m))} → ${money(nuevoM)}${gU != null ? ` · ganancia ${money(Math.round(Number(x.gan)))} → ${money(Math.round(gU * nuevoU))}` : ''}`);
+          falta -= q; }
+        console.log(`  la perfumería debe ${money(Math.round(bajaM))} menos · sale ${money(Math.round(bajaG))} de ganancia del local · vuelve a la Oficina ${aD === 'local' ? 'Local' : 'ML'} (${fD})`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        for (const [k, pt] of cambios) await db.patch(`cyc/debencuotas/${idD}/movs/${k}`, pt);
+        const rD = await db.get(`cyc/debencuotas/${idD}/movs/${cambios[0][0]}`);
+        console.log(rD && Number(rD.u) === cambios[0][1].u ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if (aD === 'local') { const x = (await db.get('cyc/oficyc/' + pD.id)) || null; const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
+          obj.t = ant + uD; await db.set('cyc/oficyc/' + pD.id, obj); console.log(`  🏪 Oficina Local: ${pD.name} ${ant} → ${ant + uD} (sin color; si tiene color, corregilo con oficyc:${pD.id}@<color>=…;go)`);
+          if ((await db.get('cyc/mlconfig/oficycPorUnidades')) === true) { const OCa = (await db.get('cyc/oficyc')) || {}; const tcA = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+            let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
+            await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
+        else console.log(`  ⚠️ OBLIGATORIO · vuelve a la Oficina ML: sumalo YA con ofi:<palabras del nombre: ${String(pD.name).slice(0, 50)}>=+${uD};go (ml-sync; queda sin etiqueta).`);
+        return;
+      }
       const mPct = String(numF).trim().match(/^\+\s*(\d+(?:[.,]\d+)?)\s*%(?:@(\d{4}-\d{2}-\d{2}))?$/);
       if (mPct && !extra.prod) { console.log('❌ el +N% va con |prod=<ficha> (sale del costo de esa ficha)'); return; }
       const m = mPct ? ['', '+', '0', mPct[2]] : String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
