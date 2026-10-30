@@ -3242,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.36';
+const APP_VERSION='28.37';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3255,6 +3255,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.37',f:'30/10',h:'15:25',c:[{n:1,t:'🛍️ Ver deudas: los cobros aparte sólo en PERFUMERÍA · Mercadería; en MercadoPago y las demás quedan juntos, con filtro Todo · ➕ Se sumó · ➖ Se restó.'}]},
   {v:'28.36',f:'30/10',h:'15:25',c:[{n:2,t:'🛍️ Ver deudas: en PERFUMERÍA (Mercadería y MercadoPago) los cobros salen aparte, en la tarjeta plegable 💵 Cobros con su detalle; la lista de abajo queda sólo con lo que se dejó.'}]},
   {v:'28.35',f:'30/10',h:'15:22',c:[{n:1,t:'🛍️ Ver deudas: el renglón de la deuda inicial se llena en verde hasta lo que va pagado, como los productos.'}]},
   {v:'28.34',f:'30/10',h:'15:19',c:[{n:1,t:'🛍️ Ver deudas: en Mercadería Perfumería dice cuánto va pagado de la deuda inicial (se paga primero) y cuánto falta para que empiecen a tacharse los productos.'}]},
@@ -7430,9 +7431,12 @@ function cuotaDetalleHTML(d){
   // 💵 COBROS APARTE (30/10/2026, él: "que los cobros no se vean ahí, parece que son ventas. que aparezcan en otra tarjetita como 'cobros' y ahí
   // todo con detalle. en mercadería y mercadopago"): en las dos de la perfumería la historia muestra sólo lo que se les dejó / sumó; lo que
   // pagaron va en su propia tarjeta plegable con el detalle. Las cuentas (sumó, devolvió, falta, del más viejo al más nuevo) no cambian.
-  const _Hall=cuotaHistoria(d),_esPerf=/perfumer/i.test(String(d.nom||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
-  const _cob=_esPerf?_Hall.filter(x=>x.m<0):[];
-  const H=_esPerf?_Hall.filter(x=>!(x.m<0)):_Hall,pags=Math.max(1,Math.ceil(H.length/CUOTA_POR_PAG)),pg=Math.min(pags,Math.max(1,window._cuotaPag||1));
+  // 30/10/2026 (él: "en mercadopago sí que aparezcan juntos así veo cuándo se sumó y cuándo se restó… y que pueda filtrar"): aparte sólo en
+  // MERCADERÍA; en las otras (MercadoPago y las demás deudas) van juntos, con filtro Todo · ➕ Se sumó · ➖ Se restó (`_cuotaFil[id]`).
+  const _nomN=String(d.nom||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),_esPerf=/perfumer/.test(_nomN)&&/mercader/.test(_nomN);
+  const _Hall=cuotaHistoria(d),_cob=_esPerf?_Hall.filter(x=>x.m<0):[];
+  const _fil=_esPerf?'':((window._cuotaFil||{})[d.id]||'');
+  const H=_esPerf?_Hall.filter(x=>!(x.m<0)):_fil==='mas'?_Hall.filter(x=>x.m>0):_fil==='menos'?_Hall.filter(x=>x.m<0):_Hall,pags=Math.max(1,Math.ceil(H.length/CUOTA_POR_PAG)),pg=Math.min(pags,Math.max(1,window._cuotaPag||1));
   const sum=_Hall.filter(x=>x.m>0).reduce((s,x)=>s+x.m,0),res=_Hall.filter(x=>x.m<0).reduce((s,x)=>s-x.m,0);
   // MISMO TAMAÑO EN TODOS (29/10/2026, él: "que los rectángulos sean del mismo tamaño todos, si es necesario cortar el nombre o el detalle… el
   // nombre ocupe siempre el mismo lugar, nombre de perfumería siempre en el mismo lugar"): lo dejado en una perfumería va en columnas fijas
@@ -7485,6 +7489,7 @@ function cuotaDetalleHTML(d){
         <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt||'cobró')}</span>
         <b style="white-space:nowrap;font-family:'DM Mono',monospace;color:var(--green)">${_pesos(-x.m)}</b></div>`).join('')}
     </details>`:''}
+    ${!_esPerf&&_Hall.some(x=>x.m<0)&&_Hall.some(x=>x.m>0)?`<div style="display:flex;gap:4px;margin:4px 0">${[['','Todo'],['mas','➕ Se sumó'],['menos','➖ Se restó']].map(([k,t])=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${_fil===k?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="event.stopPropagation();window._cuotaFil=window._cuotaFil||{};window._cuotaFil['${d.id}']='${k}';window._cuotaPag=1;renderCuotas()">${t}</button>`).join('')}</div>`:''}
     <div style="font-size:.66rem;color:var(--muted);margin-bottom:2px">${_esPerf?'Lo que se dejó':'Historia'} (${H.length} movimiento${H.length===1?'':'s'}${pags>1?` · página ${pg} de ${pags}`:''})</div>
     ${filas}${nav}</div>`;
 }
