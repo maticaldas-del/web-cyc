@@ -31,7 +31,7 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
 
 LA TIENDA DE CYC (para saber, 30/10/2026)
-- Hay una tienda pública por encargo: https://maticaldas-del.github.io/web-cyc/tienda/ . La arma el robot solo, cada noche, con TODOS los productos de Nissei
+- Hay una tienda pública por encargo (la tienda; la dirección la tiene Matías). La arma el robot solo, cada noche, con TODOS los productos de Nissei
   que se pueden mandar (todo menos lo grande o pesado: TV y monitores de más de 24", electrodomésticos grandes, muebles, bicis, etc.; la PS5 sí entra),
   con nombre y fotos de Mercado Libre y precio = lo que nos cuesta + 25%.
 - En la tienda NUNCA aparece de dónde viene la mercadería: ni Nissei, ni Paraguay, ni dólares, ni costos. Sólo "CYC". Si alguna vez ves alguna de esas

@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1122";
+const CACHE = "cyc-v1123";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -10,7 +10,8 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((claves) =>
-      Promise.all(claves.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      // Sólo las del panel ("cyc-…"): la Tienda vive en el mismo sitio y tiene las suyas ("tienda-…", 30/10/2026).
+      Promise.all(claves.filter((k) => k.startsWith("cyc-") && k !== CACHE).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();

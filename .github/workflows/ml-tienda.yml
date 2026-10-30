@@ -5,6 +5,14 @@ name: ml-tienda
 
 on:
   workflow_dispatch:
+    inputs:
+      forzar:
+        # Revisión de la tienda (30/10/2026): si la lista nueva tiene menos del 75% de los productos de la publicada no se sube (una falla
+        # no deja la tienda casi vacía). Cuando la baja es a propósito (reglas nuevas que sacan muchos), se tilda esto.
+        description: 'Subir aunque la lista nueva tenga menos del 75% de los productos de la publicada'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ml-tienda
@@ -21,6 +29,7 @@ jobs:
         with:
           node-version: '20'
       - name: Tienda pública
+        timeout-minutes: 30
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -32,17 +41,26 @@ jobs:
           BILLING_PROBE: tienda;go
         run: exec node ml-sync/sync.mjs
       - name: Subir la tienda a la web
+        timeout-minutes: 30
         env:
           ARCHIVO: ${{ runner.temp }}/tienda/productos.json
           RAMA_WEB: claude/add-folder-78ysyb
+          FORZAR: ${{ inputs.forzar }}
         run: |
           if [ ! -s "$ARCHIVO" ]; then echo "La tienda no dejó archivo: no subo nada."; exit 1; fi
+          AHORA=$(jq '.productos | length' "$ARCHIVO" 2>/dev/null || echo 0)
+          if [ "${AHORA:-0}" -lt 1 ]; then echo "La lista nueva no se puede leer o está vacía: no subo nada."; exit 1; fi
           git config user.name  "robot-cyc"
           git config user.email "robot-cyc@users.noreply.github.com"
           DIR="$RUNNER_TEMP/web"
           for i in 1 2 3; do
             rm -rf "$DIR"; git worktree prune
             git fetch --depth=1 origin "$RAMA_WEB" || { echo "no pude bajar la rama (intento $i)"; sleep 5; continue; }
+            # Menos del 75% de lo publicado = algo falló (ML, la base): no se sube y el paso sale con error (salvo "forzar").
+            ANTES=$(git show FETCH_HEAD:tienda/productos.json 2>/dev/null | jq '.productos | length' 2>/dev/null || echo 0)
+            if [ "${ANTES:-0}" -gt 0 ] && [ $((AHORA * 4)) -lt $((ANTES * 3)) ] && [ "$FORZAR" != "true" ]; then
+              echo "La lista nueva tiene $AHORA productos y la publicada $ANTES (menos del 75%): no la subo. Si la baja es a propósito, correr ml-tienda con forzar."; exit 1
+            fi
             git worktree add --detach "$DIR" FETCH_HEAD
             mkdir -p "$DIR/tienda" && cp "$ARCHIVO" "$DIR/tienda/productos.json"
             cd "$DIR"

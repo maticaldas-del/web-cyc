@@ -12667,41 +12667,83 @@ function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY
 // (`mlapi/pycat`) y busca para cada uno SU catálogo de ML (nombre y fotos de ML, nunca los de Nissei). El match es MÁS exigente que el
 // de candidatos (acá nadie mira la foto antes de que salga): con cualquier duda, afuera.
 // ¿Es grande o pesado para mandar? (más de ~15 kg o ~70 cm de lado; sin dato, por el tipo). Devuelve el motivo o null.
+// 30/10/2026 (revisión de la tienda): el TIPO de producto es lo que va al PRINCIPIO del nombre ("Suporte para TV" es un soporte, "Mouse
+// sem fio para Computador" es un mouse, "Gabinete para HD" es una cajita): TV sólo con "smart tv", "televisor" o "TV" + pulgadas; afuera
+// también las torres de sonido (Sony XV, ULT Tower, XBOOM XL), las barras con subwoofer, los ventiladores de pie y lo de 110 a 127 V.
 const TIENDA_GRANDE = [
-  [/\b(smart\s*tv|televisor|televis[aã]o|\btv\b)/i, 'televisor'],
+  [/\b(smart\s*tv|televisor|televis[aã]o)\b|^\s*tv\b|\btv\s*(led|lcd|oled|qled)?\s*\d{2}\s*("|”|''|pol\b|polegadas|pulgadas)/i, 'televisor'],
   [/\b(geladeira|refrigerador|heladera|freezer|frigobar|adega|cervejeira)\b/i, 'heladera'],
   [/\b(lava\s*-?\s*(lou[cç]as?|roupas?)|lavarropas|lavavajillas|lavadora(?!\s+de\s+alta)|secadora\s+de\s+roupas?|lava\s+e\s+seca)\b/i, 'lavarropas'],
   [/\b(ar[\s-]+condicionado|aire\s+acondicionado|split)\b/i, 'aire acondicionado'],
   [/\b(micro-?ondas|microondas|forno|horno|fog[aã]o|cocina\s+(a\s+gas|el[eé]ctrica)|cooktop)\b/i, 'microondas, horno o cocina'],
   [/\b(hidrolavadora|lavadora\s+de\s+alta|lavadora\s+alta\s+press[aã]o)\b/i, 'hidrolavadora'],
   [/\b(patinete|monopat[ií]n|scooter|bicicleta|bike\s+el[eé]trica|moto\s+el[eé]trica|hoverboard|triciclo|quadriciclo|carrinho\s+de\s+beb[eê]|cochecito)\b/i, 'monopatín, bici o moto'],
-  [/\b(cadeira|silla|escrivaninha|escritorio|sof[aá]|poltrona|colch[aã]o|colch[oó]n|cama|estante|arm[aá]rio|rack)\b|\bmesa\b(?!\s+digitalizadora)/i, 'mueble'],
-  [/\b(gabinete|computador|desktop|servidor|all\s*-?in\s*-?one|nobreak|no-break|\bups\b)/i, 'gabinete, PC o UPS'],
-  [/\b(mala|valise|maleta|valija)\b/i, 'valija'],
-  [/\b(esteira|el[ií]ptic[oa]|halter|anilha|mancuerna|barra\s+ol[ií]mpica|banco\s+de\s+(supino|musculaç[aã]o)|esta[cç][aã]o\s+de\s+musculaç[aã]o|bicicleta\s+ergom[eé]trica)\b/i, 'musculación'],
+  [/^\s*(kit\s+)?(cadeira|silla|escrivaninha|escritorio|sof[aá]|poltrona|colch[aã]o|colch[oó]n|cama|estante|arm[aá]rio|rack|mesa)(?![a-zà-ÿ])(?!\s+(digitalizadora|de\s+som|de\s+mezcla))|\b(silla|cadeira)\s+(gamer|de\s+escrit)/i, 'mueble'],
+  [/^\s*(gabinete|computador|desktop|pc\s+gamer|servidor|all\s*-?in\s*-?one|nobreak|no-break|ups)\b(?!\s+(para|de|p\/)\s+(hd|hdd|ssd|disco|m\.?2|nvme))/i, 'gabinete, PC o UPS'],
+  [/\b(mala|valise|valija)\b|\bmaleta\s+(de\s+)?(viagem|viaje|bordo)\b/i, 'valija'],
+  [/\b(esteira|el[ií]ptic[oa]|halter|anilha|mancuerna|barra\s+ol[ií]mpica|banco\s+de\s+(supino|musculaç[aã]o)|esta[cç][aã]o\s+de\s+musculaç[aã]o)\b/i, 'musculación'],
   [/\b(cortador(a)?\s+de\s+(grama|c[eé]sped)|rob[oô]\s+cortador|cortacésped)\b/i, 'cortadora de pasto'],
   [/\b(cofre|caja\s+fuerte)\b/i, 'caja fuerte'],
-  [/\b(gerador|generador|compressor|compresor|soldadora|betoneira|escada|piscina|cama\s+el[aá]stica|pula\s*-?pula|churrasqueira|parrilla)\b/i, 'grande o pesado'],
-  [/\b(party\s*box|partybox)\b/i, 'parlante grande'],
-  [/\b(plotter)\b/i, 'impresora grande'],
+  [/\b(gerador|generador|compresor|soldadora|betoneira|escada|piscina|cama\s+el[aá]stica|pula\s*-?pula|churrasqueira|parrilla)\b|\bcompressor\b(?!\s+de\s+ar\s+port|\s+port[aá]til|\s+mini)/i, 'grande o pesado'],
+  [/\b(party\s*box|partybox|ult\s*tower|xboom\s*xl\w*|torre\s+de\s+(som|sonido)|boombox)\b|\bsrs-?x[vp]\d{3}\b|\bxv\d{3}\b|\b(soundbar|barra\s+de\s+(som|sonido))\b.*\bsubwoofer\b|\bventilador\s+de\s+(coluna|pie|torre|pared)\b/i, 'parlante o ventilador grande'],
+  [/\bplotter\b/i, 'impresora grande'],
 ];
 function tiendaGrande(nombre) {
   const n = String(nombre || '');
-  // Lo que es PARA una de esas cosas (funda, soporte, control remoto, cable) no es la cosa.
-  const esPara = /\b(para|p\/)\s+(tv|smart\s*tv|monitor|notebook|bicicleta|bike|patinete)\b|\b(controle\s+remoto|control\s+remoto|suporte|soporte|capa|funda|cabo|cable|adaptador|filtro|pel[ií]cula|chromecast|fire\s*tv\s*stick|tv\s*box|tv\s*stick|android\s*tv\s*box)\b/i.test(n);
-  // Monitores (y TV): sólo hasta 24". Sin la medida en el nombre, afuera.
-  if (/\bmonitor\b/i.test(n) && !esPara) {
+  // Un accesorio: la PRIMERA palabra dice qué es ("Suporte para TV", "Controle remoto…"), no un "com controle remoto" en el medio.
+  const esAcc = /^\s*(controle\s+remoto|control\s+remoto|suporte|soporte|capa|funda|cabo|cable|adaptador|filtro|pel[ií]cula|chromecast|fire\s*tv|tv\s*box|tv\s*stick|android\s*tv|apple\s*tv|google\s*tv|antena|conversor|receptor|mochila|bolsa|case|luva)\b/i.test(n);
+  // Monitores: sólo hasta 24". Uno que EMPIEZA con "Monitor" sin la medida, afuera; el de presión, el cardíaco o el de estudio no son de PC.
+  if (!esAcc && /\bmonitor(es)?\b(?!\s+(de\s+)?(press|presi|glic|beb|frequ|card|est[uú]dio|refer))/i.test(n)) {
     const m = n.match(/(\d{2}(?:[.,]\d)?)\s*(?:"|''|”|pol\b|polegadas|pulgadas|inch|in\b)/i);
-    if (!m) return 'monitor sin la medida';
-    if (parseFloat(m[1].replace(',', '.')) > 24) return 'monitor de más de 24"';
+    if (m && parseFloat(m[1].replace(',', '.')) > 24) return 'monitor de más de 24"';
+    if (!m && /^\s*monitor\b/i.test(n)) return 'monitor sin la medida';
   }
-  if (esPara) return null;
+  if (esAcc) return null;
   for (const [re, mot] of TIENDA_GRANDE) if (re.test(n)) return mot;
-  if (/\b110\s*v\b/i.test(n) && !/\b(220\s*v|bivolt)\b/i.test(n)) return '110V (no anda acá)';
+  if (/\b(110|115|120|127)\s*v\b/i.test(n) && !/\b(220\s*v|bivolt)\b/i.test(n)) return '110/127V (no anda acá)';
   return null;
 }
-// Marcas que van primero en la cola de búsquedas (la vidriera: lo de marca y caro primero). Misma base que MARCAS de tienda/index.html.
-const TIENDA_MARCAS = /\b(sony|playstation|ps5|ps4|dualsense|nintendo|switch|xbox|apple|iphone|ipad|airpods|macbook|imac|samsung|galaxy|jbl|bose|beats|garmin|amazfit|huawei|xiaomi|redmi|poco|motorola|moto\s+g|honor|oneplus|realme|google\s+pixel|pixel|nothing|logitech|razer|steelseries|hyperx|corsair|anker|soundcore|dji|gopro|insta360|canon|nikon|fujifilm|instax|kindle|lenovo|asus|acer|dell|hp|msi|microsoft|meta\s+quest|oculus|philips|braun|oral-?b|dyson|sonos|marshall|sennheiser|audio-?technica|shure|rode|skullcandy|ultimate\s+ears|harman|seagate|sandisk|kingston|western\s+digital|samsung\s+evo|carolina\s+herrera|dior|chanel|paco\s+rabanne|rabanne|versace|lattafa|armani|hugo\s+boss|calvin\s+klein|lanc[oô]me|givenchy|azzaro|jean\s+paul\s+gaultier|montblanc|bvlgari|ralph\s+lauren|tommy|victoria'?s\s+secret|ifi|haylou)\b/i;
+// Usados, de vidriera, sin caja o de prueba (30/10/2026, revisión de la tienda): en portugués Nissei los llama Recondicionado, CPO, Seminovo,
+// Swap, Vitrine o "Sem caixa". Afuera, igual que el tester.
+const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbished|seminov[oa]s?|swap|vitrine|cpo|usad[oa]s?|open\s*box|sem\s+caixa|sin\s+caja)\b/i;
+// Marcas conocidas: van primero en la cola de búsquedas y marcan `m:1` en el archivo (la vidriera de la página usa ESA marca; una sola
+// lista, 30/10/2026). Las que son palabras comunes van con su modelo ("poco x6", "honor x5", "pixel 9", "nothing phone").
+const TIENDA_MARCAS = /\b(sony|playstation|ps5|ps4|dualsense|nintendo|xbox|apple|iphone|ipad|airpods|macbook|imac|samsung|galaxy|jbl|bose|beats|garmin|amazfit|huawei|xiaomi|redmi|poco\s+[a-z]?\d+[a-z]*|motorola|moto\s+g|honor\s+([a-z]?\d+[a-z]*|magic)|oneplus|realme|google\s+pixel|pixel\s*\d+[a-z]*|nothing\s+(phone|ear)|logitech|razer|steelseries|hyperx|corsair|anker|soundcore|dji|gopro|insta360|canon|nikon|fujifilm|instax|kindle|lenovo|asus|acer|dell|hp|msi|microsoft|meta\s+quest|oculus|philips|braun|oral-?b|dyson|sonos|marshall|sennheiser|audio-?technica|shure|rode|skullcandy|ultimate\s+ears|harman|seagate|sandisk|kingston|western\s+digital|wd|carolina\s+herrera|dior|chanel|paco\s+rabanne|rabanne|versace|lattafa|armani|hugo\s+boss|calvin\s+klein|lanc[oô]me|givenchy|azzaro|jean\s+paul\s+gaultier|montblanc|bvlgari|ralph\s+lauren|tommy|victoria\W?s?\s+secret|ifi|haylou)\b/i;
+// Palabras en PORTUGUÉS que delatan el origen (30/10/2026, revisión de privacidad): un nombre de ML que las tiene no entra (se probó contra
+// los 545 nombres del 30/10: saca los portugueses y ningún castellano; "masculino" es igual en castellano y "Tom" sólo con número de tono).
+const TIENDA_PT = /[ãõ]|ç[ãõo]|\b(batom|unissex|mecânic[oa]|m[ãa]e|com|cor|sem|lapela|fones?|carregador|caixa|garrafa|caneta|estojo|capinha|rel[óo]gio|pret[oa]|branc[oa]|cinza|vermelh[oa]|amarel[oa]|roxo|dourad[oa]|polegadas|bivolt|feminino|brinquedo|boneca|carrinho|aparelho|barbeador|cabelo|escova|chapinha|c[âê]mera|edi[çc][ãa]o|vers[ãa]o|cole[çc][ãa]o|ouvido|sabonete|corpo|roteador|sinal|curitiba)\b|\btom\s+\d/i;
+// Nombres de OTROS vendedores que algunos catálogos de ML traen pegados (30/10/2026): se saca la palabra, no el producto.
+function tiendaLimpiarNombre(n) {
+  const s = String(n || '')
+    .replace(/\b(amsterdamarg|masaromas|miltienda|tiendauy)\b/gi, ' ')
+    .replace(/\blocal\s+barrio(\s+[a-záéíóúñ]+)?/gi, ' ')
+    .replace(/\bagente(\s+(oficial|caba|autorizado))?\b/gi, ' ')
+    .replace(/\b(perfumer[ií]a|tienda)(\s+([a-záéíóúñ0-9]+))?/gi, (m, w, sp, sig) => (sig && (TIENDA_MARCAS.test(sig) || /^(de|para|y|con|color)$/i.test(sig)) ? ' ' + sig : ' '));
+  return s.replace(/\s+([,.;:])/g, '$1').replace(/[\s,.;:|–-]+$/, '').replace(/^[\s,.;:|–-]+/, '').replace(/\s{2,}/g, ' ').trim();
+}
+// El rubro de la tienda, por la palabra que dice QUÉ ES (30/10/2026, revisión de la tienda): gana la que aparece primero en el nombre
+// ("Celular … con cámara" es celular, "Cámara web" es computación) y, si empatan, la de más arriba en la lista. "Otros" queda para lo raro.
+const TIENDA_RUBROS = [
+  ['Otros', /\b(ecosonda|fishfinder)\b/i],
+  ['Computación', /\b(c[aá]maras?\s+web|webcam)/i],
+  ['Hogar y cocina', /\b(amazon\s+)?echo\s+(dot|spot|show|pop|studio|hub)\b|\balexa\b/i],
+  ['Perfumes y belleza', /\b(perfum\w*|eau\s+de|edp|edt|parfum|extrait|colonia|cologne|body\s+(mist|splash|lotion)|mist|splash|fragancia|fragrance|maquillaje|labial|crema|s[eé]rum|shampoo|acondicionador|esmalte|delineador|rimel|m[aá]scara\s+de\s+pesta\w*|base\s+(l[ií]quida|de\s+maquillaje)|corrector|desodorante|brochas?|mascarilla|col[aá]geno|facial|cuidado\s+de\s+la\s+piel|skin\s*care|victoria\W?s?\s+secret|lattafa|armaf|afnan|stella\s+dustin)\b/i],
+  ['Cámaras y foto', /\b(c[aá]maras?(?!\s+web)|lentes?(?!\s+de\s+(sol|lectura|contacto))|objetivo|flash|speedlite|gopro|insta360|osmo|drones?|dron|tr[ií]pode|estabilizador\w*|gimbal|softbox|disparador|jaula|smallrig|teleconver\w*|instax|powershot|godox|zhiyun|nikon|bater[ií]a\s+(para\s+c[aá]mara|canon|nikon|lp-?e\w*)|estuche\s+para\s+c[aá]mara)\b/i],
+  ['Audio', /\b(auricular\w*|aud[ií]fono\w*|headphones?|headset|earbuds?|buds\d*|airpods|parlantes?|bocinas?|altavoz|barra\s+de\s+sonido|soundbar|micr[oó]fono\w*|subwoofer|amplificador|potencia\s+de\s+auto|reproductor\s+de\s+m[uú]sica|mp3|microsistema|monitor(es)?\s+de\s+estudio|tocadiscos|dac|jbl|bose|sennheiser|gravastar|fiio|marshall|skullcandy|soundcore)\b/i],
+  ['Relojes y smartwatch', /\b(reloj\w*|rejoj|smartwatch|smart\s*band|watch|garmin)\b/i],
+  ['Celulares y tablets', /\b(celular\w*|smartphones?|tel[eé]fono|iphone|ipad|tablet|galaxy\s+(tab|[asmz]\d+[a-z]*)|redmi(\s+note)?\s+\d+[a-z]*|poco\s+[a-z]?\d+[a-z]*|moto\s+[eg]\d*|kindle|e-?reader|pixel\s+\d+[a-z]*|honor\s+[a-z]?\d+[a-z]*|realme)\b/i],
+  ['Consolas y juegos', /\b(playstation|ps[345]|dualsense|dualshock|nintendo|xbox|consola|steam\s+deck|joystick|gamepad|joy\s*-?\s*con|control(ador)?\s+(ps|xbox|inal\w*)|volante)\b/i],
+  ['Computación', /\b(notebook|macbook|laptop|monitor(?!es?\s+de\s+estudio)|impresora|mouse|rat[oó]n|teclado|usb\s+flash|flash\s+drive|pen\s*drive|unidad\s+flash|memoria|micro\s*sd|tarjeta\s+(sd|de\s+memoria)|ssd|disco|externo|hdd|hd\s+(seagate|wd|western|toshiba|externo|interno)|hub|concentrador|router|enrutador|repetidor\w*|access\s+point|switch|bridge|cargador|cable|adaptador|power\s*bank|bater[ií]a|placa\s+(de\s+video|madre|m[aã]e)|procesador|refrigeraci[oó]n|watercooling|radiador|gabinete|calculadora|cartucho|t[oó]ner|convertidor|capturadora|mochila\s+para\s+(port[aá]til|notebook|laptop))\b/i],
+  ['Hogar y cocina', /\b(cocina|waflera|sart[eé]n|licuadora|batidora|freidora|cafetera|tostadora|pava|aspiradora|ventilador|l[aá]mpara|s[aá]banas?|almohada|toalla|termo|humidificador|purificador|cerradura|alarma|videoportero|portero|detector|sensor\s+(pir|de\s+movimiento|magn\w*)|biom[eé]tric\w*|sonoff|enchufe|smart\s+plug|pilas?|balanza)\b/i],
+  ['Cuidado personal', /\b(afeitadora|cortadora|secador\w*|hair\s+dryer|planchita|depiladora|cepillo|toothbrush|irrigador|masajeador|recortadora|rasuradora|trimmer)\b/i],
+  ['Juegos y juguetes', /\b(juguetes?|lego|mu[ñn]ec\w*|cartas|juego\s+de\s+mesa|peluche|rompecabezas|puzzle)\b/i],
+];
+function tiendaRubro(n) {
+  let mejor = null, iMejor = Infinity;
+  for (const [r, re] of TIENDA_RUBROS) { const m = re.exec(String(n || '')); if (m && m.index < iMejor) { mejor = r; iMejor = m.index; } }
+  if (mejor) return mejor;
+  return /\b\d+\s*ml\b/i.test(String(n || '')) ? 'Perfumes y belleza' : 'Otros';   // un frasco de "100 ml" sin otra pista es un perfume
+}
 // Las palabras, iguales en portugués, castellano e inglés, para comparar el nombre de Nissei con el de ML.
 const _TM_EQ = {
   preto: 'negro', preta: 'negro', black: 'negro', negra: 'negro', noir: 'negro', branco: 'blanco', branca: 'blanco', white: 'blanco', blanca: 'blanco',
@@ -12713,15 +12755,16 @@ const _TM_EQ = {
   masculino: 'hombre', masc: 'hombre', men: 'hombre', homme: 'hombre', man: 'hombre', male: 'hombre', caballero: 'hombre',
   feminino: 'mujer', femenino: 'mujer', women: 'mujer', woman: 'mujer', femme: 'mujer', lady: 'mujer', dama: 'mujer', unissex: 'unisex',
   standard: 'estandar', edicao: 'edicion', edition: 'edicion', segunda: '2', tercera: '3', terceira: '3', quarta: '4', cuarta: '4',
-  capa: 'funda', case: 'funda', pulseira: 'malla', estojo: 'estuche', leitor: 'lectora', disco: 'lectora',
+  capa: 'funda', case: 'funda', pulseira: 'malla', estojo: 'estuche', leitor: 'lectora', disco: 'lectora', set: 'kit',
 };
 const _TM_COLOR = new Set(['negro', 'blanco', 'gris', 'rojo', 'azul', 'verde', 'rosa', 'amarillo', 'violeta', 'naranja', 'marron', 'plateado', 'dorado', 'grafito', 'medianoche', 'estelar', 'titanio', 'beige', 'celeste', 'turquesa', 'coral', 'crema']);
-// Lo que delata OTRA versión: si lo dice uno, lo tiene que decir el otro.
-const _TM_VARIANTE = new Set(['pro', 'max', 'plus', 'mini', 'lite', 'slim', 'ultra', 'digital', 'fe', 'se', 'air', 'oled', 'neo', 'xl', 'xs', 'estandar', 'lectora',
+// Lo que delata OTRA versión: si lo dice uno, lo tiene que decir el otro (30/10/2026: + eSIM, Edge, Fusion y las líneas Flair/Luxe/Glide).
+const _TM_VARIANTE = new Set(['esim', 'edge', 'fusion', 'flair', 'luxe', 'glide', 'pro', 'max', 'plus', 'mini', 'lite', 'slim', 'ultra', 'digital', 'fe', 'se', 'air', 'oled', 'neo', 'xl', 'xs', 'estandar', 'lectora',
   'edicion', 'limitada', 'limited', 'especial', 'special', 'deluxe', 'bundle', 'combo', 'pack', 'kit', 'reacondicionado', 'refurbished', 'usado', 'replica', 'tester',
   'decant', 'muestra', 'recarga', 'refill', 'hombre', 'mujer', 'edp', 'edt', 'parfum', 'intense', 'elixir', 'extreme', 'absolu', 'sport', 'cellular', 'gps', 'wifi', 'lte',
   'funda', 'vidrio', 'templado', 'cable', 'cargador', 'soporte', 'malla', 'correa', 'estuche', 'protector', 'adaptador', 'repuesto', 'carcasa', 'dock', 'base']);
-// Lo que ML agrega para describir y no cambia el producto (el nombre de Nissei casi nunca lo trae).
+// Lo que ML agrega para describir y no cambia el producto (el nombre de Nissei casi nunca lo trae). 30/10/2026: + acero inoxidable,
+// analógico, waterproof, 4K, NC, de viaje, portátil, series.
 const _TM_DESCR = new Set(['consola', 'console', 'videoconsola', 'videojuego', 'celular', 'smartphone', 'telefono', 'movil', 'liberado', 'desbloqueado', 'dual', 'sim', 'esim', 'chip',
   'auriculares', 'auricular', 'audifonos', 'fone', 'fones', 'ouvido', 'headphone', 'headphones', 'headset', 'earbuds', 'inalambricos', 'inalambrico', 'inalambrica', 'inalambricas',
   'bluetooth', 'wireless', 'sem', 'fio', 'true', 'tws', 'in', 'ear', 'over', 'on', 'parlante', 'altavoz', 'portatil', 'reloj', 'smartwatch', 'inteligente', 'smart', 'tablet',
@@ -12729,27 +12772,62 @@ const _TM_DESCR = new Set(['consola', 'console', 'videoconsola', 'videojuego', '
   'y', 'e', 'the', 'and', 'el', 'la', 'los', 'las', 'del', 'por', 'en', 'em', 'ram', 'memoria', 'interna', 'almacenamiento', 'pantalla', 'tela', 'version', 'modelo', 'original',
   'nuevo', 'nueva', 'sellado', 'garantia', 'oficial', 'camara', 'dron', 'drone', 'generacion', 'gen', 'gb', 'tb', 'mb', 'ml', 'mah', 'pulgadas', 'gamer', 'gaming',
   'cancelacion', 'ruido', 'activa', 'noise', 'cancelling', 'anc', 'hd', 'full', 'amoled', 'nfc', 'lector', 'libros', 'electronicos', 'ebook', 'mouse', 'teclado', 'unisex',
-  'vaporizador', 'spray', 'toilette', 'agua', 'resistente', 'sumergible', 'deportivo', 'banda', 'video', 'juegos', 'game', 'games', 'de', 'x', 'g']);
+  'vaporizador', 'spray', 'toilette', 'agua', 'resistente', 'sumergible', 'deportivo', 'banda', 'video', 'juegos', 'game', 'games', 'x', 'g',
+  'acero', 'inoxidable', 'analogico', 'analogica', 'waterproof', 'impermeable', '4k', '8k', 'uhd', 'fhd', 'qhd', 'nc', 'viaje', 'port', 'portable', 'series', 'serie',
+  'cuerpo', 'corporal', 'usb']);
 // Las marcas que ML nombra y Nissei no hace falta que diga (el iPhone es Apple, la PlayStation es Sony).
 const _TM_IMPLICA = [[/\b(iphone|ipad|airpods|macbook|imac|apple\s+watch)\b/, 'apple'], [/\bplaystation|dualsense|dualshock\b/, 'sony'], [/\bgalaxy\b/, 'samsung'],
   [/\b(redmi|poco)\b/, 'xiaomi'], [/\bkindle\b/, 'amazon'], [/\bswitch\b/, 'nintendo'], [/\bxbox\b/, 'microsoft']];
+// 30/10/2026 (revisión de la tienda): el género sólo choca si dicen lo contrario; las medidas no son modelo; el TIPO de producto (consola,
+// juego, control, microSD…) tiene que coincidir; en los perfumes cuenta cada palabra del nombre; ML tiene que nombrar la marca y un modelo.
+const _TM_GENERO = new Set(['hombre', 'mujer', 'unisex']);
+const _TM_UNIDAD = new Set(['gb', 'tb', 'mb', 'ml', 'mah', 'mp', 'hz', 'w', 'g', 'kg', 'mm', 'cm', 'm', 'l', 'v', 'pulgadas', 'pulgada', 'polegadas', 'fps', 'oz', 'gr', 'kpa', 'mbps', 'ghz', 'db', 'hs', 'horas', 'dpi', 'rpm']);
+const _TM_TIPO = [
+  ['consola', /\b(consola|console|videoconsola)\b/], ['juego', /\b(juego|jogo)\b/], ['control', /\b(control|controle|joystick|gamepad|mando|joy\s?con)\b/],
+  ['tarjeta', /\b(tarjeta|cartao|microsd)\b/], ['funda', /\b(funda|capa|case)\b/], ['cargador', /\b(cargador|carregador)\b/], ['cable', /\b(cable|cabo)\b/],
+  ['auricular', /\b(auriculares?|fones?|audifonos?|headset|headphones?|earbuds?|airpods)\b/], ['parlante', /\b(parlante|altavoz|bocina|subwoofer|soundbar)\b/],
+  ['camara', /\b(camara|camera|webcam)\b/], ['lente', /\b(lente|objetiva)\b/], ['reloj', /\b(reloj|smartwatch)\b/], ['celular', /\b(celular|smartphone|iphone)\b/],
+  ['bateria', /\b(bateria|battery|pilas?)\b/], ['microfono', /\b(microfono|microfone)\b/], ['perfume', /\b(perfume|edp|edt|parfum|colonia|body\s+(mist|splash))\b/],
+  ['cartera', /\b(cartera|mochila|bolso)\b/],
+];
+const _TM_PERF = /\b(perfume|edp|edt|parfum|colonia|cologne|body\s+(mist|splash|lotion)|splash|eau)\b/;
+const _TM_PERF_RELLENO = new Set(['perfume', 'edp', 'edt', 'parfum', 'eau', 'spray', 'vaporizador', 'natural', 'for', 'by', 'pour', 'the', 'de', 'la', 'le', 'el', 'and', 'en', 'y', 'e', 'x', 'ml', 'original', 'importado', 'lacrado', 'body', 'splash', 'mist', 'colonia', 'fragancia', 'feminino', 'masculino']);
+const _TM_MARCAS = /\b(sony|playstation|nintendo|xbox|microsoft|apple|samsung|jbl|bose|beats|garmin|amazfit|huawei|xiaomi|redmi|poco|motorola|honor|oneplus|realme|google|pixel|logitech|razer|steelseries|hyperx|corsair|anker|soundcore|dji|gopro|insta360|canon|nikon|fujifilm|kindle|amazon|lenovo|asus|acer|dell|hp|msi|philips|braun|dyson|marshall|sennheiser|shure|rode|skullcandy|seagate|sandisk|kingston|lexar|tp\s?link|mercusys|godox|sigma|tamron|smallrig|casio|edifier|shokz|haylou|blackview|quanta|emeet|fifine|redragon|lattafa|armaf|dior|chanel|rabanne|versace|carolina|herrera|armani|givenchy|azzaro|montblanc|bvlgari|victoria)\b/g;
 function _tmTexto(t, esNissei) {
-  let s = esNissei ? traducirPyNombre(t) : String(t || '');
+  let s = esNissei ? traducirPyNombre(t) : tiendaLimpiarNombre(t);
   s = s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   s = s.replace(/\beau\s+de\s+parfum\b/g, ' edp ').replace(/\beau\s+de\s+toilette\b/g, ' edt ').replace(/\bpour\s+homme\b/g, ' hombre ').replace(/\bpour\s+femme\b/g, ' mujer ')
     .replace(/\bplay\s*station\b/g, 'playstation').replace(/\bps\s*([345])\b/g, 'playstation $1').replace(/\bx\s*box\b/g, 'xbox')
     .replace(/\b(\d+)\s*(?:a|da|ra|ta|na|nd|rd|th|st|°|º|ª)\s+(gen|generacion|geracao)\b/g, '$1 gen').replace(/\b(\d)\s*(da|ra|nd|rd|th|st)\b/g, '$1')
     .replace(/\bmeia\s*-?\s*noite\b/g, 'medianoche').replace(/\b(com|con)\s+(leitor|lectora|disco)\b/g, ' lectora ').replace(/\bwi\s*-?\s*fi\b/g, 'wifi')
     .replace(/\bblanco\s+estelar\b/g, 'estelar').replace(/\bnegro\s+medianoche\b/g, 'medianoche');
+  s = s.replace(/([a-z0-9])\+(?![a-z0-9])/g, '$1 plus ');                                   // S25+ · Tab A11+ · S1 Pro+ · Buds+
+  s = s.replace(/\b(usb\s*-?\s*(tipo\s*|type\s*)?c|(tipo|type)\s*-?\s*c)\b/g, 'usbc').replace(/\b\d+\s*mb\s*\/\s*s\b/g, ' ');   // USB-C = usbc · "400MB/s" es velocidad
+  s = s.replace(/\b([a-z]{1,4})-(\d[a-z0-9]*)\b/g, '$1$2').replace(/\b([a-z]{2})-([a-z]{2})\b/g, '$1$2');   // WH-1000XM5 = WH1000XM5 · LP-EL · EL-1
+  s = s.replace(/\b(ii|iii|iv|vi|vii)\b/g, (m) => ({ ii: '2', iii: '3', iv: '4', vi: '6', vii: '7' })[m]).replace(/\b(mark|mk|major)\s+v\b/g, '$1 5');
   s = s.replace(/[^a-z0-9.]+/g, ' ').replace(/(\d)\.(\d)/g, '$1_$2').replace(/\./g, ' ').replace(/_/g, '.');
+  s = s.replace(/\b([45])\s*g\b/g, 'red$1g');                                                  // 5G / 4G: la red, no un número suelto
+  s = s.replace(/\b(series|serie|keys)\s([sx])\b/g, '$1_$2').replace(/\b([a-z]*\d[a-z0-9]*)\s([sx])\b(?!\s*\d)/g, '$1_$2');   // Series S/X · MX Keys S · G502 X
+  s = s.replace(/\b([a-z]{4,})(\d{1,2})\b/g, '$1 $2');                                          // Watch7 = Watch 7 · Buds3 = Buds 3
+  s = s.replace(/\b(usbc?)\s*(\d\.\d)(\s*gen\s*\d)?\b/g, '$1');                                     // "USB 3.0" / "USB-C 3.2 Gen 1" no es el modelo
   // La unidad se despega del número ("128gb" → "128 gb"); un código de modelo ("s24", "wh1000xm5") queda entero.
-  s = s.replace(/\b(\d+(?:\.\d+)?)(gb|tb|mb|ml|mah|mp|hz|w|g|kg|mm|cm|l|v)\b/g, '$1 $2');
+  s = s.replace(/\b(\d+(?:\.\d+)?)(gb|tb|mb|ml|mah|mp|hz|w|g|kg|mm|cm|m|l|v)\b/g, '$1 $2');
   return s.replace(/\s+/g, ' ').trim();
 }
-function _tmTokens(s) { return s.split(' ').filter(Boolean).map((w) => _TM_EQ[w] || w).map((w) => (w.length > 4 && w.endsWith('es') && !/\d/.test(w) ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') && !/\d/.test(w) ? w.slice(0, -1) : w)); }
-function _tmCaps(s, unidad) {   // las capacidades (GB/TB de almacenamiento, ml), sin la RAM
+// Plural a singular, salvo las palabras de las listas ("plus" no es "plu") y lo que tiene números.
+function _tmTokens(s) { return s.split(' ').filter(Boolean).map((w) => _TM_EQ[w] || w).map((w) => (_TM_DESCR.has(w) || _TM_VARIANTE.has(w) || _TM_COLOR.has(w) || /[\d_]/.test(w) ? w
+  : _TM_COLOR.has(w.slice(0, -1)) ? w.slice(0, -1) : w.length > 4 && w.endsWith('es') ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w)); }
+// La memoria RAM: "8 gb ram", "ram 8 gb" o la primera de "8 gb 256 gb" (lo que ML escribe "8GB/256GB").
+function _tmRam(s) {
+  const out = new Set(); let x;
+  const r1 = /(\d+)\s*gb\s*(de\s+)?ram\b/g; while ((x = r1.exec(s))) out.add(Number(x[1]));
+  const r2 = /\bram\s*(de\s+)?(\d+)\s*gb\b/g; while ((x = r2.exec(s))) out.add(Number(x[2]));
+  const r3 = /\b(\d{1,2})\s*gb\s+(\d{2,4})\s*gb\b/g; while ((x = r3.exec(s))) if (Number(x[1]) <= 24 && Number(x[2]) >= 32) out.add(Number(x[1]));
+  return out;
+}
+function _tmCaps(s, unidad, ram) {   // las capacidades (GB/TB de almacenamiento, ml), sin la RAM
   const out = new Set(); const re = new RegExp('(\\d+(?:\\.\\d+)?)\\s*' + unidad + '\\b(\\s*(de\\s+)?ram)?', 'g'); let x;
-  while ((x = re.exec(s))) { if (x[2]) continue; const pre = s.slice(Math.max(0, x.index - 8), x.index); if (/ram\s*(de\s*)?$/.test(pre)) continue; out.add(unidad + String(Number(x[1]))); }
+  while ((x = re.exec(s))) { if (x[2]) continue; const pre = s.slice(Math.max(0, x.index - 8), x.index); if (/ram\s*(de\s*)?$/.test(pre)) continue; if (unidad === 'gb' && ram && ram.has(Number(x[1]))) continue; out.add(unidad + String(Number(x[1]))); }
   return out;
 }
 // null = es el mismo producto; si no, el motivo (corto, para contar los de afuera).
@@ -12758,35 +12836,79 @@ function tiendaMismoProducto(nNissei, nML) {
   if (!A || !B) return 'sin nombre';
   const tA = _tmTokens(A), tB = _tmTokens(B), SA = new Set(tA), SB = new Set(tB);
   for (const [re, marca] of _TM_IMPLICA) if (re.test(A)) SA.add(marca);
-  const tiene = (S, w) => S.has(w) || (w.length >= 5 && /^[a-z]+$/.test(w) && [...S].some((v) => v.length >= 5 && /^[a-z]+$/.test(v) && (v.startsWith(w) || w.startsWith(v))));
-  // 1) Todo lo que dice ML (marca, modelo, números, color, versión) lo tiene que decir Nissei; sólo se saltean las palabras que describen.
+  // Los códigos de Casio llevan al final la letra de la caja según el país ("GA-2100-1A1" = "GA-2100-1A1DR"): es el mismo reloj.
+  const CASIO_FIN = /^(dr|df|vdf|udf|adf|avdf|ef|vef|aef|cf|jf|er|uf)$/;
+  const tiene = (S, w) => S.has(w) || (w.length >= 5 && /^[a-z]+$/.test(w) && [...S].some((v) => v.length >= 5 && /^[a-z]+$/.test(v) && (v.startsWith(w) || w.startsWith(v))))
+    || (/\d/.test(w) && w.length >= 3 && [...S].some((v) => /\d/.test(v) && v.length >= 3 && ((w.startsWith(v) && CASIO_FIN.test(w.slice(v.length))) || (v.startsWith(w) && CASIO_FIN.test(v.slice(w.length))))));
+  // 0) El TIPO de producto (lo que dice antes del "con"/"para"): si los dos lo dicen y no coincide, no es (el juego, la microSD o el control
+  //    contra la "Consola"); si ML suma otro tipo es un combo ("Smartphone y auriculares"); una consola contra algo que no es consola, no.
+  const cabeza = (s) => s.split(/\b(con|com|para|sin|sem|c|p|incluye|with|for)\b/)[0];
+  const tipos = (s) => new Set(_TM_TIPO.filter(([, re]) => re.test(cabeza(s))).map(([t]) => t));
+  const TA = tipos(A), TB = tipos(B);
+  if (TA.size && TB.size && ![...TA].some((t) => TB.has(t))) return 'otro tipo de producto';
+  if (TB.size > TA.size && TA.size && [...TB].some((t) => !TA.has(t))) return 'ML es un combo';
+  if (TA.has('consola') && !TB.has('consola') && !_tmCaps(B, 'gb').size && !_tmCaps(B, 'tb').size) return 'Nissei es consola y ML no';   // un juego no dice GB
+  // 1) Todo lo que dice ML (marca, modelo, números, color, versión) lo tiene que decir Nissei; se saltean las palabras que describen y el género.
   for (const w of tB) {
+    if (_TM_GENERO.has(w)) continue;
     if (_TM_DESCR.has(w) && !_TM_VARIANTE.has(w)) continue;
     // 30/10/2026: una sigla de 2 letras de ML es MODELO ("Canon Eos Rp" contra la R8 de Nissei) salvo las palabritas comunes.
-    if (/^[a-z]{1,2}$/.test(w) && !_TM_VARIANTE.has(w) && (w.length === 1 || /^(de|la|el|en|al|lo|un|da|do|em|com|of|by|to|in|on|or|cm|mm|kg|gr|ml|gb|tb|hz|uv|tv|hd|sd|pc|mp|ii|iv|vi|ix|xl|xs)$/.test(w))) continue;
+    if (/^[a-z]{1,2}$/.test(w) && !_TM_VARIANTE.has(w) && (w.length === 1 || /^(de|la|el|en|al|lo|un|da|do|em|com|of|by|to|in|on|or|cm|mm|kg|gr|ml|gb|tb|hz|uv|tv|hd|sd|pc|mp|xl|xs)$/.test(w))) continue;
     if (!tiene(SA, w)) return /^\d/.test(w) ? 'otro número o capacidad' : _TM_COLOR.has(w) ? 'otro color' : _TM_VARIANTE.has(w) ? 'otra versión' : 'ML dice algo que Nissei no';
   }
+  // El género sólo choca si dicen lo contrario (uno "hombre" y el otro "mujer").
+  if ((SA.has('hombre') && SB.has('mujer')) || (SA.has('mujer') && SB.has('hombre'))) return 'otro género';
   // 2) Lo que delata otra versión, del lado de Nissei, lo tiene que decir ML.
-  for (const w of SA) if (_TM_VARIANTE.has(w) && !SB.has(w)) return 'otra versión';
+  for (const w of SA) if (_TM_VARIANTE.has(w) && !_TM_GENERO.has(w) && !SB.has(w)) return 'otra versión';
+  // Un 4K de Nissei en un TV Stick, Apple TV o Chromecast es otra versión (el "4K" que ML agrega a una consola o una cámara, no).
+  if (/\b(tv|stick|streamer|chromecast)\b/.test(A) && ['4k', '8k'].some((w) => SA.has(w) && !SB.has(w))) return 'otra versión';
+  // Los AirPods 4 vienen con y sin cancelación de ruido: los dos tienen que decir lo mismo.
+  if (/\bairpods 4\b/.test(A)) { const anc = (s) => /\b(cancelacion|cancelamento|anc|noise)\b/.test(s); if (anc(A) !== anc(B)) return 'otra versión'; }
+  // 2a) La sigla de modelo que sigue a una palabra que dicen los dos ("EOS RP" contra "EOS R", "EOS R6" contra "EOS R") tiene que ser la misma.
+  { const sigla = (w) => /^[a-z]{1,2}\d{0,3}$/.test(w || '') && !/^(de|la|el|en|al|lo|un|da|do|em|of|by|to|in|on|or|cm|mm|kg|gr|ml|gb|tb|hz|uv|tv|hd|sd|pc|mp|xl|xs|y|e|x|g)$/.test(w);
+    const sig = (t) => { const m = {}; for (let i = 0; i < t.length - 1; i++) if (/^[a-z]{3,}$/.test(t[i]) && !_TM_DESCR.has(t[i])) (m[t[i]] = m[t[i]] || []).push(t[i + 1]); return m; };
+    const ma = sig(tA), mb = sig(tB);
+    for (const w of Object.keys(ma)) { if (!mb[w]) continue; const a = ma[w].filter(sigla), b = mb[w].filter(sigla); if (a.length && b.length && !a.some((x) => b.includes(x))) return 'otro modelo'; } }
+  // 2b) Los NÚMEROS de Nissei (modelo, generación, Mark II/III) tienen que estar en ML; no las medidas ni las capacidades.
+  for (let i = 0; i < tA.length; i++) { const w = tA[i]; if (!/^\d+(\.\d+)?$/.test(w)) continue; if (_TM_UNIDAD.has(tA[i + 1] || '')) continue; if (tA[i + 1] === 'ram' || tA[i + 2] === 'ram') continue; if (!SB.has(w)) return 'Nissei dice otro número'; }
+  // 2c) Perfumes: TODA palabra del nombre de Nissei tiene que estar en ML (Very Good Girl, 1 Million Lucky, Khamrah Qahwa…).
+  if (_TM_PERF.test(A) || _TM_PERF.test(B)) for (const w of tA) { if (_TM_DESCR.has(w) || _TM_PERF_RELLENO.has(w) || _TM_GENERO.has(w) || _TM_COLOR.has(w) || /^\d/.test(w) || w.length <= 2) continue; if (!tiene(SB, w)) return 'perfume: Nissei dice "' + w + '" y ML no'; }
   // 3) El color: si Nissei lo dice, ML tiene que decir ese mismo.
   for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
-  // 4) La capacidad: los GB/TB/ml de Nissei tienen que estar en ML (la RAM no cuenta). Una consola puede no decirla en ML.
+  // 4) La capacidad: los GB/TB/ml de Nissei tienen que estar en ML (la RAM no cuenta, pero si los dos la dicen tiene que ser la misma).
+  //    Una consola puede no decirla en ML.
+  const ramA = _tmRam(A), ramB = _tmRam(B);
+  if (ramA.size && ramB.size && ![...ramA].some((x) => ramB.has(x))) return 'otra memoria RAM';
   for (const u of ['gb', 'tb', 'ml']) {
-    const ca = _tmCaps(A, u), cb = _tmCaps(B, u);
+    const ca = _tmCaps(A, u, ramA), cb = _tmCaps(B, u, ramB);
     if (!ca.size) continue;
-    if (!cb.size) { if (u !== 'ml' && /\b(playstation|xbox|nintendo|switch)\b/.test(A) && !_tmCaps(B, u === 'gb' ? 'tb' : 'gb').size) continue; return 'ML no dice la capacidad'; }
+    if (!cb.size) { if (u !== 'ml' && /\b(playstation|xbox|nintendo|switch)\b/.test(A) && !_tmCaps(B, u === 'gb' ? 'tb' : 'gb', ramB).size) continue; return 'ML no dice la capacidad'; }
     if (![...ca].some((x) => cb.has(x))) return 'otra capacidad';
     if ([...cb].some((x) => !ca.has(x))) return 'otra capacidad';
+  }
+  // 4b) Cargadores y baterías: los W y los mAh de Nissei tienen que estar en ML.
+  if (/\b(cargador|bateria|power\s*bank|powerbank|fuente)\b/.test(A)) {
+    const pot = (s) => new Set((s.match(/\b\d+(\.\d+)?\s(w|mah)\b/g) || []).map((x) => x.replace(/\s+/g, '')));
+    const pB = pot(B); for (const x of pot(A)) if (!pB.has(x)) return 'otra potencia';
   }
   // 5) Palabra + número (iPhone 15, Watch 9, Switch 2, Flip 6): si ML tiene la palabra, tiene que tener el mismo número.
   { const pares = (s) => { const m = {}; const re = /\b([a-z]{3,})\s(\d{1,2})\b(?!\s(gb|tb|mb|ml|mah|mp|hz|w|g|kg|mm|cm|l|v)\b)/g; let x; while ((x = re.exec(s))) { if (_TM_DESCR.has(x[1])) continue; (m[x[1]] = m[x[1]] || new Set()).add(x[2]); } return m; };
     const pa = pares(tA.join(' ')), pb = pares(tB.join(' '));
     for (const w of Object.keys(pa)) if (SB.has(w) && !(pb[w] && [...pa[w]].some((v) => pb[w].has(v)))) return 'otro modelo'; }
-  // 6) Que compartan algo de verdad: la marca o una palabra de 4+ letras, y al menos dos palabras que distinguen.
-  const utiles = tB.filter((w) => !_TM_DESCR.has(w) && !/^[a-z]{1,2}$/.test(w));
-  if (utiles.length < 2) return 'ML dice muy poco';
-  if (!utiles.some((w) => /^[a-z]{4,}$/.test(w) || /[a-z]/.test(w) && /\d/.test(w))) return 'ML dice muy poco';
+  // 6) Un nombre de ML genérico no sirve: la marca de Nissei tiene que estar en ML, y ML tiene que nombrar un modelo (algo más que el tipo,
+  //    la marca y el color: "Lente Sony", "Micrófono Lapela Color Negro" no dicen cuál).
+  const marcasA = (A.match(_TM_MARCAS) || []).map((x) => x.replace(/\s/g, ''));
+  if (marcasA.length && !marcasA.some((m) => new RegExp('\\b' + m + '\\b').test(B.replace(/tp link/g, 'tplink')) || SB.has(m))) return 'ML no dice la marca';
+  const modelo = tB.filter((w) => (!_TM_DESCR.has(w) && !_TM_COLOR.has(w) && !_TM_GENERO.has(w) && !/^[a-z]{1,2}$/.test(w) && !marcasA.includes(w)
+    && !_TM_TIPO.some(([, re]) => re.test(w)) && !_TM_UNIDAD.has(w) && !/^\d+$/.test(w)) || /[a-z]\d|\d[a-z]/.test(w) || (/^\d+$/.test(w) && !_TM_UNIDAD.has(tB[tB.indexOf(w) + 1] || '')));
+  if (!modelo.length) return 'ML dice muy poco (sin modelo)';
   return null;
+}
+// Entre varios de ML que pasan el chequeo, el MÁS PARECIDO (no el primero que trae la búsqueda): palabras en común sobre las de los dos.
+function tiendaParecido(nNissei, nML) {
+  const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
+  const a = sig(_tmTexto(nNissei, true)), b = sig(_tmTexto(nML, false)); let k = 0; for (const w of b) if (a.has(w)) k++;
+  return k / Math.max(1, a.size + b.size - k);
 }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE (fin) ─────────────────────────────────────────────────────────────────
 const LISTA_MARCAS = [[/^RV\.\s*/i, 'Revlon '], [/^RML\b\.?\s*/i, 'Rimmel '], [/^MB\.\s*/i, 'Maybelline '], [/^S\.H\.?\s+/i, 'Sally Hansen '],
@@ -17144,19 +17266,23 @@ async function main() {
     // BILLING_PROBE=avisonoche → LO CORRE `ml-daily` AL FINAL cuando algún paso falló (revisión max
     // #21, 25/09/2026). Los pasos ya no cortan la noche, así que esto es lo único que dice que uno
     // falló: la lista llega en FALLOS_NOCHE. Manda un aviso al canal privado y nada más.
+    // 30/10/2026 (revisión de la tienda): los pasos de la tienda llegan aparte en FALLOS_TIENDA: se avisan igual, pero no hacen repetir la
+    // noche entera (la tienda queda como estaba hasta la noche siguiente).
     if (/^avisonoche(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const fl = String(process.env.FALLOS_NOCHE || '').split('·').map((x) => x.trim()).filter(Boolean);
-      if (!fl.length) { console.log('Ningún paso falló: no mando nada.'); return; }
-      const txt = `⚠️ <b>La corrida de anoche tuvo ${fl.length} paso(s) con error</b>\n`
-        + fl.map((x) => '· ' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('\n')
-        + `\n<i>Los demás pasos corrieron igual. Si el que falló fue "Margen ML al precio de hoy", el robot de precios no tocó nada esta noche.</i>`;
+      const ft = String(process.env.FALLOS_TIENDA || '').split('·').map((x) => x.trim()).filter(Boolean);
+      if (!fl.length && !ft.length) { console.log('Ningún paso falló: no mando nada.'); return; }
+      const esc = (x) => '· ' + x.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      const txt = (fl.length ? `⚠️ <b>La corrida de anoche tuvo ${fl.length} paso(s) con error</b>\n` + fl.map(esc).join('\n')
+        + `\n<i>Los demás pasos corrieron igual. Si el que falló fue "Margen ML al precio de hoy", el robot de precios no tocó nada esta noche.</i>` : '')
+        + (ft.length ? `${fl.length ? '\n' : ''}🛍️ <b>La tienda no se actualizó anoche</b>\n` + ft.map(esc).join('\n') + `\n<i>Queda la lista de antes; se vuelve a intentar la noche que viene (o a mano con ml-tienda).</i>` : '');
       console.log(txt.replace(/<[^>]+>/g, ''));
       let ok = false;
       try { ok = await sendAlerta(txt, { info: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
       // Etapa 5: si el aviso de los pasos fallados no sale, la noche queda callada justo cuando
       // algo falló. Se grita en el log y el paso sale con error (se ve rojo en GitHub).
       if (ok) console.log('✓ aviso mandado');
-      else { console.log('❌❌ NO PUDE MANDAR EL AVISO DE LOS PASOS FALLADOS — nadie se entera por Telegram. Pasos: ' + fl.join(' · ')); process.exitCode = 1; }
+      else { console.log('❌❌ NO PUDE MANDAR EL AVISO DE LOS PASOS FALLADOS — nadie se entera por Telegram. Pasos: ' + fl.concat(ft).join(' · ')); process.exitCode = 1; }
       return;
     }
     // BILLING_PROBE=nochehecha[:anotar] → ¿LA NOCHE DE ml-daily YA TERMINÓ BIEN? (etapa 4, 20/10/2026). Los 3 crons de
@@ -30563,29 +30689,60 @@ async function main() {
     // menos lo grande o pesado, con su catálogo de ML exacto (`tiendaMismoProducto`; ver el paso (3) abajo). Precio = US$ de Nissei × recargo medido (`RECARGO_PAR`)
     // × dólar del panel (`cyc/finanzas/tipo_cambio`) + 25%, redondeado para arriba a 90/990. Nombre y fotos = los del catálogo de ML
     // (`/products/<cat>`; sin catálogo, los de nuestra publicación). 🔒 4a (él: "NADIE SABE QUE LO TRAEMOS DE PARAGUAY… QUE SÓLO DIGA CYC Y
-    // LISTO"): al archivo van SÓLO id propio (hash del catálogo), nombre de ML, fotos de mlstatic, precio en pesos y rubro; nada de
-    // códigos, proveedor, dólares ni costos, y un producto cuyo nombre tenga una palabra prohibida no entra. Sin `;go` muestra cuántos y
-    // una muestra (sin costos); con `;go` escribe el archivo (`TIENDA_ARCHIVO` o `tienda/productos.json`; ml-daily lo sube a la rama de
+    // LISTO"): al archivo van SÓLO id propio, nombre de ML, fotos de mlstatic, precio en pesos, rubro y si es de marca conocida (`m`); nada
+    // de códigos, proveedor, dólares ni costos, y un producto cuyo nombre tenga una palabra prohibida (o en portugués) no entra. Sin `;go`
+    // muestra cuántos y una muestra; con `;go` escribe el archivo (`TIENDA_ARCHIVO` o `tienda/productos.json`; ml-daily lo sube a la rama de
     // la web). El número de WhatsApp (apagado si no hay) sale de `cyc/mlconfig/tiendaWa` (sólo dígitos).
-    // 📱 Número de WhatsApp de la tienda (30/10/2026, él: "2346534713"): `tienda:wa=<código de área + número, sin 0 ni 15>[;go]`
-    // guarda `cyc/mlconfig/tiendaWa` en el formato de wa.me (549 + número); `tienda:wa=-;go` lo saca y el botón se apaga.
+    // REVISIÓN DE LA TIENDA (30/10/2026, 4 revisores): freno de precio contra ML, match más fino, duplicados, rubros, IDs fijos
+    // (`mlapi/tiendaids`), memoria que no se cae una noche, registro sin datos con ;go y toda negativa con ;go sale con error.
+    // 📱 Número de WhatsApp de la tienda (30/10/2026, él lo pasó por el chat): `tienda:wa=<código de área + número, sin 0 ni 15>[;go]`
+    // guarda `cyc/mlconfig/tiendaWa` en el formato de wa.me (549 + número); `tienda:wa=-;go` lo saca y el botón se apaga. El registro es
+    // público: el número sale tapado (sólo los últimos 4).
     if (/^tienda:wa=/.test(String(process.env.BILLING_PROBE || ''))) {
       const rawW = String(process.env.BILLING_PROBE).replace(/^tienda:wa=/, ''); const GOw = /;go$/.test(rawW); const v = rawW.replace(/;go$/, '').trim();
+      const tapa = (w) => 'wa.me/549…' + String(w).slice(-4);
       if (v === '-') { if (GOw) await db.set('cyc/mlconfig/tiendaWa', null); console.log(GOw ? '✓ WhatsApp de la tienda apagado' : 'Prueba: apagaría el WhatsApp (falta ;go)'); return; }
       let d = v.replace(/\D/g, ''); if (d.startsWith('549')) d = d.slice(3); else if (d.startsWith('54')) d = d.slice(2); d = d.replace(/^0/, '');
-      if (!/^\d{10}$/.test(d)) { console.log(`❌ "${v}": va el código de área + el número, 10 cifras, sin 0 ni 15 (ej. 2346534713). No escribo nada.`); return; }
+      if (!/^\d{10}$/.test(d)) { console.log(`❌ Va el código de área + el número, 10 cifras, sin 0 ni 15 (ej. 1123456789); llegaron ${d.length} cifras. No escribo nada.`); return; }
       const wa = '549' + d;
-      if (!GOw) { console.log(`Prueba: el botón abriría wa.me/${wa} (falta ;go)`); return; }
+      if (!GOw) { console.log(`Prueba: el botón abriría ${tapa(wa)} (falta ;go)`); return; }
       await db.set('cyc/mlconfig/tiendaWa', wa); const rr = await db.get('cyc/mlconfig/tiendaWa');
-      console.log(rr === wa ? `✓ WhatsApp de la tienda: wa.me/${wa} (sale en la tienda con la próxima corrida de "tienda;go", cada noche)` : '⚠️ no lo pude releer');
+      console.log(rr === wa ? `✓ WhatsApp de la tienda: ${tapa(wa)} (sale en la tienda con la próxima corrida de "tienda;go", cada noche)` : '⚠️ no lo pude releer');
+      return;
+    }
+    // BILLING_PROBE=tienda:id=<ID>[,<ID>…] → ¿QUÉ PRODUCTO ES? (30/10/2026, revisión de la tienda). SOLO LEE. Cuando llega un pedido de la
+    // tienda, cada renglón trae el código entre corchetes ([K7M3P2X]); esto dice cuál es: el código del proveedor, su nombre, lo que sale hoy en
+    // US$ y el precio de la tienda. Sale del mapa fijo `mlapi/tiendaids` (lo arma `tienda;go`: el código de cada producto no cambia nunca).
+    if (/^tienda:id=/.test(String(process.env.BILLING_PROBE || ''))) {
+      const pedidos = String(process.env.BILLING_PROBE).replace(/^tienda:id=/, '').split(/[;,\s]+/).map((x) => x.replace(/[[\]]/g, '').trim().toUpperCase()).filter((x) => /^[0-9A-Z]{4,8}$/.test(x));
+      if (!pedidos.length) { console.log('❌ Usá tienda:id=<código> (el que sale entre corchetes en cada renglón del pedido; varios con coma).'); return; }
+      const mapa = (await db.get('mlapi/tiendaids')) || {};
+      const porId = {}; for (const [k, x] of Object.entries(mapa)) if (x && x.id) porId[String(x.id).toUpperCase()] = { k, ...x };
+      const fecha = (t) => (Number(t) > 0 ? new Date(Number(t) - 3 * 36e5).toISOString().slice(0, 10).split('-').reverse().join('/') : '—');
+      for (const id of pedidos) {
+        const x = porId[id];
+        if (!x) { console.log(`\n■ ${id}: no está en el mapa de la tienda (¿bien copiado? los códigos tienen 5 o 7 letras y números).`); continue; }
+        let e = null; if (x.cod) { try { e = await db.get('mlapi/pycat/' + String(x.cod).replace(/[.#$[\]/]/g, '')); } catch { e = null; } }
+        console.log(`\n■ ${id} · en la tienda: "${String(x.n || '—').slice(0, 90)}" a ${money(Number(x.p) || 0)} (desde el ${String(x.desde || '—').split('-').reverse().join('/')})`);
+        console.log(`   código del proveedor ${x.cod || '— (sin código: es una ficha nuestra, ' + x.k + ')'}${(e && e.n) || x.nn ? ` · "${String((e && e.n) || x.nn).slice(0, 90)}"` : ''}`);
+        console.log(`   US$ ${e && Number(e.u) > 0 ? Number(e.u) : (Number(x.usd) || '—')}${e && Number(e.ts) > 0 ? ` (mirado el ${fecha(e.ts)})` : ''}${Number(x.usd) > 0 && e && Number(e.u) > 0 && Math.abs(Number(e.u) - Number(x.usd)) >= 0.01 ? ` · la tienda lo armó con US$ ${x.usd}` : ''}`);
+      }
       return;
     }
     if (/^tienda(;go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const GOt = /;go$/.test(String(process.env.BILLING_PROBE));
+      // CON ;go TODA NEGATIVA SALE CON ERROR Y SIN ARCHIVO (revisión de la tienda, 30/10/2026): sin dólar, sin token, datos incompletos, una
+      // palabra que no puede salir, 0 productos, IDs sin guardar o una lectura de la base con fallas → `process.exitCode = 1` y no se escribe
+      // nada: el paso "Subir la tienda" no encuentra archivo y la tienda queda como estaba.
+      const negar = (t) => { console.log(t); if (GOt) process.exitCode = 1; };
+      // 🔒 EL REGISTRO DE GITHUB ES PÚBLICO (revisión de privacidad, 30/10/2026): con ;go (cada noche) se imprimen sólo cantidades y palabras
+      // neutras: ni el proveedor, ni el recargo, ni renglones de productos. El detalle y la muestra contra ML salen sólo sin ;go.
+      const det = (t) => { if (!GOt) console.log(t); };
       const TIENDA_DIAS = 30, GAN = 0.25;
       try { await cargarParamCompra(db); } catch { /* queda el recargo de siempre */ }
-      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
-      if (!(tc > 0)) { console.log('❌ Sin dólar cargado (cyc/finanzas/tipo_cambio): no escribo nada (no invento uno).'); return; }
+      const fallos0 = dbConteo.fallos;
+      let tc = 0; try { tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; } catch { tc = 0; }
+      if (!(tc > 0)) { negar('❌ Sin dólar cargado (cyc/finanzas/tipo_cambio): no escribo nada (no invento uno).'); return; }
       const lindo = (x) => (x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 10) / 100) * 100 - 10);
       // 30/10/2026 (él: "¿qué % toma la web local? porque si toma bajo perdemos plata"): el recargo de Paraguay que usa la tienda es el MÁS ALTO
       // de los últimos 3 pedidos con todos los gastos (no el promedio de compras): así el 25% nunca se come en un pedido caro.
@@ -30595,44 +30752,53 @@ async function main() {
           .sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
         if (rr.length) RECT = Math.max(RECARGO_PAR, ...rr.map((x) => x.r));
       } catch { /* queda el recargo de compras */ }
-      console.log(`recargo que usa la tienda: ${((RECT - 1) * 100).toFixed(1)}% (el más alto de los últimos pedidos) + ${Math.round(GAN * 100)}% de ganancia`);
+      det(`recargo que usa la tienda: ${((RECT - 1) * 100).toFixed(1)}% (el más alto de los últimos pedidos) + ${Math.round(GAN * 100)}% de ganancia`);
       const precioDe = (usd) => lindo(usd * RECT * tc * (1 + GAN));
       // Lo que NUNCA puede salir en la tienda (nombre de ML o foto). Se chequea producto por producto y otra vez sobre el archivo entero.
+      // 30/10/2026: también las palabras en portugués (`TIENDA_PT`).
       const PROHIBIDO = /nissei|paragua|compras ?paraguay|\bpy\b|rel[oó]gio|\bpreto\b|sem fio|\bus\$|\busd\b|d[oó]lar/i;
+      const prohibido = (t) => PROHIBIDO.test(t) || TIENDA_PT.test(t);
       const fotoOk = (u) => /^https:\/\/[a-z0-9.-]*mlstatic\.com\/[^\s"'<>]+$/i.test(u);
       const fotosDe = (pics) => (pics || []).map((x) => String((x && (x.secure_url || x.url)) || '').replace(/^http:\/\//, 'https://')).filter(fotoOk).slice(0, 4);
-      const idDe = (k) => createHash('sha256').update('cyc-tienda|' + k).digest('hex').slice(0, 10).replace(/[a-f]/g, (h) => 'KMNPRTVWXY'['abcdef'.indexOf(h)]).slice(0, 5).toUpperCase();
-      const RUBROS = [
-        ['Perfumes y belleza', /perfum|eau de|colonia|body (mist|splash)|fragancia|maquillaje|labial|crema|serum|sérum|shampoo|acondicionador|esmalte|delineador|rimel|máscara de pestañas|base de maquillaje|desodorante|cuidado/i],
-        ['Relojes y smartwatch', /reloj|smartwatch|smart band|smartband|watch\b/i],
-        // 30/10/2026: con todo Nissei entran celulares, tablets y consolas (la página toma los rubros sola).
-        ['Celulares y tablets', /\b(celular|smartphone|tel[eé]fono|iphone|ipad|tablet|galaxy (tab|[asmz]\d)|redmi( note)? \d|poco [a-z]?\d|moto [eg]\d|kindle|e-?reader)/i],
-        ['Audio', /auricular|parlante|headphone|earbud|altavoz|barra de sonido|micr[oó]fono/i],
-        ['Consolas y juegos', /\b(playstation|ps[345]\b|dualsense|dualshock|nintendo|xbox|consola|steam deck|joystick|gamepad|control(ador)? (ps|xbox|inal))/i],
-        ['Computación', /notebook|macbook|laptop|monitor|impresora|mouse|teclado|pendrive|memoria|micro ?sd|ssd|disco|hub usb|webcam|router|cargador|cable|adaptador|power ?bank|bater[ií]a/i],
-        ['Juegos y juguetes', /joystick|control(ador)? (ps|xbox|inal)|gamer|juguete|lego|mu[ñn]ec|cartas|juego/i],
-        ['Hogar y cocina', /cocina|waflera|sart[eé]n|licuadora|batidora|freidora|cafetera|tostadora|pava|aspiradora|ventilador|l[aá]mpara|s[aá]bana|almohada|toalla|termo/i],
-        ['Cuidado personal', /afeitadora|cortadora|secador|planchita|depiladora|cepillo|masajeador|recortadora/i],
-      ];
-      const rubroDe = (n) => { for (const [r, re] of RUBROS) if (re.test(n)) return r; return 'Otros'; };
+      // El id viejo (5 letras, hash del catálogo): sólo para que conserven su código los que ya estaban publicados antes del mapa fijo.
+      const idViejo = (k) => createHash('sha256').update('cyc-tienda|' + k).digest('hex').slice(0, 10).replace(/[a-f]/g, (h) => 'KMNPRTVWXY'['abcdef'.indexOf(h)]).slice(0, 5).toUpperCase();
       // Token de ML (cualquier cuenta: /products y /items son públicos).
       let tk = null;
       for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
         try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la que sigue */ } }
-      if (!tk) { console.log('❌ Sin token de ML: no escribo nada.'); return; }
-      const [cands, prodsObj, links, sinSt, pycat, marcasNo, waRaw, tmObj] = await Promise.all([
-        db.get('cyc/candidatos_py'), db.get('cyc/products'), db.get('cyc/mllinks'), db.get('cyc/py_sinstock'), db.get('mlapi/pycat'),
-        // 30/10/2026 (él: "es totalmente aparte, así que se puede vender todo lo de marca acá"): en la tienda no se frena ninguna marca.
-        Promise.resolve({}), db.get('cyc/mlconfig/tiendaWa'), db.get('mlapi/tiendamatch')]);
-      if (!cands || !prodsObj) { console.log('❌ DATOS INCOMPLETOS (no pude leer los candidatos o las fichas): no escribo nada.'); return; }
+      if (!tk) { negar('❌ Sin token de ML: no escribo nada.'); return; }
+      let cands, prodsObj, links, sinSt, pycat, waRaw, tmObj, idsObj;
+      try {
+        [cands, prodsObj, links, sinSt, pycat, waRaw, tmObj, idsObj] = await Promise.all([
+          db.get('cyc/candidatos_py'), db.get('cyc/products'), db.get('cyc/mllinks'), db.get('cyc/py_sinstock'), db.get('mlapi/pycat'),
+          // 30/10/2026 (él: "es totalmente aparte, así que se puede vender todo lo de marca acá"): en la tienda no se frena ninguna marca.
+          db.get('cyc/mlconfig/tiendaWa'), db.get('mlapi/tiendamatch'), db.get('mlapi/tiendaids')]);
+      } catch (er) { negar(`❌ DATOS INCOMPLETOS (una lectura de la base falló: ${String((er && er.message) || er).slice(0, 80)}): no escribo nada.`); return; }
+      if (!cands || !prodsObj || dbConteo.fallos > fallos0) { negar('❌ DATOS INCOMPLETOS (no pude leer los candidatos o las fichas, o una lectura falló): no escribo nada.'); return; }
+      const marcasNo = {};
       const hoy = Date.now(), fresco = (t) => Number(t) > 0 && hoy - Number(t) <= TIENDA_DIAS * 864e5;
       const fuera = {}; const no = (m) => { fuera[m] = (fuera[m] || 0) + 1; };
-      // Lo que entra, por catálogo (o por ficha si no tiene): { key, cat, mla, usd, ts }.
-      const porKey = new Map();
-      const meter = (x) => { const v = porKey.get(x.key); if (!v || x.ts > v.ts) porKey.set(x.key, x); };
+      // LA MEMORIA (`mlapi/tiendamatch`): por código de Nissei {n, ts, cat, mn, f, mp, v} (lo encontrado) o {n, ts, no, mt, mc, v} (lo que no es
+      // el mismo), y por catálogo de candidatos y fichas `C_<catálogo>` = {mn, f, mp, ts} (nombre, fotos y precio de ML: no se piden todas las
+      // noches). Se guarda de a TM_GUARDAR_CADA, así un corte a mitad no pierde lo buscado.
+      // 30/10/2026: `v` = la versión del match con que se decidió; lo "no es el mismo" de una versión vieja se vuelve a buscar (después de lo nuevo).
+      const TM_VER = 2;
+      const tmCache = tmObj || {}, tmUpd = {}; let tmPend = 0, tmGuardados = 0, tmGuardarFallo = 0;
+      const TM_GUARDAR_CADA = 100;
+      const guardarMemoria = async (final) => {
+        if (CONSULTA_SOLO_LEE || !tmPend || (!final && tmPend < TM_GUARDAR_CADA)) return;
+        const lote = {}; for (const k of Object.keys(tmUpd)) { lote[k] = tmUpd[k]; delete tmUpd[k]; } const n = tmPend; tmPend = 0;
+        try { await db.patch('mlapi/tiendamatch', lote); tmGuardados += n; } catch (er) { tmGuardarFallo += n; console.log('⚠️ no pude guardar lo buscado en la memoria de la tienda (se vuelve a buscar mañana): ' + String((er && er.message) || er).slice(0, 120)); }
+      };
+      const anotar = async (k, r) => { tmCache[k] = r; tmUpd[k] = r; tmPend++; await guardarMemoria(false); };
+      // Lo que entra: por catálogo (o por ficha si no tiene) una LISTA de ofertas { key, cat, usd, ts, cod, nn, mpRef, nombre?, fotos? }:
+      // dos códigos del proveedor para el mismo catálogo se resuelven al final (ver DUPLICADOS).
+      const grupos = new Map();
+      const meter = (x) => { const g = grupos.get(x.key); if (g) g.push(x); else grupos.set(x.key, [x]); };
+      const nombrePy = (cod) => String(((pycat || {})[String(cod || '')] || {}).n || '');
       // (2) Fichas de origen Paraguay.
       const linksDe = {}; for (const [mla, L] of Object.entries(links || {})) if (L && L.prodId && !L.gemelaDe) (linksDe[L.prodId] = linksDe[L.prodId] || []).push(mla);
-      const fichasSinCat = [];
+      const fichasSinCat = [], fichasConCat = [];
       for (const p of Object.values(prodsObj)) {
         if (!p || String(p.origen || '').toLowerCase() !== 'py') continue;
         if (provPyDeBot(p) !== 'nissei') { no('otro proveedor'); continue; }
@@ -30642,24 +30808,35 @@ async function main() {
         const ts = Math.max(Number(p.nisseiTs) || 0, Number(((pycat || {})[String(p.codPy || '')] || {}).ts) || 0);
         if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const mlas = (linksDe[p.id] || []).sort();
-        if (p.mlCatalogo) meter({ key: String(p.mlCatalogo).toUpperCase(), cat: String(p.mlCatalogo).toUpperCase(), usd, ts });
-        else if (mlas.length) fichasSinCat.push({ p, mlas, usd, ts });
+        const base = { usd, ts, cod: String(p.codPy || ''), nn: nombrePy(p.codPy) || String(p.name || ''), ficha: 1 };
+        if (p.mlCatalogo) fichasConCat.push({ ...base, key: String(p.mlCatalogo).toUpperCase(), cat: String(p.mlCatalogo).toUpperCase() });
+        else if (mlas.length) fichasSinCat.push({ p, mlas, base });
         else no('ficha sin publicación ni catálogo');
       }
-      // Las fichas sin catálogo anotado: el catálogo (o el título y las fotos) de sus publicaciones, de a 20.
+      // Las fichas sin catálogo anotado: el catálogo (o el título, las fotos y el precio) de sus publicaciones, de a 20. Lo leído queda en la
+      // memoria (`I_<publicación>`): si una noche ML no contesta, la ficha sale igual con lo de la última vez.
       const itemInfo = {};
       const todasMlas = [...new Set(fichasSinCat.flatMap((x) => x.mlas))];
       for (let i = 0; i < todasMlas.length; i += 20) {
-        try { const r = await mlGet('/items?ids=' + todasMlas.slice(i, i + 20).join(',') + '&attributes=id,title,pictures,catalog_product_id,status', tk);
-          for (const o of r || []) if (o && o.code === 200 && o.body) itemInfo[o.body.id] = o.body; } catch { /* esas quedan sin leer */ }
+        try { const r = await mlGet('/items?ids=' + todasMlas.slice(i, i + 20).join(',') + '&attributes=id,title,pictures,catalog_product_id,status,price', tk);
+          for (const o of r || []) if (o && o.code === 200 && o.body) itemInfo[o.body.id] = o.body; } catch { /* esas quedan sin leer: van con la memoria */ }
       }
+      for (const m of todasMlas) {
+        const b = itemInfo[m], k = 'I_' + m;
+        if (b) { const g = { title: String(b.title || '').slice(0, 160), f: fotosDe(b.pictures), cat: String(b.catalog_product_id || '').toUpperCase() || null, st: b.status || null, mp: Math.round(Number(b.price) || 0) || null };
+          const v = tmCache[k], igual = v && v.title === g.title && (v.f || []).join() === g.f.join() && (v.cat || null) === g.cat && (v.st || null) === g.st && (v.mp || null) === g.mp;
+          if (!igual) await anotar(k, { ...g, ts: hoy }); }
+        else if (tmCache[k] && tmCache[k].title) { const v = tmCache[k]; itemInfo[m] = { id: m, title: v.title, pictures: (v.f || []).map((u) => ({ url: u })), catalog_product_id: v.cat, status: v.st, price: v.mp }; }
+      }
+      for (const x of fichasConCat) meter(x);
       for (const x of fichasSinCat) {
         const its = x.mlas.map((m) => itemInfo[m]).filter(Boolean);
         if (!its.length) { no('ML no contestó la publicación'); continue; }
+        const act = its.find((y) => y.status === 'active') || its[0];
+        const mpPub = Number(act.price) || null;   // el precio de NUESTRA publicación: la referencia de ML para el freno de precio
         const cats = [...new Set(its.map((b) => String(b.catalog_product_id || '').toUpperCase()).filter((c) => /^MLA\d+$/.test(c)))];
-        if (cats.length) for (const c of cats) meter({ key: c, cat: c, usd: x.usd, ts: x.ts });
-        else { const b = its.find((y) => y.status === 'active') || its[0];
-          meter({ key: 'F' + x.p.id, nombre: String(b.title || ''), fotos: fotosDe(b.pictures), usd: x.usd, ts: x.ts }); }
+        if (cats.length) for (const c of cats) meter({ ...x.base, key: c, cat: c, mpRef: mpPub });
+        else meter({ ...x.base, key: 'F' + x.p.id, nombre: String(act.title || ''), fotos: fotosDe(act.pictures), mpRef: mpPub });
       }
       // (1) Candidatos de Para probar con el catálogo confirmado.
       for (const c of Object.values(cands)) {
@@ -30670,19 +30847,21 @@ async function main() {
         const usd = Number(c.usd) || 0; if (!(usd > 0)) { no('candidato sin precio'); continue; }
         const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const cat = candCatDe(c);
-        meter({ key: cat, cat, usd, ts, titRes: c.mlTit, fotoRes: c.mlFoto });
+        meter({ key: cat, cat, usd, ts, cod: String(c.cod || ''), nn: String(c.nombre || ''), mpRef: Number(c.mlPrecio) || null, titRes: c.mlTit, fotoRes: c.mlFoto });
       }
       // (3) TODO EL CATÁLOGO DE NISSEI MENOS LO GRANDE (30/10/2026, él: "no está la PS5, iPhone, todo eso, porque el robot no lo vio ya que
       // es muy caro. pero acá sí se puede vender" y "acá deberían estar TODOS los productos de Nissei, excepto grandes o pesados"). De
-      // `mlapi/pycat` (lo copiado de Nissei en los últimos TIENDA_DIAS días) entra lo que no es grande (`tiendaGrande`), hasta US$ TM_USD_MAX,
-      // con SU catálogo de ML: primero el que ya eligió la medición de cada noche (`mi`), si no una búsqueda con el nombre traducido; se
-      // acepta sólo si `tiendaMismoProducto` dice que es el mismo (marca, modelo, versión, capacidad y color). Nombre y fotos = los del
-      // catálogo de ML. Lo encontrado y lo descartado (con su motivo) queda en `mlapi/tiendamatch/<código>` = {n, ts, cat, mn, f} o {n, ts, no}
-      // y se vuelve a buscar a los TM_DIAS días (lo descartado a los TM_DIAS_NO) o si cambió el nombre. Como mucho TM_MAX llamadas a ML por corrida: lo que falta sigue al
-      // otro día, de marca y caro primero (la vidriera). No pisa lo que ya entró por (1) y (2): mismo catálogo = el de arriba.
-      const TM_MAX = 1000, TM_DIAS = 14, TM_DIAS_NO = 30, TM_USD_MAX = 2000;   // lo descartado se rebusca a los 30 días (con 14 no alcanza el cupo)
-      const tmCache = tmObj || {}, tmUpd = {};
-      const nv = { entra: 0, fuera: {}, quedan: 0, cache: 0, muestra: [], cats: new Set() }; const nvNo = (m) => { nv.fuera[m] = (nv.fuera[m] || 0) + 1; };
+      // `mlapi/pycat` (lo copiado de Nissei en los últimos TIENDA_DIAS días) entra lo que no es grande (`tiendaGrande`), ni usado/tester, hasta
+      // US$ TM_USD_MAX, con SU catálogo de ML: lo que pasa `tiendaMismoProducto` (marca, modelo, versión, capacidad, color, tipo). Nombre y fotos
+      // = los del catálogo de ML. Como mucho TM_MAX llamadas a ML por corrida, en este orden: (a) lo encontrado que venció (se relee ESE catálogo
+      // y queda; si no, se busca de nuevo), (b) lo nunca buscado, de marca y caro primero (la vidriera), (c) lo que "no es el mismo" con el
+      // nombre cambiado, decidido con un match viejo o de hace TM_DIAS_NO días. MEMORIA VENCIDA SIN CUPO O CON ML FALLANDO: se usa lo guardado si
+      // pasa el match de hoy (que no se caigan productos una noche). Tras TM_FALLAS_SEGUIDAS fallas seguidas de ML no se busca más esta noche.
+      // Por ml-consulta TM_MAX = 0: sólo lee (lo que buscara no se podría guardar).
+      const TM_MAX = CONSULTA_SOLO_LEE ? 0 : 1000, TM_DIAS = 14, TM_DIAS_NO = 90, TM_USD_MAX = 2000, TM_FALLAS_SEGUIDAS = 20;
+      // Cada código vence en su día (dispersión por código: no vence todo junto la misma noche).
+      const dispersa = (k, dias) => (dias + parseInt(createHash('md5').update('tm|' + k).digest('hex').slice(0, 6), 16) % Math.max(1, Math.round(dias / 3))) * 864e5;
+      const nv = { entra: 0, fuera: {}, quedan: 0, cache: 0, vencida: 0, renovados: 0, muestra: [] }; const nvNo = (m) => { nv.fuera[m] = (nv.fuera[m] || 0) + 1; };
       const yaCand = pyCodMatcher(Object.values(cands).filter((c) => c && c.cod && provPyDeBot(c) === 'nissei').map((c) => c.cod));
       const yaFicha = pyCodMatcher(Object.values(prodsObj).filter((p) => p && p.codPy && provPyDeBot(p) === 'nissei').map((p) => p.codPy));
       const cola3 = [];
@@ -30693,107 +30872,204 @@ async function main() {
         if (usd > TM_USD_MAX) { nvNo('más caro que el tope de la tienda'); continue; }
         if (!fresco(e.ts)) { nvNo(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const gr = tiendaGrande(e.n); if (gr) { nvNo('grande o pesado: ' + gr); continue; }
-        if (/\btester\b/i.test(e.n)) { nvNo('tester (sin caja)'); continue; }
-        cola3.push([cod, e, usd]);
+        if (TIENDA_USADO.test(e.n)) { nvNo('usado, de vidriera, sin caja o tester'); continue; }
+        const c0 = tmCache[cod], mismoN = !!(c0 && c0.n === e.n);
+        // ¿Qué toca con lo guardado? 'ok' = vigente · 'vencido' = encontrado y venció (o no pasa el match de hoy) · 'no' = "no es el mismo" vigente ·
+        // 'nuevo' = nunca buscado o cambió el nombre · 'noviejo' = "no es el mismo" de un match viejo o de hace 90+ días.
+        let est = 'nuevo';
+        if (mismoN && c0.cat) est = !tiendaMismoProducto(e.n, c0.mn || '') && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
+        else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
+        cola3.push({ cod, e, usd, est, c0, marca: TIENDA_MARCAS.test(e.n) ? 0 : 1 });
       }
-      const _marca = (e) => (TIENDA_MARCAS.test(e.n) ? 0 : 1);
-      cola3.sort((a, b) => _marca(a[1]) - _marca(b[1]) || b[2] - a[2]);
-      let tmLlamadas = 0;
+      const _ordEst = { ok: 0, no: 0, vencido: 1, nuevo: 2, noviejo: 3 };
+      cola3.sort((a, b) => _ordEst[a.est] - _ordEst[b.est] || a.marca - b.marca || b.usd - a.usd);
+      let tmLlamadas = 0, fallasSeguidas = 0, mlCortado = false;
       const mlGetT = async (ruta) => { tmLlamadas++;
         for (const w of [0, 5000, 15000]) { if (w) await new Promise((r) => setTimeout(r, w));
-          try { return await mlGet(ruta, tk); } catch (er) { if (!/429/.test(String((er && er.message) || er)) || w === 15000) throw er; } } };
-      for (const [cod, e, usd] of cola3) {
-        const c0 = tmCache[cod];
-        let r = c0 && c0.n === e.n && hoy - Number(c0.ts || 0) < (c0.cat ? TM_DIAS : TM_DIAS_NO) * 864e5 ? c0 : null;
-        // 30/10/2026: lo guardado se vuelve a pasar por el match de hoy (si la regla se puso más fina, un match viejo malo no queda).
-        if (r && r.cat && tiendaMismoProducto(e.n, r.mn || '')) r = null;
-        if (r) nv.cache++;
+          try { const d = await mlGet(ruta, tk); fallasSeguidas = 0; return d; }
+          catch (er) { const m = String((er && er.message) || er);
+            if (/: 404 /.test(m)) { fallasSeguidas = 0; throw er; }   // "no existe" es una respuesta, no una falla de ML
+            if (!/429/.test(m) || w === 15000) { if (++fallasSeguidas >= TM_FALLAS_SEGUIDAS) mlCortado = true; throw er; } } } };
+      const leer404 = async (ruta) => { try { return await mlGetT(ruta); } catch (er) { if (/: 404 /.test(String((er && er.message) || er))) return null; throw er; } };
+      const hayCupo = () => tmLlamadas < TM_MAX && !mlCortado;
+      const precioBB = (p) => Math.round(Number(p && p.buy_box_winner && p.buy_box_winner.price) || 0) || null;
+      // Busca SU catálogo en ML. Devuelve lo que se guarda, o tira error si ML no contestó.
+      const buscar = async (cod, e, prev) => {
+        const r = { n: e.n, ts: hoy, v: TM_VER };
+        const aceptar = async (p, nombre) => {
+          let fotos = fotosDe(p.pictures), mp = precioBB(p);
+          if ((!fotos.length || !mp) && !p._leido && hayCupo()) { let p2 = null; try { p2 = await mlGetT('/products/' + p.id); } catch { p2 = null; } if (p2) { if (!fotos.length) fotos = fotosDe(p2.pictures); mp = mp || precioBB(p2); } }
+          if (!mp && String(p.id).toUpperCase() === String(e.mi || '').toUpperCase() && Number(e.mp) > 0) mp = Math.round(Number(e.mp));
+          if (!fotos.length) return 'el catálogo de ML no tiene fotos';
+          Object.assign(r, { cat: String(p.id).toUpperCase(), mn: String(nombre || '').replace(/\s+/g, ' ').trim().slice(0, 160), f: fotos, ...(mp ? { mp } : {}) });
+          return null;
+        };
+        // a) lo encontrado que venció: se relee ESE catálogo (una llamada) y, si sigue activo y pasa el match, se renueva
+        if (prev && prev.cat && hayCupo()) {
+          const p = await leer404('/products/' + prev.cat);   // un catálogo que ML borró se busca de nuevo
+          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name)) { p._leido = 1; if (!(await aceptar(p, p.name))) { nv.renovados++; return r; } }
+        }
+        let motivo = null, parecido = '', parecidoCat = '';
+        // b) el catálogo que ya eligió la medición de cada noche, si pasa el match (con el nombre que da ML hoy)
+        if (e.mi && e.mt && !tiendaMismoProducto(e.n, e.mt) && hayCupo()) {
+          const p = await leer404('/products/' + e.mi);
+          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name)) { p._leido = 1; const m = await aceptar(p, p.name); if (!m) return r; motivo = m; }
+        }
+        // c) si no, una búsqueda con el nombre traducido: de los que pasan el match, el MÁS PARECIDO (no el primero)
+        if (!hayCupo()) return 'sincupo';
+        const q = traducirPyNombre(e.n).replace(/[^\p{L}\p{N} .]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+        const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
+        const res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
+        const buenos = [];
+        for (const x of res) { const m = tiendaMismoProducto(e.n, x.name); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
+        buenos.sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name) || String(a.name || '').length - String(b.name || '').length);   // empatados: el nombre más limpio
+        for (const x of buenos) { const m = await aceptar(x, x.name); if (!m) return r; motivo = motivo || m; }
+        if (!res.length && !motivo) motivo = 'ML no trajo nada';
+        Object.assign(r, { no: motivo ? (/^ML no trajo|^el catálogo/.test(motivo) ? motivo : 'el más parecido de ML no es el mismo (' + motivo + ')') : 'sin catálogo en ML', ...(parecido ? { mt: parecido, mc: parecidoCat } : {}) });
+        return r;
+      };
+      for (const it of cola3) {
+        const { cod, e, usd, est, c0 } = it;
+        let r = null;
+        // Sin cupo o con ML fallando, lo guardado que pasa el match de hoy sigue aunque haya vencido (que no se caiga una noche); lo
+        // "no es el mismo" queda como estaba.
+        const deMemoria = () => { if (est === 'vencido' && c0.cat && !tiendaMismoProducto(e.n, c0.mn || '')) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
+        if (est === 'ok' || est === 'no') {
+          r = c0; nv.cache++;
+          // Lo encontrado antes del freno de precio no tiene el precio de ML: se pide una vez (una llamada) para poder compararlo.
+          // Un catálogo sin vendedores no tiene precio: queda anotado que se miró (`mpv`) y no se vuelve a pedir hasta que venza.
+          if (est === 'ok' && !(Number(c0.mp) > 0) && !(hoy - Number(c0.mpv || 0) < dispersa(cod, TM_DIAS)) && !(String(c0.cat) === String(e.mi || '').toUpperCase() && Number(e.mp) > 0) && hayCupo()) {
+            try { const p = await leer404('/products/' + c0.cat); const mp = precioBB(p); r = { ...c0, ...(mp ? { mp } : {}), mpv: hoy }; await anotar(cod, r); } catch { /* sin precio: entra igual y se cuenta */ }
+          }
+        }
+        else if (!hayCupo()) { r = deMemoria(); if (!r) { nv.quedan++; continue; } }
         else {
-          if (tmLlamadas >= TM_MAX) { nv.quedan++; continue; }
-          r = { n: e.n, ts: hoy };
-          try {
-            let ok = null, motivo = null, parecido = '';
-            // a) el catálogo que ya eligió la medición de cada noche, si pasa el chequeo exigente (con el nombre que da ML hoy)
-            if (e.mi && e.mt && !tiendaMismoProducto(e.n, e.mt)) {
-              const p = await mlGetT('/products/' + e.mi);
-              if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name)) ok = p;
-            }
-            // b) si no, una búsqueda con el nombre traducido
-            if (!ok) {
-              if (tmLlamadas >= TM_MAX) { nv.quedan++; continue; }
-              const q = traducirPyNombre(e.n).replace(/[^\p{L}\p{N} .]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
-              const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
-              const res = (bus && bus.results) || [];
-              for (const x of res) {
-                if (!x || !x.id || (x.status && x.status !== 'active')) continue;
-                const m = tiendaMismoProducto(e.n, x.name);
-                if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); } continue; }
-                ok = x; break;
-              }
-              if (!ok && !res.length) motivo = 'ML no trajo nada';
-            }
-            if (ok) {
-              let fotos = fotosDe(ok.pictures);
-              if (!fotos.length && tmLlamadas < TM_MAX) { const p2 = await mlGetT('/products/' + ok.id); fotos = fotosDe(p2 && p2.pictures); }
-              if (fotos.length) Object.assign(r, { cat: String(ok.id).toUpperCase(), mn: String(ok.name || '').replace(/\s+/g, ' ').trim().slice(0, 160), f: fotos });
-              else motivo = 'el catálogo de ML no tiene fotos';
-            }
-            if (!r.cat) Object.assign(r, { no: motivo ? (/^ML no trajo|^el catálogo/.test(motivo) ? motivo : 'el más parecido de ML no es el mismo (' + motivo + ')') : 'sin catálogo en ML', ...(parecido ? { mt: parecido } : {}) });
-            tmUpd[cod] = r;
-          } catch (er) { nvNo('ML no contestó (se reintenta la próxima)'); continue; }
+          try { r = await buscar(cod, e, est === 'vencido' ? c0 : null); } catch { r = null; }
+          if (r && r !== 'sincupo') await anotar(cod, r);
+          else { const sinCupo = r === 'sincupo'; r = deMemoria(); if (!r) { if (sinCupo) nv.quedan++; else nvNo('ML no contestó (se reintenta la próxima)'); continue; } }
         }
         if (!r.cat) { nvNo(String(r.no || 'sin catálogo en ML').replace(/ \(.*$/, '')); continue; }
-        if (porKey.has(r.cat) && !nv.cats.has(r.cat)) { nvNo('ya estaba por el otro camino'); continue; }
-        if (nv.cats.has(r.cat)) { nvNo('otro código de Nissei con el mismo catálogo'); meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, nombre: r.mn, fotos: r.f, nuevo: 1 }); continue; }
-        nv.cats.add(r.cat);
-        meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, nombre: r.mn, fotos: r.f, nuevo: 1 });
+        const mpRef = String(r.cat) === String(e.mi || '').toUpperCase() && Number(e.mp) > 0 ? Math.round(Number(e.mp)) : (Number(r.mp) || null);
+        meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: r.mn, fotos: r.f, mpRef, nuevo: 1 });
         nv.entra++; if (nv.muestra.length < 20) nv.muestra.push(`${String(e.n).slice(0, 70)}  →  ${String(r.mn).slice(0, 80)}`);
       }
-      if (Object.keys(tmUpd).length && !CONSULTA_SOLO_LEE) {
-        try { await db.patch('mlapi/tiendamatch', tmUpd); } catch (er) { console.log('⚠️ no pude guardar lo buscado en mlapi/tiendamatch (se vuelve a buscar mañana): ' + String((er && er.message) || er).slice(0, 120)); }
-      }
-      // Nombre y fotos del catálogo de ML, de a 5 a la vez.
-      const lista = [...porKey.values()];
-      const conCat = lista.filter((x) => x.cat && !x.nuevo);   // los de (3) ya traen nombre y fotos del catálogo
-      for (let i = 0; i < conCat.length; i += 5) {
-        await Promise.all(conCat.slice(i, i + 5).map(async (x) => {
-          try { const p = await mlGet('/products/' + x.cat, tk); x.nombre = String(p.name || ''); x.fotos = fotosDe(p.pictures); }
-          catch { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; }
+      // Nombre, fotos y precio de ML de los catálogos de candidatos y fichas: de la memoria (`C_<catálogo>`, se renueva a los TM_DIAS días)
+      // o de `/products/<cat>`, de a 5 a la vez. Si ML no contesta, lo guardado (aunque esté viejo) o lo del candidato.
+      const conCat = [...grupos.values()].flat().filter((x) => x.cat && !x.nuevo);
+      const porCat = new Map(); for (const x of conCat) (porCat.get(x.cat) || porCat.set(x.cat, []).get(x.cat)).push(x);
+      const catsLeer = [...porCat.keys()].filter((c) => { const m = tmCache['C_' + c]; return !(m && m.mn && m.f && m.f.length && hoy - Number(m.ts || 0) < dispersa('C_' + c, TM_DIAS)); });
+      let catsLeidos = 0;
+      for (let i = 0; i < catsLeer.length; i += 5) {
+        await Promise.all(catsLeer.slice(i, i + 5).map(async (c) => {
+          try { const p = await mlGet('/products/' + c, tk); const f = fotosDe(p.pictures);
+            if (p && p.name && f.length) { catsLeidos++; await anotar('C_' + c, { mn: String(p.name).replace(/\s+/g, ' ').trim().slice(0, 160), f, ts: hoy, ...(precioBB(p) ? { mp: precioBB(p) } : {}) }); } }
+          catch { /* queda lo guardado */ }
         }));
       }
-      const out = [], vistos = new Set(); let nvOut = 0;
-      for (const x of lista) {
-        const n = String(x.nombre || '').replace(/\s+/g, ' ').trim();
+      await guardarMemoria(true);
+      for (const [c, xs] of porCat) { const m = tmCache['C_' + c];
+        for (const x of xs) { if (m && m.mn) { x.nombre = m.mn; x.fotos = m.f || []; if (!x.mpRef && Number(m.mp) > 0) x.mpRef = Number(m.mp); } else { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; } } }
+      // DUPLICADOS (30/10/2026, revisión de la tienda): un mismo catálogo o el mismo nombre de ML = un solo producto. Dos códigos del proveedor
+      // para el mismo producto → el MÁS CARO; si difieren más de 5%, afuera (puede ser otra versión y no sabemos cuál es la de la foto).
+      // El mismo código dos veces (ficha y candidato) cuenta una sola vez, con el precio mirado más nuevo.
+      const resolver = (xs) => {
+        const porCod = new Map(); for (const x of xs) { const k = x.cod || ('?' + x.key); const v = porCod.get(k); if (!v || x.ts > v.ts) porCod.set(k, x); }
+        const u = [...porCod.values()]; if (u.length === 1) return u[0];
+        const max = u.reduce((a, b) => (b.usd > a.usd ? b : a)), min = Math.min(...u.map((x) => x.usd));
+        return max.usd > min * 1.05 ? null : max;
+      };
+      const elegidos = [];
+      for (const xs of grupos.values()) { const x = resolver(xs); if (x) elegidos.push(x); else no('el mismo producto con dos precios distintos'); }
+      const normNom = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      // Precio de referencia de ML para el freno: el que vio la medición (pycat), el del candidato, el de nuestra publicación o el ganador del catálogo.
+      const lista = []; let sinRef = 0;
+      for (const x of elegidos) {
+        const n = tiendaLimpiarNombre(String(x.nombre || '').replace(/\s+/g, ' ').trim());
         if (!n) { no('sin nombre de ML'); continue; }
         if (!x.fotos || !x.fotos.length) { no('sin foto de ML'); continue; }
-        if (PROHIBIDO.test(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
+        if (prohibido(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
         if (x.nuevo && tiendaGrande(n)) { no('grande o pesado (por el nombre de ML)'); continue; }
-        let id = idDe(x.key); while (vistos.has(id)) id = idDe(id + x.key); vistos.add(id);
-        out.push({ id, n: n.slice(0, 140), f: x.fotos, p: precioDe(x.usd), c: rubroDe(n) }); if (x.nuevo) nvOut++;
+        const p = precioDe(x.usd);
+        // 🧐 FRENO DE PRECIO CONTRA ML (30/10/2026, revisión de la tienda): el precio de la tienda tiene que estar entre la mitad y 1,6 veces el
+        // de ML para ese catálogo; si no, casi seguro el catálogo es otro producto (la Xbox Series S al precio de la X, un juego al precio de la
+        // consola, "Lente Sony" a $1.162.990) y queda afuera. Sin precio de ML para comparar entra igual (se cuenta). Una FICHA se compara con
+        // NUESTRA publicación, que puede estar cara a propósito (buscando techo): ahí el piso es 0,3 (el producto es el que vendemos; lo que
+        // se busca es un costo mal cargado).
+        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { no('precio no cuadra con ML'); continue; } } else sinRef++;
+        lista.push({ x, n, p, nn: normNom(n) });
       }
-      out.sort((a, b) => a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
+      // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
+      const porNom = new Map(); for (const y of lista) (porNom.get(y.nn) || porNom.set(y.nn, []).get(y.nn)).push(y);
+      const finales = [];
+      for (const ys of porNom.values()) {
+        if (ys.length === 1) { finales.push(ys[0]); continue; }
+        const max = ys.reduce((a, b) => (b.x.usd > a.x.usd ? b : a)), min = Math.min(...ys.map((y) => y.x.usd));
+        if (max.x.usd > min * 1.05) { for (let i = 0; i < ys.length; i++) no('el mismo producto con dos precios distintos'); continue; }
+        finales.push(max); for (let i = 1; i < ys.length; i++) no('repetido (mismo nombre)');
+      }
+      // IDS FIJOS (30/10/2026, revisión de la tienda): el código de cada producto (`id`, el [XXXXX] del pedido) se asigna UNA vez y no cambia más,
+      // en `mlapi/tiendaids/<clave>` = {id, cod (código del proveedor), nn (su nombre), desde, usd, p, n}. Los que ya estaban publicados conservan su código de 5;
+      // los nuevos llevan 7 letras y números al azar, sin chocar con ninguno. `tienda:id=<ID>` dice qué producto es.
+      const mapaIds = idsObj || {}, idsUsados = new Set(Object.values(mapaIds).map((m) => m && String(m.id || '').toUpperCase()).filter(Boolean));
+      let publicados = new Set();
+      try { const pub = JSON.parse(readFileSync(process.env.TIENDA_PUBLICADO || 'tienda/productos.json', 'utf8')); publicados = new Set(((pub && pub.productos) || []).map((q) => String(q && q.id || '').toUpperCase())); } catch { /* sin archivo publicado: todos nuevos */ }
+      const ABC_ID = '23456789KMNPRTVWXY';
+      const idNuevo = () => { for (;;) { let s = ''; for (let i = 0; i < 7; i++) s += ABC_ID[randomInt(ABC_ID.length)]; if (!idsUsados.has(s)) { idsUsados.add(s); return s; } } };
+      const diaAR = new Date(hoy - 3 * 36e5).toISOString().slice(0, 10);
+      const idsCambia = {}; let idsNuevos = 0;
+      const out = [];
+      for (const { x, n, p } of finales) {
+        const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
+        let ent = mapaIds[clave];
+        if (!ent || !ent.id) {
+          const viejo = idViejo(x.key);
+          const id = publicados.has(viejo) && !idsUsados.has(viejo) ? (idsUsados.add(viejo), viejo) : idNuevo();
+          ent = { id, cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), desde: diaAR, usd: x.usd, p, n: n.slice(0, 120) }; idsCambia[clave] = ent; idsNuevos++;
+        } else if (Number(ent.usd) !== x.usd || Number(ent.p) !== p || String(ent.cod || '') !== String(x.cod || '')) idsCambia[clave] = { ...ent, cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), usd: x.usd, p, n: n.slice(0, 120) };
+        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p, c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0 });
+      }
+      // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
+      out.sort((a, b) => (a.c === 'Otros') - (b.c === 'Otros') || a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
+      const nvOut = out.filter((q) => q._nuevo).length; for (const q of out) delete q._nuevo;
       const wa = String(waRaw || '').replace(/\D/g, '');
-      const json = JSON.stringify({ act: new Date().toISOString().slice(0, 10), wa: wa.length >= 8 ? wa : '', productos: out });
-      if (PROHIBIDO.test(json.replace(/https:\/\/[^"]+/g, ''))) { console.log('❌ El archivo armado tiene una palabra que no puede salir: no escribo nada.'); return; }
+      // La fecha de los precios, con la hora de acá (Argentina, UTC−3): a la noche ya no da "mañana".
+      const json = JSON.stringify({ act: diaAR, wa: wa.length >= 8 ? wa : '', productos: out });
       const porRubro = {}; for (const x of out) porRubro[x.c] = (porRubro[x.c] || 0) + 1;
       console.log(`=== TIENDA CYC · ${out.length} productos · ${GOt ? 'SE ESCRIBE' : 'prueba (con ;go se escribe el archivo)'} ===`);
       console.log('por rubro: ' + Object.entries(porRubro).map(([r, k]) => `${r} ${k}`).join(' · '));
-      console.log('afuera: ' + (Object.entries(fuera).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
-      console.log(`WhatsApp: ${wa.length >= 8 ? 'prendido' : 'apagado (sin número en cyc/mlconfig/tiendaWa)'}`);
-      {
+      if (GOt) {
+        // Con ;go, sólo cantidades: los motivos juntos y en palabras neutras (los de "no es el mismo" ya vienen sin el detalle).
+        const todo = {}; for (const o of [fuera, nv.fuera]) for (const [m, k] of Object.entries(o)) { const t = /^grande o pesado/.test(m) ? 'grande o pesado' : m; todo[t] = (todo[t] || 0) + k; }
+        console.log('afuera: ' + (Object.entries(todo).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
+        console.log(`catálogo completo: entran ${nvOut} · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
+      } else {
+        console.log('afuera: ' + (Object.entries(fuera).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
         console.log(`\n── TODO NISSEI MENOS LO GRANDE (camino nuevo, 30/10) ──`);
-        console.log(`entran ${nv.entra} (${nvOut} en el archivo, después del chequeo final) con su catálogo de ML exacto · ${nv.cache} ya buscados antes (sin gastar ML) · ${tmLlamadas} llamadas a ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para buscar en las próximas corridas`);
+        console.log(`entran ${nv.entra} (${nvOut} en el archivo, después del chequeo final) con su catálogo de ML exacto · ${nv.cache} ya buscados antes (sin gastar ML) · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${nv.renovados} renovados · ${tmLlamadas} llamadas a ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para buscar en las próximas corridas${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: no busqué más` : ''}`);
         console.log('afuera: ' + (Object.entries(nv.fuera).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
         if (nv.muestra.length) { console.log(`muestra (${nv.muestra.length}) · Nissei → catálogo de ML, para revisar que sea el mismo:`); for (const t of nv.muestra) console.log('  ' + t); }
+        for (const x of out.slice(0, 12)) console.log(`  ${x.id} · ${x.c} · ${money(x.p)} · ${x.n.slice(0, 70)} · ${x.f.length} foto(s)${x.m ? ' · marca' : ''}`);
       }
-      for (const x of out.slice(0, 12)) console.log(`  ${x.id} · ${x.c} · ${money(x.p)} · ${x.n.slice(0, 70)} · ${x.f.length} foto(s)`);
+      console.log(`sin precio de ML para comparar (entran igual): ${sinRef} · memoria: ${catsLeidos} catálogos leídos de ML · ${tmGuardados} guardados${tmGuardarFallo ? ` · ⚠️ ${tmGuardarFallo} sin guardar` : ''} · códigos fijos: ${idsNuevos} nuevos`);
+      console.log(`WhatsApp: ${wa.length >= 8 ? 'prendido' : 'apagado (sin número en cyc/mlconfig/tiendaWa)'}`);
+      if (prohibido(json.replace(/https:\/\/[^"]+/g, ''))) { negar('❌ El archivo armado tiene una palabra que no puede salir: no escribo nada.'); return; }
       if (!GOt) return;
-      if (!out.length) { console.log('❌ 0 productos: no escribo nada (un archivo vacío dejaría la tienda en blanco).'); return; }
+      if (!out.length) { negar('❌ 0 productos: no escribo nada (un archivo vacío dejaría la tienda en blanco).'); return; }
+      // Primero los códigos fijos (si no quedan guardados, mañana saldrían otros y los pedidos guardados se romperían): se escriben y se releen.
+      if (Object.keys(idsCambia).length) {
+        try {
+          await db.patch('mlapi/tiendaids', idsCambia);
+          const re = (await db.get('mlapi/tiendaids')) || {};
+          const mal = Object.entries(idsCambia).filter(([k, v]) => !re[k] || String(re[k].id) !== String(v.id)).length;
+          if (mal) { negar(`❌ ${mal} código(s) fijos no quedaron guardados (releí y no coinciden): no escribo el archivo.`); return; }
+        } catch (er) { negar(`❌ No pude guardar los códigos fijos de la tienda (${String((er && er.message) || er).slice(0, 80)}): no escribo el archivo.`); return; }
+      }
       const ruta = process.env.TIENDA_ARCHIVO || 'tienda/productos.json';
       mkdirSync(ruta.replace(/\/[^/]*$/, '') || '.', { recursive: true });
       writeFileSync(ruta, json + '\n');
-      const re = JSON.parse(readFileSync(ruta, 'utf8'));
-      console.log(`✓ escrito ${ruta}: ${re.productos.length} de ${out.length} productos (releído)`);
+      const releido = JSON.parse(readFileSync(ruta, 'utf8'));
+      if (releido.productos.length !== out.length) { negar(`❌ El archivo no quedó bien (releí ${releido.productos.length} de ${out.length}).`); return; }
+      console.log(`✓ escrito: ${releido.productos.length} de ${out.length} productos (releído)`);
       return;
     }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").

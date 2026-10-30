@@ -481,6 +481,7 @@ jobs:
         id: tienda
         if: steps.noche.outputs.hecha != '1'
         continue-on-error: true
+        timeout-minutes: 30
         env:
           ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
           ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
@@ -495,17 +496,26 @@ jobs:
         id: tiendasube
         if: ${{ !cancelled() && steps.noche.outputs.hecha != '1' && steps.tienda.outcome == 'success' }}
         continue-on-error: true
+        timeout-minutes: 30
         env:
           ARCHIVO: ${{ runner.temp }}/tienda/productos.json
           RAMA_WEB: claude/add-folder-78ysyb
         run: |
           if [ ! -s "$ARCHIVO" ]; then echo "La tienda no dejó archivo: no subo nada."; exit 0; fi
+          AHORA=$(jq '.productos | length' "$ARCHIVO" 2>/dev/null || echo 0)
+          if [ "${AHORA:-0}" -lt 1 ]; then echo "La lista nueva no se puede leer o está vacía: no subo nada."; exit 1; fi
           git config user.name  "robot-cyc"
           git config user.email "robot-cyc@users.noreply.github.com"
           DIR="$RUNNER_TEMP/web"
           for i in 1 2 3; do
             rm -rf "$DIR"; git worktree prune
             git fetch --depth=1 origin "$RAMA_WEB" || { echo "no pude bajar la rama (intento $i)"; sleep 5; continue; }
+            # Menos del 75% de lo publicado = algo falló (ML, la base): no se sube y el paso sale con error (revisión de la tienda, 30/10/2026).
+            # Una baja buscada se sube a mano con ml-tienda y "forzar".
+            ANTES=$(git show FETCH_HEAD:tienda/productos.json 2>/dev/null | jq '.productos | length' 2>/dev/null || echo 0)
+            if [ "${ANTES:-0}" -gt 0 ] && [ $((AHORA * 4)) -lt $((ANTES * 3)) ]; then
+              echo "La lista nueva tiene $AHORA productos y la publicada $ANTES (menos del 75%): no la subo. Si la baja es a propósito, correr ml-tienda con forzar."; exit 1
+            fi
             git worktree add --detach "$DIR" FETCH_HEAD
             mkdir -p "$DIR/tienda" && cp "$ARCHIVO" "$DIR/tienda/productos.json"
             cd "$DIR"
@@ -541,9 +551,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BILLING_PROBE: avisonoche
-          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.linea.outcome == 'failure' && 'Línea de tiempo de ayer · ' || '' }} ${{ steps.ficha.outcome == 'failure' && 'Ficha de cada publicación · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.paramcompra.outcome == 'failure' && 'Números de compra · ' || '' }} ${{ steps.techofull.outcome == 'failure' && 'Techo con Full · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }} ${{ steps.cargosmes.outcome == 'failure' && 'Cargos de Full del mes · ' || '' }} ${{ steps.nombreml.outcome == 'failure' && 'Nombre de ML en las fichas nuevas · ' || '' }} ${{ steps.prompts.outcome == 'failure' && 'Textos para el chat de Chrome · ' || '' }} ${{ steps.tienda.outcome == 'failure' && 'Tienda pública · ' || '' }} ${{ steps.tiendasube.outcome == 'failure' && 'Subir la tienda a la web · ' || '' }}"
+          FALLOS_NOCHE: "${{ steps.resumen.outcome == 'failure' && 'Resumen diario · ' || '' }} ${{ steps.facturas.outcome == 'failure' && 'Facturas emitidas · ' || '' }} ${{ steps.netoreal.outcome == 'failure' && 'Neto real de las ventas que quedaron estimadas · ' || '' }} ${{ steps.cuotas.outcome == 'failure' && 'Cuotas de las publicaciones Premium · ' || '' }} ${{ steps.netoweb.outcome == 'failure' && 'Margen ML al precio de hoy · ' || '' }} ${{ steps.visitas.outcome == 'failure' && 'Visitas de las publicaciones · ' || '' }} ${{ steps.canceladas.outcome == 'failure' && 'Facturación de canceladas · ' || '' }} ${{ steps.entregas.outcome == 'failure' && 'Cuándo llegó cada venta · ' || '' }} ${{ steps.motivoreclamo.outcome == 'failure' && 'Motivo de los reclamos · ' || '' }} ${{ steps.linea.outcome == 'failure' && 'Línea de tiempo de ayer · ' || '' }} ${{ steps.ficha.outcome == 'failure' && 'Ficha de cada publicación · ' || '' }} ${{ steps.ritmo.outcome == 'failure' && 'Diario y ritmo normal · ' || '' }} ${{ steps.paramcompra.outcome == 'failure' && 'Números de compra · ' || '' }} ${{ steps.techofull.outcome == 'failure' && 'Techo con Full · ' || '' }} ${{ steps.avisos.outcome == 'failure' && 'Avisos de precio al canal privado · ' || '' }} ${{ steps.supervisor.outcome == 'failure' && 'Supervisor de precios · ' || '' }} ${{ steps.candidatos.outcome == 'failure' && 'Para probar · candidatos de Paraguay · ' || '' }} ${{ steps.saldoml.outcome == 'failure' && 'Saldo a liquidar y agenda de liberaciones · ' || '' }} ${{ steps.dispo.outcome == 'failure' && 'Disponible de ML (lo liberado pasa de a liquidar al disponible) · ' || '' }} ${{ steps.cargosmes.outcome == 'failure' && 'Cargos de Full del mes · ' || '' }} ${{ steps.nombreml.outcome == 'failure' && 'Nombre de ML en las fichas nuevas · ' || '' }} ${{ steps.prompts.outcome == 'failure' && 'Textos para el chat de Chrome · ' || '' }}"
+          # La tienda avisa pero no repite la noche (revisión de la tienda, 30/10/2026): va aparte y no cuenta para "la noche terminó bien".
+          FALLOS_TIENDA: "${{ steps.tienda.outcome == 'failure' && 'Tienda pública · ' || '' }} ${{ steps.tiendasube.outcome == 'failure' && 'Subir la tienda a la web · ' || '' }}"
         run: |
-          if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then echo "hubo=1" >> "$GITHUB_OUTPUT"; node ml-sync/sync.mjs; else echo "Ningún paso falló."; fi
+          if [ -n "$(echo "$FALLOS_NOCHE" | tr -d ' ')" ]; then echo "hubo=1" >> "$GITHUB_OUTPUT"; node ml-sync/sync.mjs
+          elif [ -n "$(echo "$FALLOS_TIENDA" | tr -d ' ')" ]; then node ml-sync/sync.mjs
+          else echo "Ningún paso falló."; fi
 
       # LA NOCHE TERMINÓ BIEN (etapa 4, 20/10/2026): sólo si ningún paso falló, se anota `mlapi/daily/<día de acá>` y la
       # corrida que viene detrás (la 3ª del cron) saltea todo menos la línea para atrás. Si algo falló no se anota: la
