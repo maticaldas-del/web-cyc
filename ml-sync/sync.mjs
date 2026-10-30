@@ -12762,7 +12762,8 @@ function tiendaMismoProducto(nNissei, nML) {
   // 1) Todo lo que dice ML (marca, modelo, números, color, versión) lo tiene que decir Nissei; sólo se saltean las palabras que describen.
   for (const w of tB) {
     if (_TM_DESCR.has(w) && !_TM_VARIANTE.has(w)) continue;
-    if (/^[a-z]{1,2}$/.test(w) && !_TM_VARIANTE.has(w)) continue;
+    // 30/10/2026: una sigla de 2 letras de ML es MODELO ("Canon Eos Rp" contra la R8 de Nissei) salvo las palabritas comunes.
+    if (/^[a-z]{1,2}$/.test(w) && !_TM_VARIANTE.has(w) && (w.length === 1 || /^(de|la|el|en|al|lo|un|da|do|em|com|of|by|to|in|on|or|cm|mm|kg|gr|ml|gb|tb|hz|uv|tv|hd|sd|pc|mp|ii|iv|vi|ix|xl|xs)$/.test(w))) continue;
     if (!tiene(SA, w)) return /^\d/.test(w) ? 'otro número o capacidad' : _TM_COLOR.has(w) ? 'otro color' : _TM_VARIANTE.has(w) ? 'otra versión' : 'ML dice algo que Nissei no';
   }
   // 2) Lo que delata otra versión, del lado de Nissei, lo tiene que decir ML.
@@ -30586,7 +30587,16 @@ async function main() {
       const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
       if (!(tc > 0)) { console.log('❌ Sin dólar cargado (cyc/finanzas/tipo_cambio): no escribo nada (no invento uno).'); return; }
       const lindo = (x) => (x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 10) / 100) * 100 - 10);
-      const precioDe = (usd) => lindo(usd * RECARGO_PAR * tc * (1 + GAN));
+      // 30/10/2026 (él: "¿qué % toma la web local? porque si toma bajo perdemos plata"): el recargo de Paraguay que usa la tienda es el MÁS ALTO
+      // de los últimos 3 pedidos con todos los gastos (no el promedio de compras): así el 25% nunca se come en un pedido caro.
+      let RECT = RECARGO_PAR;
+      try { const cps = (await db.get('cyc/compraspy')) || {};
+        const rr = Object.entries(cps).map(([k, c]) => ({ f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}, { sinAdelanto: true }).r })).filter((x) => x.r && x.r >= 1.05 && x.r <= 1.4)
+          .sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
+        if (rr.length) RECT = Math.max(RECARGO_PAR, ...rr.map((x) => x.r));
+      } catch { /* queda el recargo de compras */ }
+      console.log(`recargo que usa la tienda: ${((RECT - 1) * 100).toFixed(1)}% (el más alto de los últimos pedidos) + ${Math.round(GAN * 100)}% de ganancia`);
+      const precioDe = (usd) => lindo(usd * RECT * tc * (1 + GAN));
       // Lo que NUNCA puede salir en la tienda (nombre de ML o foto). Se chequea producto por producto y otra vez sobre el archivo entero.
       const PROHIBIDO = /nissei|paragua|compras ?paraguay|\bpy\b|rel[oó]gio|\bpreto\b|sem fio|\bus\$|\busd\b|d[oó]lar/i;
       const fotoOk = (u) => /^https:\/\/[a-z0-9.-]*mlstatic\.com\/[^\s"'<>]+$/i.test(u);
@@ -30695,6 +30705,8 @@ async function main() {
       for (const [cod, e, usd] of cola3) {
         const c0 = tmCache[cod];
         let r = c0 && c0.n === e.n && hoy - Number(c0.ts || 0) < (c0.cat ? TM_DIAS : TM_DIAS_NO) * 864e5 ? c0 : null;
+        // 30/10/2026: lo guardado se vuelve a pasar por el match de hoy (si la regla se puso más fina, un match viejo malo no queda).
+        if (r && r.cat && tiendaMismoProducto(e.n, r.mn || '')) r = null;
         if (r) nv.cache++;
         else {
           if (tmLlamadas >= TM_MAX) { nv.quedan++; continue; }
