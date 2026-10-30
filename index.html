@@ -1091,7 +1091,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <input id="home-dolar-val" type="text" inputmode="numeric" title="Editá el dólar y apretá Enter (o salí del campo) para guardarlo" oninput="fmtMoneyInput(this);_dolarAncho(this)" onchange="saveTC(this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="font-size:2rem;line-height:1.4;color:var(--green);font-family:'Syne',sans-serif;font-weight:800;background:transparent;border:none;border-bottom:2px dashed rgba(34,197,94,.5);width:150px;min-width:110px;flex-shrink:0;max-width:calc(100vw - 110px);text-align:left;outline:none;padding:4px 2px 6px;cursor:text">
     </div>
     <!-- 30/10/2026, él: "me gustaría que el botón de tienda esté abajo de todo al lado del precio del dólar": abre la Tienda en otra pestaña. -->
-    <a href="tienda/" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(232,89,12,.1);border:1px solid rgba(232,89,12,.35);color:#e8590c;font-weight:800;text-decoration:none;font-size:1.05rem">🛍️ Tienda</a>
+    <a href="https://tiendacyc.github.io/" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(232,89,12,.1);border:1px solid rgba(232,89,12,.35);color:#e8590c;font-weight:800;text-decoration:none;font-size:1.05rem">🛍️ Tienda</a>
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
   <div id="home-hoy" style="width:100%"></div>
@@ -3246,7 +3246,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.48';
+const APP_VERSION='28.49';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3259,6 +3259,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.49',f:'30/10',h:'19:13',c:[{n:2,t:'🛍️ La Tienda se mudó a su propia dirección (tiendacyc.github.io). El botón 🛍️ Tienda de Inicio abre la nueva y la dirección vieja manda sola a la nueva.'}]},
   {v:'28.48',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas: se sacó el cuadro para sumar deuda o devolver (monto, fecha, nota). Lo cargo yo cuando me lo decís.'}]},
   {v:'28.47',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas, más simple: al abrir una deuda se ve sólo cuánto falta cobrar. Lo demás (ganancia, deuda inicial, qué cubre lo pagado, quién la cargó) queda en ℹ️ Ver detalle.'}]},
   {v:'28.46',f:'30/10',h:'18:46',c:[{n:3,t:'📊 Métricas: el "Local" ya no existe. Arriba hay 📦 ML · 🛍️ Perfumería (Soares, Sarmiento y Ceballos, con sus barras, mes a mes, productos y sus deudas) · 🏬 Tienda (las ventas por afuera y sus deudas) · 🔀 Todo (ML, Perfumería y Tienda: tres tarjetas, tres capas en la Tendencia y tres columnas por día).'}]},
