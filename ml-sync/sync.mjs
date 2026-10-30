@@ -41025,6 +41025,26 @@ async function main() {
       }
       // `=repartir` (30/10/2026, él: "cuando es así, repartilas lo más equitativas posible"): lo dejado SIN perfumería se reparte de a una
       // unidad entre las tres (a la que menos tiene de lo repartido); cada renglón viejo se cambia por uno por perfumería (misma fecha).
+      // `=precio|prod=<ficha>|pu=<pesos>[|local=…]` (30/10/2026, él: "las led se las pasamos 9000 no 7000"): corrige lo que paga c/u en los
+      // renglones de ese producto ya dejados (monto y ganancia se rehacen; las unidades y el día quedan).
+      if (/^precio$/i.test(String(numF).trim())) {
+        const LOCp = ['soares', 'sarmiento', 'ceballos'];
+        const pu = Math.round(parseFloat(String(extra.pu || (notaP.find((x) => /^pu=/i.test(x)) || '').replace(/^pu=/i, '')).replace(/\./g, '').replace(',', '.')) || 0);
+        if (!extra.prod || !(pu > 0)) { console.log('❌ Usá: debenmov:mercaderia perfumeria=precio|prod=<ficha>|pu=<lo que paga c/u>[|local=…];go'); return; }
+        let cP = lista.filter(([id]) => id === quien); if (!cP.length) { const pal = _n(quien).split(' ').filter(Boolean); cP = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cP.length !== 1) { console.log(`❌ "${quien}" agarra ${cP.length} deudas. No escribo nada.`); return; }
+        const [idP, dP] = cP[0]; const locP = extra.local ? LOCp.find((l) => _n(extra.local).includes(l)) : null;
+        const ren = Object.entries(dP.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === extra.prod && Number(x.u) > 0 && (!locP || x.local === locP));
+        if (!ren.length) { console.log(`❌ no hay renglones de ${extra.prod}${locP ? ' en ' + locP : ''}. No escribo nada.`); return; }
+        const ops = {}; let antes = 0, despues = 0;
+        for (const [kx, x] of ren) { const u = Number(x.u); antes += Number(x.m); despues += pu * u;
+          ops[kx] = { ...x, pu, m: pu * u, ...(x.costoU != null ? { gan: (pu - Number(x.costoU)) * u } : {}) }; }
+        console.log(`=== PRECIO "${_tapaNom(dP)}" ${GO ? '· APLICANDO' : '· PRUEBA'} === ${ren.length} renglón(es) de ${String(ren[0][1].prodNom || extra.prod).slice(0, 50)} → ${money(pu)} c/u · la deuda ${money(Math.round(antes))} → ${money(Math.round(despues))} (${despues >= antes ? '+' : ''}${money(Math.round(despues - antes))})`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch(`cyc/debencuotas/${idP}/movs`, ops); const rr = (await db.get(`cyc/debencuotas/${idP}/movs`)) || {};
+        console.log(ren.every(([kx]) => rr[kx] && Number(rr[kx].pu) === pu) ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        return;
+      }
       if (/^repartir$/i.test(String(numF).trim())) {
         const LOCr = ['soares', 'sarmiento', 'ceballos'];
         let cR = lista.filter(([id]) => id === quien); if (!cR.length) { const pal = _n(quien).split(' ').filter(Boolean); cR = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
