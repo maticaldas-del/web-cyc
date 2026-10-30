@@ -3241,7 +3241,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.25';
+const APP_VERSION='28.27';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3254,7 +3254,9 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.25',f:'30/10',h:'00:05',c:[{n:2,t:'🏪 Local (lo que decidiste 7a 9a 11a): una venta en cuotas cuenta el día que se vendió, no el de la primera cuota · el retiro de un mes que ya empezó queda quieto (si después se corrige el cierre, la diferencia va al mes siguiente) · lo que devuelve una perfumería sin vender se ve en Ver deudas (↩️ devolvió N) y baja su ganancia.'}]},
+  {v:'28.27',f:'30/10',h:'23:59',c:[{n:2,t:'🏪 Local (lo que decidiste 7a 9a 11a): una venta en cuotas cuenta el día que se vendió, no el de la primera cuota · el retiro de un mes que ya empezó queda quieto (si después se corrige el cierre, la diferencia va al mes siguiente) · lo que devuelve una perfumería sin vender se ve en Ver deudas (↩️ devolvió N) y baja su ganancia.'}]},
+  {v:'28.26',f:'30/10',h:'23:31',c:[{n:1,t:'Ventas: tarjeta nueva 📦 Costo mercadería = lo que nos costó traer esos productos a la oficina (proveedor + flete, en pesos), sin impuestos ni cargos de ML.'}]},
+  {v:'28.25',f:'30/10',h:'10:00',c:[{n:1,t:'Arqueo → Productos: al elegir una estrategia se ven las fichas de siempre (filtradas), sin la lista aparte; el botón dice cuál es y la ✕ la saca.'}]},
   {v:'28.24',f:'30/10',h:'22:47',c:[{n:3,t:'🔍 Revisión del Local: los pagos parciales de una perfumería se ven y se descuentan bien · la ganancia de lo dejado a una persona cuenta en el Local (octubre $531.000 → $871.000, igual web y robot) · lo apartado para la perfumería no se pide de menos ni va a Full · Cobrado del Local mira el período entero · colores de las tarjetas iguales a las líneas · las deudas cargadas de noche quedan en su día'}]},
   {v:'28.23',f:'29/10',h:'23:55',c:[{n:1,t:'Arqueo → Efectivo & Digital ordenado: Efectivo, MercadoPago disponible (el total), abajo y más chicas las cuatro cuentas, y al final A liquidar.'}]},
   {v:'28.22',f:'29/10',h:'23:45',c:[{n:1,t:'Arqueo → Stock total: los campos de Oficina ML y Oficina Local van adentro del desplegable de cada oficina (se abren al tocarla). La variación que salía debajo de Oficina Local era de las dos juntas: ahora cada una muestra la suya adentro.'}]},
@@ -5615,7 +5617,7 @@ function prodOrigenSet(v){prodOrigenVer=v;try{localStorage.setItem('cycProdOrige
 let prodEstrVer=(()=>{try{return localStorage.getItem('cycProdEstr')||'';}catch(e){return '';}})();
 let prodEstrAbierto=false;
 function prodEstrToggle(){prodEstrAbierto=!prodEstrAbierto;renderProds();}
-function prodEstrSet(t){prodEstrVer=(prodEstrVer===t?'':t);try{localStorage.setItem('cycProdEstr',prodEstrVer);}catch(e){}renderProds();}
+function prodEstrSet(t){prodEstrVer=(prodEstrVer===t?'':t);if(prodEstrVer)prodEstrAbierto=false;try{localStorage.setItem('cycProdEstr',prodEstrVer);}catch(e){}renderProds();}
 function _prodEstrDatos(){
   const por={};let n=0;
   for(const [m,e] of Object.entries(state.mllinks||{})){
@@ -5641,15 +5643,8 @@ function _prodEstrBar(D){
       return `<button class="btn" onclick="prodEstrSet('${t}')" title="${String(x[3]||'').replace(/"/g,'&quot;')}" style="background:${on?'var(--green)':'var(--surface)'};color:${on?'#000':'var(--text)'};border:1px solid ${on?'var(--green)':x[2]}">${x[0]} ${x[1]} <span style="opacity:.7">${D.por[t].length}</span></button>`;}).join('')}
       <span style="font-size:.62rem;color:var(--muted);align-self:center">${D.n} publicaciones (sin contar las gemelas, que siguen a su Clásica)</span></div>`;
   }
-  if(u){
-    const L=(D.por[prodEstrVer]||[]).slice().sort((a,b)=>String(a.e.cuenta||'').localeCompare(String(b.e.cuenta||''))||String(a.e.title||'').localeCompare(String(b.e.title||'')));
-    const pr=x=>{const np=(state.netopub||{})[x.m];const v=Number(np&&np.precio)||Number(x.e.price)||0;return v?fmt(Math.round(v)):'';};
-    const dd=x=>x.x&&x.x.ts?' · desde '+new Date(x.x.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
-    h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:10px">
-      <div style="font-size:.74rem;font-weight:700;margin-bottom:4px">${u[0]} ${u[1]} · ${L.length} publicaci${L.length===1?'ón':'ones'} <button class="btn" onclick="prodEstrSet('${prodEstrVer}')" style="float:right;padding:1px 8px;font-size:.62rem;background:transparent;border:1px solid var(--border2);color:var(--muted)">✕ sacar filtro</button></div>
-      ${L.map(x=>`<div style="font-size:.66rem;display:flex;gap:8px;justify-content:space-between;border-top:1px solid var(--border);padding:3px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.e.cuenta||'')} · ${escHtml(String(x.e.title||x.m).slice(0,70))}${x.e.status==='paused'?' <span style="color:var(--amber)">⏸️</span>':''}</span><span style="white-space:nowrap;color:var(--muted);font-family:'DM Mono',monospace">${pr(x)}${dd(x)}</span></div>`).join('')}
-    </div>`;
-  }
+  // 30/10/2026 (él: "quiero que se vea normal, como si no tuviera ninguna estrategia buscada"): con una estrategia elegida ya no se arma la
+  // lista aparte; quedan las fichas de siempre, filtradas (el botón de arriba dice cuál y cuántas, y ✕ la saca).
   return h;
 }
 function _prodOrigenBar(){
@@ -14466,6 +14461,17 @@ function _efectivoCostoVP(v){
   const fullUSD=baseUSD*(1+dev/100)+ship;
   return fullUSD*tc*(v.qty||1)+mlExtra;
 }
+// 📦 COSTO DE LA MERCADERÍA (30/10/2026, él: "lo que costó traer los productos a la oficina"): lo pagado al proveedor + el
+// flete/embalaje de la ficha, en pesos al dólar de la venta. SIN impuestos, cargos de ML ni el % de devoluciones (eso es
+// `_efectivoCostoVP`). Sin costo cargado da 0. Sólo informa: la ganancia sigue con `efectivoCostoVP`.
+function costoMercaVP(v){
+  if(!v||v.cancelada||ventaSinCostoVP(v))return 0;
+  const p=v._dateKey&&prodDeVenta(v);if(!p)return 0;
+  const ym=v._dateKey.substring(0,7),tc=tcDeVenta(v,ym);
+  const baseUSD=getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
+  const ship=parseFloat(p.shipUSD)||0;
+  return ((baseUSD||0)+ship)*tc*(v.qty||1);
+}
 function vpEntries(keys){const out=[];keys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>out.push({...v,_dateKey:k}));});return out;}
 function vpAggByAccount(entries){
   const agg={};VP_ACCTS.forEach(a=>agg[a]={qty:0,neto:0,total:0,costo:0,gest:0});
@@ -15256,7 +15262,7 @@ function renderVentaProd(){
   // KPIs usan el mismo período que la lista
   // los KPIs respetan el filtro de cuenta seleccionado (Todas / Adriana / Matias / etc.)
   const kpiEntries=(vpFilterCuenta?mesEntries.filter(v=>v.cuenta===vpFilterCuenta):mesEntries).filter(v=>!v.cancelada);
-  let mU=0,mNeto=0,mCosto=0,mBruto=0,mGest=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;mGest+=gestDivVP(v);});
+  let mU=0,mNeto=0,mCosto=0,mBruto=0,mGest=0,mMerca=0;kpiEntries.forEach(v=>{mU+=v.qty||0;mMerca+=costoMercaVP(v);mNeto+=v.neto||0;mCosto+=efectivoCostoVP(v);mBruto+=v.total||0;mGest+=gestDivVP(v);});
   const gMes=mNeto-mCosto;const pctMes=pctGananciaVP(gMes,mCosto,mGest);
   // PUNTOS DEL DÍA (27/09/2026, pedido suyo: "ponelo en la web al lado de la ganancia"): la ganancia
   // promedio por día del período, pasada a la tabla de 0 a 10 que armamos en el chat. Es una GUÍA
@@ -15279,6 +15285,7 @@ function renderVentaProd(){
     <div class="met-kpi ct"><div class="mk-lbl">Unidades</div><div class="mk-val">${mU}</div><div class="mk-sub">${kpiEntries.length} ítem${kpiEntries.length!==1?'s':''} vendido${kpiEntries.length!==1?'s':''}</div></div>
     ${mBruto>0?`<div class="met-kpi c5"><div class="mk-lbl">Total bruto</div><div class="mk-val">${fmt(mBruto)}</div><div class="mk-sub">precio de venta</div></div>`:''}
     <div class="met-kpi c4"><div class="mk-lbl">Neto</div><div class="mk-val">${fmt(mNeto)}</div><div class="mk-sub">lo que queda</div></div>
+    <div class="met-kpi c3" title="Lo que nos costó traer estos productos a la oficina: lo pagado al proveedor más el flete, en pesos. Sin impuestos ni cargos de ML."><div class="mk-lbl">Costo mercadería</div><div class="mk-val">${fmt(mMerca)}</div><div class="mk-sub">lo pagado por traerlos${sinCostoU?` · faltan ${sinCostoU} u. sin costo`:''}</div></div>
     <div class="met-kpi c2"><div class="mk-lbl">Ganancia</div><div class="mk-val" style="color:${gMes>=0?'var(--green)':'var(--red)'}">${fmt(gMes)}</div><div class="mk-sub">neto − costo${ptsDiaHtml}${sinCostoU?`<br><span style="color:var(--amber,#f59e0b)" title="Ventas sin ficha o con la ficha en costo 0: cuentan en lo facturado pero no en la ganancia. Cargá el costo en la ficha y entran solas.">⚠️ ${sinCostoU} u. sin costo (${fmt(sinCostoTot)}) no suman</span>`:''}</div></div>
     <div class="met-kpi c1"><div class="mk-lbl">% ganancia</div><div class="mk-val" style="color:${pctColor(pctMes)}">${pctMes!==null?(pctMes>=0?'+':'')+pctMes.toFixed(1)+'%':'—'}</div><div class="mk-sub">objetivo ${_pctPisoMeta().meta}%</div></div>`;
   // G5 (etapa 6): en el celu los 6 cuadros quedan en un renglón que se abre al tocarlo (en la PC no cambia nada).
