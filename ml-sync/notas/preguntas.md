@@ -79,3 +79,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 60. ¿Este número es de UN color/aroma o un promedio del producto? Cada variante se juzga sola: precio, stock, ventas y si se repone (29/10, Paulvic).
 61. ¿Lo que le muestro (o la web) es el dato de AHORA o el de anoche? Antes de explicar "por qué no subió", mirar el precio de hoy en ML (29/10, Lupa 90).
 62. Antes de aplicar una lista que me dio él, ¿algún dato de cada caso la contradice (costo cargado, ganancia, qué se llevó)? Si choca, lo pregunto antes de marcar (29/10, Mari).
+63. La venta que miro, ¿por qué forma entró (Clásica, Premium, envío gratis) y a qué precio? El +50% se mide sobre lo que pagó el comprador, y todas las formas quedan con el mismo % (30/10, Aer Jasmín).
