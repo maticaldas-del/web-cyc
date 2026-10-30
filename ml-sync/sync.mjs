@@ -5758,9 +5758,11 @@ async function detectarErrores(db, o = {}) {
     if (x.sinLeer) { console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ❓ no pude leer sus ventas: mirarlo a mano`); return; }
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${({ nuevo: '🆕', techo: '📈', escasez: '🔥', sinrepo: '⏳' })[x.ult] || '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
     const esc = x.ult === 'escasez' || x.ult === 'sinrepo';
-    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
-      : x.cruzaE ? `   ▶️ decido:${x.mla}=${x.obj}!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% sobre ese precio y la Clásica cruza la barrera (él, 30/10, el detector);go`
-      : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
+    // 1b del 30/10/2026: la suba es +50% del % de ganancia (`%x1.5`: decido busca el precio que deja 1,5 veces el % de hoy; las gemelas lo copian).
+    const crz = x.P < UMBRAL_ENVIO_GRATIS ? '!cruza' : '';
+    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=%x1.5${crz}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% del % de ganancia (1b del 30/10, el detector);go`
+      : x.cruzaE ? `   ▶️ decido:${x.mla}=%x1.5!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% del % de ganancia (1b del 30/10, el detector);go`
+      : `   ▶️ decido:${x.mla}=%x1.5!vendio${crz}#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% del % de ganancia (1b del 30/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lzC.lento || 0} 📈 que venden menos de 1 por semana (4a: quedan 💰) · ${lanza.length} para subir)`);
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
@@ -5802,7 +5804,7 @@ async function detectarErrores(db, o = {}) {
   const subir48 = vendio48.filter((x) => x.obj > x.P);
   bloque('🔎 VENDIERON AYER U HOY SIN TECHO MEDIDO Y NO ESTÁN BUSCANDO TECHO · subir +50% a buscar techo EN ESTA VUELTA', subir48, (x) => {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult || 'sin estrategia'} · vendió ${x.u} u. en 48 h · hoy ${$(x.P)}`);
-    console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo (él, 27/10);go`);
+    console.log(`   ▶️ decido:${x.mla}=%x1.5${x.P < UMBRAL_ENVIO_GRATIS ? '!cruza' : ''}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo, +50% del % de ganancia (1b del 30/10);go`);
   });
   { const resto = vendio48.filter((x) => !(x.obj > x.P)); if (resto.length) { console.log('   (no suben:)'); for (const x of resto) console.log(`   · ${x.mla} · ${String(x.e.title || '?').slice(0, 40)} · ${x.ult || 'sin estrategia'} · ${x.P ? $(x.P) : '¿?'} · ${x.no}`); } }
   console.log(`(vendieron en 48 h: ${v48C.vendieron} Clásicas · ${v48C.inact} no activas · ${v48C.enPrueba} ya en 📈/🆕 (lista de arriba) · ${v48C.conTecho} con techo medido · ${v48C.explica} con una estrategia que explica no subir · ${subir48.length} para subir)`);
@@ -6509,7 +6511,7 @@ async function calcCerebro(db, o) {
         // 1.2a (21/10/2026): la marca liquidando frena SÓLO las subas. Una baja, un descuento o un remate que decido yo (`forzar`: `decido`,
         // `entrarpromo`) sí pasa; lo que el robot calcula solo (sin `forzar`) sigue sin tocar lo marcado.
         if (NOSUBIR[mla] && !(forzar && forzar[mla])) { nada('liquidando: la maneja el remate'); continue; }
-        if (NOSUBIR[mla] && forzar[mla] && Number(forzar[mla].p) > p0) { nada('marcada liquidando: no se sube (la marca frena sólo las subas; para subir, primero liquidando:-' + mla + ':go)'); continue; }
+        if (NOSUBIR[mla] && forzar[mla] && (Number(forzar[mla].p) > p0 || forzar[mla].pctObj > 0 || forzar[mla].pctMult > 0)) { nada('marcada liquidando: no se sube (la marca frena sólo las subas; para subir, primero liquidando:-' + mla + ':go)'); continue; }
         // "La bajaste vos a mano" ya no frena (08/10/2026): él no toca precios, y lo que manda rematar lo marca liquidando.
         if (_subiendoVivo(autop[mla], hoyTs)) { nada('hay una suba en curso de otra corrida'); continue; }
         const costo = Math.round(costoPesos(p, 1, tc).costo || 0);
@@ -6561,7 +6563,20 @@ async function calcCerebro(db, o) {
         const fz = forzar && forzar[mla];
         if (fz) {
           let P = Math.round(Number(fz.p) || 0) || p0;   // 0 = dejar el precio (sólo activar)
-          const motF = 'Claude: ' + String(fz.motivo || 'sin motivo escrito').slice(0, 240);
+          const motF0 = 'Claude: ' + String(fz.motivo || 'sin motivo escrito').slice(0, 240);
+          if (fz.pctObj > 0 || fz.pctMult > 0) {
+            const obj = fz.pctObj > 0 ? fz.pctObj : g0.mg * fz.pctMult;
+            const term = (x) => x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 1) / 100) * 100 - 10;
+            // busca el precio más bajo del tramo [lo, hi] que llega al % (la ganancia sube con el precio dentro de cada lado de la barrera)
+            const busca = async (lo, hi) => { const gh = await gan(hi); if (!gh || gh.mg < obj) return null; for (let i = 0; i < 18 && hi - lo > 50; i++) { const mid = Math.round((lo + hi) / 2); const gm = await gan(mid); if (gm && gm.mg >= obj) hi = mid; else lo = mid; } return hi; };
+            let hallado = null;
+            if (p0 < UMBRAL_ENVIO_GRATIS) hallado = await busca(p0, UMBRAL_ENVIO_GRATIS - 10);
+            if (hallado == null && (p0 >= UMBRAL_ENVIO_GRATIS || fz.cruza)) hallado = await busca(Math.max(p0, UMBRAL_ENVIO_GRATIS), TECHO_DURO);
+            if (hallado == null) { nada(`${motF0} · no llego a ${obj.toFixed(0)}% de ganancia ${p0 < UMBRAL_ENVIO_GRATIS && !fz.cruza ? 'abajo de la barrera de $33.000 (para cruzar va con !cruza)' : 'ni en el techo de ' + money(TECHO_DURO)}`); continue; }
+            P = term(hallado); if (p0 < UMBRAL_ENVIO_GRATIS && hallado < UMBRAL_ENVIO_GRATIS && P >= UMBRAL_ENVIO_GRATIS) P = UMBRAL_ENVIO_GRATIS - 10;
+            P = Math.min(P, TECHO_DURO); fz.p = P; fz._pctTxt = ` · a ${money(P)} deja ${obj.toFixed(0)}%${fz.pctMult > 0 ? ` (${g0.mg.toFixed(0)}% × ${fz.pctMult})` : ''}`;
+          }
+          const motF = motF0 + (fz._pctTxt || '');
           const r1 = (x) => Math.round(x * 10) / 10;
           Object.assign(D, { st, stDesc, mg0: r1(g0.mg), mgP0: r1(g0.mgP), tipoMot: 'claude', memPrev: mem[mla] || {}, salto: !!fz.salto });
           if (!(P > 0) || Math.abs(P - p0) < 10) { D.mismoPrecio = true; nada(`${motF} · ${money(P)} es el precio de hoy: nada que cambiar (normal ${D.mg0}% · peor caso ${D.mgP0}%)`); continue; }
@@ -6569,7 +6584,8 @@ async function calcCerebro(db, o) {
           if (sube && P > TECHO_DURO) { nada(`${motF} · ${money(P)} pasa el techo de ${money(TECHO_DURO)}`); continue; }
           // MÁS DEL DOBLE DE UNA (13/10/2026, revisión 9): `aplicarCerebro` sube con `libre` (sin el freno del +25%), así que
           // un cero de más en el renglón llegaba a ML. Más del doble va sólo con `!salto` (escasez, precio mal puesto).
-          if (sube && P > p0 * 2 && !fz.salto) { nada(`${motF} · sube más del doble (${money(p0)} → ${money(P)}): si es a propósito, agregá !salto`); continue; }
+          if (sube && P > p0 * 2 && !fz.salto && !(fz.pctObj > 0 || fz.pctMult > 0)) {   // con % el precio lo calculó decido (no hay cero de más)
+           nada(`${motF} · sube más del doble (${money(p0)} → ${money(P)}): si es a propósito, agregá !salto`); continue; }
           // EN UNA PROMO MÍA NO SE SUBE EL PRECIO DE LISTA (13/10/2026, revisión 9): infla el tachado (ML lo controla y es
           // engañar al comprador). Primero se sale de la promo. Bajar sí se puede.
           if (sube && !pClaudeOk) { nada(`${motF} · no pude leer mis promos (cyc/promoclaude): no subo sin saber si está en una`); continue; }
@@ -48527,7 +48543,7 @@ async function main() {
           notasCtx.push({ tipo, q: resto.trim(), vari, cta, t, raw: x }); continue;
         }
         // `MLA=7550`, `MLA=7550!activar`, `MLA=activar` (deja el precio y la activa), banderas `!piso` `!cruza`.
-        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|[\d.,$\s]+)?((?:!\w+)*)(?:#(\w+))?\s*$/i);
+        const mm = String(izq).match(/^\s*(MLA\d+)\s*=\s*(activar|%x?\d+(?:[.,]\d+)?|[\d.,$\s]+)?((?:!\w+)*)(?:#(\w+))?\s*$/i);
         if (mm && mm[4] && !ESTRATEGIAS[mm[4].toLowerCase()] && mm[4].toLowerCase() !== 'correccion') { malos.push(x + ` (la estrategia #${mm[4]} no existe: ${Object.keys(ESTRATEGIAS).join(', ')})`); continue; }
         // 🏔️ sólo lo anota `techo95` al 95% (19/10/2026): a mano no (21/10, reglas duras en el código).
         if (mm && mm[4] && mm[4].toLowerCase() === 'techook') { malos.push(x + ` (🏔️ lo anota techo95: techo95:${mm[1].toUpperCase()};go)`); continue; }
@@ -48537,7 +48553,10 @@ async function main() {
         const banderas = String(mm[3] || '').toLowerCase();
         const soloAct = /^activar$/i.test(String(mm[2] || '').trim()) || !mm[2];
         // El precio EXACTO que escribí (etapa 1, 21/10/2026): redondear a $10 hacía $32.999 → $33.000 (cruzaba la barrera) y $4.999 → $5.000.
-        forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : Math.round(pesosArg(mm[2])), motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
+        // `MLA=%150` = el precio que deja 150% (normal) · `MLA=%x1.5` = el que deja 1,5 veces el % de hoy (30/10/2026, él eligió 1b: la suba de
+        // "si vende, no es techo" es +50% del % DE GANANCIA, no del precio: "gana 100% y sube a 150%"). El precio lo busca decido con la comisión de ML.
+        const _pctV = /^%/.test(String(mm[2] || '').trim()) ? String(mm[2]).trim() : '';
+        forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : (_pctV ? -1 : Math.round(pesosArg(mm[2]))), pctObj: _pctV && !/^%x/i.test(_pctV) ? parseFloat(_pctV.slice(1).replace(',', '.')) : 0, pctMult: /^%x/i.test(_pctV) ? parseFloat(_pctV.slice(2).replace(',', '.')) : 0, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
           golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), nobajar: banderas.includes('!nobajar'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), vendio: /!vendio(?![a-z])/.test(banderas), vendiocaro: banderas.includes('!vendiocaro'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         renglonD[mm[1].toUpperCase()] = x;
@@ -48773,7 +48792,7 @@ async function main() {
               const vv = await vendioAEstePrecio(db, d.mla, linksD, globalThis._ritmoCacheD.prods);
               if (vv == null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO !vendio: no pude leer sus ventas para confirmar que vendió a este precio. Se vuelve a mirar en la próxima vuelta.'; continue; }
               // la gemela de envío gratis vendió arriba de $33.000 y la Clásica sigue abajo: puede cruzar hasta +50% de ESE precio (él, 30/10)
-              const _envOk = fz.cruza && vv.envMax >= UMBRAL_ENVIO_GRATIS && p0 < UMBRAL_ENVIO_GRATIS && a <= Math.ceil(vv.envMax * TECHO_SUBA) + 100;
+              const _envOk = fz.cruza && vv.envMax >= UMBRAL_ENVIO_GRATIS && p0 < UMBRAL_ENVIO_GRATIS && (fz.pctObj > 0 || fz.pctMult > 0 || a <= Math.ceil(vv.envMax * TECHO_SUBA) + 100);
               if (!vv.uds && !_envOk) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !vendio: no vendió desde el último cambio de precio (${new Date(vv.desde).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): la bandera dice que sí y el dato dice que no.`; continue; }
               umbS = Number(t9 && t9.umb) || 0.95;
             }
