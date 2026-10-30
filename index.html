@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<meta name="robots" content="noindex,nofollow">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>CYC</title>
@@ -3244,7 +3245,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.40';
+const APP_VERSION='28.41';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3257,6 +3258,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.41',f:'30/10',h:'16:20',c:[{n:1,t:'🔒 La web publica sólo el Panel y la Tienda: las notas y el robot ya no se pueden abrir desde la dirección, y el Panel pide no aparecer en buscadores.'}]},
   {v:'28.40',f:'30/10',h:'16:07',c:[{n:2,t:'🏷️ Estrategias con el motivo de verdad: lo que se baja porque paga stock antiguo dice ⏰ pagando stock, y lo de 30 días sin vender 📉 liquidando (ya no todo "📦 sobra stock").'}]},
   {v:'28.39',f:'30/10',h:'15:55',c:[{n:1,t:'🛍️ El botón de la Tienda ahora está en Inicio, al lado del dólar (sale del menú ☰).'}]},
   {v:'28.38',f:'30/10',h:'15:51',c:[{n:1,t:'🛍️ Menú ☰ → Mirar → Tienda: abre la Tienda de CYC en otra pestaña.'}]},

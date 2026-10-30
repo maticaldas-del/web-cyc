@@ -1,0 +1,16 @@
+# GitHub Pages (30/10/2026): se publica SÓLO lo que la web necesita (el Panel y la Tienda). Todo lo demás del repo
+# (notas, el robot, revisiones, chequeo, fotos viejas) NO sale en maticaldas-del.github.io: desde la Tienda no se llega a nada de eso.
+exclude:
+  - CLAUDE.md
+  - README.md
+  - ml-sync
+  - chequeo
+  - precios
+  - tools
+  - elegancia
+  - index.html.var
+  - pedidos.txt
+  - "*.md"
+  - "*.mjs"
+  - "*.py"
+  - "*.txt"
