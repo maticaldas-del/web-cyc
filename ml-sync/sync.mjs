@@ -24707,9 +24707,16 @@ async function main() {
         console.log(`=== SACAR DE LA LISTA ${provNom.toUpperCase()} · ${Object.keys(sale).length} productos ${APLICAR ? '' : '(PRUEBA)'} ===`);
         for (const [k, e] of Object.entries(sale)) console.log(`  🗑️ ${String(e.n).slice(0, 70)} (${k})`);
         if (noEsta.length) console.log(`  ⚠️ no los encontré (no se toca nada de esos): ${noEsta.join(' · ')}`);
+        // Revisión etapa 9, 30/10/2026: lo sacado sale también del pedido del momento (`cyc/listas_pedido/<prov>/<código>`). Quedaba ahí: la web lo
+        // escondía de la lista pero "Ya lo pedí" y el pedido para copiar lo seguían llevando (con el código como nombre y a $0).
+        const armB = (await db.get('cyc/listas_pedido/' + provK)) || {}; const enPedB = Object.keys(sale).filter((k) => Number(armB[k]) > 0);
+        if (enPedB.length) console.log(`  🧾 ${enPedB.length} estaba(n) en el pedido del momento y salen de ahí también: ${enPedB.map((k) => `${String(sale[k].n).slice(0, 40)} ×${armB[k]}`).join(' · ')}`);
         if (!APLICAR) { console.log('PRUEBA: agregá ;go al final.'); return; }
         if (Object.keys(sale).length) { const del = {}, fu = {}; for (const [k, e] of Object.entries(sale)) { del[k] = null; fu[k] = { n: String(e.n || '').slice(0, 120), ts: Date.now() }; }
           await db.patch('mlapi/listas/' + provK, del); await db.patch('cyc/mlconfig/listasProv/' + provK + '/fuera', fu);
+          if (enPedB.length) { await db.patch('cyc/listas_pedido/' + provK, Object.fromEntries(enPedB.map((k) => [k, null])));
+            const armR = (await db.get('cyc/listas_pedido/' + provK)) || {}; const quedanP = enPedB.filter((k) => Number(armR[k]) > 0).length;
+            console.log(quedanP ? `⚠️ ${quedanP} siguen en el pedido del momento` : `✓ sacados del pedido del momento (${enPedB.length}) y releído`); }
           const catR = (await db.get('mlapi/listas/' + provK)) || {}; const quedan = Object.keys(sale).filter((k) => catR[k]).length;
           await db.patch('cyc/mlconfig/listasProv/' + provK, { n: Object.keys(catR).length, ...cuentaLista(catR, provs[provK].fecha) });
           console.log(quedan ? `⚠️ ${quedan} no se borraron` : `✓ borrados y releído · quedan ${Object.keys(catR).length} en la lista · no vuelven al recargarla`); }
@@ -24756,11 +24763,14 @@ async function main() {
       const filas = [], malos = [];
       const _fuera = (provs[provK] && provs[provK].fuera) || {}; let _salteo = 0;
       for (const x of partes) {
-        const i = x.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
-        let izq = x.slice(0, i).trim(); const der = x.slice(i + 1).trim();
         // FOTO DEL PROVEEDOR (28/10/2026, él a través del chat del Once: "cargar la foto de cada producto"): `<pesos>@<código>@<url https>`
         // (o `<pesos>@@<url>` sin código). Se guarda en `f` y la web la muestra al lado de la de ML.
-        let foto = null; const mf = der.match(/@(https:\/\/\S+)$/); const der2 = mf ? der.slice(0, mf.index) : der; if (mf) foto = mf[1].slice(0, 400);
+        // Revisión etapa 9, 30/10/2026: la foto se separa ANTES de buscar el "=" del precio. Una dirección con "=" adentro (Shopify `…jpg?v=169…`,
+        // `img.php?id=77&w=2`) partía el renglón ahí: nombre con la dirección pegada, precio $1.690.000.000 o $2, sin foto y con otro código.
+        const mfx = x.match(/@(https:\/\/\S+)$/); const xSin = mfx ? x.slice(0, mfx.index) : x;
+        const i = xSin.lastIndexOf('='); if (i < 1) { malos.push(x); continue; }
+        let izq = xSin.slice(0, i).trim(); const der = xSin.slice(i + 1).trim();
+        const foto = mfx ? mfx[1].slice(0, 400) : null; const der2 = der;
         let cod = null; const mc = der2.match(/@(.*)$/); const precioTxt = mc ? der2.slice(0, mc.index) : der2; if (mc && mc[1].trim()) cod = mc[1].trim();
         const p = pesosArg(precioTxt);
         if (!izq || !(p > 0)) { malos.push(x); continue; }
@@ -39152,13 +39162,17 @@ async function main() {
       const ultimos = Object.keys(porDia).sort().slice(-8, -1);   // 7 días cerrados
       const r7 = ultimos.length ? ultimos.reduce((a, k) => a + porDia[k], 0) / ultimos.length : null;
       const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
-      console.log(`=== 💸 COBRO DE ${ym} · SOLO LEE ===`);
+      // Revisión etapa 9, 30/10/2026: desde el 29/10 el cobro es "lo que creció CYC" (patrimonio + lo retirado − lo viejo cargado tarde, ÷ 3,
+      // redondo de a $100.000; `_cobroCrec` de la web, tarjeta 💸 del Arqueo, con el local adentro). Esta cuenta vieja por ventas sigue para
+      // mirar ventas y gastos del mes, pero ya no es el cobro: lo dice arriba de todo y no presenta su número como el de la tarjeta.
+      console.log('⚠️ VIEJO: el cobro vale el de la tarjeta 💸 del Arqueo (lo que creció CYC). Esto es la cuenta vieja por ventas (ML, sin el local): NO es lo que se cobra.');
+      console.log(`=== 💸 VENTAS Y GASTOS DE ${ym} (cuenta vieja) · SOLO LEE ===`);
       console.log(`Días: ${diasTr.toFixed(2)} de ${diasMes} · ventas: neto ${$(neto)} − mercadería ${$(costo)} = ${$(nc)} (${canc} canceladas fuera · ${sinC} sin costo cuentan $0 de ganancia)`);
       console.log(`Gastos cargados del mes: ${$(gastos)} (${gA.length}) · el mes anterior: ${$(gastosPrev)} (${gP.length})`);
       for (const x of gP) { const ya = gA.some((y) => (y.cat || y.categoria) === (x.cat || x.categoria)); console.log(`   ${ya ? '✓' : '⏳ falta'} ${String(x.cat || x.categoria || '?').slice(0, 28)} · ${String(x.desc || x.descripcion || '').replace(/\d{6,}/g, '…').slice(0, 30)} · ${$(x.monto || 0)}`); }
-      // Redondeado a $1.000 y nunca negativo, igual que la tarjeta "💸 cuánto cobrar" (`cobroProxMes`).
+      // Redondeado a $1.000 y nunca negativo, como la vieja tarjeta "💸 cuánto cobrar" (`cobroProxMes`, sacada de Ventas de hoy el 29/10).
       const tercio = (x) => (x > 0 ? Math.round(x / 3 / 1000) * 1000 : 0);
-      console.log(`Hasta hoy: (${$(nc)} − ${$(gastos)}) ÷ 3 = ${$(tercio(nc - gastos))} c/u (lo que dice la tarjeta · ×2 = ${$(2 * tercio(nc - gastos))} de retiro)`);
+      console.log(`Hasta hoy por ventas: (${$(nc)} − ${$(gastos)}) ÷ 3 = ${$(tercio(nc - gastos))} c/u (cuenta vieja: NO es el cobro ni el retiro; esos salen de la tarjeta 💸 del Arqueo)`);
       const gEsp = Math.max(gastos, gastosPrev);
       const p1 = nc / diasTr * diasMes;
       console.log(`Proyección al ritmo del mes (${$(nc / diasTr)}/día): ventas ${$(p1)} − gastos esperados ${$(gEsp)} = ${$(p1 - gEsp)} → ${$((p1 - gEsp) / 3)} c/u`);
@@ -40206,7 +40220,9 @@ async function main() {
     if (/^debenmov(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       // El registro de GitHub es PÚBLICO (29/10/2026): el nombre de un deudor (una persona) no se imprime; sólo la inicial y el id.
       // Las fijas del negocio (Mercadería / Deuda Perfumería) sí, son de CYC.
-      const _tapaNom = (d) => d && d.fija ? String(d.nom || '') : String(d && d.nom || '?').slice(0, 1).toUpperCase() + '···';
+      // Revisión etapa 9, 30/10/2026: se muestra entero SÓLO lo que se llama "perfumería" (las dos del negocio). Antes alcanzaba con `fija`, y
+      // cualquier deuda se puede marcar fija en la web (✏️ → "fija"): la de una persona marcada así salía con su nombre en el registro público.
+      const _tapaNom = (d) => /perfumer/i.test(String(d && d.nom || '')) ? String(d.nom) : String(d && d.nom || '?').slice(0, 1).toUpperCase() + '···';
       const raw = String(process.env.BILLING_PROBE).slice('debenmov'.length).replace(/^:/, '');
       const GO = /;go\s*$/i.test(raw); const cuerpo = raw.replace(/;go\s*$/i, '').trim();
       const D = (await db.get('cyc/debencuotas')) || {};
@@ -40229,11 +40245,13 @@ async function main() {
         const pagosF = String(kv.pagos || '').split(',').map((x) => x.trim()).filter(Boolean);
         if (!nom || !(cuota > 0) || (nC > 1 && (!frec || !fOk(kv.vence1 || ''))) || pagosF.some((f) => !fOk(f)) || pagosF.length > nC) {
           console.log('❌ Usá: debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>|frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD[|pagos=AAAA-MM-DD,…][|costo=<pesos>];go'); return; }
-        if (lista.some(([, d]) => _n(d.nom) === _n(nom))) { console.log(`❌ Ya hay una deuda que se llama "${nom}": no la duplico.`); return; }
+        // Revisión etapa 9, 30/10/2026: el registro de GitHub es público: ni acá ni abajo sale el nombre entero ni lo que se llevó (inicial + id).
+        const yaN = lista.find(([, d]) => _n(d.nom) === _n(nom));
+        if (yaN) { console.log(`❌ Ya hay una deuda con ese nombre: ${_tapaNom(yaN[1])} (${yaN[0]}). No la duplico.`); return; }
         const ts0 = Date.now(), pagos = {}; pagosF.forEach((f, i) => { pagos[String(Date.parse(f + 'T12:00:00-03:00') + i)] = { f }; });
         const costo = Math.round(parseFloat(String(kv.costo || '').replace(/\./g, '').replace(',', '.')) || 0);
         const dN = { nom, ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1, fecha0: kv.vence1 } : {}), ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
-        console.log(`=== DEUDA NUEVA "${nom}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'se llevó: ' + kv.det + ' · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
+        console.log(`=== DEUDA NUEVA "${_tapaNom({ nom })}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'con lo que se llevó anotado (no se imprime) · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         const idN = 'c' + ts0; await db.set('cyc/debencuotas/' + idN, dN);
         const rN = await db.get('cyc/debencuotas/' + idN);
@@ -40283,7 +40301,7 @@ async function main() {
         if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
         const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
-        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] || '—')} → ${campo === 'nom' && !d.fija ? String(val || '').slice(0, 1) + '···' : (val || '—')}`);
+        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] || '—')} → ${campo === 'nom' ? _tapaNom({ nom: val }) : (val || '—')}`);   // revisión etapa 9, 30/10/2026: el nombre nuevo con la misma regla (antes `!d.fija`)
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
         const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
@@ -40321,10 +40339,14 @@ async function main() {
       if (mPct && !extra.prod) { console.log('❌ el +N% va con |prod=<ficha> (sale del costo de esa ficha)'); return; }
       const m = mPct ? ['', '+', '0', mPct[2]] : String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
       if (!m) { console.log(`❌ "${numF}": va +N (suma deuda) o -N (devolvió), con signo, o +25% con |prod=. Ej. +70000 o -70000@2026-10-28`); return; }
+      // Revisión etapa 9, 30/10/2026: un `u=` que no es un número entero de 1 o más (u=abc, u=0) se frena; antes pasaba a 1 sin avisar.
+      if (extra.u != null && !/^[1-9]\d*$/.test(String(extra.u).trim())) { console.log(`❌ u="${extra.u}": va un número entero de 1 o más. No escribo nada.`); return; }
       const u = Math.max(1, parseInt(extra.u, 10) || 1);
       let montoU = mPct ? null : Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
       const LOCALES = ['soares', 'sarmiento', 'ceballos'];
       let local = null; if (extra.local) { local = LOCALES.find((l) => _n(extra.local).includes(l)); if (!local) { console.log(`❌ local "${extra.local}": va soares, sarmiento o ceballos.`); return; } }
+      // Revisión etapa 9, 30/10/2026: un pago CON producto dice qué perfumería pagó (`|local=`): sin eso marcaba el renglón de cualquiera de las tres.
+      if (m[1] === '-' && extra.prod && !local) { console.log('❌ un pago con |prod= va con |local=<soares|sarmiento|ceballos> (qué perfumería pagó). No escribo nada.'); return; }
       let prodF = null, costoU = null;
       if (extra.prod) {
         let pc = products.filter((x) => x.id === extra.prod);
@@ -40336,7 +40358,8 @@ async function main() {
       }
       if (mPct) { if (!(costoU > 0)) { console.log(`❌ ${prodF.name} sin costo cargado: no puedo sacar el ${mPct[1]}%. No escribo nada.`); return; }
         montoU = Math.round(costoU * (1 + parseFloat(mPct[1].replace(',', '.')) / 100)); }
-      const monto = extra.prod ? montoU * u : montoU;
+      // Revisión etapa 9, 30/10/2026: en un PAGO el monto es la plata que pagaron, entera: `u=` no la multiplica (antes −100000|u=2 restaba $200.000).
+      const monto = extra.prod && m[1] === '+' ? montoU * u : montoU;
       const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), f = m[3] || hoyAR, nota = notaP.join('|').trim().slice(0, 120);
       let cand = lista.filter(([id]) => id === quien);
       if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
@@ -40346,21 +40369,35 @@ async function main() {
       // salía como de 1 unidad y lo que ella había pedido (`cyc/pedperf`) bajaba de a 1 aunque se le dejaran 3.
       const esPerfD = /perfumer/.test(_n(d.nom)) || !!local;
       if (signo > 0 && prodF && esPerfD && !extra.u) { console.log('❌ lo que se deja en la perfumería va con |u=<cuántas se dejaron>. No escribo nada.'); return; }
+      // Revisión etapa 9, 30/10/2026: en MERCADERÍA Perfumería todo lo que se deja va con producto, perfumería y unidades (`|prod=|local=|u=`).
+      // Un "+N" suelto quedaba sin costo, sin unidades y sin perfumería (lo "sin costo cargado" de Ver deudas, que Métricas Local no ve).
+      // La otra (Deuda Perfumería = MercadoPago) sigue con +N solo.
+      const esMercPerf = /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom));
+      if (signo > 0 && esMercPerf && (!prodF || !local || !extra.u)) { console.log(`❌ en ${_tapaNom(d)} lo que se deja va con |prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<unidades>:${!prodF ? ' falta prod=' : ''}${!local ? ' falta local=' : ''}${!extra.u ? ' falta u=' : ''}. No escribo nada.`); return; }
       console.log(`=== MOVIMIENTO EN "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
-      if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
+      if (prodF && signo > 0) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
+      // Un pago CON producto (`=-N|prod=…|local=…`) va al producto dejado que corresponde (el más viejo sin pagar de ESA perfumería).
+      // Revisión etapa 9, 30/10/2026: queda pagado (en verde) SÓLO si la plata cubre lo que le falta a ese renglón; si no, sigue abierto y anota
+      // cuánto lleva ("pagó X de Y", `pagadoM`/`parcial`). Antes se marcaba entero con cualquier monto: 3 relojes de $50.000, pagan uno → el
+      // renglón de $150.000 en verde y "productos sin pagar" en $0. Se busca ANTES del ;go para que la prueba lo diga.
+      let pagaK = null, pagaRow = null, pagaYa = 0, pagaCubre = false;
+      if (signo < 0 && prodF) { const ab = Object.entries(d.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === prodF.id && !x.pagado && x.local === local).sort((a, b) => Number(a[0]) - Number(b[0]));
+        if (ab.length) { [pagaK, pagaRow] = ab[0];
+          pagaYa = Object.values(d.movs || {}).filter((x) => x && x.pagaDe === pagaK && Number(x.m) < 0).reduce((t, x) => t - Number(x.m), 0);
+          const faltaRow = Math.max(0, Number(pagaRow.m) - pagaYa); pagaCubre = monto >= faltaRow - 0.5;
+          console.log(`  🛍️ pago de ${Number(pagaRow.u) > 1 ? pagaRow.u + ' × ' : ''}${pagaRow.prodNom} (${local}) dejado el ${pagaRow.f}: ${money(Number(pagaRow.m))} · ya pagó ${money(pagaYa)} · falta ${money(faltaRow)} → ${pagaCubre ? '✅ queda pagado' + (monto > faltaRow + 0.5 ? ` (${money(monto - faltaRow)} más de lo que le faltaba a ese renglón)` : '') : `sigue abierto: pagó ${money(pagaYa + monto)} de ${money(Number(pagaRow.m))}`}`); }
+        else console.log(`  ⚠️ no encontré ${prodF.name} dejado sin pagar en ${local}: se resta la plata igual, sin marcar ningún producto`);
+        if (extra.u) console.log('  (en un pago u= no cuenta: se resta la plata que dice)'); }
       console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? '  ⚠️ devolvió más de lo que debía' : ''}`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
-      // Un pago CON producto (`=-N|prod=…[|local=…]`) marca pagado el producto dejado que corresponde (el más viejo sin pagar): queda en verde.
-      let pagaK = null;
-      if (signo < 0 && prodF) { const ab = Object.entries(d.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === prodF.id && !x.pagado && (!local || x.local === local)).sort((a, b) => Number(a[0]) - Number(b[0]));
-        if (ab.length) { pagaK = ab[0][0]; console.log(`  ✅ marca pagado: ${ab[0][1].prodNom}${ab[0][1].local ? ' (' + ab[0][1].local + ')' : ''} dejado el ${ab[0][1].f}`); } else console.log('  ⚠️ no encontré ese producto dejado sin pagar: se resta la plata igual, sin marcar ningún producto'); }
+      const llevaTxt = pagaK && !pagaCubre ? `${money(pagaYa + monto)} de ${money(Number(pagaRow.m))}` : null, parcialTxt = llevaTxt ? 'pagó ' + llevaTxt : null;
       const k = String(Date.now()); const mv = signo < 0 && prodF
-        ? { m: -monto, f, nota: nota || `pagó ${prodF.name}`.slice(0, 120), quien: 'robot', ...(pagaK ? { pagaDe: pagaK } : {}) }
+        ? { m: -monto, f, nota: (nota || (llevaTxt ? `pagó ${money(monto)} de ${prodF.name} (lleva ${llevaTxt})` : `pagó ${prodF.name}`)).slice(0, 120), quien: 'robot', ...(pagaK ? { pagaDe: pagaK } : {}) }
         : { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
       await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
-      if (pagaK) await db.set(`cyc/debencuotas/${id}/movs/${pagaK}/pagado`, f);
+      if (pagaK) await db.patch(`cyc/debencuotas/${id}/movs/${pagaK}`, pagaCubre ? { pagado: f, pagadoM: pagaYa + monto, parcial: null } : { pagadoM: pagaYa + monto, parcial: parcialTxt });
       const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
       console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
@@ -40426,10 +40463,17 @@ async function main() {
       if (malos.length) { console.log('❌ NO ESCRIBO NADA:\n   ' + malos.join('\n   ')); return; }
       const N2 = JSON.parse(JSON.stringify(OC));
       console.log(`=== 🏪 OFICINA LOCAL · ${GO ? 'APLICANDO' : 'PRUEBA'} ===`);
-      for (const o of ops) { const x = N2[o.P.id] && typeof N2[o.P.id] === 'object' ? N2[o.P.id] : { t: parseInt(N2[o.P.id]) || 0 };
+      for (const o of ops) { const x = N2[o.P.id] && typeof N2[o.P.id] === 'object' ? N2[o.P.id] : { t: parseInt(N2[o.P.id]) || 0 }; const uAntes = uDe(x);
         const ant = o.va ? parseInt((x.v || {})[sid(o.va)]) || 0 : parseInt(x.t) || 0; const nu = Math.max(0, o.sg === '+' ? ant + o.n : o.sg === '-' ? ant - o.n : o.n);
         if (o.va) { x.v = x.v || {}; x.v[sid(o.va)] = nu; } else x.t = nu; N2[o.P.id] = x;
-        console.log(`  · ${o.P.name}${o.va ? ' #' + o.va : ''}: ${ant} → ${nu}${o.sg === '-' && o.n > ant ? '  ⚠️ había menos' : ''}${cuDe(o.P) > 0 ? ` · US$ ${cuDe(o.P).toFixed(2)} c/u` : '  ⚠️ sin costo: no suma valor'}`); }
+        console.log(`  · ${o.P.name}${o.va ? ' #' + o.va : ''}: ${ant} → ${nu} · el producto: ${uAntes} → ${uDe(x)} u.${o.sg === '-' && o.n > ant ? '  ⚠️ había menos' : ''}${cuDe(o.P) > 0 ? ` · US$ ${cuDe(o.P).toFixed(2)} c/u` : '  ⚠️ sin costo: no suma valor'}`); }
+      // Revisión etapa 9, 30/10/2026: un producto NO puede quedar con unidades sin color Y por color a la vez: se suman (`uDe` = t + colores).
+      // Contado "Rojo 3, Azul 2" y después "hay 5" (sin color) quedaba en 10 (la prueba decía "0 → 5"), y con `listo` el Arqueo lo contaba dos
+      // veces (el caso del Centímetro de SIEMPRE). Se mira cómo queda al final, así un mismo comando puede pasar de colores a total (=0 en uno).
+      const malosM = [];
+      for (const pid of new Set(ops.map((o) => o.P.id))) { const x = N2[pid]; const tS = parseInt(x && x.t) || 0, vS = Object.entries((x && x.v) || {}).filter(([, q]) => (parseInt(q) || 0) > 0);
+        if (tS > 0 && vS.length) malosM.push(`${(byId[pid] || {}).name || pid}: quedaría con ${tS} sin color y ${vS.map(([c, q]) => c.replace(/_/g, ' ') + ' ' + q).join(', ')} por color (se sumarían: ${uDe(x)} u.). Dejá uno solo: los colores en 0 o el total sin color en 0, en el mismo comando.`); }
+      if (malosM.length) { console.log('❌ NO ESCRIBO NADA:\n   ' + malosM.join('\n   ')); return; }
       console.log(`  total contado: US$ ${total(OC).toFixed(2)} → US$ ${total(N2).toFixed(2)}${cfgO ? ' (el Arqueo usa lo contado)' : ' (el Arqueo sigue con el valor a mano hasta "oficyc:listo;go")'}`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
       for (const o of ops) await db.set('cyc/oficyc/' + o.P.id, N2[o.P.id]);
