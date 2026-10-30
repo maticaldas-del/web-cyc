@@ -2061,6 +2061,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
 
 ## 6 · IDEAS NUEVAS (sábado)
+### 🛍️ Tienda pública por encargo (30/10/2026, él eligió 1a 2a 3a 4a 5a; 4a en mayúsculas: *"NADIE SABE QUE LO TRAEMOS DE PARAGUAY… QUE SÓLO DIGA CYC Y LISTO"*)
+- **Qué es:** página aparte (`/tienda/`) para sus conocidos: buscador, rubros, foto y nombre de ML, precio en pesos, +/−, y "📋 Copiar pedido" (`Pedido CYC <código>: …`). Sin login, sin Firebase, sin pago. Botón WhatsApp apagado hasta que haya número en `cyc/mlconfig/tiendaWa`. Entra: candidatos de Para probar con el catálogo confirmado + fichas de origen Paraguay, de Nissei, con el precio mirado en 30 días, sin "no había" ni marca prohibida. Precio = US$ × `RECARGO_PAR` × dólar del panel × 1,25, para arriba a 90/990.
+- **Dónde vive:** `tienda/index.html` (la página) · `tienda/productos.json` (lo genera el robot, NO se edita a mano) · `sync.mjs` (`tienda[;go]`, `TIENDA_ARCHIVO`) · `ml-daily.yml` (pasos "Tienda pública" y "Subir la tienda a la web", a `claude/add-folder-78ysyb`) · `.assetsignore` (`!tienda/productos.json`) · `sw.js` (no toca `/tienda/`).
+- **Qué chequear:** grep en `tienda/` de nissei/paraguay/py/portugués/US$/costo = 0 · que el archivo publicado no tenga más campos que `id n f p c` (+ `act`, `wa`) · que `/tienda/productos.json` se descargue (si Cloudflare no respeta el `!`, renombrar) · que el panel en la raíz no se vea desde la tienda.
+
 - **✅ LAS 24 IDEAS DE LA ETAPA 6: ELIGIÓ TODAS (a) EL 21/10/2026** (A1: *"probemos y me decís"* = una sola publicación en la próxima llegada). Antes decía: ESPERAN SU RESPUESTA (él: *"avisame cuando termine el último (…) tengo que elegir las decisiones"*). (a) = la recomendada. Una cosa obvia quedó sin hacer porque las revisiones se pausaron: el `ofi` que imprime `pyped:llego` sale sin `@color` y falla entero en una reposición con colores (arreglarlo al retomar).
   **Datos de ML sin usar:**
   · D1 Lo que ML recomienda mandar a Full (replenishment por upid) + días sin stock: (a) mostrar y avisar 2 semanas · (b) tope duro.

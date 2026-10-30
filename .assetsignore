@@ -2,6 +2,8 @@
 # Cloudflare sirve el repo ENTERO (assets.directory = "."), así que todo lo que
 # no esté acá queda descargable por cualquiera que sepa la dirección, SIN login.
 # La app sólo necesita: index.html, sw.js, manifest.webmanifest, icon.svg.
+# Y la tienda pública por encargo (30/10/2026): tienda/index.html y tienda/productos.json (la excepción va al final,
+# después de *.json). En la carpeta tienda/ no va NADA más: todo lo que se ponga ahí se publica.
 
 .git
 .github
@@ -20,3 +22,4 @@ index.html.var
 *.json
 *.mjs
 *.py
+!tienda/productos.json

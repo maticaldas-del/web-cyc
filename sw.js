@@ -22,6 +22,8 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return; // externo → red directa
+  // La tienda pública (/tienda/, 30/10/2026) es otra página: este service worker no la cachea ni le contesta con el panel.
+  if (/\/tienda(\/|$)/.test(url.pathname)) return;
   e.respondWith(
     fetch(e.request)
       .then((resp) => {

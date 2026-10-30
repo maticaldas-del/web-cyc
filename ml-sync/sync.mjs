@@ -30427,6 +30427,133 @@ async function main() {
       console.log(`\n${ok} bien · ${mal} sin guardar`);
       return;
     }
+    // BILLING_PROBE=tienda[;go] → LA TIENDA PÚBLICA DE CYC POR ENCARGO (30/10/2026, él eligió 1a 2a 3a 4a 5a). SOLO LEE la base y ML.
+    // Arma `tienda/productos.json` (lo lee `tienda/index.html`, la página que se le pasa a los conocidos: elige, copia el pedido y se lo
+    // manda). Entra lo de Paraguay que ya está confirmado: (1) los candidatos de Para probar vivos con el catálogo de ML chequeado
+    // (`candCatChequeado`) y (2) las fichas con origen Paraguay (lo que ya trajimos), las dos de Nissei, con el precio de Nissei mirado en
+    // los últimos TIENDA_DIAS días y sin la marca "no había" ni marca prohibida. Precio = US$ de Nissei × recargo medido (`RECARGO_PAR`)
+    // × dólar del panel (`cyc/finanzas/tipo_cambio`) + 25%, redondeado para arriba a 90/990. Nombre y fotos = los del catálogo de ML
+    // (`/products/<cat>`; sin catálogo, los de nuestra publicación). 🔒 4a (él: "NADIE SABE QUE LO TRAEMOS DE PARAGUAY… QUE SÓLO DIGA CYC Y
+    // LISTO"): al archivo van SÓLO id propio (hash del catálogo), nombre de ML, fotos de mlstatic, precio en pesos y rubro; nada de
+    // códigos, proveedor, dólares ni costos, y un producto cuyo nombre tenga una palabra prohibida no entra. Sin `;go` muestra cuántos y
+    // una muestra (sin costos); con `;go` escribe el archivo (`TIENDA_ARCHIVO` o `tienda/productos.json`; ml-daily lo sube a la rama de
+    // la web). El número de WhatsApp (apagado si no hay) sale de `cyc/mlconfig/tiendaWa` (sólo dígitos).
+    if (/^tienda(;go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GOt = /;go$/.test(String(process.env.BILLING_PROBE));
+      const TIENDA_DIAS = 30, GAN = 0.25;
+      try { await cargarParamCompra(db); } catch { /* queda el recargo de siempre */ }
+      const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
+      if (!(tc > 0)) { console.log('❌ Sin dólar cargado (cyc/finanzas/tipo_cambio): no escribo nada (no invento uno).'); return; }
+      const lindo = (x) => (x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 10) / 100) * 100 - 10);
+      const precioDe = (usd) => lindo(usd * RECARGO_PAR * tc * (1 + GAN));
+      // Lo que NUNCA puede salir en la tienda (nombre de ML o foto). Se chequea producto por producto y otra vez sobre el archivo entero.
+      const PROHIBIDO = /nissei|paragua|compras ?paraguay|\bpy\b|rel[oó]gio|\bpreto\b|sem fio|\bus\$|\busd\b|d[oó]lar/i;
+      const fotoOk = (u) => /^https:\/\/[a-z0-9.-]*mlstatic\.com\/[^\s"'<>]+$/i.test(u);
+      const fotosDe = (pics) => (pics || []).map((x) => String((x && (x.secure_url || x.url)) || '').replace(/^http:\/\//, 'https://')).filter(fotoOk).slice(0, 4);
+      const idDe = (k) => createHash('sha256').update('cyc-tienda|' + k).digest('hex').slice(0, 10).replace(/[a-f]/g, (h) => 'KMNPRTVWXY'['abcdef'.indexOf(h)]).slice(0, 5).toUpperCase();
+      const RUBROS = [
+        ['Perfumes y belleza', /perfum|eau de|colonia|body (mist|splash)|fragancia|maquillaje|labial|crema|serum|sérum|shampoo|acondicionador|esmalte|delineador|rimel|máscara de pestañas|base de maquillaje|desodorante|cuidado/i],
+        ['Relojes y smartwatch', /reloj|smartwatch|smart band|smartband|watch\b/i],
+        ['Audio', /auricular|parlante|headphone|earbud|altavoz|barra de sonido|micr[oó]fono/i],
+        ['Computación', /mouse|teclado|pendrive|memoria|micro ?sd|ssd|disco|hub usb|webcam|router|cargador|cable|adaptador|power ?bank|bater[ií]a/i],
+        ['Juegos y juguetes', /joystick|control(ador)? (ps|xbox|inal)|gamer|juguete|lego|mu[ñn]ec|cartas|juego/i],
+        ['Hogar y cocina', /cocina|waflera|sart[eé]n|licuadora|batidora|freidora|cafetera|tostadora|pava|aspiradora|ventilador|l[aá]mpara|s[aá]bana|almohada|toalla|termo/i],
+        ['Cuidado personal', /afeitadora|cortadora|secador|planchita|depiladora|cepillo|masajeador|recortadora/i],
+      ];
+      const rubroDe = (n) => { for (const [r, re] of RUBROS) if (re.test(n)) return r; return 'Otros'; };
+      // Token de ML (cualquier cuenta: /products y /items son públicos).
+      let tk = null;
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la que sigue */ } }
+      if (!tk) { console.log('❌ Sin token de ML: no escribo nada.'); return; }
+      const [cands, prodsObj, links, sinSt, pycat, marcasNo, waRaw] = await Promise.all([
+        db.get('cyc/candidatos_py'), db.get('cyc/products'), db.get('cyc/mllinks'), db.get('cyc/py_sinstock'), db.get('mlapi/pycat'),
+        db.get('cyc/mlconfig/marcasFrenadas'), db.get('cyc/mlconfig/tiendaWa')]);
+      if (!cands || !prodsObj) { console.log('❌ DATOS INCOMPLETOS (no pude leer los candidatos o las fichas): no escribo nada.'); return; }
+      const hoy = Date.now(), fresco = (t) => Number(t) > 0 && hoy - Number(t) <= TIENDA_DIAS * 864e5;
+      const fuera = {}; const no = (m) => { fuera[m] = (fuera[m] || 0) + 1; };
+      // Lo que entra, por catálogo (o por ficha si no tiene): { key, cat, mla, usd, ts }.
+      const porKey = new Map();
+      const meter = (x) => { const v = porKey.get(x.key); if (!v || x.ts > v.ts) porKey.set(x.key, x); };
+      // (2) Fichas de origen Paraguay.
+      const linksDe = {}; for (const [mla, L] of Object.entries(links || {})) if (L && L.prodId && !L.gemelaDe) (linksDe[L.prodId] = linksDe[L.prodId] || []).push(mla);
+      const fichasSinCat = [];
+      for (const p of Object.values(prodsObj)) {
+        if (!p || String(p.origen || '').toLowerCase() !== 'py') continue;
+        if (provPyDeBot(p) !== 'nissei') { no('otro proveedor'); continue; }
+        const usd = Number(p.nisseiUSD) || 0; if (!(usd > 0)) { no('ficha sin precio de hoy'); continue; }
+        if (sinSt && sinSt[p.id]) { no('ya no lo tienen'); continue; }
+        if (marcaFrenadaDe({ nombre: p.name, marca: p.marca }, marcasNo)) { no('marca prohibida'); continue; }
+        const ts = Math.max(Number(p.nisseiTs) || 0, Number(((pycat || {})[String(p.codPy || '')] || {}).ts) || 0);
+        if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
+        const mlas = (linksDe[p.id] || []).sort();
+        if (p.mlCatalogo) meter({ key: String(p.mlCatalogo).toUpperCase(), cat: String(p.mlCatalogo).toUpperCase(), usd, ts });
+        else if (mlas.length) fichasSinCat.push({ p, mlas, usd, ts });
+        else no('ficha sin publicación ni catálogo');
+      }
+      // Las fichas sin catálogo anotado: el catálogo (o el título y las fotos) de sus publicaciones, de a 20.
+      const itemInfo = {};
+      const todasMlas = [...new Set(fichasSinCat.flatMap((x) => x.mlas))];
+      for (let i = 0; i < todasMlas.length; i += 20) {
+        try { const r = await mlGet('/items?ids=' + todasMlas.slice(i, i + 20).join(',') + '&attributes=id,title,pictures,catalog_product_id,status', tk);
+          for (const o of r || []) if (o && o.code === 200 && o.body) itemInfo[o.body.id] = o.body; } catch { /* esas quedan sin leer */ }
+      }
+      for (const x of fichasSinCat) {
+        const its = x.mlas.map((m) => itemInfo[m]).filter(Boolean);
+        if (!its.length) { no('ML no contestó la publicación'); continue; }
+        const cats = [...new Set(its.map((b) => String(b.catalog_product_id || '').toUpperCase()).filter((c) => /^MLA\d+$/.test(c)))];
+        if (cats.length) for (const c of cats) meter({ key: c, cat: c, usd: x.usd, ts: x.ts });
+        else { const b = its.find((y) => y.status === 'active') || its[0];
+          meter({ key: 'F' + x.p.id, nombre: String(b.title || ''), fotos: fotosDe(b.pictures), usd: x.usd, ts: x.ts }); }
+      }
+      // (1) Candidatos de Para probar con el catálogo confirmado.
+      for (const c of Object.values(cands)) {
+        if (!c || c.prodId || c.no) continue;
+        if (provPyDeBot(c) !== 'nissei') continue;
+        if (!candCatChequeado(c)) { no('candidato sin el catálogo confirmado'); continue; }
+        if (marcaFrenadaDe(c, marcasNo)) { no('marca prohibida'); continue; }
+        const usd = Number(c.usd) || 0; if (!(usd > 0)) { no('candidato sin precio'); continue; }
+        const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
+        const cat = candCatDe(c);
+        meter({ key: cat, cat, usd, ts, titRes: c.mlTit, fotoRes: c.mlFoto });
+      }
+      // Nombre y fotos del catálogo de ML, de a 5 a la vez.
+      const lista = [...porKey.values()];
+      const conCat = lista.filter((x) => x.cat);
+      for (let i = 0; i < conCat.length; i += 5) {
+        await Promise.all(conCat.slice(i, i + 5).map(async (x) => {
+          try { const p = await mlGet('/products/' + x.cat, tk); x.nombre = String(p.name || ''); x.fotos = fotosDe(p.pictures); }
+          catch { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; }
+        }));
+      }
+      const out = [], vistos = new Set();
+      for (const x of lista) {
+        const n = String(x.nombre || '').replace(/\s+/g, ' ').trim();
+        if (!n) { no('sin nombre de ML'); continue; }
+        if (!x.fotos || !x.fotos.length) { no('sin foto de ML'); continue; }
+        if (PROHIBIDO.test(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
+        let id = idDe(x.key); while (vistos.has(id)) id = idDe(id + x.key); vistos.add(id);
+        out.push({ id, n: n.slice(0, 140), f: x.fotos, p: precioDe(x.usd), c: rubroDe(n) });
+      }
+      out.sort((a, b) => a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
+      const wa = String(waRaw || '').replace(/\D/g, '');
+      const json = JSON.stringify({ act: new Date().toISOString().slice(0, 10), wa: wa.length >= 8 ? wa : '', productos: out });
+      if (PROHIBIDO.test(json.replace(/https:\/\/[^"]+/g, ''))) { console.log('❌ El archivo armado tiene una palabra que no puede salir: no escribo nada.'); return; }
+      const porRubro = {}; for (const x of out) porRubro[x.c] = (porRubro[x.c] || 0) + 1;
+      console.log(`=== TIENDA CYC · ${out.length} productos · ${GOt ? 'SE ESCRIBE' : 'prueba (con ;go se escribe el archivo)'} ===`);
+      console.log('por rubro: ' + Object.entries(porRubro).map(([r, k]) => `${r} ${k}`).join(' · '));
+      console.log('afuera: ' + (Object.entries(fuera).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
+      console.log(`WhatsApp: ${wa.length >= 8 ? 'prendido' : 'apagado (sin número en cyc/mlconfig/tiendaWa)'}`);
+      for (const x of out.slice(0, 12)) console.log(`  ${x.id} · ${x.c} · ${money(x.p)} · ${x.n.slice(0, 70)} · ${x.f.length} foto(s)`);
+      if (!GOt) return;
+      if (!out.length) { console.log('❌ 0 productos: no escribo nada (un archivo vacío dejaría la tienda en blanco).'); return; }
+      const ruta = process.env.TIENDA_ARCHIVO || 'tienda/productos.json';
+      mkdirSync(ruta.replace(/\/[^/]*$/, '') || '.', { recursive: true });
+      writeFileSync(ruta, json + '\n');
+      const re = JSON.parse(readFileSync(ruta, 'utf8'));
+      console.log(`✓ escrito ${ruta}: ${re.productos.length} de ${out.length} productos (releído)`);
+      return;
+    }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
     // Nombre y fotos (direcciones de mlstatic) del catálogo de ML, para mirar si es el mismo producto antes de publicar en él.
     if (/^fotocat:/.test(String(process.env.BILLING_PROBE || ''))) {
