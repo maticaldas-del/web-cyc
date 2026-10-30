@@ -2074,6 +2074,9 @@ async function mantenerCaja(db, accounts, DRY) {
     const nom = String(e.title || mla).slice(0, 40);
     if (!e.cuenta) { out.no.push(`${nom}: sin cuenta`); continue; }
     const st = e.caja; const ptw = Number(e.cajaPtw) || 0;
+    // Revisión etapa 4, 30/10/2026: sólo con la caja leída en ESTA vuelta (`cajaDeCompraML` corre justo antes). Si ML no contestó el
+    // price_to_win queda la lectura de antes: se bajaba hasta 15% hacia un precio de hace horas aunque ya estuviéramos ganando.
+    if (!(Number(e.cajaTs) > Date.now() - 75 * 60e3)) { out.no.push(`${nom}: la caja no se pudo leer en esta vuelta (última ${e.cajaTs ? 'hace ' + Math.round((Date.now() - Number(e.cajaTs)) / 6e4) + ' min' : 'nunca'}): no se toca`); continue; }
     // 🔔 AVISO A TELEGRAM cuando deja de ganar la caja con stock (27/10/2026, él con la waflera: "avisar cuando la waflera deje de
     // ganar. cuando llegue stock"). Una vez por cambio (`cyc/ganacaja/<MLA>/aviso` = 'perdiendo' | 'ganando'); sin stock no avisa.
     const avisar = async (txt, estado) => {
@@ -2116,7 +2119,8 @@ async function mantenerCaja(db, accounts, DRY) {
     let rel = 0; try { rel = Number((await mlGet('/items/' + mla + '?attributes=id,price', toks[e.cuenta])).price) || 0; } catch { rel = 0; }
     out.bajadas.push({ mla, nom, de: p0, a: to, rel, mg });
     try { await db.patch('cyc/ganacaja/' + mla, { ult: { ts: Date.now(), de: p0, a: to, ptw } }); } catch { /* el log ya lo dice */ }
-    try { await db.set('cyc/claudecambios/' + Date.now() + '_' + mla, { mla, de: p0, a: to, ts: Date.now(), motivo: 'mantener la caja (lo pidió él)' }); } catch { /* */ }
+    // Revisión etapa 4, 30/10/2026: `por:'ganarcaja'` (el detector no la juzga como un `decido`: es lo que él pidió y autorizó) y si no se anota se dice.
+    try { await db.set('cyc/claudecambios/' + Date.now() + '_' + mla, { mla, de: p0, a: to, ts: Date.now(), motivo: 'mantener la caja (lo pidió él)', por: 'ganarcaja', fmt: 1 }); } catch (er) { out.no.push(`${nom}: ⚠️ bajó pero no pude anotarla en claudecambios (${String(er.message || er).slice(0, 60)})`); }
     await avisoPerdida();
   }
   return out;
@@ -5537,6 +5541,9 @@ async function detectarErrores(db, o = {}) {
   const C = []; let marcas = 0;
   for (const [k, r] of Object.entries(cc)) {
     if (!r || !enVentana(r.ts)) continue;
+    // Revisión etapa 4, 30/10/2026: la baja de `mantenerCaja` (🥊 ganarcaja, la pidió y autorizó él) no es un error a deshacer: antes salía
+    // ❌ por F10/F3/F14, la vuelta la volvía a subir y a la hora el robot la bajaba otra vez.
+    if (r.por === 'ganarcaja') continue;
     // Revisión etapa 1 (24/10): lo anotado por un comando que cambió el precio por fuera de `decido` (`por` = el comando,
     // `anotarCambioFuera`) se juzga igual con los frenos, pero no se "redondea a 90": es un precio exacto pedido (bajar=, empatar, volver, fijar).
     const porFuera = !!(r.por && r.por !== 'errores');
@@ -11758,7 +11765,9 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
         }
         continue;
       }
-      if (T.status === 'paused' && gemBar && gemBar[k] && !DRY) {
+      // Revisión etapa 4, 30/10/2026: se vuelve a activar sólo si su Clásica está ACTIVA y bajó de la barrera. Antes bastaba con que la
+      // Clásica no estuviera activa: una Clásica de $33.000+ pausada (por él, por ML o fuera de Full) le volvía a abrir la de envío a su precio viejo.
+      if (T.status === 'paused' && gemBar && gemBar[k] && !DRY && C.status === 'active') {
         try { const rp = await fetch(ML_API + '/items/' + k, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
           const b2 = await mlGet('/items/' + k + '?attributes=id,status', tk);
           if (rp.ok && b2 && b2.status === 'active') { await db.set('cyc/gemelabarrera/' + k, null); out.activadasBarrera = (out.activadasBarrera || 0) + 1; console.log(`   📦 ${k} activada otra vez: su Clásica bajó a $${Math.round(C.price || 0).toLocaleString('es-AR')} · releída ✓ (se re-precia en la próxima vuelta)`); }
@@ -47968,7 +47977,9 @@ async function main() {
       const M35 = {};
       try {
         const MIN35 = await pisoConfig(db, 35); let mono35 = null; try { mono35 = await leerMonoPct(db); } catch { mono35 = null; }
-        let TF = {}; try { TF = (await db.get('cyc/techofull')) || {}; } catch { TF = {}; }
+        // Revisión etapa 4, 30/10/2026: sin leer `cyc/techofull` no se mide (antes quedaba vacío y todo salía "M35 no": compra de prueba de 1 semana en vez de 30 días).
+        const TF = await db.get('cyc/techofull').then((x) => x || {}, () => null);
+        if (TF == null) throw new Error('no leí cyc/techofull');
         if (mono35 == null) throw new Error('sin % de monotributo');
         const tk35 = {}; for (const l of labels) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[l].refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk35[l] = t.access_token; } catch { /* esa cuenta sin dato */ } }
         const todos = [...grupos.bsas, ...grupos.py, ...grupos.paulvic];
@@ -47993,12 +48004,17 @@ async function main() {
           const pc = Math.max(0, ...mlas.map((m) => Number((TF[m] || {}).t) || 0));
           const pv = Math.max(0, ...(VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && !(L[v.mla] && L[v.mla].gemelaDe)).map((v) => v.pu));
           const mc = await mg(pc), mv = await mg(pv);
-          const rit = async (X) => { let d = 0, u = 0; for (const m of mlas) { const lin = await lineaDe(m); if (!lin) continue;
+          // Revisión etapa 4, 30/10/2026: los días se cuentan UNA vez aunque haya dos publicaciones del mismo stock (antes se sumaban los de cada una
+          // y el ritmo daba la mitad: compra de menos); si no se pudo leer la línea de una, no se mide (antes se salteaba callada).
+          const rit = async (X) => { const D = new Set(); let u = 0; for (const m of mlas) { const lin = await lineaDe(m); if (!lin) return '?/0';
             for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
-              if (diaConStock(x) && Number(x.pLista || x.p) >= X * 0.97) { d++; u += Number(x.u) || 0; } } } return `${u}/${d}`; };
+              if (diaConStock(x) && Number(x.pLista || x.p) >= X * 0.97) { D.add(k); u += Number(x.u) || 0; } } } return `${u}/${D.size}`; };
           const r = (x) => x == null ? '?' : Math.round(x);
           if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}`;
           if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}`;
+          // Revisión etapa 4, 30/10/2026: si ML no dio la comisión a uno de esos precios, no se sabe si llega: no sale M35 (Pedidos usa el precio de
+          // hoy) en vez de "M35 no", que lo mandaba a compra de prueba.
+          if ((pc > 0 && mc == null) || (pv > 0 && mv == null)) return '';
           // 29/10/2026 (él: "descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en
           // stock en full"): el precio que deja 35% (`p35`, entre el de hoy y la venta más cara, verificado con la comisión de ML) y cuántos días
           // estuvo a ese precio o más caro con stock y cuánto vendió ahí (365 días). decide_pedidos.py descarta sólo con 30+ días sin vender.
