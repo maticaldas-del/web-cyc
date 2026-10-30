@@ -5440,12 +5440,16 @@ async function vendioAEstePrecio(db, mla, links, prods) {
   const desde = Math.max(ahora - 30 * 864e5, ...camM.map((c) => Number(c.ts) || 0));
   const viejo = ulM && Number(ulM.a) > Number(ulM.de) ? Number(ulM.de) : 0;
   const grupo = [mla, ...hermanasStockDe(links, prods, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)];
-  let uds = 0;
-  for (let t = desde, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
+  let uds = 0, envMax = 0;
+  // 30/10/2026 (Aer Jasmín): la venta más cara por la gemela de ENVÍO GRATIS arriba de $33.000 en los últimos 30 días (aunque sea de antes
+  // del último cambio): con la Clásica abajo de la barrera, `decido` deja cruzar hasta +50% de ese precio (ver !vendio + !cruza).
+  const desdeE = ahora - 30 * 864e5;
+  for (let t = Math.min(desde, desdeE), i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
     let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
-    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts, viejo)) uds += Number(v.qty) || 1; }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts, viejo)) uds += Number(v.qty) || 1;
+      if (ts > desdeE && (links[v.mla] || {}).gemelaTipo === 'envio') { const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); if (pu >= UMBRAL_ENVIO_GRATIS && pu > envMax) envMax = pu; } }
   }
-  return { uds, desde };
+  return { uds, desde, envMax };
 }
 async function puntoSinTecho(db, mla, links, prods, cache = new Map()) {
   let est = null, ray = null;
@@ -5695,19 +5699,28 @@ async function detectarErrores(db, o = {}) {
       let viejoU = 0; { const ulc = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((mx, c) => (!mx || Number(c.ts) > Number(mx.ts) ? c : mx), null); if (ulc && Number(ulc.ts) > tsU) tsU = Number(ulc.ts); if (ulc && Number(ulc.a) > Number(ulc.de)) viejoU = Number(ulc.de); }
       lzC.nuevo++; if (!/^active/.test(String(e.status || ''))) { lzC.inact++; continue; }   // activa = con stock en Full (sin stock ML la pausa)
       const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
-      let primera = 0, uds = 0, sinLeer = false;
+      let primera = 0, uds = 0, sinLeer = false, pEnv = 0;
       for (let t = Math.max(tsU, ahora - 30 * 864e5), i = 0; i < 31 && t <= ahora + 864e5; t += 864e5, i++) {
         const vd = await ventasDia(dayKeyFromISO(t)); if (vd == null) { sinLeer = true; continue; }
-        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, m, tsU, ts, viejoU)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
+        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, m, tsU, ts, viejoU)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts;
+          if ((links[v.mla] || {}).gemelaTipo === 'envio') { const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); if (pu > pEnv) pEnv = pu; } } }
       }
       if (!primera) { if (sinLeer) lanza.push({ mla: m, e, sinLeer: true }); else lzC.sinVenta++; continue; }
       // una suba de una hermana de stock cuenta: ML iguala sola el precio de las hermanas (27/10, Cartas Poker Envíos y Termómetro 4 botones)
       const herS = [m, ...hermanasStockDe(links, prods, m)];
       const subio = Object.values(cc).some((c) => c && herS.includes(String(c.mla)) && Number(c.ts) > primera && Number(c.a) > Number(c.de) * 1.02);
-      if (subio) { lzC.subio++; continue; }
+      // 30/10/2026 (él con el Aer Jasmín: vendió por su gemela de envío gratis a $33.090 y la Clásica subió sólo a $32.990, frenada en la
+      // barrera: "no importa quién venda, si no tiene techo tiene que seguir buscando y todas las formas de pago tienen que seguir el %"):
+      // si la venta entró por la gemela de ENVÍO GRATIS arriba de $33.000, el +50% se mide sobre ESE precio (el comprador ya pagó más de
+      // $33.000 con envío gratis) y la Clásica cruza la barrera (`!cruza`: decido igual mide que cruzar deje más). Mientras la Clásica siga
+      // abajo de $33.000, haber subido hasta la barrera no alcanza.
+      const P0 = Number((np[m] || {}).precio) || 0;
+      const envPend = pEnv >= UMBRAL_ENVIO_GRATIS && P0 > 0 && P0 < UMBRAL_ENVIO_GRATIS;
+      if (subio && !envPend) { lzC.subio++; continue; }
       if (nbDet[m] && nbDet[m].congelado) { lzC.congelada++; continue; }   // 🧊 él pidió que el precio quede ahí (`nobajar …!congelar`)
       const P = Number((np[m] || {}).precio) || 0; let obj = P > 0 ? Math.min(objTerm(P * TECHO_SUBA) || TECHO_DURO, TECHO_DURO) : 0;
       if (P > 0 && P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;   // regla 2: se frena en la barrera de $33.000 (cruzar lo decide la vuelta con !cruza)
+      let cruzaE = false; if (envPend) { const oE = Math.min(objTerm(pEnv * TECHO_SUBA) || TECHO_DURO, TECHO_DURO); if (oE > obj) { obj = oE; cruzaE = true; } }
       // 🟠 deja de convenir: techo95 (la completa) ya tiene la certeza que pide (95% que baja con los días) de que a este precio deja menos
       // plata por día. Vendió, pero subir más ya no conviene: ahí termina la búsqueda.
       // 29/10/2026 (él con el Pendrive 8gb ⏳: "¿ese techo es real? ¿está 95% de que no vende? ¿por eso no sube?"): en 🔥 escasez y ⏳ sin
@@ -5729,7 +5742,7 @@ async function detectarErrores(db, o = {}) {
       // 4a (27/10/2026 a la noche, la corrida de la estrategia nueva: las Sábanas 1½ "vendió ayer" y decido la frenó por 0,4 por semana): un 📈
       // que vende menos de 1 por semana no sube (decido lo frena); queda 💰 #punto. El 🆕 que vendió sí sube (decido no lo frena).
       if (ult === 'techo') { const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs != null && infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { lzC.lento = (lzC.lento || 0) + 1; continue; } }
-      lanza.push({ mla: m, e, primera, uds, P, obj, tsU, ult });
+      lanza.push({ mla: m, e, primera, uds, P, obj, tsU, ult, cruzaE, pEnv });
     }
   }
   bloque('📈🆕🔥⏳ SIN TECHO MEDIDO, VENDIERON Y NO SUBIERON · vendió a este precio = no es techo: subir +50% EN ESTA VUELTA', lanza, (x) => {
@@ -5737,6 +5750,7 @@ async function detectarErrores(db, o = {}) {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${({ nuevo: '🆕', techo: '📈', escasez: '🔥', sinrepo: '⏳' })[x.ult] || '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
     const esc = x.ult === 'escasez' || x.ult === 'sinrepo';
     if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
+      : x.cruzaE ? `   ▶️ decido:${x.mla}=${x.obj}!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% sobre ese precio y la Clásica cruza la barrera (él, 30/10, el detector);go`
       : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lzC.lento || 0} 📈 que venden menos de 1 por semana (4a: quedan 💰) · ${lanza.length} para subir)`);
@@ -48749,7 +48763,9 @@ async function main() {
               if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
               const vv = await vendioAEstePrecio(db, d.mla, linksD, globalThis._ritmoCacheD.prods);
               if (vv == null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO !vendio: no pude leer sus ventas para confirmar que vendió a este precio. Se vuelve a mirar en la próxima vuelta.'; continue; }
-              if (!vv.uds) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !vendio: no vendió desde el último cambio de precio (${new Date(vv.desde).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): la bandera dice que sí y el dato dice que no.`; continue; }
+              // la gemela de envío gratis vendió arriba de $33.000 y la Clásica sigue abajo: puede cruzar hasta +50% de ESE precio (él, 30/10)
+              const _envOk = fz.cruza && vv.envMax >= UMBRAL_ENVIO_GRATIS && p0 < UMBRAL_ENVIO_GRATIS && a <= Math.ceil(vv.envMax * TECHO_SUBA) + 100;
+              if (!vv.uds && !_envOk) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !vendio: no vendió desde el último cambio de precio (${new Date(vv.desde).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): la bandera dice que sí y el dato dice que no.`; continue; }
               umbS = Number(t9 && t9.umb) || 0.95;
             }
             if (t9 && Number(t9.seg) >= umbS && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
