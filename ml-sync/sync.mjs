@@ -5699,12 +5699,18 @@ async function detectarErrores(db, o = {}) {
       let viejoU = 0; { const ulc = Object.values(cc).filter((c) => c && String(c.mla) === m && Math.abs(Number(c.a) - Number(c.de)) > Number(c.de) * 0.02).reduce((mx, c) => (!mx || Number(c.ts) > Number(mx.ts) ? c : mx), null); if (ulc && Number(ulc.ts) > tsU) tsU = Number(ulc.ts); if (ulc && Number(ulc.a) > Number(ulc.de)) viejoU = Number(ulc.de); }
       lzC.nuevo++; if (!/^active/.test(String(e.status || ''))) { lzC.inact++; continue; }   // activa = con stock en Full (sin stock ML la pausa)
       const grupo = [m, ...hermanasStockDe(links, prods, m), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === m)];
-      let primera = 0, uds = 0, sinLeer = false, pEnv = 0;
-      for (let t = Math.max(tsU, ahora - 30 * 864e5), i = 0; i < 31 && t <= ahora + 864e5; t += 864e5, i++) {
+      let primera = 0, uds = 0, sinLeer = false, pEnv = 0, tsEnv = 0;
+      // la gemela de envío gratis se mira 30 días aunque sea de antes del último cambio (la suba hasta la barrera no la "consume")
+      for (let t = ahora - 30 * 864e5, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
+        if (t + 864e5 < tsU) { const kd = dayKeyFromISO(t); const vd0 = await ventasDia(kd); if (vd0 == null) continue;
+          for (const v of Object.values(vd0)) { if (!v || v.cancelada || !grupo.includes(v.mla) || (links[v.mla] || {}).gemelaTipo !== 'envio') continue; const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (pu > pEnv) { pEnv = pu; tsEnv = ts; } }
+          continue; }
         const vd = await ventasDia(dayKeyFromISO(t)); if (vd == null) { sinLeer = true; continue; }
-        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, m, tsU, ts, viejoU)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts;
-          if ((links[v.mla] || {}).gemelaTipo === 'envio') { const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); if (pu > pEnv) pEnv = pu; } } }
+        for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0;
+          if ((links[v.mla] || {}).gemelaTipo === 'envio' && ts > ahora - 30 * 864e5) { const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); if (pu > pEnv) { pEnv = pu; tsEnv = ts; } }
+          if (ventaCuentaDesde(v, m, tsU, ts, viejoU)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
       }
+      { const P00 = Number((np[m] || {}).precio) || 0; if (!primera && pEnv >= UMBRAL_ENVIO_GRATIS && P00 > 0 && P00 < UMBRAL_ENVIO_GRATIS) { primera = tsEnv; uds = 1; } }
       if (!primera) { if (sinLeer) lanza.push({ mla: m, e, sinLeer: true }); else lzC.sinVenta++; continue; }
       // una suba de una hermana de stock cuenta: ML iguala sola el precio de las hermanas (27/10, Cartas Poker Envíos y Termómetro 4 botones)
       const herS = [m, ...hermanasStockDe(links, prods, m)];
