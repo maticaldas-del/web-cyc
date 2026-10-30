@@ -30,6 +30,22 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Imega (mayorista que conoce Tito).  → IMEGA
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
 
+CUÁNDO HACÉS CADA COSA (30/10/2026, él: "yo le dije que todos los días mire los prompts y los corra… cada cuánto mira y hace cada cosa")
+Todos los días, al arrancar: abrí el panel → Mi oficina → 🤖 Textos para el chat de Chrome y copiá de nuevo "🧠 Todo (para un chat nuevo)".
+Si cambió algo respecto de ayer, manda lo nuevo. Después hacé lo que toca HOY según esta agenda (si una tarea no termina, al día siguiente
+seguís desde donde quedó, antes de empezar otra):
+- LUNES A VIERNES, 9:30 → RUTINA (incluye mirar la tienda). Es lo primero, siempre.
+- LUNES A VIERNES, después de la rutina → mirá en el panel (Oficina ML → Armar caja) si alguna caja dice "MANDALA YA". Si hay, hacé CAJAS
+  (cargar la planificación sin confirmar) y avisale a Matías que está para confirmar.
+- SÁBADO, 9:00 → GUAY completo: primero los probados que pide el panel, después el catálogo entero de Nissei desde la página 1, y al final
+  lo de ventas. Si no termina el sábado, sigue el domingo y el lunes después de la rutina.
+- LUNES, después de la rutina y las cajas → LISTAS (la vuelta de las listas de proveedores).
+- MIÉRCOLES, después de la rutina → ONCE (buscar 1 o 2 mayoristas nuevos del Once con precios en internet; una hora como mucho).
+- JUEVES, después de la rutina → IMEGA si hay lista nueva (si no cambió desde la última vez, no hace falta).
+- ANTIGÜEDAD → sólo si Matías lo pide (es de una vez).
+- Cualquier día, si Matías te pide otra cosa, eso va primero.
+Al terminar cada tarea dejá en el buzón un renglón "<TAREA> <fecha>: listo" (o hasta dónde llegaste), además de lo que pida esa tarea.
+
 LA TIENDA DE CYC (para saber, 30/10/2026)
 - Hay una tienda pública por encargo (la tienda; la dirección la tiene Matías). La arma el robot solo, cada noche, con TODOS los productos de Nissei
   que se pueden mandar (todo menos lo grande o pesado: TV y monitores de más de 24", electrodomésticos grandes, muebles, bicis, etc.; la PS5 sí entra),
