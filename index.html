@@ -3237,7 +3237,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.23';
+const APP_VERSION='28.24';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3250,6 +3250,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.24',f:'30/10',h:'10:00',c:[{n:1,t:'Arqueo → Productos: al elegir una estrategia se ven las fichas de siempre (filtradas), sin la lista aparte; el botón dice cuál es y la ✕ la saca.'}]},
   {v:'28.23',f:'29/10',h:'23:55',c:[{n:1,t:'Arqueo → Efectivo & Digital ordenado: Efectivo, MercadoPago disponible (el total), abajo y más chicas las cuatro cuentas, y al final A liquidar.'}]},
   {v:'28.22',f:'29/10',h:'23:45',c:[{n:1,t:'Arqueo → Stock total: los campos de Oficina ML y Oficina Local van adentro del desplegable de cada oficina (se abren al tocarla). La variación que salía debajo de Oficina Local era de las dos juntas: ahora cada una muestra la suya adentro.'}]},
   {v:'28.21',f:'29/10',h:'23:30',c:[{n:1,t:'Arqueo: se sacó el renglón Vendedores (sólo vuelve si quedara un número cargado).'}]},
@@ -5594,7 +5595,7 @@ function prodOrigenSet(v){prodOrigenVer=v;try{localStorage.setItem('cycProdOrige
 let prodEstrVer=(()=>{try{return localStorage.getItem('cycProdEstr')||'';}catch(e){return '';}})();
 let prodEstrAbierto=false;
 function prodEstrToggle(){prodEstrAbierto=!prodEstrAbierto;renderProds();}
-function prodEstrSet(t){prodEstrVer=(prodEstrVer===t?'':t);try{localStorage.setItem('cycProdEstr',prodEstrVer);}catch(e){}renderProds();}
+function prodEstrSet(t){prodEstrVer=(prodEstrVer===t?'':t);if(prodEstrVer)prodEstrAbierto=false;try{localStorage.setItem('cycProdEstr',prodEstrVer);}catch(e){}renderProds();}
 function _prodEstrDatos(){
   const por={};let n=0;
   for(const [m,e] of Object.entries(state.mllinks||{})){
@@ -5620,15 +5621,8 @@ function _prodEstrBar(D){
       return `<button class="btn" onclick="prodEstrSet('${t}')" title="${String(x[3]||'').replace(/"/g,'&quot;')}" style="background:${on?'var(--green)':'var(--surface)'};color:${on?'#000':'var(--text)'};border:1px solid ${on?'var(--green)':x[2]}">${x[0]} ${x[1]} <span style="opacity:.7">${D.por[t].length}</span></button>`;}).join('')}
       <span style="font-size:.62rem;color:var(--muted);align-self:center">${D.n} publicaciones (sin contar las gemelas, que siguen a su Clásica)</span></div>`;
   }
-  if(u){
-    const L=(D.por[prodEstrVer]||[]).slice().sort((a,b)=>String(a.e.cuenta||'').localeCompare(String(b.e.cuenta||''))||String(a.e.title||'').localeCompare(String(b.e.title||'')));
-    const pr=x=>{const np=(state.netopub||{})[x.m];const v=Number(np&&np.precio)||Number(x.e.price)||0;return v?fmt(Math.round(v)):'';};
-    const dd=x=>x.x&&x.x.ts?' · desde '+new Date(x.x.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';
-    h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:10px">
-      <div style="font-size:.74rem;font-weight:700;margin-bottom:4px">${u[0]} ${u[1]} · ${L.length} publicaci${L.length===1?'ón':'ones'} <button class="btn" onclick="prodEstrSet('${prodEstrVer}')" style="float:right;padding:1px 8px;font-size:.62rem;background:transparent;border:1px solid var(--border2);color:var(--muted)">✕ sacar filtro</button></div>
-      ${L.map(x=>`<div style="font-size:.66rem;display:flex;gap:8px;justify-content:space-between;border-top:1px solid var(--border);padding:3px 0"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.e.cuenta||'')} · ${escHtml(String(x.e.title||x.m).slice(0,70))}${x.e.status==='paused'?' <span style="color:var(--amber)">⏸️</span>':''}</span><span style="white-space:nowrap;color:var(--muted);font-family:'DM Mono',monospace">${pr(x)}${dd(x)}</span></div>`).join('')}
-    </div>`;
-  }
+  // 30/10/2026 (él: "quiero que se vea normal, como si no tuviera ninguna estrategia buscada"): con una estrategia elegida ya no se arma la
+  // lista aparte; quedan las fichas de siempre, filtradas (el botón de arriba dice cuál y cuántas, y ✕ la saca).
   return h;
 }
 function _prodOrigenBar(){
