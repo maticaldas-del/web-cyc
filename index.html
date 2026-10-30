@@ -3242,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.33';
+const APP_VERSION='28.34';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3255,6 +3255,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.34',f:'30/10',h:'15:19',c:[{n:1,t:'🛍️ Ver deudas: en Mercadería Perfumería dice cuánto va pagado de la deuda inicial (se paga primero) y cuánto falta para que empiecen a tacharse los productos.'}]},
   {v:'28.33',f:'30/10',h:'14:43',c:[{n:2,t:'🤖 Textos para el chat de Chrome: arriba de todo, "🧠 Todo (para un chat nuevo)" junta todo lo que sabe el chat local (quién es quién, reglas, la tienda y todas sus tareas). Se arma solo cada noche.'}]},
   {v:'28.32',f:'30/10',h:'14:38',c:[{n:1,t:'🔍 Revisiones: etapa nueva 10 · Tienda (la tienda pública de CYC), cada 7 días como Local.'}]},
   {v:'28.31',f:'30/10',h:'14:30',c:[{n:1,t:'📦 Armar caja: cuando esperar no cuesta nada, el cartel dice que nada se queda sin stock y que la ganancia de la caja se cobra igual una semana después.'}]},
@@ -7456,7 +7457,9 @@ function cuotaDetalleHTML(d){
       ${(()=>{const g=H.filter(x=>x.gan!=null).reduce((t,x)=>t+x.gan,0),c=H.filter(x=>x.gan!=null).length;const vC=H.filter(x=>x.gan!=null).reduce((t,x)=>t+(Number(x.m)||0),0),sinC=H.filter(x=>x.gan==null&&Number(x.m)>0).reduce((t,x)=>t+(Number(x.m)||0),0);
         return c?`<span>🛍️ ganancia de lo dejado: <b style="color:${colPctLocal(g,vC-g)}">${_pesos(g)}</b>${vC-g>0?` (${Math.round(g/(vC-g)*100)}% sobre el costo, de ${_pesos(vC)} con costo cargado)`:''}${sinC>0?` · ${_pesos(sinC)} sin costo cargado: su ganancia no se sabe`:''} <span style="opacity:.75">(sólo se ve acá, no entra en ML)</span></span>`:'';})()}
       ${(()=>{const F=deudaFifo(d),np=F.ent+F.medias+Object.values(d.movs||{}).filter(x=>x&&Number(x.m)>0&&(x.prodNom||x.prod)).length;if(!np)return'';   // pago por plata (30/10/2026)
-        return `<span>💵 lo pagado cubre <b style="color:var(--green)">${F.ent} producto${F.ent===1?'':'s'}</b>${F.medias?` y <b style="color:var(--amber)">${F.medias} a medias (${F.pctMedias.map(x=>x+'%').join(', ')})</b>`:''}${F.sobra>0.5?` · saldo a favor ${_pesos(F.sobra)} (cubre lo que se deje después)`:''} <span style="opacity:.75">(del más viejo al más nuevo)</span></span>`;})()}
+        // 30/10/2026 (él: "¿estás liquidando primero la deuda inicial? quiero que saquemos la deuda inicial primero"): se dice cuánto va de la inicial.
+        const I=F.por._ini,ini=I&&!I.full?`<span>🧾 primero se paga la deuda inicial: <b style="color:var(--amber)">${_pesos(I.pag)} de ${_pesos(I.m)}</b> (${Math.round(I.pct)}%) · faltan ${_pesos(I.m-I.pag)} para que empiecen a tacharse los productos</span>`:'';
+        return ini+`<span>💵 lo pagado cubre <b style="color:var(--green)">${F.ent} producto${F.ent===1?'':'s'}</b>${F.medias?` y <b style="color:var(--amber)">${F.medias} a medias (${F.pctMedias.map(x=>x+'%').join(', ')})</b>`:''}${F.sobra>0.5?` · saldo a favor ${_pesos(F.sobra)} (cubre lo que se deje después)`:''} <span style="opacity:.75">(del más viejo al más nuevo)</span></span>`;})()}
       <span>se sumó <b style="color:var(--green)">${_pesos(sum)}</b></span><span>devolvió <b style="color:var(--red)">${_pesos(res)}</b></span><span>${d.resta<-0.5?`le debemos <b style="color:var(--red)">${_pesos(-d.resta)}</b>`:`falta <b style="color:var(--text)">${_pesos(d.resta)}</b>`}</span>
       ${d.quien?`<span>cargada por ${_escC(d.quien)}</span>`:''}${d.editado?`<span>editada el ${_isoDM(_isoDe(d.editado))}</span>`:''}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0">
