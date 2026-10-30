@@ -4249,3 +4249,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - 30/10 (él: *"quiero poder entrar de panel a la tienda yo"*): ☰ → Mirar → 🛍️ Tienda abre tienda/ en otra pestaña.
 - 30/10 (él: *"la web tiene una lista larguísima hacia abajo… quiero que sea por página"*): la Tienda muestra 24 productos por página con botones ‹ 1 2 … N › abajo; buscar o cambiar de rubro vuelve a la página 1 y cambiar de página sube arriba.
 - 30/10 (él: *"que el botón de tienda esté abajo de todo al lado del precio del dólar"*): el botón 🛍️ Tienda pasó del ☰ a Inicio, al lado del dólar (`home-cab`).
+- 30/10 (él: *"y si paga por stock viejo quiero que no diga sobra stock sino 'pagando stock'"*): `estrategiaDe` (web) muestra ⏰ pagando stock cuando el motivo habla de stock antiguo y 📉 liquidando cuando es la liquidación de 30 días; el tag guardado no cambia (frenos iguales). Chequear: la Piedra Pómez de Ayelen tiene que verse 📉 liquidando.

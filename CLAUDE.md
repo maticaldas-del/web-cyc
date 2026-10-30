@@ -251,7 +251,7 @@
 - **Estrategias (tags)** — todo precio tiene una (19/10, **no existe 🎯 base**; `decido` rechaza un precio sin estrategia): 📈 `techo`
   buscando · 🏔️ `techook` encontrado (sólo vía techo95) · 🪜 `bajando` · ↘️ `volviendo` al normal · ↗️ `desobra` · 🔥 `escasez` ·
   ⏳ `sinrepo` · 📦 `sobra` · 🏷️ `promo` (ML pone) · 💸 `descuento` (sólo nosotros) · 🆕 `nuevo` (lanzamiento) · 💰 `punto` · 🧨 `remate`
-  (sólo si lo pide él) · `liquidando` · 🛡️ excepción (`!piso`, `cyc/claudepiso`). ⚪ sin estrategia (decidir) · ⏸️ sin stock. "Volviendo"
+  (sólo si lo pide él) · `liquidando` · 🛡️ excepción (`!piso`, `cyc/claudepiso`). **⏰ pagando stock** y **📉 liquidando** se VEN según el motivo (30/10, él: *"si paga por stock viejo quiero que no diga sobra stock sino 'pagando stock'"*): el motivo de toda baja por stock antiguo dice "stock antiguo" y el de la liquidación de 30 días "30 días sin vender" (se etiqueta `#liquidando`). ⚪ sin estrategia (decidir) · ⏸️ sin stock. "Volviendo"
   dura 7 días, después entra a 🔎. Cada chip dice "· de X". Cada venta muestra la estrategia que tenía (`cyc/estrategia/<MLA>/<ts>`).
 - **Lanzamiento (🆕)** (20/10; 23/10 él: *"buscá el precio más alto que podamos, que tenga sentido, quizás al de los competidores"*):
   lo nuevo arranca en lo MÁS ALTO que tenga sentido contra su catálogo — si nadie tiene Full, cerca del más caro (Full vale ~19% más);
