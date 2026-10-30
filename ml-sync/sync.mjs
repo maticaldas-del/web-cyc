@@ -11214,8 +11214,9 @@ function deudaFifoBot(d) {
 function recargoRealPedido(c, opt) {
   const falta = PY_GASTOS.filter((g) => !pyGastoCargado(c, g)).map((g) => g.nom);
   const tc = parseFloat(c && c.tcPedido) || parseFloat(c && c.tcPanel) || 0;
-  const _uw = parseFloat(c && c.ticket && c.ticket.usdWeb) || 0;
-  const usd = _uw > 0 ? _uw : (parseFloat(c && c.usdCrudo) || 0);
+  // Base = lo PAGADO del ticket (1a del 30/10/2026, él: el recargo se mide contra lo PAGADO (ticket) y el descuento de Nissei va aparte; antes contra la web y el descuento lo achicaba); sin ticket, la web.
+  const _up = parseFloat(c && c.ticket && c.ticket.usdPagado) || 0, _uw = parseFloat(c && c.ticket && c.ticket.usdWeb) || 0;
+  const usd = _up > 0 ? _up : _uw > 0 ? _uw : (parseFloat(c && c.usdCrudo) || 0);
   if (!(tc > 0)) falta.push('el dólar del día del pedido');
   if (!(usd > 0)) falta.push('los dólares crudos');
   if (falta.length) return { r: null, falta };
@@ -54011,8 +54012,8 @@ async function main() {
         // `recargoRealPedido`) y acá se aplica a lo PAGADO (con descuento): la ficha nacía más barata de lo que sale. Con el ticket se
         // lleva a la misma base (× web ÷ pagado). Cuando estén todos los gastos, `aplicarCostosPedido` la pone en el real (para arriba o
         // para abajo, es la primera compra). Misma cuenta que `pyRecargoEstimado` de index.html.
-        const _tkW = parseFloat(c.ticket && c.ticket.usdWeb) || 0, _tkP = parseFloat(c.ticket && c.ticket.usdPagado) || 0;
-        const _recEst = (_tkW > 0 && _tkP > 0 && RECARGO_PAR * _tkW / _tkP >= 1 && RECARGO_PAR * _tkW / _tkP <= 1.6) ? Math.round(RECARGO_PAR * _tkW / _tkP * 10000) / 10000 : RECARGO_PAR;
+        // 1a del 30/10/2026, él: el recargo se mide contra lo PAGADO (ticket) y el descuento de Nissei va aparte; antes contra la web y el descuento lo achicaba: RECARGO_PAR ya es contra lo pagado, va directo
+        const _recEst = RECARGO_PAR;
         const _recUsar = _recReal || _recEst;
         {
           for (const it of (c.items || [])) {

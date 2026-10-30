@@ -372,7 +372,7 @@
 - **Proveedor:** 🟢 Nissei (dos pedidos del momento: 🌸 Perfumería `pyb<fecha>` y 📦 Resto `py<fecha>`; en `compray` `|perf`/`|resto`)
   y ~~🟣 Elegancia~~ **apagada el 26/10** (él: *"eliminá elegancia. nunca se usa y genera problemas"*): sin solapa en la web y el robot no
   mide su catálogo (`PY_PROVS_VER`, `PY_ELEGANCIA_OFF`); sus datos (`EL_<cód>`, `pyel<fecha>`) quedan guardados. No volver a proponerla.
-- **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. El panel lo suma; el chat carga el precio CRUDO.
+- **Recargo** = el MEDIDO de los pedidos (`paramcompra`; 22,7% al 17/10), respaldo 20%. **Se mide contra lo PAGADO del ticket, no contra la web** (1a del 30/10, él: los descuentos de Nissei achicaban el %): el descuento sale aparte (🎁 en los gastos del pedido). El panel lo suma; el chat carga el precio CRUDO.
   **El que retira cobra ~10% de lo comprado (no es fijo); lo único fijo es el correo (~$20.000-28.000)** (27/10, él): llenar el pedido ahorra poco (~1-2 puntos). **Adelanto de plata** es ocasional
   (`compray:<fecha>|adelanto=<pesos>|go`, renglón aparte del cambista).
 - **El precio de Paraguay NO pisa el costo. Nunca** (17/09): `costUSD` = lo que PAGÓ; `nisseiUSD` = lo que saldría reponer. Al cambiar
