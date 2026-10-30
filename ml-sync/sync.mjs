@@ -40807,6 +40807,31 @@ async function main() {
         else console.log(`  ⚠️ OBLIGATORIO · vuelve a la Oficina ML: sumalo YA con ofi:<palabras del nombre: ${String(pD.name).slice(0, 50)}>=+${uD};go (ml-sync; queda sin etiqueta).`);
         return;
       }
+      // `=repartir` (30/10/2026, él: "cuando es así, repartilas lo más equitativas posible"): lo dejado SIN perfumería se reparte de a una
+      // unidad entre las tres (a la que menos tiene de lo repartido); cada renglón viejo se cambia por uno por perfumería (misma fecha).
+      if (/^repartir$/i.test(String(numF).trim())) {
+        const LOCr = ['soares', 'sarmiento', 'ceballos'];
+        let cR = lista.filter(([id]) => id === quien); if (!cR.length) { const pal = _n(quien).split(' ').filter(Boolean); cR = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cR.length !== 1) { console.log(`❌ "${quien}" agarra ${cR.length} deudas. No escribo nada.`); return; }
+        const [idR, dR] = cR[0]; const movsR = dR.movs || {};
+        const tiene = Object.fromEntries(LOCr.map((l) => [l, 0]));
+        for (const x of Object.values(movsR)) if (x && x.reparto && tiene[x.local] != null) tiene[x.local] += Number(x.u) || 0;
+        const sinL = Object.entries(movsR).filter(([, x]) => x && Number(x.m) > 0 && (x.prod || x.prodNom) && !x.local && Number(x.u) > 0).sort((p, q) => String(p[0]).localeCompare(String(q[0])));
+        if (!sinL.length) { console.log('Nada sin perfumería para repartir.'); return; }
+        const ops = {}; let tot = 0;
+        for (const [kx, x] of sinL) { const ux = Number(x.u) || 0, pu = Number(x.pu) || (Number(x.m) / ux), cu = x.costoU != null ? Number(x.costoU) : null;
+          const toca = Object.fromEntries(LOCr.map((l) => [l, 0]));
+          for (let i = 0; i < ux; i++) { const l = LOCr.slice().sort((p, q) => (tiene[p] + toca[p]) - (tiene[q] + toca[q]))[0]; toca[l]++; }
+          ops[kx] = null; let n = 0;
+          for (const l of LOCr) { if (!toca[l]) continue; tiene[l] += toca[l]; tot += toca[l];
+            ops[kx + 'r' + (n++)] = { ...x, m: pu * toca[l], u: toca[l], local: l, reparto: true, ...(cu != null ? { gan: (pu - cu) * toca[l] } : {}) }; } }
+        console.log(`=== REPARTIR "${_tapaNom(dR)}" ${GO ? '· APLICANDO' : '· PRUEBA'} === ${sinL.length} renglón(es) sin perfumería, ${tot} u. → ${LOCr.map((l) => `${l} ${tiene[l]}`).join(' · ')}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch(`cyc/debencuotas/${idR}/movs`, ops);
+        const rr = (await db.get(`cyc/debencuotas/${idR}/movs`)) || {};
+        console.log(sinL.every(([kx]) => !rr[kx]) ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        return;
+      }
       const mPct = String(numF).trim().match(/^\+\s*(\d+(?:[.,]\d+)?)\s*%(?:@(\d{4}-\d{2}-\d{2}))?$/);
       if (mPct && !extra.prod) { console.log('❌ el +N% va con |prod=<ficha> (sale del costo de esa ficha)'); return; }
       const m = mPct ? ['', '+', '0', mPct[2]] : String(numF).trim().match(/^([+-])\s*\$?\s*([\d.,]+)(?:@(\d{4}-\d{2}-\d{2}))?$/);
@@ -40862,9 +40887,23 @@ async function main() {
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
       const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
-      await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
-      const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
-      console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
+      // `local=reparto` (30/10/2026, él: "cuando es así, repartilas lo más equitativas posible y listo"): las unidades se reparten de a una
+      // entre las tres perfumerías, cada una a la que menos tiene de lo repartido (`reparto:true`); queda un renglón por perfumería.
+      if (sinLocal && signo > 0 && prodF && u > 0) {
+        const tiene = Object.fromEntries(LOCALES.map((l) => [l, 0]));
+        for (const x of Object.values(d.movs || {})) if (x && x.reparto && tiene[x.local] != null) tiene[x.local] += Number(x.u) || 0;
+        const toca = Object.fromEntries(LOCALES.map((l) => [l, 0]));
+        for (let i = 0; i < u; i++) { const l = LOCALES.slice().sort((p, q) => (tiene[p] + toca[p]) - (tiene[q] + toca[q]))[0]; toca[l]++; }
+        let n = 0; for (const l of LOCALES) { if (!toca[l]) continue; const ui = toca[l];
+          await db.set(`cyc/debencuotas/${id}/movs/${k}${n++}`, { ...mv, m: montoU * ui, u: ui, local: l, reparto: true, ...(costoU != null ? { gan: (montoU - costoU) * ui } : {}) }); }
+        console.log(`  🛍️ repartido: ${LOCALES.filter((l) => toca[l]).map((l) => `${l} ${toca[l]}`).join(' · ')} (lo repartido hasta ahora: ${LOCALES.map((l) => `${l} ${tiene[l] + toca[l]}`).join(' · ')})`);
+        const relR = await db.get(`cyc/debencuotas/${id}/movs/${k}0`);
+        console.log(relR && Number(relR.u) > 0 ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+      } else {
+        await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
+        const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
+        console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
+      }
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
         const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
