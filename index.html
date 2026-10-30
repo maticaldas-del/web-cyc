@@ -3246,7 +3246,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.49';
+const APP_VERSION='28.50';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3259,6 +3259,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.50',f:'30/10',h:'19:29',c:[{n:2,t:'🛍️ Perfumería y Tienda: lo dejado al costo (sin ganancia) ya no entra en el %; cuenta en lo vendido pero el % es sólo de lo que se dejó con ganancia.'}]},
   {v:'28.49',f:'30/10',h:'19:13',c:[{n:2,t:'🛍️ La Tienda se mudó a su propia dirección (tiendacyc.github.io). El botón 🛍️ Tienda de Inicio abre la nueva y la dirección vieja manda sola a la nueva.'}]},
   {v:'28.48',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas: se sacó el cuadro para sumar deuda o devolver (monto, fecha, nota). Lo cargo yo cuando me lo decís.'}]},
   {v:'28.47',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas, más simple: al abrir una deuda se ve sólo cuánto falta cobrar. Lo demás (ganancia, deuda inicial, qué cubre lo pagado, quién la cargó) queda en ℹ️ Ver detalle.'}]},
@@ -7260,6 +7261,9 @@ function esVentaDeuda(d){return !!d&&((!d.sinGan&&(Number(d.costo)>0||Object.val
 // ML; con el color de ML todo lo de las perfumerías salía en rojo. Verde con 25% o más sobre el costo, rojo abajo. Lo usan Ver deudas y
 // Métricas → 🏪 Local (y la parte Local de 🔀 ML + Local). Sin costo, el color va por el signo de la ganancia.
 const LOCAL_PCT=25;
+// LO DEJADO AL COSTO NO ENTRA EN EL % (30/10/2026, él: "las ventas sin costo no cuentan en el %"): un renglón con ganancia 0 (Wella, Alfaparf,
+// Paulvic dejados al costo) suma en lo vendido pero no en el divisor del %. Lo usan Ver deudas, Métricas (Perfumería, Tienda, Todo).
+const _ganConCosto=x=>!!x&&x.gan!=null&&Math.abs(Number(x.gan))>0.5;
 function colPctLocal(g,c){if(g==null||!isFinite(Number(g)))return 'var(--muted)';if(!(Number(c)>0))return Number(g)>=0?'var(--green)':'var(--red)';return Math.round(Number(g)/Number(c)*100)>=LOCAL_PCT?'var(--green)':'var(--red)';}
 function colPctLocalP(p){return p==null||!isFinite(p)?'var(--muted)':Math.round(p)>=LOCAL_PCT?'var(--green)':'var(--red)';}
 function deudaMovsProd(d){return Object.values((d&&d.movs)||{}).filter(x=>x&&Number(x.m)>0&&(x.prodNom||x.gan!=null));}
@@ -7372,7 +7376,7 @@ function renderCuotas(){
     const nMov=Object.keys(d.movs||{}).length;
     // MÁS RESUMIDO (28/10/2026, él: "dejar lo importante, % de ganancia y pesos cuánto falta, nombre de la persona, el detalle adentro. sacar
     // pagó y editar"): afuera sólo nombre · % de ganancia · falta; lo demás (qué se llevó, cuotas, costo, fechas, botones) va en el desplegable.
-    const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0),gmG=gm.reduce((t,x)=>t+Number(x.gan),0),gmV=gm.reduce((t,x)=>t+Number(x.m),0);
+    const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0),_gmP=gm.filter(_ganConCosto),gmG=_gmP.reduce((t,x)=>t+Number(x.gan),0),gmV=_gmP.reduce((t,x)=>t+Number(x.m),0);
     // 29/10/2026 (él con Mercadería Perfumería: "¿por qué dice 20%? tiene que ser lo que nos deben y la ganancia de eso"): el % va sobre el COSTO
     // (como en toda la app: el 25% que se le gana a la perfumería se ve 25%, no 20%) y, en una deuda de mercadería dejada (renglones con
     // ganancia), afuera se ve la ganancia en pesos de lo que tiene costo cargado, no un % que deja afuera la deuda vieja sin costo.
@@ -7487,7 +7491,7 @@ function cuotaDetalleHTML(d){
     <div style="font-size:.8rem;margin:8px 0 4px">${d.resta<-0.5?`Le debemos <b style="color:var(--red)">${_pesos(-d.resta)}</b>`:`Falta cobrar <b style="color:var(--text)">${_pesos(d.resta)}</b>`}</div>
     <details style="margin:0 0 4px"><summary style="cursor:pointer;font-size:.66rem;color:var(--muted)">ℹ️ Ver detalle</summary>
     <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.68rem;color:var(--muted);margin:6px 0">
-      ${(()=>{const g=H.filter(x=>x.gan!=null).reduce((t,x)=>t+x.gan,0),c=H.filter(x=>x.gan!=null).length;const vC=H.filter(x=>x.gan!=null).reduce((t,x)=>t+(Number(x.m)||0),0),sinC=H.filter(x=>x.gan==null&&Number(x.m)>0).reduce((t,x)=>t+(Number(x.m)||0),0);
+      ${(()=>{const g=H.filter(x=>x.gan!=null).reduce((t,x)=>t+x.gan,0),c=H.filter(x=>x.gan!=null).length;const vC=H.filter(_ganConCosto).reduce((t,x)=>t+(Number(x.m)||0),0),sinC=H.filter(x=>x.gan==null&&Number(x.m)>0).reduce((t,x)=>t+(Number(x.m)||0),0);
         return c?`<span>🛍️ ganancia de lo dejado: <b style="color:${colPctLocal(g,vC-g)}">${_pesos(g)}</b>${vC-g>0?` (${Math.round(g/(vC-g)*100)}% sobre el costo, de ${_pesos(vC)} con costo cargado)`:''}${sinC>0?` · ${_pesos(sinC)} sin costo cargado: su ganancia no se sabe`:''} <span style="opacity:.75">(sólo se ve acá, no entra en ML)</span></span>`:'';})()}
       ${(()=>{const F=deudaFifo(d),np=F.ent+F.medias+Object.values(d.movs||{}).filter(x=>x&&Number(x.m)>0&&(x.prodNom||x.prod)).length;if(!np)return'';   // pago por plata (30/10/2026)
         // 30/10/2026 (él: "¿estás liquidando primero la deuda inicial? quiero que saquemos la deuda inicial primero"): se dice cuánto va de la inicial.
@@ -24500,14 +24504,14 @@ function _metLocalDia(){
   const D=(typeof cuotasLista==='function'?cuotasLista():Object.values(state.debencuotas||{})).filter(d=>d&&d.nom);
   const M=D.find(d=>/perfumeria/.test(_n(d.nom))&&/mercader/.test(_n(d.nom)));
   if(M)Object.values(M.movs||{}).forEach(x=>{if(!x||!(Number(x.m)>0)||!x.prodNom)return;const lc=_n(x.local);const a=['soares','sarmiento','ceballos'].includes(lc)?'loc_'+lc:'loc_sinperf';
-    const m=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),a,m,g,x.gan!=null?m-g:0);});
+    const m=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),a,m,g,_ganConCosto(x)?m-g:0);});
   // Revisión etapa 9, 30/10/2026: venta = `esVentaDeuda` (la de Ver deudas), el día de ACÁ (`fechaDeuda`; antes la hora de Londres) y, además
   // de la deuda, cada producto que se le dejó a una persona (`debenmov:<persona>=…|prod=…`) en su día, como lo de la perfumería: antes Ver deudas
   // sumaba esa ganancia y Métricas y ¿Cierra el mes? no (un reloj dejado a una persona: "+$40.000" en Ver deudas, $0 acá). Una deuda en $0 no
 // suma un día vacío.
   D.filter(d=>d!==M&&!/perfumeria/.test(_n(d.nom))&&esVentaDeuda(d)).forEach(d=>{const m=Number(d.monto)||0,c=Number(d.costo)||0;
-    if(m>0||c>0)add(kOf(fechaDeuda(d)),'loc_tienda',m,c>0?m-c:0,c>0?c:0);
-    deudaMovsProd(d).forEach(x=>{const mm=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),'loc_tienda',mm,g,x.gan!=null?mm-g:0);});});
+    if(m>0||c>0)add(kOf(fechaDeuda(d)),'loc_tienda',m,c>0?m-c:0,c>0&&Math.abs(m-c)>0.5?c:0);
+    deudaMovsProd(d).forEach(x=>{const mm=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),'loc_tienda',mm,g,_ganConCosto(x)?mm-g:0);});});
   return _metLocMemo=out;
 }
 
@@ -25412,7 +25416,7 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const _kC=new Set(getAllMetKeys(metScopeMode,_pagK)),_kP=new Set(getAllPrevMetKeys(metScopeMode,_pagK));
   const dej=r=>dejT.filter(x=>en(x.f,r)),cob=S=>movs.filter(x=>Number(x.m)<0&&S.has(kOf(x.f)));
   const sum=(a,k)=>a.reduce((t,x)=>t+(Number(x[k])||0),0);
-  const gOf=a=>a.filter(x=>x.gan!=null).reduce((t,x)=>t+Number(x.gan),0),cOf=a=>a.filter(x=>x.gan!=null).reduce((t,x)=>t+Number(x.m)-Number(x.gan),0);
+  const gOf=a=>a.filter(x=>x.gan!=null).reduce((t,x)=>t+Number(x.gan),0),cOf=a=>a.filter(_ganConCosto).reduce((t,x)=>t+Number(x.m)-Number(x.gan),0);
   const dC=dej(R),dP=dej(RP),cC=cob(_kC),cP=cob(_kP);
   const vend=sum(dC,'m'),vendP=sum(dP,'m'),gan=gOf(dC),costoC=cOf(dC),cobr=-sum(cC,'m'),cobrP=-sum(cP,'m');
   const falta=M?(Number(M.resta)||0):0;
