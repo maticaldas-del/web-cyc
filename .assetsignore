@@ -23,3 +23,5 @@ index.html.var
 *.mjs
 *.py
 !tienda/productos.json
+!tienda/manifest.webmanifest
+!tienda/sw.js
