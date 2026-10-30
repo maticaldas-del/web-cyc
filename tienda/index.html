@@ -72,6 +72,11 @@ header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bot
 .nom { font-size: 13.5px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; height: calc(1.3em * 3); }
 .precio { font-weight: 750; font-size: 18px; margin-top: auto; }
 .slot { flex: none; }
+.paginas { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin: 4px 0 90px; }
+.paginas button { min-width: 40px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.paginas button[aria-current] { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+.paginas button:disabled { opacity: .4; cursor: default; }
+.paginas span { color: var(--muted, #888); padding: 0 2px; }
 /* 30/10/2026, él: "agregar que todas las ventas tienen 3 cuotas sin interés en verde" */
 .cuotas { font-size: 12px; line-height: 1.25; font-weight: 600; color: #16a34a; margin-top: -4px; height: calc(1.25em * 2); overflow: hidden; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cuotas { color: #4ade80; } }
@@ -141,6 +146,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 <main class="wrap">
   <div class="cuenta" id="cuenta">Cargando…</div>
   <div class="grilla" id="grilla"></div>
+  <nav class="paginas" id="paginas" aria-label="Páginas"></nav>
   <footer id="pie">CYC</footer>
 </main>
 
@@ -250,10 +256,21 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     return mezclar(top).concat(mezclar(resto));
   }
 
-  function pintar() {
-    var ls = orden(filtrados());
-    $("cuenta").textContent = ls.length + (ls.length === 1 ? " producto" : " productos") + (rubro ? " en " + rubro : "");
-    grilla.innerHTML = ls.length ? ls.map(tarjeta).join("") : '<div class="vacio" style="grid-column:1/-1">No encontré nada con eso.</div>';
+  // POR PÁGINAS (30/10/2026, él: "la web tiene una lista larguísima hacia abajo… quiero que sea por página"): 24 por página (12 renglones
+  // en el teléfono); buscar o cambiar de rubro vuelve a la 1.
+  var POR_PAG = 24, pag = 1;
+  function pintar(irArriba) {
+    var ls = orden(filtrados()), pags = Math.max(1, Math.ceil(ls.length / POR_PAG));
+    if (pag > pags) pag = pags;
+    $("cuenta").textContent = ls.length + (ls.length === 1 ? " producto" : " productos") + (rubro ? " en " + rubro : "") + (pags > 1 ? " · página " + pag + " de " + pags : "");
+    var vis = ls.slice((pag - 1) * POR_PAG, pag * POR_PAG);
+    grilla.innerHTML = ls.length ? vis.map(tarjeta).join("") : '<div class="vacio" style="grid-column:1/-1">No encontré nada con eso.</div>';
+    var nums = [], i;
+    for (i = 1; i <= pags; i++) if (i === 1 || i === pags || Math.abs(i - pag) <= 1) nums.push(i); else if (nums[nums.length - 1] !== "…") nums.push("…");
+    $("paginas").innerHTML = pags > 1 ? '<button type="button" data-pag="' + (pag - 1) + '"' + (pag === 1 ? " disabled" : "") + ' aria-label="Anterior">‹</button>' +
+      nums.map(function (n) { return n === "…" ? '<span>…</span>' : '<button type="button" data-pag="' + n + '"' + (n === pag ? ' aria-current="page"' : "") + '>' + n + '</button>'; }).join("") +
+      '<button type="button" data-pag="' + (pag + 1) + '"' + (pag === pags ? " disabled" : "") + ' aria-label="Siguiente">›</button>' : "";
+    if (irArriba) window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function pintarChips() {
@@ -332,10 +349,11 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     if (b.dataset.mas) return cambiar(b.dataset.mas, 1);
     if (b.dataset.menos) return cambiar(b.dataset.menos, -1);
     if (b.dataset.ver) return ver(b.dataset.ver);
-    if (b.hasAttribute("data-rubro")) { rubro = b.dataset.rubro; pintarChips(); pintar(); return; }
+    if (b.hasAttribute("data-pag")) { pag = Number(b.dataset.pag) || 1; pintar(true); return; }
+    if (b.hasAttribute("data-rubro")) { rubro = b.dataset.rubro; pag = 1; pintarChips(); pintar(); return; }
     if (b.hasAttribute("data-cerrar")) return cerrar(b.closest("dialog"));
   });
-  $("q").addEventListener("input", pintar);
+  $("q").addEventListener("input", function () { pag = 1; pintar(); });
   $("verPedido").onclick = function () { pintarPedido(); abrir($("dlgPedido")); };
   $("vaciar").onclick = function () {
     if (!lineasPedido().length || !confirm("¿Vaciar el pedido?")) return;
