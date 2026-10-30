@@ -4246,3 +4246,4 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - 30/10 (él: *"en mercadopago sí que aparezcan juntos… y que pueda filtrar"*): cobros aparte sólo en Mercadería; MercadoPago y el resto juntos con filtro Todo/➕/➖ (`_cuotaFil`).
 - 30/10 (él: *"agregar que todas las ventas tienen 3 cuotas sin interés en verde"*): cada tarjeta dice en verde "3 cuotas sin interés de $X" (2 renglones fijos, las tarjetas siguen parejas) y el pedido también (total y texto copiado).
 - 30/10 (él: *"¿se puede instalar la web tienda tipo panel? así lo abro más rápido"*): la Tienda se instala como app: tienda/manifest.webmanifest ("CYC", ícono naranja propio en tienda/icono-*.png), tienda/sw.js (primero la red, sin señal lo último visto; scope sólo /tienda/). Chequear: en el teléfono "Agregar a pantalla de inicio" y que abra sin barra.
+- 30/10 (él: *"quiero poder entrar de panel a la tienda yo"*): ☰ → Mirar → 🛍️ Tienda abre tienda/ en otra pestaña.

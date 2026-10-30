@@ -3242,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.37';
+const APP_VERSION='28.38';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3255,6 +3255,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.38',f:'30/10',h:'15:51',c:[{n:1,t:'🛍️ Menú ☰ → Mirar → Tienda: abre la Tienda de CYC en otra pestaña.'}]},
   {v:'28.37',f:'30/10',h:'15:25',c:[{n:1,t:'🛍️ Ver deudas: los cobros aparte sólo en PERFUMERÍA · Mercadería; en MercadoPago y las demás quedan juntos, con filtro Todo · ➕ Se sumó · ➖ Se restó.'}]},
   {v:'28.36',f:'30/10',h:'15:25',c:[{n:2,t:'🛍️ Ver deudas: en PERFUMERÍA (Mercadería y MercadoPago) los cobros salen aparte, en la tarjeta plegable 💵 Cobros con su detalle; la lista de abajo queda sólo con lo que se dejó.'}]},
   {v:'28.35',f:'30/10',h:'15:22',c:[{n:1,t:'🛍️ Ver deudas: el renglón de la deuda inicial se llena en verde hasta lo que va pagado, como los productos.'}]},
@@ -28108,6 +28109,8 @@ window.addEventListener('beforeunload',e=>{if(_borr.size){e.preventDefault();e.r
   <div class="fnav-sec">Mirar</div>
   <button class="fnav-item" data-page="metricas"   onclick="goPage('metricas');fnavOpen=false;_syncFnav()">📊 Métricas</button>
   <button class="fnav-item" data-page="rotacion"   onclick="goPage('rotacion');fnavOpen=false;_syncFnav()">🔄 Rotación de Stock</button>
+  <!-- 30/10/2026, él: "quiero poder entrar del panel a la tienda yo": abre la Tienda pública en otra pestaña (no comparte nada con el Panel). -->
+  <button class="fnav-item" onclick="fnavOpen=false;_syncFnav();window.open('tienda/','_blank','noopener')">🛍️ Tienda</button>
   <button class="fnav-item" data-page="inventario" data-tab="productos" onclick="fnavIrFichas()">🗂️ Fichas de productos</button>
   <div class="fnav-sec">Todos los días</div>
   <button class="fnav-item" data-page="pedidos"    onclick="goPage('pedidos');fnavOpen=false;_syncFnav()">🚚 Pedidos<span class="fnav-n" id="fn-n-ped"></span></button>
