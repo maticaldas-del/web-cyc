@@ -39096,8 +39096,13 @@ async function main() {
           const M = D.find((d) => /perfumeria/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
           const kOf = (f) => String(f || '').slice(0, 10).replace(/-/g, '_');
           if (M) for (const x of Object.values(M.movs || {})) if (x && Number(x.m) > 0 && x.prodNom && kOf(x.f).startsWith(k1) && x.gan != null) ganLoc += Number(x.gan) || 0;
-          for (const d of D) { if (d === M || /perfumeria/.test(_n(d.nom)) || !(Number(d.costo) > 0)) continue;
-            if (kOf(d.fecha0 || (d.ts ? new Date(Number(d.ts)).toISOString() : '')).startsWith(k1)) ganLoc += (Number(d.monto) || 0) - Number(d.costo); } }
+          // Revisión etapa 9, 30/10/2026: misma regla que `esVentaDeuda` de la web (con costo o ganancia anotada, o `tipo:'venta'`), el día de ACÁ
+          // (antes la hora de Londres: lo cargado después de las 21 caía al día siguiente) y además cada producto dejado a una persona
+          // (`debenmov:<persona>=…|prod=…`, ganancia en el movimiento): antes Ver deudas lo sumaba y esto no.
+          const esVentaD = (d) => (!d.sinGan && (Number(d.costo) > 0 || Object.values(d.movs || {}).some((x) => x && x.gan != null))) || d.tipo === 'venta';
+          for (const d of D) { if (d === M || /perfumeria/.test(_n(d.nom)) || !esVentaD(d)) continue;
+            if (Number(d.costo) > 0 && kOf(d.fecha0 || (d.ts ? new Date(Number(d.ts) - 3 * 3600e3).toISOString() : '')).startsWith(k1)) ganLoc += (Number(d.monto) || 0) - Number(d.costo);
+            for (const x of Object.values(d.movs || {})) if (x && Number(x.m) > 0 && x.gan != null && kOf(x.f).startsWith(k1)) ganLoc += Number(x.gan) || 0; } }
         const genera = neto - costo - gastos + ganLoc, esperado = genera - (ret || 0);
         const crecioU = Number(B.total) - Number(A.total), crecio = crecioU * tc;
         console.log(`■ ${k1} (contra ${k0}) · dólar ${tc}${tc0 && tc0 !== tc ? ` (el anterior ${tc0})` : ''}`);
