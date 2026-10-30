@@ -4245,6 +4245,8 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 
 - 30/10 (él: *"quiero bien básico sino me pierdo"*): el detalle de cada deuda (`cuotaDetalleHTML`) muestra a la vista sólo "Falta cobrar"; ganancia, deuda inicial, qué cubre lo pagado, sumó/devolvió y quién la cargó van en ℹ️ Ver detalle (cerrado). Chequear: que el cuadro de monto y los botones sigan abajo y anden.
 
+- 30/10 (él: *"esto sacalo, ya que paso todo por vos"*): en el detalle de cada deuda se sacó el cuadro monto/fecha/nota con ➕ Suma deuda / ➖ Devolvió; todo movimiento va por `debenmov`. `cuotaMovGuardar` queda sin botón (no se borró). Chequear: nada más usaba `cmv_*`.
+
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
 Él: *"agregar esa web de venta local a revisión y largala ahora. que revise todo en máximo esfuerzo"*. La tienda pública por encargo (`tienda/index.html`, `tienda/productos.json`; comando `tienda[;go]` en sync.mjs; `ml-tienda.yml` a mano y el paso de ml-daily cada noche; la dirección de la tienda no va en los textos del repo, 30/10).
 - **Lo que no se rompe nunca:** en la página, en `productos.json` y en el historial de ese archivo NO aparece Nissei, Paraguay, comprasparaguay, códigos de Nissei, nombres en portugués, US$, costos ni recargos (él: *"NADIE SABE QUE LO TRAEMOS DE PARAGUAY"*). Nada del panel (ni datos ni links) se ve desde la tienda.
