@@ -3246,7 +3246,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.47';
+const APP_VERSION='28.48';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3259,6 +3259,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.48',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas: se sacó el cuadro para sumar deuda o devolver (monto, fecha, nota). Lo cargo yo cuando me lo decís.'}]},
   {v:'28.47',f:'30/10',h:'19:12',c:[{n:1,t:'📥 Ver deudas, más simple: al abrir una deuda se ve sólo cuánto falta cobrar. Lo demás (ganancia, deuda inicial, qué cubre lo pagado, quién la cargó) queda en ℹ️ Ver detalle.'}]},
   {v:'28.46',f:'30/10',h:'18:46',c:[{n:3,t:'📊 Métricas: el "Local" ya no existe. Arriba hay 📦 ML · 🛍️ Perfumería (Soares, Sarmiento y Ceballos, con sus barras, mes a mes, productos y sus deudas) · 🏬 Tienda (las ventas por afuera y sus deudas) · 🔀 Todo (ML, Perfumería y Tienda: tres tarjetas, tres capas en la Tendencia y tres columnas por día).'}]},
   {v:'28.45',f:'30/10',h:'18:43',c:[{n:1,t:'🔀 Métricas → ML + Local: las tarjetas de arriba, la Participación y el % de Ganancia muestran tres: 📦 ML, 🛍️ Perfumería y 🏬 Tienda. En la Tendencia, el Local dice cuánto es de cada una.'}]},
@@ -7493,13 +7494,7 @@ function cuotaDetalleHTML(d){
         return ini+`<span>💵 lo pagado cubre <b style="color:var(--green)">${F.ent} producto${F.ent===1?'':'s'}</b>${F.medias?` y <b style="color:var(--amber)">${F.medias} a medias (${F.pctMedias.map(x=>x+'%').join(', ')})</b>`:''}${F.sobra>0.5?` · saldo a favor ${_pesos(F.sobra)} (cubre lo que se deje después)`:''} <span style="opacity:.75">(del más viejo al más nuevo)</span></span>`;})()}
       <span>se sumó <b style="color:var(--green)">${_pesos(sum)}</b></span><span>devolvió <b style="color:var(--red)">${_pesos(res)}</b></span><span>${d.resta<-0.5?`le debemos <b style="color:var(--red)">${_pesos(-d.resta)}</b>`:`falta <b style="color:var(--text)">${_pesos(d.resta)}</b>`}</span>
       ${d.quien?`<span>cargada por ${_escC(d.quien)}</span>`:''}${d.editado?`<span>editada el ${_isoDM(_isoDe(d.editado))}</span>`:''}</div></details>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0">
-      <input id="cmv_m_${d.id}" class="fin-input" type="text" inputmode="numeric" placeholder="$ monto" style="width:110px">
-      <input id="cmv_f_${d.id}" class="fin-input" type="date" value="${_isoHoy()}" style="width:150px;text-align:left">
-      <input id="cmv_n_${d.id}" class="fin-input" type="text" placeholder="nota (ej. compra 6 perfumes, tarjeta Mati)" style="flex:1 1 180px;text-align:left">
-      <button class="btn" style="font-size:.7rem;color:var(--green);border-color:rgba(34,197,94,.5)" onclick="cuotaMovGuardar('${d.id}',1)">➕ Suma deuda</button>
-      <button class="btn" style="font-size:.7rem;color:var(--red);border-color:rgba(239,68,68,.5)" onclick="cuotaMovGuardar('${d.id}',-1)">➖ Devolvió</button>
-    </div>
+    <!-- 30/10/2026 (él: "esto sacalo, ya que paso todo por vos"): sin el cuadro de monto/fecha/nota ni ➕ Suma deuda / ➖ Devolvió; los movimientos los carga Claude (debenmov); cuotaMovGuardar queda sin botón. -->
     ${_cob.length?`<details style="margin:6px 0 10px;border:1px solid var(--border);border-radius:8px;padding:6px 10px" ${window._cuotaCobAb===d.id?'open':''} ontoggle="window._cuotaCobAb=this.open?'${d.id}':null">
       <summary style="cursor:pointer;font-size:.72rem;font-weight:600">💵 Cobros · ${_cob.length} · <span style="color:var(--green)">${_pesos(_cob.reduce((t,x)=>t-x.m,0))}</span></summary>
       ${_cob.map(x=>`<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:.7rem">
