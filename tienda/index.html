@@ -216,8 +216,31 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     });
   }
 
+  // VIDRIERA (30/10/2026, él: "que no se muestren por categoría en la pantalla de inicio, que muestre uno de cada… que se vean cosas de
+  // marca, es lo que más llama la atención, y caras… y que todos los días rote esa mercadería"): primero lo de marca conocida y de
+  // $60.000 para arriba, mezclado de a un rubro por vez y en otro orden cada día; después todo lo demás, también mezclado por rubro.
+  var MARCAS = /\b(sony|playstation|ps5|ps4|dualsense|nintendo|xbox|apple|iphone|ipad|airpods|macbook|samsung|galaxy|jbl|bose|beats|garmin|amazfit|huawei|xiaomi|redmi|logitech|razer|steelseries|hyperx|corsair|anker|dji|gopro|canon|nikon|kindle|lenovo|asus|philips|braun|oral-?b|dyson|carolina herrera|dior|chanel|paco rabanne|rabanne|versace|lattafa|armani|hugo boss|calvin klein|lancome|lanc[oô]me|givenchy|azzaro|jean paul gaultier|montblanc|bvlgari|ralph lauren|tommy|victoria'?s secret|ifi|haylou|marshall|sennheiser|audio-?technica|seagate|sandisk|kingston|western digital|wd\b)/i;
+  var CARO = 60000;
+  function semilla(t) { var h = 2166136261; for (var i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; }
+  function orden(ls) {
+    var d = new Date(), hoy = d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+    var azar = function (p) { return semilla(hoy + "|" + p.id); };
+    var mezclar = function (arr) {
+      var por = {}, rubros = [];
+      arr.slice().sort(function (a, b) { return azar(a) - azar(b); }).forEach(function (p) { var c = p.c || "Otros"; if (!por[c]) { por[c] = []; rubros.push(c); } por[c].push(p); });
+      rubros.sort(function (a, b) { return semilla(hoy + a) - semilla(hoy + b); });
+      var out = [], quedan = true;
+      for (var i = 0; quedan; i++) { quedan = false; rubros.forEach(function (c) { if (por[c][i]) { out.push(por[c][i]); quedan = true; } }); }
+      return out;
+    };
+    var ACCES = /\b(bater[ií]a|cargador|cable|funda|estuche|repuesto|adaptador|protector|correa|malla|soporte)\b/i;
+    var top = ls.filter(function (p) { return p.p >= CARO && MARCAS.test(p.n) && !ACCES.test(p.n); });
+    var resto = ls.filter(function (p) { return top.indexOf(p) < 0; });
+    return mezclar(top).concat(mezclar(resto));
+  }
+
   function pintar() {
-    var ls = filtrados();
+    var ls = orden(filtrados());
     $("cuenta").textContent = ls.length + (ls.length === 1 ? " producto" : " productos") + (rubro ? " en " + rubro : "");
     grilla.innerHTML = ls.length ? ls.map(tarjeta).join("") : '<div class="vacio" style="grid-column:1/-1">No encontré nada con eso.</div>';
   }
