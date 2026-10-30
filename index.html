@@ -8799,6 +8799,16 @@ function renderBuzonCard(){
 // perf"). Lo carga Claude (`pedperf:<producto>=<u>;go` → `cyc/pedperf/<id>`); lo decidido en Pedidos ya trae la suma. Baja sola al dejárselo.
 function pedPerfChip(pid){const x=(state.pedperf||{})[pid];if(!x||!(Number(x.u)>0))return '';
   return ` <span style="padding:1px 6px;border-radius:4px;background:rgba(236,72,153,.14);color:#f472b6;font-size:.62rem;font-weight:500;white-space:nowrap" title="La perfumería${x.local?' ('+_esc(x.local)+')':''} pidió ${x.u}${x.va?' '+_esc(x.va):''}: ya está sumado a lo que se pide para ML. Lo que ya está en la oficina queda apartado para ella y no va a Full.">🛍️ ${x.u} perfumería</span>`;}
+// 🛍️ LO APARTADO PARA LA PERFUMERÍA EN LA OFICINA ML (revisión etapa 9, 30/10/2026): lo que pidió (`cyc/pedperf`) y no cubre la Oficina Local
+// (`cyc/oficyc`) queda en la Oficina ML para ella: decide_pedidos.py y decide_cajas.py no lo cuentan para ML ni lo mandan a Full. En Pedidos
+// tampoco tapa días ni pinta el semáforo como si alcanzara. min(oficina, pedido − Oficina Local), la misma cuenta que `perfApE` del robot
+// (`escasez`). `va` null = el producto entero; con `va`, sólo si la perfumería pidió ESE color.
+function pedPerfApartado(p,va){const x=p&&(state.pedperf||{})[p.id];const u=Number(x&&x.u)||0;if(!(u>0))return 0;
+  const vaP=x.va?sid(String(x.va)).toLowerCase():'';if(va!=null&&(!vaP||sid(String(va)).toLowerCase()!==vaP))return 0;
+  const y=(state.oficyc||{})[p.id];
+  const ocy=!y?0:typeof y!=='object'?(parseInt(y)||0):vaP?Object.entries(y.v||{}).reduce((a,[c,q])=>a+(String(c).toLowerCase()===vaP?(parseInt(q)||0):0),0):Object.values(y.v||{}).reduce((a,q)=>a+(parseInt(q)||0),0)+(parseInt(y.t)||0);
+  const ofi=va!=null?getQV(p.id,OFI,va):(vaP&&(p.variantes||[]).length?getQV(p.id,OFI,x.va):stockOficina(p));
+  return Math.min(ofi,Math.max(0,u-ocy));}
 // 🤖 TEXTOS PARA EL CHAT DE CHROME (29/10/2026, él: "vos podés pasar todos los prompts ahí en cyc no? más fácil. yo le digo lo que quiero
 // que haga y listo"). Los copia el robot (`prompts:go`, cada noche) de ml-sync/PROMPT_*.md a `cyc/prompts/<nombre>` = {t, d, txt, ts}.
 // Cada uno con 📋 Copiar (para pegarlo entero) y ▸ Ver (el chat de Chrome también lo puede leer abriendo esta pantalla).
@@ -16518,7 +16528,7 @@ async function syncPedidosAuto(){
       necesario=varDefs.reduce((s,x)=>s+x.vFalta,0);
       // SEMÁFORO (06/10/2026): los días que cubre el color MÁS justo contando ML + casa + camino, y
       // cuántos colores que venden están en cero en todos lados.
-      varDefs.forEach(x=>{const t=x.vStock+x.vCasa+x.vCam+x.vPv;if(t<=0)varSemCero++;
+      varDefs.forEach(x=>{const t=x.vStock+Math.max(0,x.vCasa-pedPerfApartado(p,x.v))+x.vCam+x.vPv;if(t<=0)varSemCero++;   // sin lo apartado para la perfumería (revisión etapa 9)
         if(x.vRate>0){const d=Math.round(t/x.vRate);if(varSemDias==null||d<varSemDias)varSemDias=d;}});
       // El desglose muestra lo que hay que COMPRAR de cada una: si de una variante ya tenés en casa
       // lo que falta, no entra en el pedido aunque ML esté en cero (hay que mandarla, no comprarla).
@@ -16687,7 +16697,9 @@ async function syncPedidosAuto(){
     // solo y se quedaba con días que tampoco tapa.
     // Puede quedar un resto sin cubrir por ninguna de las dos, y está bien que quede: son los
     // días que no tapás ni comprando esto ni mandando lo que tenés.
-    let diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(enOficina+enCamino)/vDia):0;
+    // Revisión etapa 9, 30/10/2026: lo apartado para la perfumería en la oficina no va a Full: no tapa días ni cuenta en el semáforo (`pedPerfApartado`).
+    const _perfAp=pedPerfApartado(p);
+    let diasTapaCasa=vDia>0?Math.min(diasEnRiesgo,(Math.max(0,enOficina-_perfAp)+enCamino)/vDia):0;
     let diasTapaCompra=vDia>0?Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),aComprar/vDia):0;
     // COLOR POR COLOR (revisión etapa 3, 29/10/2026): con el total, lo que hay en la oficina o en camino de UN color tapaba el riesgo de
     // OTRO (40 Rojo en la oficina "cubrían" el Blanco en 0 en todos lados: la compra del Blanco salvaba $0 y quedaba última en "lo que salva
@@ -16698,19 +16710,19 @@ async function syncPedidosAuto(){
       const kV=v=>sid(String(v).toLowerCase()),qDe={};for(const x of (variantesNec||[]))qDe[kV(x.v)]=(qDe[kV(x.v)]||0)+Math.max(0,parseInt(x.q)||0);
       let tc=0,tb=0;const conR=new Set();
       for(const x of _varR){if(!(x.vRate>0))continue;const k=kV(x.v);conR.add(k);const w=Math.min(1,x.vRate/vDia),rd=Math.max(0,RIESGO_DIAS-x.vStock/x.vRate);
-        const c=Math.min(rd,(x.vCasa+x.vCam+(x.vPv||0))/x.vRate);tc+=w*c;tb+=w*Math.min(Math.max(0,rd-c),(qDe[k]||0)/x.vRate);}
+        const c=Math.min(rd,(Math.max(0,x.vCasa-pedPerfApartado(p,x.v))/* sin lo apartado para la perfumería (revisión etapa 9) */+x.vCam+(x.vPv||0))/x.vRate);tc+=w*c;tb+=w*Math.min(Math.max(0,rd-c),(qDe[k]||0)/x.vRate);}
       const qOtros=Object.entries(qDe).reduce((a,[k,q])=>a+(conR.has(k)?0:q),0);
       const ofiSC=Math.max(0,(enOficina||0)-(p.variantes||[]).reduce((a,v)=>a+getQV(p.id,OFI,v),0));
       const camT=transitoTotal(_trPed,p.id),camSC=Math.max(0,camT-(p.variantes||[]).reduce((a,v)=>a+LOCS.reduce((b,l)=>b+transitoDe(_trPed,p.id,l,v),0),0));
       diasTapaCasa=Math.min(diasEnRiesgo,tc+(enPy+ofiSC+camSC)/vDia);
       diasTapaCompra=Math.min(Math.max(0,diasEnRiesgo-diasTapaCasa),tb+qOtros/vDia);
     }
-    const cubreCasa=vDia>0?Math.round((stock+enOficina+enCamino)/vDia):999;
+    const cubreCasa=vDia>0?Math.round((stock+Math.max(0,enOficina-_perfAp)+enCamino)/vDia):999;   // sin lo apartado para la perfumería (revisión etapa 9)
     // ── EL SEMÁFORO DE PEDIDOS (06/10/2026, regla suya) ──────────────────────────────
     // Cuenta ML + en camino + oficina. 🔴 rojo = no hay en NINGÚN lado (se pierde plata hoy) ·
     // 🟠 naranja = alcanza 14 días o menos, o algún color que vende está en cero (se va a cortar) ·
     // 🟡 amarillo = más de 14 días (hasta los 20 del objetivo). No toca `estado`, puntaje ni riesgo.
-    const semTot=stock+enOficina+enCamino;
+    const semTot=stock+Math.max(0,enOficina-_perfAp)+enCamino;   // sin lo apartado para la perfumería (revisión etapa 9, 30/10/2026)
     let semDias=varSemDias!=null?Math.min(cubreCasa,varSemDias):cubreCasa;
     // ⚡ (20/10/2026 · etapa 3): el semáforo mide la escasez con la misma regla que `escasezDe` y el robot: si en la
     // semana vendió 2+ u. y el doble del ritmo, los días que alcanza salen del ritmo de 7 días (sólo el semáforo: las

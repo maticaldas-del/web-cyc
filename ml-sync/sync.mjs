@@ -40342,6 +40342,10 @@ async function main() {
       if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
       if (cand.length !== 1) { console.log(`❌ "${quien}" agarra ${cand.length} deudas${cand.length ? ': ' + cand.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
       const [id, d] = cand[0]; const signo = m[1] === '+' ? 1 : -1, antes = saldo(d), despues = Math.max(0, antes + signo * monto);
+      // Revisión etapa 9, 30/10/2026: lo que se deja en la perfumería (su deuda, o con `local=`) va con `u=`. Sin eso se tomaba 1: la plata
+      // salía como de 1 unidad y lo que ella había pedido (`cyc/pedperf`) bajaba de a 1 aunque se le dejaran 3.
+      const esPerfD = /perfumer/.test(_n(d.nom)) || !!local;
+      if (signo > 0 && prodF && esPerfD && !extra.u) { console.log('❌ lo que se deja en la perfumería va con |u=<cuántas se dejaron>. No escribo nada.'); return; }
       console.log(`=== MOVIMIENTO EN "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
       if (prodF) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
@@ -40367,12 +40371,19 @@ async function main() {
             let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
             await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
         else console.log(`  ⚠️ en la Oficina Local hay ${ant} sin color de ${prodF.name}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
-      else if (signo > 0 && prodF && extra.de && /mati|ml/i.test(extra.de)) console.log(`  🏠 salió de la Oficina ML: restalo con ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync; ofi no acepta el número de ficha)`);
+      else if (signo > 0 && prodF && extra.de && /mati|ml/i.test(extra.de)) console.log(`  ⚠️ OBLIGATORIO · salió de la Oficina ML: restalo YA con ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync; ofi no acepta el número de ficha). Hasta restarlo, Armar caja lo cuenta para mandar a Full.`);
       // Lo que se le dejó a la perfumería baja lo que ella había pedido (`cyc/pedperf`, 29/10/2026): ya no hay que comprarlo para ella.
-      if (signo > 0 && prodF) { let pp = null; try { pp = await db.get('cyc/pedperf/' + prodF.id); } catch { pp = null; }
-        if (pp && Number(pp.u) > 0) { const r2 = Math.max(0, Number(pp.u) - u);
-          if (r2 > 0) await db.patch('cyc/pedperf/' + prodF.id, { u: r2, ts: Date.now() }); else await db.set('cyc/pedperf/' + prodF.id, null);
-          console.log(`  🛍️ lo que pidió la perfumería: ${pp.u} → ${r2}${r2 ? '' : ' (cumplido, sale de Pedidos)'}`); } }
+      // Revisión etapa 9, 30/10/2026: sólo con la deuda de la perfumería (o con `local=`): antes bajaba con CUALQUIER deuda con `prod=` (lo que se
+      // llevó una persona le comía el pedido a la perfumería). Si lo pidió una perfumería y se dejó en otra (o no dice en cuál), no se toca. Una
+      // lectura que falla se dice (antes callada). Y si no dice de qué oficina salió, lo apartado en la Oficina ML deja de estarlo: hay que restarlo.
+      if (signo > 0 && prodF && esPerfD) { let pp = null, ppOk = true; try { pp = await db.get('cyc/pedperf/' + prodF.id); } catch { ppOk = false; }
+        if (!ppOk) console.log(`  ⚠️ NO LEÍ cyc/pedperf: lo que pidió la perfumería de ${prodF.name} NO bajó. Bajalo con pedperf:${prodF.id}=<lo que falta>;go`);
+        else if (pp && Number(pp.u) > 0) {
+          if (pp.local && pp.local !== local) console.log(`  🛍️ lo pidió ${pp.local} y esto ${local ? 'se dejó en ' + local : 'no dice en qué perfumería quedó (|local=…)'}: lo que pidió (${pp.u}) no lo toco`);
+          else { const r2 = Math.max(0, Number(pp.u) - u);
+            if (r2 > 0) await db.patch('cyc/pedperf/' + prodF.id, { u: r2, ts: Date.now() }); else await db.set('cyc/pedperf/' + prodF.id, null);
+            console.log(`  🛍️ lo que pidió la perfumería: ${pp.u} → ${r2}${r2 ? '' : ' (cumplido, sale de Pedidos)'}`);
+            if (!(extra.de && /cyc|local|mati|ml/i.test(extra.de))) console.log(`  ⚠️ OBLIGATORIO · no dice de qué oficina salió y estas ${u} estaban apartadas para la perfumería en la Oficina ML: si salieron de ahí, ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync) YA; si salieron de la Oficina Local, oficyc:${prodF.id}=-${u};go; si de otro lado, que lo diga Matías. Hasta restarlo, Armar caja las cuenta para mandar a Full.`); } } }
       return;
     }
     // BILLING_PROBE=oficyc[:<palabras o id>[@<color>]=<+N|-N|N>;…|listo|amano][;go] · LA OFICINA LOCAL POR UNIDADES (29/10/2026, él: "stock del local
@@ -46044,6 +46055,20 @@ async function main() {
       // Enchufe se contó como sobra y reposición mercadería que no iba a llegar a Full. Vale 15 días (la caja siguiente lo rehace).
       const cupoCortoE = cupoCortoMapa(await db.get('cyc/claudedecide/caja').catch(() => null), ahora);
       if (cupoCortoE === null) console.log('(no pude leer las cajas decididas: lo que no entra por el cupo se cuenta como oficina)');
+      // Revisión etapa 9, 30/10/2026: LO APARTADO PARA LA PERFUMERÍA TAMPOCO REPONE. Lo que pidió (`cyc/pedperf`) y no cubre la Oficina Local
+      // (`cyc/oficyc`) queda en la Oficina ML para ella (decide_cajas.py no lo manda a Full): min(oficina, pedido − Oficina Local), la misma
+      // cuenta que decide_cajas.py y que `pedPerfApartado` de la web. Con color pedido, ese color (o la clave del producto, sin pasar lo de ese
+      // color); sin color pedido, sólo la clave del producto.
+      let PPE = null, OCE = null;
+      try { PPE = (await db.get('cyc/pedperf')) || {}; OCE = (await db.get('cyc/oficyc')) || {}; } catch { PPE = null; console.log('(no pude leer lo que pidió la perfumería: lo apartado para ella se cuenta como oficina)'); }
+      const perfApE = (pid, ck, ofiTot) => { const x = PPE && PPE[pid]; const uP = Number(x && x.u) || 0; if (!(uP > 0)) return 0;
+        const va = x.va ? sidE(String(x.va)).toLowerCase() : '';
+        if (va ? (ck && String(ck).toLowerCase() !== va) : !!ck) return 0;
+        // una publicación sin color (con los colores adentro) mira la oficina del producto: lo apartado es del color pedido, nunca más que ése
+        const tope = va && !ck ? Math.min(ofiTot, Math.max(0, parseInt((inv || {})[pid + '__' + sidE('Oficina Mati') + '__v__' + sidE(String(x.va))]) || 0)) : ofiTot;
+        const y = (OCE || {})[pid];
+        const ocy = !y ? 0 : typeof y !== 'object' ? parseInt(y) || 0 : va ? Object.entries(y.v || {}).reduce((a2, [c2, b2]) => a2 + (String(c2).toLowerCase() === va ? parseInt(b2) || 0 : 0), 0) : Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0);
+        return Math.min(tope, Math.max(0, uP - ocy)); };
       // DÍAS CON STOCK (revisión 9): del registro hora por hora (`cyc/stocklog/cambios`), misma cuenta que `diasStock` /
       // `ventana` de `calcCerebro`: las ventas cuentan sólo desde que el registro mira esa clave. Sin registro de la clave
       // (o si no se pudo leer) cae a días corridos desde que volvió el stock (`cyc/stockhist`) y el renglón lo dice (📅).
@@ -46174,7 +46199,8 @@ async function main() {
         const ofiK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
         const ofiTotal = Math.max(0, parseInt(inv[ofiK]) || 0);
         const ccFalta = cupoCortoDe(cupoCortoE, k);
-        const ofi = Math.max(0, ofiTotal - ccFalta);   // 6.P2: lo que no entra en Full por el cupo no repone
+        const perfAp = perfApE(pid, iv > 0 ? k.slice(iv + 5) : '', ofiTotal);   // revisión etapa 9, 30/10/2026: lo apartado para la perfumería
+        const ofi = Math.max(0, ofiTotal - ccFalta - perfAp);   // 6.P2: lo que no entra en Full por el cupo no repone (ni lo de la perfumería)
         // CUÁNTO TARDA EN VOLVER A HABER EN FULL (15/10/2026, regla suya): no es 15 días para todos. Con caja
         // despachada, lo que le falta a esa caja; con mercadería en la oficina, armar y mandar (10 d); si no, lo
         // que tarda COMPRAR según la situación del producto (`cyc/reponer`, lo escribe la web con la misma
@@ -46203,7 +46229,7 @@ async function main() {
         // filtro de "menos de 2 ventas en 14 d" lo escondía (Centímetro Rosa: 150 en la oficina, en cero desde el 24/09).
         if (vv.u14 < 2 && !EXP && !comp.inf) {
           const _ofK = iv > 0 ? pid + '__' + sidE('Oficina Mati') + '__v__' + k.slice(iv + 5) : pid + '__' + sidE('Oficina Mati');
-          const _of = Math.max(0, parseInt(inv[_ofK]) || 0);
+          const _of = Math.max(0, (parseInt(inv[_ofK]) || 0) - perfAp);   // sin lo apartado para la perfumería (revisión etapa 9, 30/10/2026)
           if (Math.max(0, parseInt(inv[k]) || 0) === 0 && _of > 0 && vv.u30 >= 1 && !(cam[k] || []).length) ceroConOfi.push({ k, of: _of, u30: vv.u30 });
           fueraPocas.push(k); continue;
         }
@@ -47561,7 +47587,12 @@ async function main() {
       const cajaDecTxt = (pid, va) => C4.map((c) => { const d = CDC[pid + '__' + c.toLowerCase() + (va ? '__v__' + sid(String(va).toLowerCase()) : '')];
         return d && typeof d === 'object' && Number.isFinite(Number(d.u)) ? ab2(c) + Math.max(0, parseInt(d.u) || 0) : ''; }).filter(Boolean).join(' ');
       const grupos = { bsas: [], py: [], paulvic: [] }; const fuera = [];
-      let PERF0 = {}; try { PERF0 = (await db.get('cyc/pedperf')) || {}; } catch { PERF0 = {}; }
+      // Revisión etapa 9, 30/10/2026: si `cyc/pedperf` o `cyc/oficyc` no se pueden leer NO es "la perfumería no pidió nada": decide_pedidos.py y
+      // decide_cajas.py armarían todo sin lo de ella (pisando lo decidido) y mandarían a Full lo apartado. Antes se seguía con {} sin decir nada
+      // (`PERFT` decía "no leí" en minúscula y los scripts sólo frenan con "NO LEÍ"). Ahora NO LEÍ y no se imprime nada. Se leen una sola vez.
+      let PERF0 = {}, OCY = {};
+      try { PERF0 = (await db.get('cyc/pedperf')) || {}; OCY = (await db.get('cyc/oficyc')) || {}; }
+      catch (eP) { console.log(`⚠️ NO LEÍ: cyc/pedperf o cyc/oficyc (lo que pidió la perfumería: ${String(eP.message || eP).slice(0, 50)}) — no armo la lista a medias`); return; }
       for (const p of prods) {
         const _perfP = PERF0[p.id] && Number(PERF0[p.id].u) > 0;   // lo que pide la perfumería entra aunque esté en la papelera o "no traer" (29/10)
         if (PAP[p.id] && !_perfP) { fuera.push(`🗑️ ${p.name}`); continue; }
@@ -47640,7 +47671,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id) > 0 ? ' · OFICYC ' + ocyU(p.id) : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -47813,9 +47844,13 @@ async function main() {
         }
       } catch (e) { console.log(`⚠️ el 35% contra la competencia / la venta más cara no se pudo medir (${e.message}): Pedidos usa el precio de hoy`); }
       // 🛍️ lo que pidió la perfumería (`pedperf`, 29/10/2026): decide_pedidos.py lo suma a lo de ML (`PERF <u>[@<color>]`).
-      let PERFT = {}; try { PERFT = (await db.get('cyc/pedperf')) || {}; } catch { PERFT = {}; console.log('⚠️ no leí cyc/pedperf: lo que pidió la perfumería no se suma'); }
-      let OCY = {}; try { OCY = (await db.get('cyc/oficyc')) || {}; } catch { OCY = {}; }
-      const ocyU = (k) => { const y = OCY[k]; return y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); };
+      const PERFT = PERF0;   // leído arriba, con `cyc/oficyc` (revisión etapa 9, 30/10/2026: una falla ahí es NO LEÍ)
+      // Revisión etapa 9, 30/10/2026: si la perfumería pidió un color, `OFICYC` es lo de ESE color en la Oficina Local (`v/<color>`). Antes era la
+      // suma de todos: 2 Azul en la Oficina Local "cubrían" 2 Rojo pedidos, no se compraba nada y el Rojo de la Oficina ML se iba a Full.
+      // Sin color pedido, todo lo del producto (colores + sin color), como antes.
+      const ocyU = (k, va) => { const y = OCY[k]; if (!y || typeof y !== 'object') return parseInt(y) || 0;
+        if (va) { const kv = sid(String(va)).toLowerCase(); return Object.entries(y.v || {}).reduce((a2, [c2, b2]) => a2 + (String(c2).toLowerCase() === kv ? parseInt(b2) || 0 : 0), 0); }
+        return Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0); };
       for (const [g, arr] of Object.entries(grupos)) {
         arr.sort((a, b) => ((S[b.id] || {}).t180 || 0) - ((S[a.id] || {}).t180 || 0));
         console.log(`\n════ ${g.toUpperCase()} · ${arr.length} ════`);

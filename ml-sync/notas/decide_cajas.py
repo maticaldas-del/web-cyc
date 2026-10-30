@@ -160,22 +160,45 @@ for p in P:
     if pu<=0: continue
     if p['vars']:
         _m=[x for x in p['vars'] if x['v'].lower()==pva]
+        # Revisión etapa 9, 30/10/2026: pidió un color sin renglón (no hay de ése en la oficina): no se aparta OTRO color (antes el que más vende:
+        # pidió Rosa y se quedaban 2 Azul en la oficina). El mismo cambio en decide_pedidos.py.
+        if pva and not _m: continue
         tv=_m[0] if _m else max(p['vars'],key=lambda x:(x['s'][2],x['casa']))
-        r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r)
+        r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r); tv['perfR']=r
     else: r=min(pu,p['casa']); p['casa']-=r
+    p['perfR']=r   # lo apartado (revisión etapa 9): va en el motivo y, si es todo, en un renglón en 0 que pisa la decisión de antes
     if r: print(f"🛍️ {p['n']}: {r} quedan en la oficina para la perfumería (no van a Full)")
+# Revisión etapa 9, 30/10/2026 (él, 29/10: "que no vaya a Full"): si TODO lo de la oficina de un producto (o de un color) quedó apartado para la
+# perfumería, antes se salteaba sin renglón y la decisión de caja de antes (con SOLO_CLAUDE no vence) seguía en la base: Armar caja y el chat
+# de Chrome mandaban a Full lo apartado. Ahora va un renglón en 0 que la pisa. Y en los demás el motivo dice cuántas quedan para ella.
+def perf_txt(r): return f" · 🛍️ {r} para la perfumería (quedan en la oficina, no van a Full)" if r else ''
+def perf_cero(cab,cta,nom,r,grande):
+    return dict(cab=cab,q=0,cola=f"🛍️ las {r} de la oficina quedan para la perfumería (no van a Full)"+AUTO_TAG,cta=cta,nom=nom,gan=None,grande=grande,enCero=False,dias=None,casa=0,perf0=True,dec=None)
 for p in P:
-    if p['casa']<=0 and not any(x['casa']>0 for x in p['vars']): continue
+    if p['casa']<=0 and not any(x['casa']>0 for x in p['vars']):
+        if p.get('perfR'):   # todo apartado para la perfumería (revisión etapa 9, ver `perf_cero`): un 0 en cada cuenta que lo puede recibir
+            _pv0='paulvic' in p['n'].lower(); _cs=['Adriana'] if _pv0 else (p['ctas'] or [])
+            if p['vars']:
+                for x in p['vars']:
+                    if x.get('perfR'):
+                        for cc in (['Luciana'] if (_pv0 and x['v']=='Persea') else _cs): out.append(perf_cero(f"caja:{p['id']}@{cc}#{x['v']}",cc,f"{p['n'][:38]} · {x['v']}",x['perfR'],p['grande']))
+            else:
+                for cc in _cs: out.append(perf_cero(f"caja:{p['id']}@{cc}",cc,p['n'][:38],p['perfR'],p['grande']))
+        continue
     nOfi+=1
     pv='paulvic' in p['n'].lower()
     ctas=p['ctas']
+    _apT=f" y {p['perfR']} apartadas para la perfumería" if p.get('perfR') else ''   # revisión etapa 9, 30/10/2026
     if pv: cta='Adriana'
     elif len(ctas)==1: cta=ctas[0]
-    elif not ctas: sin.append(f"{p['n']} ({p['casa']} en la oficina): ninguna cuenta lo puede recibir (no publica o está en nomandar)"); continue
-    else: amano.append(f"{p['n']} ({p['casa']} en la oficina): puede ir a {', '.join(ctas)} — decidir a mano"); continue
+    elif not ctas: sin.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): ninguna cuenta lo puede recibir (no publica o está en nomandar)"); continue
+    else: amano.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): puede ir a {', '.join(ctas)} — decidir a mano"); continue
     if p['vars'] and any(x['casa']>0 for x in p['vars']):
         for x in p['vars']:
-            if x['casa']<=0: continue
+            if x['casa']<=0:
+                # el color quedó todo apartado para la perfumería: 0 que pisa la decisión de antes (revisión etapa 9, ver `perf_cero`)
+                if x.get('perfR'): c0='Luciana' if (pv and x['v']=='Persea') else cta; out.append(perf_cero(f"caja:{p['id']}@{c0}#{x['v']}",c0,f"{p['n'][:38]} · {x['v']}",x['perfR'],p['grande']))
+                continue
             c='Luciana' if (pv and x['v']=='Persea') else cta
             if pv and c not in ctas: sin.append(f"{p['n']} · {x['v']}: va a {c} pero {c} no lo puede recibir (no publica o nomandar)"); continue
             # 24/10/2026 (él): ML dio de baja para siempre estos aromas por la marca del nombre: no se mandan más a Full (lo de la oficina va al local).
@@ -184,28 +207,28 @@ for p in P:
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=0,grande=p['grande'],enCero=False,dias=None,casa=x['casa'],baja=True,dec=x['dec'].get(c))); continue
             if (p['id'],x['v'],c) in FIJO:
                 fq,fm=FIJO[(p['id'],x['v'],c)]
-                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],fijo=True,dec=x['dec'].get(c))); continue
+                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm+perf_txt(x.get('perfR',0)),cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],fijo=True,dec=x['dec'].get(c))); continue
             # UN COLOR QUE ESA CUENTA NO PUBLICA NO SE MANDA (revisión etapa 3, 29/10/2026): el producto va a una sola cuenta, pero cada
             # color es su publicación. Sin publicación de ESE color no hay código de etiqueta, Armar caja de la web no lo muestra y el robot
             # no puede leer su llegada (el P47 blanco del 25/10, arreglado a mano en FIJO). Una cuenta `pasara` (todavía no publica nada del
             # producto) sí recibe, como en la web.
             if c in p['pub'] and c not in x['pubV']:
-                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola=f"En {c} no hay publicación de este color ({x['v']}): sin publicación de ese color no va (lo de la oficina espera)"+AUTO_TAG,
+                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola=f"En {c} no hay publicación de este color ({x['v']}): sin publicación de ese color no va (lo de la oficina espera){perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             fd=x['fullC'].get(c,0);cd=x['camC'].get(c,0);otras=max(0,(x['full']+x['cam'])-(fd+cd));sinPubOtras=(c not in p['pub']) and otras>0
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras)
-            out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}"+AUTO_TAG,
+            out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((x['full']+x['cam'])/r if r>0 else None),casa=x['casa'],dec=x['dec'].get(c)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
     elif (p['id'],'',cta) in FIJO:
         fq,fm=FIJO[(p['id'],'',cta)]
-        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],fijo=True,dec=p['dec'].get(cta)))
+        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm+perf_txt(p.get('perfR',0)),cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],fijo=True,dec=p['dec'].get(cta)))
     else:
         fd=p['fullC'].get(cta,0);cd=p['camC'].get(cta,0);otras=max(0,(p['full']+p['cam'])-(fd+cd));sinPubOtras=(cta not in p['pub']) and otras>0
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras)
-        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}"+AUTO_TAG,
+        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,
                         cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((p['full']+p['cam'])/r if r>0 else None),casa=p['casa'],dec=p['dec'].get(cta)))
         if D==T_LARGO: largos.append(p['n'][:38])
 # LAS DECISIONES A MANO DE LA VUELTA NO SE PISAN (28/10/2026, error mío: al rearmar las cajas pisé las de la completa —Cartas Casino 0,
@@ -239,7 +262,7 @@ def _base_motivo(mot):
 def _es_auto(mot): return mot.endswith(AUTO_TAG.strip(' ·')) or bool(_auto_viejo.match(mot))
 mantenidos=[];cumplidas=[]
 for o in out:
-    if o.get('fijo') or o.get('baja') or len(sys.argv)>=3: continue      # lo FIJO de él y lo dado de baja mandan siempre
+    if o.get('fijo') or o.get('baja') or o.get('perf0') or len(sys.argv)>=3: continue      # lo FIJO de él, lo dado de baja y lo apartado para la perfumería (revisión etapa 9) mandan siempre
     pv=_prev.get(o['cab'])
     if not pv: continue
     mot,q0=_base_motivo(pv[1])
