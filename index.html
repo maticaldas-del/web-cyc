@@ -3242,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.34';
+const APP_VERSION='28.35';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3255,6 +3255,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.35',f:'30/10',h:'15:22',c:[{n:1,t:'🛍️ Ver deudas: el renglón de la deuda inicial se llena en verde hasta lo que va pagado, como los productos.'}]},
   {v:'28.34',f:'30/10',h:'15:19',c:[{n:1,t:'🛍️ Ver deudas: en Mercadería Perfumería dice cuánto va pagado de la deuda inicial (se paga primero) y cuánto falta para que empiecen a tacharse los productos.'}]},
   {v:'28.33',f:'30/10',h:'14:43',c:[{n:2,t:'🤖 Textos para el chat de Chrome: arriba de todo, "🧠 Todo (para un chat nuevo)" junta todo lo que sabe el chat local (quién es quién, reglas, la tienda y todas sus tareas). Se arma solo cada noche.'}]},
   {v:'28.32',f:'30/10',h:'14:38',c:[{n:1,t:'🔍 Revisiones: etapa nueva 10 · Tienda (la tienda pública de CYC), cada 7 días como Local.'}]},
@@ -7284,7 +7285,7 @@ function deudaFifo(d){
 }
 // La historia entera de una deuda, la más nueva arriba: cómo empezó, cada cuota pagada y cada movimiento.
 function cuotaHistoria(d){const H=[];const _F=deudaFifo(d);   // pago por plata (30/10/2026): pagado / a medias sale de la cuenta, no de la marca
-  if(d.monto>0)H.push({f:fechaDeuda(d),ts:Number(d.ts)||0,m:d.monto,txt:(d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial')+(d.det?` · se llevó ${d.det}`:'')});
+  if(d.monto>0)H.push({ini:true,f:fechaDeuda(d),ts:Number(d.ts)||0,m:d.monto,txt:(d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial')+(d.det?` · se llevó ${d.det}`:'')});
   const ps=Object.entries(d.pagos||{}).sort((a,b)=>Number(a[0])-Number(b[0]));
   ps.forEach(([k,v],i)=>H.push({f:(v&&v.f)||_isoDe(k),ts:Number(k),m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n}`:'pagó todo'}));
   for(let i=ps.length;i<d.pagadas;i++)H.push({f:'',ts:0,m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n} (sin fecha)`:'pagó todo (sin fecha)'});
@@ -7446,7 +7447,9 @@ function cuotaDetalleHTML(d){
       <div style="color:var(--text)">${x.u>1?x.u+' × ':''}${_escC(x.nom)}${x.loc?' · '+_escC(x.loc):''}</div>
       ${x.gan!=null?`<div>paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${colPctLocal(x.gan,x.m-x.gan)}">${_pesos(x.gan)}</b>${x.m-x.gan>0?' ('+Math.round(x.gan/(x.m-x.gan)*100)+'% sobre el costo)':''}</div>`:'<div>sin costo cargado: la ganancia no se sabe</div>'}
       ${x.nota?`<div>📝 ${_escC(x.nota)}</div>`:''}${pm?`<div style="color:var(--amber)">la plata pagada llegó hasta acá: ${_pesos(pm)} de ${_pesos(x.m)} (${pp}%) · falta ${_pesos(Math.max(0,x.m-pm))}</div>`:''}${x.pagado?`<div style="color:var(--green)">✅ cubierto por lo pagado${x.pagado!=='—'?' el '+_isoDM(x.pagado):''}</div>`:''}</div>`:''}</div>`;};
-  const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>x.prod?_filaProd(x):`<div style="display:flex;align-items:center;gap:10px;padding:5px ${x.prod&&x.pagado?'6px':'0'};border-top:1px solid var(--border);font-size:.7rem;${x.prod&&x.pagado?'background:rgba(34,197,94,.09);border-radius:6px':''}">
+  // La deuda inicial también se llena en verde hasta lo que va pagado (30/10/2026, él: "que se vaya llenando la deuda inicial en verde también").
+  const _iniF=(deudaFifo(d).por||{})._ini,_iniBg=_iniF?(_iniF.full?'background:rgba(34,197,94,.09);border-radius:6px;padding-left:6px;padding-right:6px;':_iniF.pag>0.5?`background:linear-gradient(90deg,rgba(34,197,94,.13) ${Math.round(_iniF.pct)}%,transparent ${Math.round(_iniF.pct)}%);border-radius:6px;padding-left:6px;padding-right:6px;`:''):'';
+  const filas=H.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(x=>x.prod?_filaProd(x):`<div style="display:flex;align-items:center;gap:10px;padding:5px ${x.prod&&x.pagado?'6px':'0'};border-top:1px solid var(--border);font-size:.7rem;${x.prod&&x.pagado?'background:rgba(34,197,94,.09);border-radius:6px':''}${x.ini?_iniBg:''}" title="${x.ini&&_iniF?`pagado ${_pesos(_iniF.pag)} de ${_pesos(_iniF.m)} (${Math.round(_iniF.pct)}%)`:''}">
       <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
       <span style="flex:1;min-width:0;word-break:break-word">${_escC(x.txt)}${x.gan!=null?`<div style="font-size:.64rem;color:var(--muted)">paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${colPctLocal(x.gan,x.m-x.gan)}">${_pesos(x.gan)}</b></div>`:''}</span>
       ${x.gan!=null&&x.m>0?`<span style="white-space:nowrap;text-align:right;font-family:'DM Mono',monospace;line-height:1.25"><b style="color:var(--text)">${_pesos(x.m)}</b><br><span style="font-size:.64rem;color:${colPctLocal(x.gan,x.m-x.gan)}">${x.gan>=0?'+':'−'}${_pesos(Math.abs(x.gan))}${x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':''}</span></span>`:`<b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>`}
