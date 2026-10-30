@@ -7843,7 +7843,7 @@ verdad no hayan entrado.
   tenian bastante % de ganancia en teoria perdi plata. no tiene sentido."* Tenía razón, y **ninguno
   de los dos números era cierto**: el Negro daba +39% y el Rojo −1%; juntos dan **+20%**, que es lo
   real.
-  Es una sola compra (#2000014927347373, Adriana). Cuando el comprador se lleva dos productos, ML
+  Es una sola compra (#…7373, Adriana). Cuando el comprador se lleva dos productos, ML
   arma **una ORDEN por producto** con el mismo nº de paquete —el número que él ve— y **no reparte
   los gastos del paquete**: le cargó al Rojo los $14.580 de envío de los dos y los $8.649 de cuotas,
   y al Negro nada. Verificado con `DUMP_ORDER` contra Mercado Pago: Negro $61.870→$52.574 (ML 15%),

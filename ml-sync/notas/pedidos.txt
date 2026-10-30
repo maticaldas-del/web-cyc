@@ -1,44 +1,44 @@
-ped:p1779912655600=u|0|Hola Tito! Este no hace falta: se venden unos 387 por mes y ya hay 846, alcanza para unos 66 días.
-ped:p1779912655600=venta|10990|precio de la ultima venta ($10990) para el maximo de compra
-ped:p1779912655660#Blanco=u|0|Hola Tito! El Blanco no hace falta: se venden unos 169 por mes y ya hay 242, alcanza para unos 43 días.
+ped:p1779912655600=u|0|Hola Tito! Este no hace falta: se venden unos 195 por mes y ya hay 829, alcanza para unos 128 días.|cub=456
+ped:p1779912655600=venta|3610|precio de la competencia (deja 48%) para el maximo de compra
+ped:p1779912655660#Blanco=u|0|Hola Tito! El Blanco no hace falta: se venden unos 156 por mes y ya hay 241, alcanza para unos 46 días.
 ped:p1779912655660#Gris=u|0|Hola Tito! El Gris no lo compres: todavía no se vendió nunca.
 ped:p1779912655660#Rosa=u|0|Hola Tito! Centímetro Rosa: en la oficina hay 150 Rosa que van a Full ahora y entre los tres colores tenemos más de 800 (Full, oficina y camino). Desde que subió a $3.450 se vende bastante menos. No compres hasta que eso baje
-ped:p1779912655660=venta|10190|precio de la ultima venta ($10190) para el maximo de compra
-ped:p1779912655660#Blanco=venta|10990|precio de la ultima venta de ese color ($10990) para el maximo de compra
-ped:p1779912655660#Rosa=venta|10190|precio de la ultima venta de ese color ($10190) para el maximo de compra
-ped:p1779912656320=u|29|Hola Tito! Te pido 29: se venden unos 90 por mes y entre Full, la oficina y lo que viene en camino hay 61. Con 29 más cubrimos un mes. Cuento 579 que se vendieron baratas porque salían al toque.
-ped:p1779912656320=venta|3910|precio de la ultima venta ($3910) para el maximo de compra
-ped:p1779912656210#2 Patas=u|0|Hola Tito! El 2 Patas no hace falta: se venden unos 71 por mes y ya hay 76, alcanza para unos 32 días.
-ped:p1779912656210#3 Patas=u|0|Hola Tito! El 3 Patas no hace falta: se venden unos 27 por mes y ya hay 193, alcanza para unos 217 días.
-ped:p1779912656210=venta|3140|precio de la ultima venta ($3140) para el maximo de compra
-ped:p1779912656210#2 Patas=venta|3140|precio de la ultima venta de ese color ($3140) para el maximo de compra
-ped:p1779912656210#3 Patas=venta|4990|precio de la ultima venta de ese color ($4990) para el maximo de compra
-ped:p1779912656340=u|0|Hola Tito! Este no hace falta: se venden unos 53 por mes y ya hay 118, alcanza para unos 67 días. Cuento 244 que se vendieron baratas porque salían al toque.
-ped:p1779912656340=venta|6890|precio de la ultima venta ($6890) para el maximo de compra
-ped:p1779912656330=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 96, alcanza para unos 240 días. Cuento 268 que se vendieron baratas porque salían al toque.
-ped:p1779912656330=venta|4290|precio de la ultima venta ($4290) para el maximo de compra
-ped:p1779912655590#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 38 por mes y ya hay 158, alcanza para unos 125 días.
-ped:p1779912655590#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 22 por mes y ya hay 154, alcanza para unos 205 días.
-ped:p1779912655590=venta|8490|precio de la ultima venta ($8490) para el maximo de compra
-ped:p1779912655590#Azul=venta|8490|precio de la ultima venta de ese color ($8490) para el maximo de compra
-ped:p1779912655590#Rojo=venta|9790|precio de la ultima venta de ese color ($9790) para el maximo de compra
+ped:p1779912655660=venta|17490|precio de la venta mas cara de 365 dias (deja 519%) para el maximo de compra
+ped:p1779912655660#Blanco=venta|17490|precio de la venta mas cara de 365 dias de ese color (deja 519%) para el maximo de compra
+ped:p1779912655660#Rosa=venta|10190|precio de la venta mas cara de 365 dias de ese color (deja 440%) para el maximo de compra
+ped:p1779912656320=u|17|Hola Tito! Te pido 17: se venden unos 77 por mes y entre Full, la oficina y lo que viene en camino hay 60. Con 17 más cubrimos un mes. Cuento 570 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656320=venta|5000|precio de la venta mas cara de 365 dias (deja 110%) para el maximo de compra
+ped:p1779912656210#2 Patas=u|0|Hola Tito! El 2 Patas no hace falta: se venden unos 17 por mes y ya hay 76, alcanza para unos 133 días.
+ped:p1779912656210#3 Patas=u|0|Hola Tito! El 3 Patas no hace falta: se venden unos 10 por mes y ya hay 193, alcanza para unos 579 días.
+ped:p1779912656210=venta|4990|precio de la venta mas cara de 365 dias (deja 187%) para el maximo de compra
+ped:p1779912656210#2 Patas=venta|3490|precio de la venta mas cara de 365 dias de ese color (deja 89%) para el maximo de compra
+ped:p1779912656210#3 Patas=venta|4990|precio de la venta mas cara de 365 dias de ese color (deja 187%) para el maximo de compra
+ped:p1779912656340=u|0|Hola Tito! Este no hace falta: se venden unos 17 por mes y ya hay 118, alcanza para unos 212 días. Cuento 242 que se vendieron baratas porque salían al toque.|cub=17
+ped:p1779912656340=venta|6890|precio de la venta mas cara de 365 dias (deja 102%) para el maximo de compra
+ped:p1779912656330=u|0|Hola Tito! Este no hace falta: se venden unos 74 por mes y ya hay 94, alcanza para unos 38 días. Cuento 268 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656330=venta|6490|precio de la venta mas cara de 365 dias (deja 182%) para el maximo de compra
+ped:p1779912655590#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 7 por mes y ya hay 158, alcanza para unos 722 días.
+ped:p1779912655590#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 10 por mes y ya hay 154, alcanza para unos 443 días.
+ped:p1779912655590=venta|4950|precio de la competencia (deja 148%) para el maximo de compra
+ped:p1779912655590#Azul=venta|4950|precio de la competencia de ese color (deja 148%) para el maximo de compra
+ped:p1779912655590#Rojo=venta|4950|precio de la competencia de ese color (deja 148%) para el maximo de compra
 ped:p1779912655620#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655620#Azul Acero=u|0|Hola Tito! Sábanas 2 y media Azul Acero: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620#Azul Oscuro=u|0|Hola Tito! Sábanas 2 y media Azul Oscuro: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620#Beige=u|0|Hola Tito! Sábanas 2 y media Beige: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620#Beige oscuro=u|0|Hola Tito! Sábanas 2 y media Beige oscuro: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620#Blanco=u|0|Hola Tito! Sábanas 2 y media Blanco: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
+ped:p1779912655620#Azul Acero=u|1|Hola Tito! Te pido 1 del Azul Acero de prueba: antes se vendían unos 11 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Azul Oscuro=u|2|Hola Tito! Te pido 2 del Azul Oscuro de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Beige=u|3|Hola Tito! Te pido 3 del Beige de prueba: antes se vendían unos 10 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Beige oscuro=u|3|Hola Tito! Te pido 3 del Beige oscuro de prueba: antes se vendían unos 12 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Blanco=u|2|Hola Tito! Te pido 2 del Blanco de prueba: antes se vendían unos 5 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Bordó=u|0|Hola Tito! El Bordó no hace falta: se venden unos 0 por mes y ya hay 0.
 ped:p1779912655620#Gris=u|0|Hola Tito! El Gris no hace falta: se venden unos 0 por mes y ya hay 15.
-ped:p1779912655620#Gris Oscuro=u|0|Hola Tito! El Gris Oscuro no hace falta: se venden unos 5 por mes y ya hay 28, alcanza para unos 157 días.
-ped:p1779912655620#Negro=u|0|Hola Tito! Sábanas 2 y media Negro: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620#Rojo=u|0|Hola Tito! Sábanas 2 y media Rojo: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620#Rosa=u|0|Hola Tito! Sábanas 2 y media Rosa: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
+ped:p1779912655620#Gris Oscuro=u|0|Hola Tito! El Gris Oscuro no hace falta: se venden unos 5 por mes y ya hay 28, alcanza para unos 168 días.
+ped:p1779912655620#Negro=u|7|Hola Tito! Te pido 7 del Negro de prueba: antes se vendían unos 29 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Rojo=u|3|Hola Tito! Te pido 3 del Rojo de prueba: antes se vendían unos 13 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Rosa=u|2|Hola Tito! Te pido 2 del Rosa de prueba: antes se vendían unos 9 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Rosa Chicle=u|0|Hola Tito! El Rosa Chicle no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655620#Terracota=u|0|Hola Tito! El Terracota no hace falta: se venden unos 5 por mes y ya hay 10, alcanza para unos 56 días.
+ped:p1779912655620#Terracota=u|0|Hola Tito! El Terracota no hace falta: se venden unos 1 por mes y ya hay 10, alcanza para unos 220 días.
 ped:p1779912655620#Verde Musgo=u|0|Hola Tito! El Verde Musgo no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655620#Violeta=u|0|Hola Tito! Sábanas 2 y media Violeta: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655620=venta|15500|precio de la ultima venta ($15500) para el maximo de compra
+ped:p1779912655620#Violeta=u|4|Hola Tito! Te pido 4 del Violeta de prueba: antes se vendían unos 14 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620=venta|32790|precio de la venta mas cara de 365 dias (deja 84%) para el maximo de compra
 ped:p1779912655620#Azul=venta|19640|precio de la ultima venta de ese color ($19640) para el maximo de compra
 ped:p1779912655620#Azul Acero=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
 ped:p1779912655620#Azul Oscuro=venta|15500|precio de la ultima venta de ese color ($15500) para el maximo de compra
@@ -47,339 +47,328 @@ ped:p1779912655620#Beige oscuro=venta|19500|precio de la ultima venta de ese col
 ped:p1779912655620#Blanco=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
 ped:p1779912655620#Bordó=venta|15500|precio de la ultima venta de ese color ($15500) para el maximo de compra
 ped:p1779912655620#Gris=venta|21760|precio de la ultima venta de ese color ($21760) para el maximo de compra
-ped:p1779912655620#Gris Oscuro=venta|24990|precio de la ultima venta de ese color ($24990) para el maximo de compra
+ped:p1779912655620#Gris Oscuro=venta|24990|precio de la venta mas cara de 365 dias de ese color (deja 41%) para el maximo de compra
 ped:p1779912655620#Negro=venta|20010|precio de la ultima venta de ese color ($20010) para el maximo de compra
 ped:p1779912655620#Rojo=venta|19660|precio de la ultima venta de ese color ($19660) para el maximo de compra
 ped:p1779912655620#Rosa=venta|19640|precio de la ultima venta de ese color ($19640) para el maximo de compra
 ped:p1779912655620#Rosa Chicle=venta|19430|precio de la ultima venta de ese color ($19430) para el maximo de compra
-ped:p1779912655620#Terracota=venta|32790|precio de la ultima venta de ese color ($32790) para el maximo de compra
+ped:p1779912655620#Terracota=venta|32790|precio de la venta mas cara de 365 dias de ese color (deja 84%) para el maximo de compra
 ped:p1779912655620#Verde Musgo=venta|17500|precio de la ultima venta de ese color ($17500) para el maximo de compra
 ped:p1779912655620#Violeta=venta|19500|precio de la ultima venta de ese color ($19500) para el maximo de compra
-ped:p1779912655900#Comun Beige=u|0|Hola Tito! El Comun Beige no hace falta: se venden unos 30 por mes y ya hay 31, alcanza para unos 31 días.
-ped:p1779912655900#Comun Negro=u|0|Hola Tito! El Comun Negro no hace falta: se venden unos 25 por mes y ya hay 78, alcanza para unos 95 días.
-ped:p1779912655900#Triples Beige=u|0|Hola Tito! El Triples Beige no hace falta: se venden unos 37 por mes y ya hay 43, alcanza para unos 35 días.
-ped:p1779912655900#Triples Negro=u|8|Hola Tito! Te pido 8 del Triples Negro: se venden unos 29 por mes y entre Full, la oficina y lo que viene en camino hay 35. Con 8 más cubrimos un mes y medio (se cortó 2 veces en 60 días).
-ped:p1779912655900#Triples Rosa=u|0|Hola Tito! El Triples Rosa no hace falta: se venden unos 10 por mes y ya hay 73, alcanza para unos 226 días.
-ped:p1779912655900=venta|5290|precio de la ultima venta ($5290) para el maximo de compra
-ped:p1779912655900#Comun Beige=venta|13990|precio de la ultima venta de ese color ($13990) para el maximo de compra
-ped:p1779912655900#Comun Negro=venta|5290|precio de la ultima venta de ese color ($5290) para el maximo de compra
-ped:p1779912655900#Triples Beige=venta|10990|precio de la ultima venta de ese color ($10990) para el maximo de compra
-ped:p1779912655900#Triples Negro=venta|8990|precio de la ultima venta de ese color ($8990) para el maximo de compra
-ped:p1779912655900#Triples Rosa=venta|7190|precio de la ultima venta de ese color ($7190) para el maximo de compra
-ped:p1779912655880=u|0|Hola Tito! Este no hace falta: se venden unos 33 por mes y ya hay 93, alcanza para unos 84 días. Cuento 57 que se vendieron baratas porque salían al toque.
-ped:p1779912655880=venta|6490|precio de la ultima venta ($6490) para el maximo de compra
-ped:p1779912655800=u|0|Hola Tito! Linterna Minera: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
-ped:p1779912655800=venta|2999|precio de la ultima venta ($2999) para el maximo de compra
-ped:p1781284068222#Berry Rush=u|15|Hola Tito! Te pido 15 del Berry Rush: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 15 más cubrimos un mes.
-ped:p1781284068222#Brisa Marina=u|29|Hola Tito! Te pido 29 del Brisa Marina: se venden unos 30 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 29 más cubrimos un mes.
-ped:p1781284068222#Jasmín=u|0|Hola Tito! El Jasmín no hace falta: se venden unos 14 por mes y ya hay 14, alcanza para unos 30 días.
-ped:p1781284068222#Lavanda=u|1|Hola Tito! Te pido 1 del Lavanda: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 9. Con 1 más cubrimos un mes.
-ped:p1781284068222#Limon=u|43|Hola Tito! Te pido 43 del Limon: se venden unos 45 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 43 más cubrimos un mes.
+ped:p1779912655900#Comun Beige=u|2|Hola Tito! Te pido 2 del Comun Beige: se venden unos 32 por mes y entre Full, la oficina y lo que viene en camino hay 30. Con 2 más cubrimos un mes.
+ped:p1779912655900#Comun Negro=u|0|Hola Tito! El Comun Negro no hace falta: se venden unos 0 por mes y ya hay 77.
+ped:p1779912655900#Triples Beige=u|0|Hola Tito! El Triples Beige no hace falta: se venden unos 10 por mes y ya hay 44, alcanza para unos 132 días.
+ped:p1779912655900#Triples Negro=u|0|Hola Tito! El Triples Negro no hace falta: se venden unos 6 por mes y ya hay 36, alcanza para unos 180 días.
+ped:p1779912655900#Triples Rosa=u|0|Hola Tito! El Triples Rosa no hace falta: se venden unos 10 por mes y ya hay 74, alcanza para unos 225 días.
+ped:p1779912655900=venta|20990|precio de la venta mas cara de 365 dias (deja 452%) para el maximo de compra
+ped:p1779912655900#Comun Beige=venta|20990|precio de la venta mas cara de 365 dias de ese color (deja 452%) para el maximo de compra
+ped:p1779912655900#Comun Negro=venta|5590|precio de la venta mas cara de 365 dias de ese color (deja 195%) para el maximo de compra
+ped:p1779912655900#Triples Beige=venta|10990|precio de la venta mas cara de 365 dias de ese color (deja 369%) para el maximo de compra
+ped:p1779912655900#Triples Negro=venta|8990|precio de la venta mas cara de 365 dias de ese color (deja 320%) para el maximo de compra
+ped:p1779912655900#Triples Rosa=venta|7190|precio de la venta mas cara de 365 dias de ese color (deja 262%) para el maximo de compra
+ped:p1779912655880=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 81, alcanza para unos 405 días. Cuento 57 que se vendieron baratas porque salían al toque.|cub=46
+ped:p1779912655880=venta|6490|precio de la venta mas cara de 365 dias (deja 84%) para el maximo de compra
+ped:p1779912655800=u|94|Hola Tito! Te pido 94: se venden unos 94 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 94 más cubrimos un mes. Cuento 195 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912655800=venta|4280|precio de la competencia (deja 78%) para el maximo de compra
+ped:p1781284068222#Berry Rush=u|11|Hola Tito! Te pido 11 del Berry Rush: se venden unos 15 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 11 más cubrimos un mes.
+ped:p1781284068222#Brisa Marina=u|3|Hola Tito! Te pido 3 del Brisa Marina: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 3 más cubrimos un mes.
+ped:p1781284068222#Jasmín=u|0|Hola Tito! El Jasmín no hace falta: se venden unos 14 por mes y ya hay 15, alcanza para unos 32 días.
+ped:p1781284068222#Lavanda=u|0|Hola Tito! El Lavanda no hace falta: se venden unos 2 por mes y ya hay 11, alcanza para unos 176 días.
+ped:p1781284068222#Limon=u|20|Hola Tito! Te pido 20 del Limon: se venden unos 24 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 20 más cubrimos un mes.
 ped:p1781284068222#Rosas=u|0|Hola Tito! El Rosas no hace falta: se venden unos 10 por mes y ya hay 19, alcanza para unos 57 días.
-ped:p1781284068222=venta|18150|precio de la ultima venta ($18150) para el maximo de compra
-ped:p1781284068222#Berry Rush=venta|18150|precio de la ultima venta de ese color ($18150) para el maximo de compra
-ped:p1781284068222#Brisa Marina=venta|29890|precio de la ultima venta de ese color ($29890) para el maximo de compra
+ped:p1781284068222=venta|29890|precio de la venta mas cara de 365 dias (deja 107%) para el maximo de compra
+ped:p1781284068222#Berry Rush=venta|21490|precio de la venta mas cara de 365 dias de ese color (deja 55%) para el maximo de compra
+ped:p1781284068222#Brisa Marina=venta|29890|precio de la venta mas cara de 365 dias de ese color (deja 107%) para el maximo de compra
 ped:p1781284068222#Jasmín=venta|18190|precio de la ultima venta de ese color ($18190) para el maximo de compra
-ped:p1781284068222#Lavanda=venta|25990|precio de la ultima venta de ese color ($25990) para el maximo de compra
-ped:p1781284068222#Limon=venta|18150|precio de la ultima venta de ese color ($18150) para el maximo de compra
+ped:p1781284068222#Lavanda=venta|25990|precio de la venta mas cara de 365 dias de ese color (deja 81%) para el maximo de compra
+ped:p1781284068222#Limon=venta|19490|precio de la venta mas cara de 365 dias de ese color (deja 40%) para el maximo de compra
 ped:p1781284068222#Rosas=venta|18230|precio de la ultima venta de ese color ($18230) para el maximo de compra
 ped:p1779912656010#Blanco=u|0|Hola Tito! Batidora Blanco: 39 unidades salieron del conteo sin entrar a Full (completa del 28/10). No se compra hasta aclarar qué pasó con esa caja
 ped:p1779912656010#negro=u|0|Hola Tito! Batidora negro: 39 unidades salieron del conteo sin entrar a Full (completa del 28/10). No se compra hasta aclarar qué pasó con esa caja
-ped:p1779912656010=venta|19990|precio de la ultima venta ($19990) para el maximo de compra
-ped:p1779912656010#Blanco=venta|22990|precio de la ultima venta de ese color ($22990) para el maximo de compra
-ped:p1779912656010#negro=venta|19990|precio de la ultima venta de ese color ($19990) para el maximo de compra
-ped:p1779912655950=u|0|Hola Tito! Este no hace falta: se venden unos 34 por mes y ya hay 40, alcanza para unos 35 días. Cuento 106 que se vendieron baratas porque salían al toque.
-ped:p1779912655950=venta|6990|precio de la ultima venta ($6990) para el maximo de compra
-ped:p1779912656400=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 34, alcanza para unos 87 días. No cuento 13 que se remataron porque estaban parados. Cuento 104 que se vendieron baratas porque salían al toque.
-ped:p1779912656400=venta|7790|precio de la ultima venta ($7790) para el maximo de compra
-ped:p1779912655630#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 7 por mes y ya hay 7, alcanza para unos 29 días.
-ped:p1779912655630#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 5 por mes y ya hay 7, alcanza para unos 41 días.
-ped:p1779912655630#Rojo=u|4|Hola Tito! Te pido 4 del Rojo: se venden unos 18 por mes y entre Full, la oficina y lo que viene en camino hay 14. Con 4 más cubrimos un mes.
-ped:p1779912655630#Rosa=u|0|Hola Tito! Pizarra 8.5 Rosa: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. 13 días sin vender
+ped:p1779912656010=venta|24990|precio de la venta mas cara de 365 dias (deja 137%) para el maximo de compra
+ped:p1779912656010#Blanco=venta|24990|precio de la venta mas cara de 365 dias de ese color (deja 137%) para el maximo de compra
+ped:p1779912656010#negro=venta|19990|precio de la venta mas cara de 365 dias de ese color (deja 99%) para el maximo de compra
+ped:p1779912655950=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 59, alcanza para unos 148 días. Cuento 105 que se vendieron baratas porque salían al toque.|cub=24
+ped:p1779912655950=venta|8490|precio de la venta mas cara de 365 dias (deja 200%) para el maximo de compra
+ped:p1779912656400=u|0|Hola Tito! Este no hace falta: se venden unos 3 por mes y ya hay 34, alcanza para unos 306 días. No cuento 13 que se remataron porque estaban parados. Cuento 104 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656400=venta|7790|precio de la venta mas cara de 365 dias (deja 307%) para el maximo de compra
+ped:p1779912655630#Azul=u|1|Hola Tito! Te pido 1 del Azul: se venden unos 8 por mes y entre Full, la oficina y lo que viene en camino hay 7. Con 1 más cubrimos un mes.
+ped:p1779912655630#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 4 por mes y ya hay 7, alcanza para unos 49 días.
+ped:p1779912655630#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 3 por mes y ya hay 14, alcanza para unos 140 días.
+ped:p1779912655630#Rosa=u|19|Hola Tito! Te pido 19 del Rosa: se venden unos 24 por mes y entre Full, la oficina y lo que viene en camino hay 5. Con 19 más cubrimos un mes.
 ped:p1779912655630#Verde=u|0|Hola Tito! El Verde no hace falta: se venden unos 0 por mes y ya hay 22.
-ped:p1779912655630#Violeta=u|0|Hola Tito! Pizarra 8.5 Violeta: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655630=venta|4400|precio de la ultima venta ($4400) para el maximo de compra
-ped:p1779912655630#Azul=venta|7590|precio de la ultima venta de ese color ($7590) para el maximo de compra
-ped:p1779912655630#Negro=venta|8690|precio de la ultima venta de ese color ($8690) para el maximo de compra
-ped:p1779912655630#Rojo=venta|5790|precio de la ultima venta de ese color ($5790) para el maximo de compra
-ped:p1779912655630#Rosa=venta|5090|precio de la ultima venta de ese color ($5090) para el maximo de compra
+ped:p1779912655630#Violeta=u|2|Hola Tito! Te pido 2 del Violeta de prueba: antes se vendían unos 7 por mes, pero nunca lo probamos a un precio que nos deje 35% ($5390). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655630=venta|13170|precio de la competencia (deja 228%) para el maximo de compra
+ped:p1779912655630#Azul=venta|7590|precio de la venta mas cara de 365 dias de ese color (deja 100%) para el maximo de compra
+ped:p1779912655630#Negro=venta|8690|precio de la venta mas cara de 365 dias de ese color (deja 129%) para el maximo de compra
+ped:p1779912655630#Rojo=venta|5790|precio de la venta mas cara de 365 dias de ese color (deja 49%) para el maximo de compra
+ped:p1779912655630#Rosa=venta|13170|precio de la competencia de ese color (deja 228%) para el maximo de compra
 ped:p1779912655630#Verde=venta|5110|precio de la ultima venta de ese color ($5110) para el maximo de compra
 ped:p1779912655630#Violeta=venta|4400|precio de la ultima venta de ese color ($4400) para el maximo de compra
-ped:p1779912656420=u|0|Hola Tito! Chispero: hay 23 en Full y 12 en la oficina. Desde que lo subí a $7.350 vendió 1 en dos semanas (antes 10 a 20). Primero miro el precio, no compres
-ped:p1779912656420=venta|6490|precio de la ultima venta ($6490) para el maximo de compra
-ped:p1779912655610#Azul=u|11|Hola Tito! Te pido 11 del Azul: se venden unos 11 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 11 más cubrimos un mes.
-ped:p1779912655610#Beige=u|4|Hola Tito! Te pido 4 del Beige: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 4 más cubrimos un mes.
-ped:p1779912655610#Blanco=u|2|Hola Tito! Te pido 2 del Blanco: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos un mes.
-ped:p1779912655610#Bordó=u|6|Hola Tito! Te pido 6 del Bordó: se venden unos 6 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 6 más cubrimos un mes.
-ped:p1779912655610#Gris=u|0|Hola Tito! El Gris no hace falta: se venden unos 5 por mes y ya hay 5, alcanza para unos 30 días.
-ped:p1779912655610#Gris Oscuro=u|6|Hola Tito! Te pido 6 del Gris Oscuro: se venden unos 8 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 6 más cubrimos un mes.
-ped:p1779912655610#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 2 por mes y ya hay 12, alcanza para unos 180 días.
-ped:p1779912655610#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 2 por mes y ya hay 5, alcanza para unos 97 días.
-ped:p1779912655610#Rosa=u|3|Hola Tito! Te pido 3 del Rosa: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 3 más cubrimos un mes.
-ped:p1779912655610#Verde Musgo=u|3|Hola Tito! Te pido 3 del Verde Musgo: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 3 más cubrimos un mes.
-ped:p1779912655610#Violeta=u|4|Hola Tito! Te pido 4 del Violeta: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 4 más cubrimos un mes.
-ped:p1779912655610#Cian=u|1|Hola Tito! Te pido 1 del Cian: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 1 más cubrimos un mes.
-ped:p1779912655610=venta|14670|precio de la ultima venta ($14670) para el maximo de compra
+ped:p1779912656420=u|0|Hola Tito! Chispero: hay 23 en Full y 12 en la oficina. Desde que lo subí a $7.350 vendió 1 en dos semanas (antes 10 a 20). Primero miro el precio, no compres|cub=0
+ped:p1779912656420=venta|8490|precio de la venta mas cara de 365 dias (deja 64%) para el maximo de compra
+ped:p1779912655610#Azul=u|3|Hola Tito! Te pido 3 del Azul de prueba: antes se vendían unos 11 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Beige=u|4|Hola Tito! Te pido 4 del Beige: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 4 más cubrimos un mes.
+ped:p1779912655610#Blanco=u|2|Hola Tito! Te pido 2 del Blanco de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18690). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Bordó=u|2|Hola Tito! Te pido 2 del Bordó de prueba: antes se vendían unos 6 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18690). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Gris=u|0|Hola Tito! El Gris no hace falta: se venden unos 5 por mes y ya hay 5, alcanza para unos 29 días.
+ped:p1779912655610#Gris Oscuro=u|1|Hola Tito! Te pido 1 del Gris Oscuro de prueba: antes se vendían unos 8 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18790). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 2 por mes y ya hay 12, alcanza para unos 192 días.
+ped:p1779912655610#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 4 por mes y ya hay 5, alcanza para unos 35 días.
+ped:p1779912655610#Rosa=u|0|Hola Tito! El Rosa no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p1779912655610#Verde Musgo=u|2|Hola Tito! Te pido 2 del Verde Musgo de prueba: antes se vendían unos 4 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18690). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Violeta=u|2|Hola Tito! Te pido 2 del Violeta de prueba: antes se vendían unos 4 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Cian=u|2|Hola Tito! Te pido 2 del Cian de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610=venta|23490|precio de la venta mas cara de 365 dias (deja 70%) para el maximo de compra
 ped:p1779912655610#Azul=venta|14670|precio de la ultima venta de ese color ($14670) para el maximo de compra
-ped:p1779912655610#Beige=venta|18990|precio de la ultima venta de ese color ($18990) para el maximo de compra
+ped:p1779912655610#Beige=venta|18990|precio de la venta mas cara de 365 dias de ese color (deja 37%) para el maximo de compra
 ped:p1779912655610#Blanco=venta|17070|precio de la ultima venta de ese color ($17070) para el maximo de compra
 ped:p1779912655610#Bordó=venta|17990|precio de la ultima venta de ese color ($17990) para el maximo de compra
 ped:p1779912655610#Gris=venta|17990|precio de la ultima venta de ese color ($17990) para el maximo de compra
 ped:p1779912655610#Gris Oscuro=venta|17990|precio de la ultima venta de ese color ($17990) para el maximo de compra
-ped:p1779912655610#Negro=venta|22990|precio de la ultima venta de ese color ($22990) para el maximo de compra
-ped:p1779912655610#Rojo=venta|23490|precio de la ultima venta de ese color ($23490) para el maximo de compra
+ped:p1779912655610#Negro=venta|22990|precio de la venta mas cara de 365 dias de ese color (deja 67%) para el maximo de compra
+ped:p1779912655610#Rojo=venta|23490|precio de la venta mas cara de 365 dias de ese color (deja 70%) para el maximo de compra
 ped:p1779912655610#Rosa=venta|17070|precio de la ultima venta de ese color ($17070) para el maximo de compra
 ped:p1779912655610#Verde Musgo=venta|17990|precio de la ultima venta de ese color ($17990) para el maximo de compra
 ped:p1779912655610#Violeta=venta|14790|precio de la ultima venta de ese color ($14790) para el maximo de compra
 ped:p1779912655610#Cian=venta|14770|precio de la ultima venta de ese color ($14770) para el maximo de compra
-ped:p1779912655870=u|0|Hola Tito! Termómetro Cable: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
+ped:p1779912655940=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes y ya hay 43, alcanza para unos 129 días. Cuento 64 que se vendieron baratas porque salían al toque.|cub=24
+ped:p1779912655940=venta|8690|precio de la venta mas cara de 365 dias (deja 210%) para el maximo de compra
+ped:p1779912655870=u|23|Hola Tito! Te pido 23 de prueba: antes se vendían unos 95 por mes, pero nunca lo probamos a un precio que nos deje 35% ($5690). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1779912655870=venta|5300|precio de la ultima venta ($5300) para el maximo de compra
-ped:p1779912655940=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 45. Cuento 64 que se vendieron baratas porque salían al toque.
-ped:p1779912655940=venta|4390|precio de la ultima venta ($4390) para el maximo de compra
-ped:p1780106889876=u|0|Hola Tito! Este no hace falta: se venden unos 34 por mes y ya hay 40, alcanza para unos 36 días.
-ped:p1780106889876=venta|18290|precio de la ultima venta ($18290) para el maximo de compra
-ped:p1779912656220#azul=u|0|Hola Tito! El azul no hace falta: se venden unos 6 por mes y ya hay 6, alcanza para unos 30 días.
-ped:p1779912656220#blanco=u|1|Hola Tito! Te pido 1 del blanco: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 1 más cubrimos un mes.
-ped:p1779912656220#negro=u|3|Hola Tito! Te pido 3 del negro: se venden unos 8 por mes y entre Full, la oficina y lo que viene en camino hay 6. Con 3 más cubrimos un mes.
+ped:p1780106889876=u|0|Hola Tito! Este no hace falta: se venden unos 11 por mes y ya hay 40, alcanza para unos 107 días.|cub=0
+ped:p1780106889876=venta|19990|precio de la venta mas cara de 365 dias (deja 60%) para el maximo de compra
+ped:p1779912656220#azul=u|0|Hola Tito! El azul no hace falta: se venden unos 2 por mes y ya hay 6, alcanza para unos 120 días.
+ped:p1779912656220#blanco=u|2|Hola Tito! Te pido 2 del blanco: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 2 más cubrimos un mes.
+ped:p1779912656220#negro=u|0|Hola Tito! El negro no hace falta: se venden unos 8 por mes y ya hay 6, alcanza para unos 21 días.
 ped:p1779912656220#rojo=u|0|Hola Tito! El rojo no hace falta: se venden unos 0 por mes y ya hay 13.
-ped:p1779912656220=venta|8490|precio de la ultima venta ($8490) para el maximo de compra
-ped:p1779912656220#azul=venta|9990|precio de la ultima venta de ese color ($9990) para el maximo de compra
+ped:p1779912656220=venta|10990|precio de la venta mas cara de 365 dias (deja 70%) para el maximo de compra
+ped:p1779912656220#azul=venta|10990|precio de la venta mas cara de 365 dias de ese color (deja 70%) para el maximo de compra
 ped:p1779912656220#blanco=venta|9630|precio de la ultima venta de ese color ($9630) para el maximo de compra
 ped:p1779912656220#negro=venta|9100|precio de la ultima venta de ese color ($9100) para el maximo de compra
 ped:p1779912656220#rojo=venta|8490|precio de la ultima venta de ese color ($8490) para el maximo de compra
-ped:p1779912655910=u|6|Hola Tito! Te pido 6: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 11. Con 6 más cubrimos un mes. Cuento 17 que se vendieron baratas porque salían al toque.
-ped:p1779912655910=venta|4690|precio de la ultima venta ($4690) para el maximo de compra
-ped:p1779912656060=u|0|Hola Tito! Este no hace falta: se venden unos 32 por mes y ya hay 80, alcanza para unos 76 días. No cuento 1 que se remataron porque estaban parados. Cuento 35 que se vendieron baratas porque salían al toque.
-ped:p1779912656060=venta|5790|precio de la ultima venta ($5790) para el maximo de compra
-ped:p1781715812444=u|35|Hola Tito! Te pido 35: se venden unos 45 por mes y entre Full, la oficina y lo que viene en camino hay 10. Con 35 más cubrimos un mes. Cuento 13 que se vendieron baratas porque salían al toque.
-ped:p1781715812444=venta|9990|precio de la ultima venta ($9990) para el maximo de compra
-ped:p1779912656110=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 18. Cuento 19 que se vendieron baratas porque salían al toque.
-ped:p1779912656110=venta|7890|precio de la ultima venta ($7890) para el maximo de compra
-ped:p1779912656050=u|0|Hola Tito! Estimulador Muscular: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
+ped:p1779912656060=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 75, alcanza para unos 375 días. No cuento 1 que se remataron porque estaban parados. Cuento 35 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656060=venta|7200|precio de la venta mas cara de 365 dias (deja 52%) para el maximo de compra
+ped:p1779912655910=u|4|Hola Tito! Te pido 4: se venden unos 15 por mes y entre Full, la oficina y lo que viene en camino hay 11. Con 4 más cubrimos un mes. Cuento 17 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912655910=venta|4690|precio de la venta mas cara de 365 dias (deja 64%) para el maximo de compra
+ped:p1781715812444=u|8|Hola Tito! Te pido 8: se venden unos 18 por mes y entre Full, la oficina y lo que viene en camino hay 10. Con 8 más cubrimos un mes. Cuento 13 que se vendieron baratas porque salían al toque.|cub=1
+ped:p1781715812444=venta|12990|precio de la venta mas cara de 365 dias (deja 172%) para el maximo de compra
+ped:p1779912656110=u|0|Hola Tito! Este no hace falta: se venden unos 8 por mes y ya hay 21, alcanza para unos 84 días. Cuento 19 que se vendieron baratas porque salían al toque.|cub=12
+ped:p1779912656110=venta|7150|precio de la competencia (deja 88%) para el maximo de compra
+ped:p1779912656050=u|24|Hola Tito! Te pido 24 de prueba: antes se vendían unos 99 por mes, pero nunca lo probamos a un precio que nos deje 35% ($5990). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1779912656050=venta|5500|precio de la ultima venta ($5500) para el maximo de compra
-ped:p1779912656100=u|20|Hola Tito! Te pido 20: se venden unos 38 por mes y entre Full, la oficina y lo que viene en camino hay 18. Con 20 más cubrimos un mes.
-ped:p1779912656100=venta|4990|precio de la ultima venta ($4990) para el maximo de compra
-ped:p1784422409763=u|15|Hola Tito! Te pido 15: se venden unos 46 por mes y entre Full, la oficina y lo que viene en camino hay 32. Con 15 más cubrimos un mes.
-ped:p1784422409763=venta|5750|precio de la ultima venta ($5750) para el maximo de compra
-ped:p1779912656350=u|0|Hola Tito! Este no hace falta: se venden unos 21 por mes y ya hay 40, alcanza para unos 58 días. Cuento 4 que se vendieron baratas porque salían al toque.
-ped:p1779912656350=venta|7990|precio de la ultima venta ($7990) para el maximo de compra
-ped:p1779912655890=u|1|Hola Tito! Te pido 1: se venden unos 7 por mes y entre Full, la oficina y lo que viene en camino hay 6. Con 1 más cubrimos un mes. Cuento 6 que se vendieron baratas porque salían al toque.
+ped:p1779912656100=u|0|Hola Tito! Este no hace falta: se venden unos 4 por mes y ya hay 19, alcanza para unos 127 días.|cub=12
+ped:p1779912656100=venta|4990|precio de la venta mas cara de 365 dias (deja 53%) para el maximo de compra
+ped:p1784422409763=u|17|Hola Tito! Te pido 17: se venden unos 49 por mes y entre Full, la oficina y lo que viene en camino hay 32. Con 17 más cubrimos un mes.|cub=30
+ped:p1784422409763=venta|13490|precio de la venta mas cara de 365 dias (deja 321%) para el maximo de compra
+ped:p1779912656350=u|0|Hola Tito! Este no hace falta: se venden unos 7 por mes y ya hay 40, alcanza para unos 180 días. Cuento 4 que se vendieron baratas porque salían al toque.|cub=20
+ped:p1779912656350=venta|7990|precio de la venta mas cara de 365 dias (deja 115%) para el maximo de compra
+ped:p1779912655890=u|0|Hola Tito! Este no hace falta: se venden unos 7 por mes y ya hay 6, alcanza para unos 27 días. Cuento 6 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912655890=venta|27110|precio de la ultima venta ($27110) para el maximo de compra
-ped:p1779912655920=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 37, alcanza para unos 92 días. Cuento 8 que se vendieron baratas porque salían al toque.
-ped:p1779912655920=venta|6490|precio de la ultima venta ($6490) para el maximo de compra
-ped:p1779912656070=u|0|Hola Tito! Este no hace falta: se venden unos 16 por mes y ya hay 26, alcanza para unos 49 días.
-ped:p1779912656070=venta|5990|precio de la ultima venta ($5990) para el maximo de compra
-ped:p1779912656240=u|0|Hola Tito! Este no hace falta: se venden unos 5 por mes y ya hay 9, alcanza para unos 57 días. Cuento 28 que se vendieron baratas porque salían al toque.
-ped:p1779912656240=venta|9700|precio de la ultima venta ($9700) para el maximo de compra
-ped:p1779912655930=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 30, alcanza para unos 75 días. Cuento 24 que se vendieron baratas porque salían al toque.
-ped:p1779912655930=venta|10990|precio de la ultima venta ($10990) para el maximo de compra
-ped:p1779912656120=u|0|Hola Tito! Este no hace falta: se venden unos 7 por mes y ya hay 10, alcanza para unos 43 días.
-ped:p1779912656120=venta|6300|precio de la ultima venta ($6300) para el maximo de compra
-ped:p1779912655650=u|18|Hola Tito! Te pido 18: se venden unos 22 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 18 más cubrimos un mes.
-ped:p1779912655650=venta|21990|precio de la ultima venta ($21990) para el maximo de compra
-ped:p1785593145264lupa100=u|0|Hola Tito! Este no hace falta: se venden unos 24 por mes y ya hay 49, alcanza para unos 62 días. Cuento 4 que se vendieron baratas porque salían al toque.
-ped:p1785593145264lupa100=venta|14990|precio de la ultima venta ($14990) para el maximo de compra
-ped:p1779912656140=u|0|Hola Tito! Este no hace falta: se venden unos 7 por mes y ya hay 28, alcanza para unos 117 días. Cuento 1 que se vendieron baratas porque salían al toque.
-ped:p1779912656140=venta|20630|precio de la ultima venta ($20630) para el maximo de compra
-ped:p1779912655640#Azul=u|0|Hola Tito! Pizarra 12 pulgadas Azul: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
-ped:p1779912655640#Negro=u|0|Hola Tito! Pizarra 12 pulgadas Negra: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
-ped:p1779912655640#Rojo=u|0|Hola Tito! Pizarra 12 pulgadas Roja: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
-ped:p1779912655640=venta|8000|precio de la ultima venta ($8000) para el maximo de compra
-ped:p1779912655640#Azul=venta|8000|precio de la ultima venta de ese color ($8000) para el maximo de compra
-ped:p1779912655640#Negro=venta|8000|precio de la ultima venta de ese color ($8000) para el maximo de compra
-ped:p1779912656200=u|7|Hola Tito! Te pido 7: se venden unos 13 por mes y entre Full, la oficina y lo que viene en camino hay 6. Con 7 más cubrimos un mes.
-ped:p1779912656200=venta|12590|precio de la ultima venta ($12590) para el maximo de compra
-ped:p1779912655840=u|0|Hola Tito! CortaPelo 2 en 1: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende desde el 20/08 y hay 10 entre oficina y camino
+ped:p1779912656070=u|0|Hola Tito! Este no hace falta: se venden unos 7 por mes y ya hay 26, alcanza para unos 120 días.|cub=12
+ped:p1779912656070=venta|7590|precio de la venta mas cara de 365 dias (deja 162%) para el maximo de compra
+ped:p1779912655920=u|0|Hola Tito! Este no hace falta: se venden unos 4 por mes y ya hay 37, alcanza para unos 296 días. Cuento 8 que se vendieron baratas porque salían al toque.|cub=24
+ped:p1779912655920=venta|6490|precio de la venta mas cara de 365 dias (deja 127%) para el maximo de compra
+ped:p1779912656240=u|0|Hola Tito! Este no hace falta: se venden unos 3 por mes y ya hay 9, alcanza para unos 86 días. Cuento 28 que se vendieron baratas porque salían al toque.|cub=4
+ped:p1779912656240=venta|9700|precio de la venta mas cara de 365 dias (deja 37%) para el maximo de compra
+ped:p1779912655930=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 31, alcanza para unos 155 días. Cuento 24 que se vendieron baratas porque salían al toque.|cub=24
+ped:p1779912655930=venta|10990|precio de la venta mas cara de 365 dias (deja 64%) para el maximo de compra
+ped:p1779912656120=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 10, alcanza para unos 47 días.|cub=0
+ped:p1779912656120=venta|6300|precio de la venta mas cara de 365 dias (deja 48%) para el maximo de compra
+ped:p1779912655650=u|7|Hola Tito! Te pido 7: se venden unos 11 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 7 más cubrimos un mes.|cub=0
+ped:p1779912655650=venta|14260|precio de la competencia (deja 37%) para el maximo de compra
+ped:p1785593145264lupa100=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 57, alcanza para unos 142 días. Cuento 4 que se vendieron baratas porque salían al toque.|cub=40
+ped:p1785593145264lupa100=venta|14990|precio de la venta mas cara de 365 dias (deja 198%) para el maximo de compra
+ped:p1779912656140=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 30, alcanza para unos 630 días. Cuento 1 que se vendieron baratas porque salían al toque.|cub=20
+ped:p1779912656140=venta|20630|precio de la venta mas cara de 365 dias (deja 178%) para el maximo de compra
+ped:p1779912656200=u|34|Hola Tito! Te pido 34: se venden unos 41 por mes y entre Full, la oficina y lo que viene en camino hay 7. Con 34 más cubrimos un mes.|cub=6
+ped:p1779912656200=venta|12810|precio de la competencia (deja 96%) para el maximo de compra
+ped:p1779912655840=u|0|Hola Tito! Este no hace falta: se venden unos 11 por mes y ya hay 17, alcanza para unos 48 días. Cuento 13 que se vendieron baratas porque salían al toque.|cub=10
 ped:p1779912655840=venta|25190|precio de la ultima venta ($25190) para el maximo de compra
 ped:p1779912655500#Asher=u|0|Hola Tito! Asher (De la Patagonia): no se consigue más, me lo dijiste el 14/10. No se pide. Quedan 21 en el Full de Adriana y se venden hasta terminarlas
 ped:p1779912655500#Kosten (Hombre)=u|0|Hola Tito! Kosten (De la Patagonia): no se consigue más (14/10). No se pide
 ped:p1779912655500=venta|46040|precio de la ultima venta ($46040) para el maximo de compra
 ped:p1779912655500#Asher=venta|49990|precio de la ultima venta de ese color ($49990) para el maximo de compra
 ped:p1779912655500#Kosten (Hombre)=venta|46040|precio de la ultima venta de ese color ($46040) para el maximo de compra
-ped:p1779912656250=u|0|Hola Tito! B39: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
+ped:p1779912655640#Azul=u|7|Hola Tito! Te pido 7 del Azul: se venden unos 7 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 7 más cubrimos un mes.
+ped:p1779912655640#Negro=u|7|Hola Tito! Te pido 7 del Negro: se venden unos 6 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 7 más cubrimos un mes.
+ped:p1779912655640=venta|17590|precio de la competencia (deja 150%) para el maximo de compra
+ped:p1779912655640#Azul=venta|8790|precio de la competencia de ese color (deja 47%) para el maximo de compra
+ped:p1779912655640#Negro=venta|17590|precio de la competencia de ese color (deja 150%) para el maximo de compra
+ped:p1779912656250=u|3|Hola Tito! Te pido 3 de prueba: antes se vendían unos 12 por mes, pero nunca lo probamos a un precio que nos deje 35% ($17190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1779912656250=venta|13490|precio de la ultima venta ($13490) para el maximo de compra
-ped:p1787786300945=u|40|Hola Tito! Mini balanza: en la última tanda vendió 16 en dos semanas, se agotó hace 6 días y la subí a $11.990 para la próxima. Pido 40 porque vuela
-ped:p1787786300945=venta|10500|precio de la ultima venta ($10500) para el maximo de compra
-ped:p1779912655540=u|0|Hola Tito! Pret a Porter Body Splash: no se consigue desde el 19/10 y a su última venta deja ~25-30% (completa del 28/10). No se pide
+ped:p1787786300945=u|40|Hola Tito! Mini balanza: en la última tanda vendió 16 en dos semanas, se agotó hace 6 días y la subí a $11.990 para la próxima. Pido 40 porque vuela|cub=0
+ped:p1787786300945=venta|10500|precio de la venta mas cara de 365 dias (deja 66%) para el maximo de compra
+ped:p1779912655540=u|0|Hola Tito! Pret a Porter Body Splash: no se consigue desde el 19/10 y a su última venta deja ~25-30% (completa del 28/10). No se pide|cub=0
 ped:p1779912655540=venta|19990|precio de la ultima venta ($19990) para el maximo de compra
-ped:p1779912655850=u|0|Hola Tito! Este no hace falta: se venden unos 14 por mes y ya hay 15, alcanza para unos 33 días. Cuento 5 que se vendieron baratas porque salían al toque.
+ped:p1779912655850=u|0|Hola Tito! Este no hace falta: se venden unos 14 por mes y ya hay 21, alcanza para unos 46 días. Cuento 5 que se vendieron baratas porque salían al toque.|cub=15
 ped:p1779912655850=venta|12990|precio de la ultima venta ($12990) para el maximo de compra
-ped:p1783381648682=u|0|Hola Tito! Este no hace falta: se venden unos 8 por mes y ya hay 29, alcanza para unos 109 días. Cuento 9 que se vendieron baratas porque salían al toque.
-ped:p1783381648682=venta|5990|precio de la ultima venta ($5990) para el maximo de compra
-ped:p1779912655970=u|5|Hola Tito! Te pido 5: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 5 más cubrimos un mes. Cuento 14 que se vendieron baratas porque salían al toque.
-ped:p1779912655970=venta|10990|precio de la ultima venta ($10990) para el maximo de compra
-ped:p1779912656130=u|0|Hola Tito! Este no hace falta: se venden unos 5 por mes y ya hay 21, alcanza para unos 133 días.
-ped:p1779912656130=venta|8990|precio de la ultima venta ($8990) para el maximo de compra
-ped:p1779912656410=u|0|Hola Tito! Piedra Pómez: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende hace 33 días
+ped:p1783381648682=u|0|Hola Tito! Este no hace falta: se venden unos 3 por mes y ya hay 29, alcanza para unos 290 días. Cuento 9 que se vendieron baratas porque salían al toque.|cub=18
+ped:p1783381648682=venta|5990|precio de la venta mas cara de 365 dias (deja 99%) para el maximo de compra
+ped:p1779912655970=u|2|Hola Tito! Te pido 2: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 2 más cubrimos un mes. Cuento 14 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912655970=venta|10990|precio de la venta mas cara de 365 dias (deja 106%) para el maximo de compra
+ped:p1779912656130=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 21, alcanza para unos 105 días.|cub=18
+ped:p1779912656130=venta|8990|precio de la venta mas cara de 365 dias (deja 82%) para el maximo de compra
+ped:p1779912656410=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 2, alcanza para unos 10 días.|cub=0
 ped:p1779912656410=venta|18160|precio de la ultima venta ($18160) para el maximo de compra
-ped:p1779912655780#Azul=u|0|Hola Tito! Linterna multifunción Azul: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende hace 33 días
-ped:p1779912655780#Naranja=u|0|Hola Tito! Linterna multifunción Naranja: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende hace 33 días
-ped:p1779912655780=venta|9999|precio de la ultima venta ($9999) para el maximo de compra
+ped:p1779912655780#Azul=u|2|Hola Tito! Te pido 2 del Azul de prueba: antes se vendían unos 5 por mes, pero nunca lo probamos a un precio que nos deje 35% ($10190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655780#Naranja=u|9|Hola Tito! Te pido 9 del Naranja: se venden unos 8 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 9 más cubrimos un mes.
+ped:p1779912655780=venta|10340|precio de la venta mas cara de 365 dias (deja 37%) para el maximo de compra
 ped:p1779912655780#Azul=venta|9999|precio de la ultima venta de ese color ($9999) para el maximo de compra
-ped:p1779912655780#Naranja=venta|10340|precio de la ultima venta de ese color ($10340) para el maximo de compra
-ped:p1779912656000=u|0|Hola Tito! Este no hace falta: se venden unos 15 por mes y ya hay 15, alcanza para unos 30 días. Cuento 3 que se vendieron baratas porque salían al toque.
-ped:p1779912656000=venta|9190|precio de hoy para el maximo de compra (la ultima venta fue a $9990, mas cara)
-ped:p1783525155703=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 15, alcanza para unos 75 días. Cuento 8 que se vendieron baratas porque salían al toque.
+ped:p1779912655780#Naranja=venta|10340|precio de la venta mas cara de 365 dias de ese color (deja 37%) para el maximo de compra
+ped:p1779912656000=u|0|Hola Tito! Este no hace falta: se venden unos 15 por mes y ya hay 16, alcanza para unos 32 días. Cuento 3 que se vendieron baratas porque salían al toque.|cub=15
+ped:p1779912656000=venta|9990|precio de la venta mas cara de 365 dias (deja 49%) para el maximo de compra
+ped:p1783525155703=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 15, alcanza para unos 225 días. Cuento 8 que se vendieron baratas porque salían al toque.|cub=6
 ped:p1783525155703=venta|61990|precio de la ultima venta ($61990) para el maximo de compra
-ped:p1779912656230#azul=u|0|Hola Tito! El azul no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 33 días.
-ped:p1779912656230#celeste=u|0|Hola Tito! El celeste no hace falta: se venden unos 1 por mes y ya hay 1, alcanza para unos 38 días.
-ped:p1779912656230#negro=u|0|Hola Tito! El negro no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 44 días.
-ped:p1779912656230#rosa=u|2|Hola Tito! Te pido 2 del rosa: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos un mes.
-ped:p1779912656230#violeta=u|0|Hola Tito! P47 orejas de gato violeta: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912656230=venta|9100|precio de la ultima venta ($9100) para el maximo de compra
+ped:p1779912656230#azul=u|0|Hola Tito! El azul no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 34 días.
+ped:p1779912656230#celeste=u|1|Hola Tito! Te pido 1 del celeste de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($10090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912656230#negro=u|0|Hola Tito! El negro no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 26 días.
+ped:p1779912656230#rosa=u|1|Hola Tito! Te pido 1 del rosa: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 1 más cubrimos un mes.
+ped:p1779912656230#violeta=u|2|Hola Tito! Te pido 2 del violeta: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos un mes.
+ped:p1779912656230=venta|10220|precio de la competencia (deja 38%) para el maximo de compra
 ped:p1779912656230#azul=venta|9660|precio de la ultima venta de ese color ($9660) para el maximo de compra
 ped:p1779912656230#celeste=venta|9790|precio de la ultima venta de ese color ($9790) para el maximo de compra
-ped:p1779912656230#negro=venta|11999|precio de la ultima venta de ese color ($11999) para el maximo de compra
-ped:p1779912656230#rosa=venta|11914|precio de la ultima venta de ese color ($11914) para el maximo de compra
-ped:p1779912656230#violeta=venta|9100|precio de la ultima venta de ese color ($9100) para el maximo de compra
-ped:p1779912656190=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes y ya hay 12, alcanza para unos 38 días.
-ped:p1779912656190=venta|6300|precio de la ultima venta ($6300) para el maximo de compra
-ped:p1779912655690=u|0|Hola Tito! Funda queen: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1779912655690=venta|18520|precio de la ultima venta ($18520) para el maximo de compra
-ped:p1787783558381=u|0|Hola Tito! Este no hace falta: se venden unos 3 por mes y ya hay 17, alcanza para unos 153 días.
-ped:p1787783558381=venta|9490|precio de la ultima venta ($9490) para el maximo de compra
-ped:p1779912656080=u|14|Hola Tito! Te pido 14: se venden unos 19 por mes y entre Full, la oficina y lo que viene en camino hay 5. Con 14 más cubrimos un mes. Cuento 10 que se vendieron baratas porque salían al toque.
-ped:p1779912656080=venta|7090|precio de la ultima venta ($7090) para el maximo de compra
-ped:p1783356360695=u|0|Hola Tito! Este no hace falta: se venden unos 11 por mes y ya hay 12, alcanza para unos 34 días.
-ped:p1783356360695=venta|10000|precio de la ultima venta ($10000) para el maximo de compra
-ped:p1779912656370=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 6, alcanza para unos 32 días.
-ped:p1779912656370=venta|7990|precio de la ultima venta ($7990) para el maximo de compra
-ped:p1782923102141=u|0|Hola Tito! Funda 1 y media: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende desde el 29/08
+ped:p1779912656230#negro=venta|11999|precio de la venta mas cara de 365 dias de ese color (deja 61%) para el maximo de compra
+ped:p1779912656230#rosa=venta|10220|precio de la competencia de ese color (deja 38%) para el maximo de compra
+ped:p1779912656230#violeta=venta|11999|precio de la venta mas cara de 365 dias de ese color (deja 61%) para el maximo de compra
+ped:p1779912656190=u|0|Hola Tito! Este no hace falta: se venden unos 8 por mes y ya hay 13, alcanza para unos 47 días.|cub=12
+ped:p1779912656190=venta|6600|precio de la competencia (deja 96%) para el maximo de compra
+ped:p1779912655690=u|12|Hola Tito! Te pido 12: se venden unos 12 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 12 más cubrimos un mes.|cub=0
+ped:p1779912655690=venta|18520|precio de la venta mas cara de 365 dias (deja 41%) para el maximo de compra
+ped:p1787783558381=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes y ya hay 18, alcanza para unos 53 días.|cub=12
+ped:p1787783558381=venta|6020|precio de la competencia (deja 72%) para el maximo de compra
+ped:p1779912656080=u|14|Hola Tito! Te pido 14: se venden unos 19 por mes y entre Full, la oficina y lo que viene en camino hay 5. Con 14 más cubrimos un mes. Cuento 10 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656080=venta|7090|precio de la venta mas cara de 365 dias (deja 147%) para el maximo de compra
+ped:p1783356360695=u|0|Hola Tito! Este no hace falta: se venden unos 11 por mes y ya hay 13, alcanza para unos 36 días.|cub=12
+ped:p1783356360695=venta|8250|precio de la competencia (deja 83%) para el maximo de compra
+ped:p1779912656370=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 6, alcanza para unos 114 días.|cub=4
+ped:p1779912656370=venta|9890|precio de la competencia (deja 105%) para el maximo de compra
+ped:p1782923102141=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 3 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18590). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1782923102141=venta|14960|precio de la ultima venta ($14960) para el maximo de compra
-ped:p1779912655820=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 5. Cuento 2 que se vendieron baratas porque salían al toque.
+ped:p1779912655820=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 5. Cuento 2 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912655820=venta|8410|precio de la ultima venta ($8410) para el maximo de compra
-ped:p1784514320290alg=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 7, alcanza para unos 105 días.
-ped:p1784514320290alg=venta|13990|precio de la ultima venta ($13990) para el maximo de compra
-ped:p1779912655530#Milán=u|0|Hola Tito! Pret a Porter Milán: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende desde el 11/08
-ped:p1779912655530#Paris=u|0|Hola Tito! Pret a Porter Paris: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. No vende desde el 11/08
+ped:p1784514320290alg=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 7, alcanza para unos 112 días.|cub=0
+ped:p1784514320290alg=venta|13990|precio de la venta mas cara de 365 dias (deja 94%) para el maximo de compra
+ped:p1779912655530#Milán=u|2|Hola Tito! Te pido 2 del Milán: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos un mes.
+ped:p1779912655530#Paris=u|13|Hola Tito! Te pido 13 del Paris: está agotado y cuando había se vendían unos 13 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 13 más cubrimos un mes.
 ped:p1779912655530#Tokyo=u|0|Hola Tito! El Tokyo no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655530=venta|17500|precio de la ultima venta ($17500) para el maximo de compra
-ped:p1779912655530#Milán=venta|17700|precio de la ultima venta de ese color ($17700) para el maximo de compra
-ped:p1779912655530#Paris=venta|17500|precio de la ultima venta de ese color ($17500) para el maximo de compra
-ped:p1779912655530#Tokyo=venta|17500|precio de la ultima venta de ese color ($17500) para el maximo de compra
-ped:p1790392438056=u|0|Hola Tito! Este no hace falta: se venden unos 25 por mes y ya hay 36, alcanza para unos 44 días. Cuento 1 que se vendieron baratas porque salían al toque.
-ped:p1790392438056=venta|8490|precio de la ultima venta ($8490) para el maximo de compra
-ped:p1782923069593=u|0|Hola Tito! Funda twin: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
+ped:p1779912655530=venta|22410|precio de la competencia (deja 52%) para el maximo de compra
+ped:p1779912655530#Milán=venta|21570|precio de la competencia de ese color (deja 47%) para el maximo de compra
+ped:p1779912655530#Paris=venta|22410|precio de la competencia de ese color (deja 52%) para el maximo de compra
+ped:p1779912655530#Tokyo=venta|21570|precio de la competencia de ese color (deja 47%) para el maximo de compra
+ped:p1790392438056=u|0|Hola Tito! Este no hace falta: se venden unos 9 por mes y ya hay 36, alcanza para unos 120 días. Cuento 1 que se vendieron baratas porque salían al toque.|cub=25
+ped:p1790392438056=venta|14990|precio de la venta mas cara de 365 dias (deja 207%) para el maximo de compra
+ped:p1782923069593=u|1|Hola Tito! Te pido 1 de prueba: antes se vendían unos 3 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1782923069593=venta|21020|precio de la ultima venta ($21020) para el maximo de compra
-ped:p1779912656090=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 3, alcanza para unos 50 días.
-ped:p1779912656090=venta|32999|precio de la ultima venta ($32999) para el maximo de compra
-ped:p1779912656170=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 72 días.
+ped:p1779912656090=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 49 días.|cub=2
+ped:p1779912656090=venta|32999|precio de la venta mas cara de 365 dias (deja 72%) para el maximo de compra
+ped:p1779912656170=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días.|cub=0
 ped:p1779912656170=venta|20300|precio de la ultima venta ($20300) para el maximo de compra
-ped:p1779912656360=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 62 días.
+ped:p1779912656360=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 64 días.|cub=0
 ped:p1779912656360=venta|7800|precio de la ultima venta ($7800) para el maximo de compra
-ped:p1780152957092=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p1780152957092=u|0|Hola Tito! Este no lo compres: lo tuvimos 35 días en Full a $22790 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=1
 ped:p1780152957092=venta|21999|precio de la ultima venta ($21999) para el maximo de compra
-ped:p1779912655770=u|0|Hola Tito! Tira Led: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
+ped:p1779912655770=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($17690). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1779912655770=venta|12500|precio de la ultima venta ($12500) para el maximo de compra
-ped:p1779912655830=u|0|Hola Tito! Este no lo compres: al precio de hoy deja 27% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p1779912655830=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 5. No cuento 1 que se remataron porque estaban parados.|cub=0
 ped:p1779912655830=venta|31999|precio de la ultima venta ($31999) para el maximo de compra
-ped:p1781367459502393=u|17|Hola Tito! Te pido 17: está agotado y cuando había se vendían unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 17 más cubrimos un mes.
-ped:p1781367459502393=venta|19442|precio de la ultima venta ($19442) para el maximo de compra
-ped:p1785284945528=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 1, alcanza para unos 58 días. Cuento 1 que se vendieron baratas porque salían al toque.
+ped:p1781367459502393=u|17|Hola Tito! Te pido 17: está agotado y cuando había se vendían unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 17 más cubrimos un mes.|cub=0
+ped:p1781367459502393=venta|19442|precio de la venta mas cara de 365 dias (deja 119%) para el maximo de compra
+ped:p1785284945528=u|1|Hola Tito! Te pido 1 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($31190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1785284945528=venta|28960|precio de la ultima venta ($28960) para el maximo de compra
-ped:p1787594663055=u|0|Hola Tito! De la Patagonia KO UNISEX: no se consigue más (14/10). No se pide. Quedan 2 en el Full de Adriana
+ped:p1787594663055=u|0|Hola Tito! De la Patagonia KO UNISEX: no se consigue más (14/10). No se pide. Quedan 2 en el Full de Adriana|cub=0
 ped:p1787594663055=venta|45050|precio de la ultima venta ($45050) para el maximo de compra
-ped:p1790392460328=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 12, alcanza para unos 60 días.
-ped:p1790392460328=venta|4505|precio de la ultima venta ($4505) para el maximo de compra
-ped:p1792440689982=u|5|Hola Tito! Te pido 5: se venden unos 9 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 5 más cubrimos un mes.
-ped:p1792440689982=venta|17990|precio de la ultima venta ($17990) para el maximo de compra
-ped:p1779912656160=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0. Cuento 1 que se vendieron baratas porque salían al toque.
+ped:p1790392460328=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 13, alcanza para unos 65 días.|cub=12
+ped:p1790392460328=venta|4610|precio de la competencia (deja 55%) para el maximo de compra
+ped:p1792440689982=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 60 días.|cub=2
+ped:p1792440689982=venta|10960|precio de la competencia (deja 63%) para el maximo de compra
+ped:p1779912656160=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0. Cuento 1 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656160=venta|45700|precio de la ultima venta ($45700) para el maximo de compra
-ped:p1779912656180=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0. Cuento 1 que se vendieron baratas porque salían al toque.
+ped:p1779912656180=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0. Cuento 1 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656180=venta|91000|precio de la ultima venta ($91000) para el maximo de compra
-ped:p1779912656310=u|0|Hola Tito! Indoor: vendía a $9.000-13.000 pero hoy está publicado a $32.999. a ese precio no hay historia. Primero hay que revisar el precio
+ped:p1779912656310=u|0|Hola Tito! Indoor: vendía a $9.000-13.000 pero hoy está publicado a $32.999. a ese precio no hay historia. Primero hay que revisar el precio|cub=0
 ped:p1779912656310=venta|26150|precio de la ultima venta ($26150) para el maximo de compra
-ped:p1779912656390=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 3, alcanza para unos 78 días.
+ped:p1779912656390=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 3.|cub=0
 ped:p1779912656390=venta|16990|precio de la ultima venta ($16990) para el maximo de compra
-ped:p1782925709386=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 8. No cuento 1 que se remataron porque estaban parados.
+ped:p1782925709386=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 8. No cuento 1 que se remataron porque estaban parados.|cub=0
 ped:p1782925709386=venta|13180|precio de la ultima venta ($13180) para el maximo de compra
-ped:p1790622050078=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 29.
+ped:p1790622050078=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 29.|cub=25
 ped:p1790622050078=venta|6390|precio de la ultima venta ($6390) para el maximo de compra
-ped:p1791316673662=u|0|Hola Tito! Halloween Man: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
+ped:p1791316673662=u|1|Hola Tito! Te pido 1 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($109290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1791316673662=venta|97990|precio de la ultima venta ($97990) para el maximo de compra
-ped:p1779912655520=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1779912655520=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1779912655520=venta|68990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1779912655860=u|20|Hola Tito! Termómetro horno: vendió 10 a 38 cada dos semanas durante seis meses y se cortó por falta de stock hace seis meses (no por demanda). La cuenta de 180 días lo daba por muerto. Pido para volver a probar
+ped:p1779912655860=u|20|Hola Tito! Termómetro horno: vendió 10 a 38 cada dos semanas durante seis meses y se cortó por falta de stock hace seis meses (no por demanda). La cuenta de 180 días lo daba por muerto. Pido para volver a probar|cub=0
 ped:p1779912655860=venta|6890|nunca vendio: precio de hoy para el maximo de compra
-ped:p1779912655990=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1779912656030=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1779912655990=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p1779912656030=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1779912656030=venta|21990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1779912656150=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1779912656380=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1779912656150=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p1779912656380=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0.|cub=0
 ped:p1779912656380=venta|19833|nunca vendio: precio de hoy para el maximo de compra
-ped:p1780699107690=u|0|Hola Tito! Mini linterna llavero: vendió bien hace nueve meses y nunca se repuso. demasiado viejo para apostar sin preguntarte
+ped:p1780699107690=u|0|Hola Tito! Mini linterna llavero: vendió bien hace nueve meses y nunca se repuso. demasiado viejo para apostar sin preguntarte|cub=0
 ped:p1780699107690=venta|5690|nunca vendio: precio de hoy para el maximo de compra
-ped:p1782923159688=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1782923159688=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1782923159688=venta|19990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1782926072704=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1782926072704=venta|18990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1784248246960=u|0|Hola Tito! Este no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p1782926072704=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p1782926072704=venta|27050|precio de la competencia (deja 92%) para el maximo de compra
+ped:p1784248246960=u|0|Hola Tito! Este no lo compres: al precio de hoy deja 29% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.|cub=0
 ped:p1784248246960=venta|8850|nunca vendio: precio de hoy para el maximo de compra
-ped:p1784418939715=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1784418939715=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1784418939715=venta|32999|nunca vendio: precio de hoy para el maximo de compra
-ped:p1788537928630=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1789245120427=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1788537928630=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p1789245120427=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1789245120427=venta|10790|nunca vendio: precio de hoy para el maximo de compra
-ped:p1791411206045=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p1791411206045=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1791411206045=venta|8490|nunca vendio: precio de hoy para el maximo de compra
-ped:p1791411311858=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1791411311858=venta|8816|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792787629845=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792787629845=venta|32990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792881560848=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792881560848=venta|7990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792881565786=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792881565786=venta|19990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792881567867=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792881567867=venta|19990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792881572937=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1792881575002=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1792881580075=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1792881582158=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1792881587218=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792881587218=venta|19990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792881589323=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p1792882500112=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792882500112=venta|4990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792882690326=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792882690326=venta|4190|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792882870991=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792882870991=venta|4190|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792883052702=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1792883052702=venta|11990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1793032938696=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p1793032938696=venta|14490|nunca vendio: precio de hoy para el maximo de compra
-ped:p1782841638453=u|4|Hola Tito! Te pido 4: se venden unos 108 por mes y entre Full, la oficina y lo que viene en camino hay 105. Con 4 más cubrimos un mes.
-ped:p1782841638453=venta|16990|precio de la ultima venta ($16990) para el maximo de compra
-ped:p1779912656270=u|0|Hola Tito! Este no hace falta: se venden unos 17 por mes y ya hay 63, alcanza para unos 111 días. No cuento 6 que se remataron porque estaban parados. Cuento 37 que se vendieron baratas porque salían al toque.
-ped:p1779912656270=venta|21990|precio de la ultima venta ($21990) para el maximo de compra
-ped:p1779912656280=u|0|Hola Tito! Este no hace falta: se venden unos 33 por mes y ya hay 63, alcanza para unos 57 días. Cuento 6 que se vendieron baratas porque salían al toque.
-ped:p1779912656280=venta|23980|precio de la ultima venta ($23980) para el maximo de compra
-ped:p1779912655550#Amber Romance=u|0|Hola Tito! El Amber Romance no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Aqua Kiss=u|0|Hola Tito! El Aqua Kiss no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Bare Vanilla=u|0|Hola Tito! El Bare Vanilla no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Berry Brulee=u|0|Hola Tito! El Berry Brulee no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Coconut Passion=u|0|Hola Tito! El Coconut Passion no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Electric Mango=u|0|Hola Tito! El Electric Mango no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Love Addict=u|0|Hola Tito! El Love Addict no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Love Spell=u|0|Hola Tito! El Love Spell no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Mango Temptation=u|0|Hola Tito! El Mango Temptation no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Melon Pear=u|0|Hola Tito! El Melon Pear no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Midnight Bloom=u|0|Hola Tito! El Midnight Bloom no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Pure Seduction=u|0|Hola Tito! El Pure Seduction no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Romantic=u|0|Hola Tito! El Romantic no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Rush=u|0|Hola Tito! El Rush no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Sizzling Vanilla=u|0|Hola Tito! El Sizzling Vanilla no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Vanilla Lace=u|0|Hola Tito! El Vanilla Lace no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Velve Petals=u|0|Hola Tito! El Velve Petals no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550#Wild Neroli=u|0|Hola Tito! El Wild Neroli no lo compres: al precio de hoy deja 33% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655550=venta|45000|precio de la ultima venta ($45000) para el maximo de compra
+ped:p1791411311858=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p1791411311858=venta|8720|precio de la competencia (deja 66%) para el maximo de compra
+ped:p1792787629845=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p1792787629845=venta|27600|precio de la competencia (deja 42%) para el maximo de compra
+ped:p1792881560848=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=8
+ped:p1792881560848=venta|32999|precio de la competencia (deja 458%) para el maximo de compra
+ped:p1792882500112=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=12
+ped:p1792882500112=venta|4400|precio de la competencia (deja 98%) para el maximo de compra
+ped:p1792882690326=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=12
+ped:p1792882690326=venta|3850|precio de la competencia (deja 135%) para el maximo de compra
+ped:p1792882870991=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=11
+ped:p1792882870991=venta|3460|precio de la competencia (deja 87%) para el maximo de compra
+ped:p1792883052702=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=6
+ped:p1792883052702=venta|6580|precio de la competencia (deja 63%) para el maximo de compra
+ped:p1793032938696=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p1793032938696=venta|13450|precio de la competencia (deja 87%) para el maximo de compra
+ped:p1782841638453=u|0|Hola Tito! Este no hace falta: se venden unos 22 por mes y ya hay 104, alcanza para unos 139 días.|cub=0
+ped:p1782841638453=venta|23990|precio de la venta mas cara de 365 dias (deja 88%) para el maximo de compra
+ped:p1779912656270=u|0|Hola Tito! Este no hace falta: se venden unos 4 por mes y ya hay 63, alcanza para unos 504 días. No cuento 6 que se remataron porque estaban parados. Cuento 37 que se vendieron baratas porque salían al toque.|cub=34
+ped:p1779912656270=venta|24990|precio de la venta mas cara de 365 dias (deja 41%) para el maximo de compra
+ped:p1779912656280=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 63. Cuento 6 que se vendieron baratas porque salían al toque.|cub=50
+ped:p1779912656280=venta|26990|precio de la venta mas cara de 365 dias (deja 37%) para el maximo de compra
+ped:p1779912655550#Amber Romance=u|0|Hola Tito! El Amber Romance no hace falta: se venden unos 1 por mes y ya hay 3, alcanza para unos 90 días.
+ped:p1779912655550#Aqua Kiss=u|0|Hola Tito! El Aqua Kiss no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p1779912655550#Bare Vanilla=u|3|Hola Tito! Te pido 3 del Bare Vanilla de prueba: antes se vendían unos 12 por mes, pero nunca lo probamos a un precio que nos deje 35% ($60490). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655550#Berry Brulee=u|0|Hola Tito! El Berry Brulee no hace falta: se venden unos 0 por mes y ya hay 0.
+ped:p1779912655550#Coconut Passion=u|0|Hola Tito! El Coconut Passion no hace falta: se venden unos 0 por mes y ya hay 13.
+ped:p1779912655550#Electric Mango=u|0|Hola Tito! El Electric Mango no hace falta: se venden unos 0 por mes y ya hay 0.
+ped:p1779912655550#Love Addict=u|0|Hola Tito! El Love Addict no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 30 días.
+ped:p1779912655550#Love Spell=u|2|Hola Tito! Te pido 2 del Love Spell de prueba: antes se vendían unos 3 por mes, pero nunca lo probamos a un precio que nos deje 35% ($59490). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655550#Mango Temptation=u|0|Hola Tito! El Mango Temptation no hace falta: se venden unos 10 por mes y ya hay 3, alcanza para unos 9 días.
+ped:p1779912655550#Melon Pear=u|0|Hola Tito! El Melon Pear no hace falta: se venden unos 0 por mes y ya hay 0.
+ped:p1779912655550#Midnight Bloom=u|0|Hola Tito! El Midnight Bloom no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 114 días.
+ped:p1779912655550#Pure Seduction=u|0|Hola Tito! El Pure Seduction no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p1779912655550#Romantic=u|3|Hola Tito! Te pido 3 del Romantic de prueba: antes se vendían unos 11 por mes, pero nunca lo probamos a un precio que nos deje 35% ($60290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655550#Rush=u|2|Hola Tito! Te pido 2 del Rush de prueba: antes se vendían unos 8 por mes, pero nunca lo probamos a un precio que nos deje 35% ($63290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655550#Sizzling Vanilla=u|0|Hola Tito! El Sizzling Vanilla no hace falta: se venden unos 2 por mes y ya hay 3, alcanza para unos 45 días.
+ped:p1779912655550#Vanilla Lace=u|0|Hola Tito! El Vanilla Lace no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 60 días.
+ped:p1779912655550#Velve Petals=u|0|Hola Tito! El Velve Petals no hace falta: se venden unos 0 por mes y ya hay 3.
+ped:p1779912655550#Wild Neroli=u|0|Hola Tito! El Wild Neroli no hace falta: se venden unos 0 por mes y ya hay 5.
+ped:p1779912655550=venta|64990|precio de la venta mas cara de 365 dias (deja 41%) para el maximo de compra
 ped:p1779912655550#Amber Romance=venta|49000|precio de la ultima venta de ese color ($49000) para el maximo de compra
 ped:p1779912655550#Aqua Kiss=venta|53990|precio de la ultima venta de ese color ($53990) para el maximo de compra
 ped:p1779912655550#Bare Vanilla=venta|45300|precio de la ultima venta de ese color ($45300) para el maximo de compra
 ped:p1779912655550#Berry Brulee=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
 ped:p1779912655550#Coconut Passion=venta|49000|precio de la ultima venta de ese color ($49000) para el maximo de compra
 ped:p1779912655550#Electric Mango=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
+ped:p1779912655550#Love Addict=venta|64990|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655550#Love Spell=venta|49000|precio de la ultima venta de ese color ($49000) para el maximo de compra
 ped:p1779912655550#Mango Temptation=venta|46930|precio de la ultima venta de ese color ($46930) para el maximo de compra
 ped:p1779912655550#Melon Pear=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
@@ -387,18 +376,19 @@ ped:p1779912655550#Midnight Bloom=venta|52440|precio de la ultima venta de ese c
 ped:p1779912655550#Pure Seduction=venta|45300|precio de la ultima venta de ese color ($45300) para el maximo de compra
 ped:p1779912655550#Romantic=venta|45300|precio de la ultima venta de ese color ($45300) para el maximo de compra
 ped:p1779912655550#Rush=venta|45570|precio de la ultima venta de ese color ($45570) para el maximo de compra
-ped:p1779912655550#Vanilla Lace=venta|64990|precio de la ultima venta de ese color ($64990) para el maximo de compra
+ped:p1779912655550#Sizzling Vanilla=venta|64990|precio de la venta mas cara de 365 dias de ese color (deja 38%) para el maximo de compra
+ped:p1779912655550#Vanilla Lace=venta|64990|precio de la venta mas cara de 365 dias de ese color (deja 41%) para el maximo de compra
 ped:p1779912655550#Velve Petals=venta|45300|precio de la ultima venta de ese color ($45300) para el maximo de compra
-ped:p1779912656260=u|0|Hola Tito! Este no hace falta: se venden unos 26 por mes y ya hay 27, alcanza para unos 31 días.
-ped:p1779912656260=venta|17990|precio de la ultima venta ($17990) para el maximo de compra
-ped:p1779912655560=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 16, alcanza para unos 77 días. Cuento 32 que se vendieron baratas porque salían al toque.
+ped:p1779912656260=u|0|Hola Tito! Este no hace falta: se venden unos 22 por mes y ya hay 27, alcanza para unos 37 días.|cub=0
+ped:p1779912656260=venta|20500|precio de la venta mas cara de 365 dias (deja 52%) para el maximo de compra
+ped:p1779912655560=u|0|Hola Tito! Este no lo compres: lo tuvimos 42 días en Full a $65490 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=7
 ped:p1779912655560=venta|52000|precio de la ultima venta ($52000) para el maximo de compra
-ped:p1779905818281=u|0|Hola Tito! Ferrari Negro: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
-ped:p1779905818281=venta|79130|precio de la ultima venta ($79130) para el maximo de compra
-ped:p1779912656290=u|0|Hola Tito! Pendrive 128gb: se acaban de retirar 34 de Full porque iban a pagar stock antiguo. No comprar hasta vender lo que hay
+ped:p1779905818281=u|14|Hola Tito! Te pido 14: se venden unos 13 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 14 más cubrimos un mes. Cuento 16 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779905818281=venta|79130|precio de la venta mas cara de 365 dias (deja 46%) para el maximo de compra
+ped:p1779912656290=u|0|Hola Tito! Pendrive 128gb: se acaban de retirar 34 de Full porque iban a pagar stock antiguo. No comprar hasta vender lo que hay|cub=0
 ped:p1779912656290=venta|41990|precio de la ultima venta ($41990) para el maximo de compra
-ped:p1782918442891=u|0|Hola Tito! Cabotine 30 ml: a su última venta deja ~25% y Nissei sólo tiene el de 100 ml (completa del 28/10). No se pide
-ped:p1782918442891=venta|43990|precio de la ultima venta ($43990) para el maximo de compra
+ped:p1782918442891=u|0|Hola Tito! Cabotine 30 ml: a su última venta deja ~25% y Nissei sólo tiene el de 100 ml (completa del 28/10). No se pide|cub=0
+ped:p1782918442891=venta|58970|precio de la competencia (deja 56%) para el maximo de compra
 ped:p1785263851692#Bare Vanilla=u|0|Hola Tito! El Bare Vanilla no hace falta: se venden unos 0 por mes y ya hay 1.
 ped:p1785263851692#Pure Seduction=u|0|Hola Tito! VS Pure Seduction: no vende hace más de 60 días y está en sobra (completa del 28/10). No se repone hasta que se venda lo que hay
 ped:p1785263851692#Velvet Petals=u|0|Hola Tito! VS Velvet Petals: no vende hace más de 60 días (completa del 28/10). No se repone hasta que vuelva a vender
@@ -409,283 +399,281 @@ ped:p1785263851692#Velvet Petals=venta|44000|precio de la ultima venta de ese co
 ped:p1788886838508#Freesia=u|10|Hola Tito! Te pido 10 del Freesia: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 10 más cubrimos un mes.
 ped:p1788886838508#Kiss=u|0|Hola Tito! Halloween Kiss: Nissei no lo tiene. No se pide hasta que vuelva
 ped:p1788886838508#Kiss Sexy=u|0|Hola Tito! Halloween Kiss Sexy: Nissei no lo tiene. No se pide hasta que vuelva
-ped:p1788886838508=venta|82520|precio de la ultima venta ($82520) para el maximo de compra
-ped:p1788886838508#Freesia=venta|99600|precio de la ultima venta de ese color ($99600) para el maximo de compra
+ped:p1788886838508=venta|99600|precio de la venta mas cara de 365 dias (deja 41%) para el maximo de compra
+ped:p1788886838508#Freesia=venta|99600|precio de la venta mas cara de 365 dias de ese color (deja 40%) para el maximo de compra
 ped:p1788886838508#Kiss=venta|82520|precio de la ultima venta de ese color ($82520) para el maximo de compra
 ped:p1788886838508#Kiss Sexy=venta|82915|precio de la ultima venta de ese color ($82915) para el maximo de compra
-ped:p1780106778739=u|0|Hola Tito! Buds Core: el precio de Paraguay no da el 25%. No se pide
+ped:p1780106778739=u|0|Hola Tito! Buds Core: el precio de Paraguay no da el 25%. No se pide|cub=1
 ped:p1780106778739=venta|145940|precio de la ultima venta ($145940) para el maximo de compra
-ped:p1779912656300=u|0|Hola Tito! Pendrive Ultra Shift 128: se remató porque estuvo parado meses. No traer
+ped:p1779912656300=u|0|Hola Tito! Pendrive Ultra Shift 128: se remató porque estuvo parado meses. No traer|cub=0
 ped:p1779912656300=venta|42326|precio de la ultima venta ($42326) para el maximo de compra
-ped:p1782918468593=u|0|Hola Tito! Cabotine Turquoise 100: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p1782918468593=venta|70990|precio de la ultima venta ($70990) para el maximo de compra
-ped:p178287291398901=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días. No cuento 1 que se remataron porque estaban parados. Cuento 5 que se vendieron baratas porque salían al toque.
-ped:p178287291398901=venta|95680|precio de la ultima venta ($95680) para el maximo de compra
-ped:p1779912655570=u|2|Hola Tito! Te pido 2: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 2 más cubrimos un mes. No cuento 1 que se remataron porque estaban parados. Cuento 1 que se vendieron baratas porque salían al toque.
+ped:p1782918468593=u|12|Hola Tito! Te pido 12: se venden unos 12 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 12 más cubrimos un mes.|cub=0
+ped:p1782918468593=venta|81840|precio de la competencia (deja 39%) para el maximo de compra
+ped:p1779912655570=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días.|cub=0
 ped:p1779912655570=venta|72990|precio de la ultima venta ($72990) para el maximo de compra
-ped:p1782872153975#azul=u|0|Hola Tito! Joystick Xbox azul: a su última venta deja menos del 35% en el peor caso y desde el 24/10 sólo se repone lo que deja 35% o más (revisor de la completa del 27/10). Se vuelve a pedir si vende al precio nuevo
+ped:p178287291398901=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días. No cuento 1 que se remataron porque estaban parados. Cuento 5 que se vendieron baratas porque salían al toque.|cub=0
+ped:p178287291398901=venta|95680|precio de la ultima venta ($95680) para el maximo de compra
+ped:p1782872153975#azul=u|2|Hola Tito! Te pido 2 del azul de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($203690). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1782872153975#black=u|0|Hola Tito! El black no hace falta: se venden unos 0 por mes y ya hay 2.
-ped:p1782872153975#white=u|0|Hola Tito! El white no hace falta: se venden unos 0 por mes y ya hay 0.
+ped:p1782872153975#white=u|2|Hola Tito! Te pido 2 del white de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($201090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1782872153975=venta|121500|precio de la ultima venta ($121500) para el maximo de compra
 ped:p1782872153975#azul=venta|177520|precio de la ultima venta de ese color ($177520) para el maximo de compra
 ped:p1782872153975#black=venta|170000|precio de la ultima venta de ese color ($170000) para el maximo de compra
 ped:p1782872153975#white=venta|121500|precio de la ultima venta de ese color ($121500) para el maximo de compra
-ped:p1788893559056=u|0|Hola Tito! Ted Lapidus Rumba: Nissei no lo tiene. No se pide hasta que vuelva
-ped:p1788893559056=venta|86990|precio de la ultima venta ($86990) para el maximo de compra
-ped:p1781714867137=u|0|Hola Tito! Tarjeta SanDisk Ultra con adaptador: las que vendíamos eran truchas y Matías las sacó. No se compra
-ped:p1781714867137=venta|54499|precio de la ultima venta ($54499) para el maximo de compra
-ped:p1784044584619=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 9, alcanza para unos 108 días. Cuento 2 que se vendieron baratas porque salían al toque.
+ped:p1788893559056=u|0|Hola Tito! Ted Lapidus Rumba: Nissei no lo tiene. No se pide hasta que vuelva|cub=0
+ped:p1788893559056=venta|99000|precio de la competencia (deja 67%) para el maximo de compra
+ped:p1781714867137=u|0|Hola Tito! Tarjeta SanDisk Ultra con adaptador: las que vendíamos eran truchas y Matías las sacó. No se compra|cub=0
+ped:p1781714867137=venta|48340|precio de la competencia (deja 39%) para el maximo de compra
+ped:p1784044584619=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 9, alcanza para unos 108 días. Cuento 2 que se vendieron baratas porque salían al toque.|cub=1
 ped:p1784044584619=venta|87630|precio de la ultima venta ($87630) para el maximo de compra
-ped:p1784044596199=u|0|Hola Tito! Animale Sexy: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. Paraguay no da el %
-ped:p1784044596199=venta|80000|precio de la ultima venta ($80000) para el maximo de compra
-ped:p1780106846533=u|0|Hola Tito! Redmi Pad 2: se vendieron las 2 últimas a pérdida por descarte. No volver a traer
+ped:p1784044596199=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 30 días.|cub=0
+ped:p1784044596199=venta|202970|precio de la competencia (deja 146%) para el maximo de compra
+ped:p1780106846533=u|0|Hola Tito! Redmi Pad 2: se vendieron las 2 últimas a pérdida por descarte. No volver a traer|cub=0
 ped:p1780106846533=venta|376236|precio de la ultima venta ($376236) para el maximo de compra
-ped:p17833581096731=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 47 días.
-ped:p17833581096731=venta|176770|precio de la ultima venta ($176770) para el maximo de compra
-ped:p17833581096736=u|0|Hola Tito! SSD 1TB: el precio de ML quedó inflado y vendía 1 cada 3 meses. No traer por ahora
+ped:p17833581096731=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 49 días.|cub=0
+ped:p17833581096731=venta|209720|precio de la venta mas cara de 365 dias (deja 46%) para el maximo de compra
+ped:p17833581096736=u|0|Hola Tito! SSD 1TB: el precio de ML quedó inflado y vendía 1 cada 3 meses. No traer por ahora|cub=0
 ped:p17833581096736=venta|363680|precio de la ultima venta ($363680) para el maximo de compra
-ped:p17833581096732=u|0|Hola Tito! Watch S5: no se trae más (decisión 5a de Matías del 22/10)
-ped:p17833581096732=venta|429450|precio de la ultima venta ($429450) para el maximo de compra
-ped:p1788886453710=u|0|Hola Tito! Cool Water Woman: no se puede reponer a un precio que deje el 25%. No se pide
+ped:p1788886453710=u|0|Hola Tito! Cool Water Woman: no se puede reponer a un precio que deje el 25%. No se pide|cub=0
 ped:p1788886453710=venta|92499|precio de la ultima venta ($92499) para el maximo de compra
-ped:p178287291398902=u|0|Hola Tito! Redmi Buds 6 Play: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo
-ped:p178287291398902=venta|32999|precio de la ultima venta ($32999) para el maximo de compra
-ped:p178287291398904=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p178287291398904=venta|349999|precio de la ultima venta ($349999) para el maximo de compra
-ped:p1788743923415=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 3, alcanza para unos 48 días.
-ped:p1788743923415=venta|175590|precio de la ultima venta ($175590) para el maximo de compra
+ped:p17833581096732=u|0|Hola Tito! Watch S5: no se trae más (decisión 5a de Matías del 22/10)|cub=0
+ped:p17833581096732=venta|429450|precio de la venta mas cara de 365 dias (deja 38%) para el maximo de compra
+ped:p178287291398904=u|2|Hola Tito! Te pido 2: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos un mes.|cub=0
+ped:p178287291398904=venta|349999|precio de la venta mas cara de 365 dias (deja 53%) para el maximo de compra
+ped:p1788743923415=u|0|Hola Tito! Este no hace falta: se venden unos 3 por mes y ya hay 3, alcanza para unos 33 días.|cub=2
+ped:p1788743923415=venta|164970|precio de la competencia (deja 40%) para el maximo de compra
 ped:p1788904839781#Bare Vanilla=u|0|Hola Tito! STARLIT Bare Vanilla: no se puede reponer. No se pide
 ped:p1788904839781#Love Spell=u|0|Hola Tito! El Love Spell no hace falta: se venden unos 0 por mes y ya hay 1.
 ped:p1788904839781#Pure Seduction=u|0|Hola Tito! El Pure Seduction no hace falta: se venden unos 0 por mes y ya hay 0.
 ped:p1788904839781#Velvet Petals=u|0|Hola Tito! El Velvet Petals no hace falta: se venden unos 0 por mes y ya hay 1.
-ped:p1788904839781=venta|45000|precio de la ultima venta ($45000) para el maximo de compra
-ped:p1788904839781#Bare Vanilla=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
+ped:p1788904839781=venta|83490|precio de la competencia (deja 82%) para el maximo de compra
+ped:p1788904839781#Bare Vanilla=venta|83490|precio de la competencia de ese color (deja 82%) para el maximo de compra
 ped:p1788904839781#Pure Seduction=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
-ped:p17904445727134=u|0|Hola Tito! Mouse Corsair Scimitar: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva
-ped:p17904445727134=venta|129990|precio de la ultima venta ($129990) para el maximo de compra
-ped:p17904445727815=u|0|Hola Tito! Sony ZX310: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. Paraguay no da el %
+ped:p17904445727134=u|0|Hola Tito! Mouse Corsair Scimitar: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva|cub=4
+ped:p17904445727134=venta|151520|precio de la competencia (deja 58%) para el maximo de compra
+ped:p17904445727815=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($78090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p17904445727815=venta|67230|precio de la ultima venta ($67230) para el maximo de compra
-ped:p17904445729868=u|0|Hola Tito! Sony MDR-EX15AP: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. Paraguay no da el %
-ped:p17904445729868=venta|43590|precio de la ultima venta ($43590) para el maximo de compra
-ped:p17919098379973=u|0|Hola Tito! Midnight Fantasy: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva
+ped:p17904445729868=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 4.|cub=2
+ped:p17904445729868=venta|46750|precio de la competencia (deja 38%) para el maximo de compra
+ped:p17919098379973=u|0|Hola Tito! Midnight Fantasy: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva|cub=0
 ped:p17919098379973=venta|74990|precio de la ultima venta ($74990) para el maximo de compra
-ped:p179218076128818=u|1|Hola Tito! Te pido 1: quiero tener 5 y ya hay 4. (Waflera Atma Disney: es el mejor producto, deja más de 150% y vendió 1 por semana desde que llegó. Tener 5 (pido 4 y queda 1 en Full))
-ped:p179218076128818=venta|269990|precio de la ultima venta ($269990) para el maximo de compra
-ped:p17833581096735=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0.
+ped:p179218076128818=u|1|Hola Tito! Te pido 1: quiero tener 5 y ya hay 4. (Waflera Atma Disney: es el mejor producto, deja más de 150% y vendió 1 por semana desde que llegó. Tener 5 (pido 4 y queda 1 en Full))|cub=4
+ped:p179218076128818=venta|252990|precio de la competencia (deja 152%) para el maximo de compra
+ped:p17833581096735=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0.|cub=0
 ped:p17833581096735=venta|340000|precio de la ultima venta ($340000) para el maximo de compra
-ped:p1784044826040=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2. Cuento 1 que se vendieron baratas porque salían al toque.
+ped:p1784044826040=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2. Cuento 1 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1784044826040=venta|129999|precio de la ultima venta ($129999) para el maximo de compra
-ped:p1788743899629=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 1, alcanza para unos 48 días.
-ped:p1788743899629=venta|189999|precio de la ultima venta ($189999) para el maximo de compra
-ped:p1788905033350#Love Spell=u|0|Hola Tito! El Love Spell no lo compres: al precio de hoy deja -3% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p1788743899629=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p1788743899629=venta|207600|precio de la competencia (deja 38%) para el maximo de compra
+ped:p1788905033350#Love Spell=u|0|Hola Tito! El Love Spell no hace falta: se venden unos 0 por mes y ya hay 0.
 ped:p1788905033350=venta|62990|precio normal de venta para el maximo de compra
-ped:p17904445725051=u|2|Hola Tito! Te pido 2: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 2 más cubrimos un mes.
-ped:p17904445725051=venta|138390|precio de la ultima venta ($138390) para el maximo de compra
-ped:p17904445728496=u|0|Hola Tito! Sony EX15 inalámbrico: a su última venta deja menos del 35% en el peor caso (revisor de la completa del 28/10). Se vuelve a pedir cuando venda al precio nuevo. Paraguay no da el %
-ped:p17904445728496=venta|42810|precio de la ultima venta ($42810) para el maximo de compra
-ped:p179044457319111=u|5|Hola Tito! Te pido 5: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 5 más cubrimos un mes.
-ped:p179044457319111=venta|174990|precio de la ultima venta ($174990) para el maximo de compra
+ped:p17904445725051=u|1|Hola Tito! Te pido 1: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 1 más cubrimos un mes.|cub=1
+ped:p17904445725051=venta|132830|precio de la competencia (deja 36%) para el maximo de compra
+ped:p17904445728496=u|1|Hola Tito! Te pido 1: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 3. Con 1 más cubrimos un mes.|cub=2
+ped:p17904445728496=venta|46200|precio de la competencia (deja 37%) para el maximo de compra
+ped:p179044457319111=u|5|Hola Tito! Te pido 5: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 5 más cubrimos un mes.|cub=0
+ped:p179044457319111=venta|174990|precio de la venta mas cara de 365 dias (deja 35%) para el maximo de compra
 ped:p1791244143398#Bare Vanilla=u|0|Hola Tito! El Bare Vanilla no hace falta: se venden unos 0 por mes y ya hay 1.
 ped:p1791244143398#Pure Seduction=u|0|Hola Tito! VS Intense Pure Seduction: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva
 ped:p1791244143398#Velvet Petals=u|0|Hola Tito! El Velvet Petals no hace falta: se venden unos 0 por mes y ya hay 1.
 ped:p1791244143398=venta|55990|precio de la ultima venta ($55990) para el maximo de compra
 ped:p1791244143398#Pure Seduction=venta|55990|precio de la ultima venta de ese color ($55990) para el maximo de compra
-ped:p1791316566103=u|3|Hola Tito! Te pido 3: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 3 más cubrimos un mes.
-ped:p1791316566103=venta|47490|precio de la ultima venta ($47490) para el maximo de compra
-ped:p1791335371049=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.
-ped:p1791335371049=venta|28990|precio de la ultima venta ($28990) para el maximo de compra
-ped:p1791335435353=u|0|Hola Tito! Cuba Prestige Classic: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva
-ped:p1791335435353=venta|50000|precio de la ultima venta ($50000) para el maximo de compra
-ped:p17919098378641=u|3|Hola Tito! Te pido 3: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 3 más cubrimos un mes.
+ped:p1791316566103=u|1|Hola Tito! Te pido 1: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 1 más cubrimos un mes.|cub=0
+ped:p1791316566103=venta|41800|precio de la competencia (deja 53%) para el maximo de compra
+ped:p1791335371049=u|1|Hola Tito! Te pido 1: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 1 más cubrimos un mes.|cub=0
+ped:p1791335371049=venta|28990|precio de la venta mas cara de 365 dias (deja 60%) para el maximo de compra
+ped:p1791335435353=u|0|Hola Tito! Cuba Prestige Classic: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva|cub=0
+ped:p1791335435353=venta|50000|precio de la venta mas cara de 365 dias (deja 74%) para el maximo de compra
+ped:p17919098378641=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días.|cub=0
 ped:p17919098378641=venta|101990|precio de la ultima venta ($101990) para el maximo de compra
-ped:p17921807554518=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 38 días.
-ped:p17921807554518=venta|29999|precio de la ultima venta ($29999) para el maximo de compra
-ped:p17833581096733=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0. No cuento 1 que se remataron porque estaban parados.
+ped:p17921807554518=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días.|cub=2
+ped:p17921807554518=venta|32990|precio de la competencia (deja 68%) para el maximo de compra
+ped:p17833581096733=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0. No cuento 1 que se remataron porque estaban parados.|cub=0
 ped:p17833581096733=venta|144990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1784044625340=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1. No cuento 1 que se remataron porque estaban parados.
-ped:p1784044625340=venta|209990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17904445724350=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p1784044625340=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1. No cuento 1 que se remataron porque estaban parados.|cub=0
+ped:p1784044625340=venta|238150|precio de la competencia (deja 159%) para el maximo de compra
+ped:p17904445724350=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=0
 ped:p17904445724350=venta|249890|nunca vendio: precio de hoy para el maximo de compra
-ped:p17904445725742=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p17904445725742=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=1
 ped:p17904445725742=venta|62990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17904445726433=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
-ped:p17904445726433=venta|69990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17904445730559=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
+ped:p17904445726433=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=1
+ped:p17904445726433=venta|72040|precio de la competencia (deja 39%) para el maximo de compra
+ped:p17904445730559=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=0
 ped:p17904445730559=venta|46990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179044457312310=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
-ped:p179044457312310=venta|69783|nunca vendio: precio de hoy para el maximo de compra
-ped:p1791316782281=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.
-ped:p1791316782281=venta|45000|nunca vendio: precio de hoy para el maximo de compra
-ped:p17919098382687=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.
-ped:p17919098382687=venta|169990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17919188222330=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17919188223061=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17919188223782=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17919188224513=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17919188225224=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17921807511030=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p179044457312310=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=1
+ped:p179044457312310=venta|62790|precio de la competencia (deja 36%) para el maximo de compra
+ped:p1791316782281=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=0
+ped:p1791316782281=venta|87910|precio de la competencia (deja 207%) para el maximo de compra
+ped:p17919098382687=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p17919098382687=venta|168850|precio de la competencia (deja 60%) para el maximo de compra
+ped:p17919188222330=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p17919188223061=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p17919188223782=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p17919188224513=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p17919188225224=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p17921807511030=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p17921807511030=venta|159990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807516611=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17921807516611=venta|229990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807521842=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17921807516611=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p17921807516611=venta|187050|precio de la competencia (deja 41%) para el maximo de compra
+ped:p17921807521842=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17921807521842=venta|67990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807526863=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17921807526863=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17921807526863=venta|65000|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807531974=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17921807531974=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17921807531974=venta|71990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807538125=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17921807538125=venta|112990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807544276=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17921807538125=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p17921807538125=venta|109980|precio de la competencia (deja 42%) para el maximo de compra
+ped:p17921807544276=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17921807544276=venta|86990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807549557=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17921807549557=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p17921807549557=venta|32990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807560659=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17921807560659=venta|32990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218075658610=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p179218075719111=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17921807560659=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p17921807560659=venta|32999|precio de la competencia (deja 68%) para el maximo de compra
+ped:p179218075658610=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
+ped:p179218075719111=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p179218075719111=venta|48990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218075780612=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p179218075780612=venta|385990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218075832913=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p179218075832913=venta|89990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218075893514=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p179218075780612=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p179218075780612=venta|335270|precio de la competencia (deja 101%) para el maximo de compra
+ped:p179218075832913=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p179218075832913=venta|146400|precio de la competencia (deja 129%) para el maximo de compra
+ped:p179218075893514=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p179218075893514=venta|71990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218075954815=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p179218075954815=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p179218075954815=venta|23990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218076016416=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p179218076016416=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p179218076016416=venta|20990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218076065917=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p179218076065917=venta|23990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218076181119=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p179218076181119=venta|136990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17926955060220=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17926955062221=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p179218076065917=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
+ped:p179218076065917=venta|19800|precio de la competencia (deja 54%) para el maximo de compra
+ped:p179218076181119=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p179218076181119=venta|150480|precio de la competencia (deja 46%) para el maximo de compra
+ped:p17926955062221=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17926955062221=venta|151990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17926955066202=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17926955066202=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17926955066202=venta|99990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17926955070173=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17926955070173=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17926955070173=venta|49990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17926955074124=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17926955074124=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17926955074124=venta|126990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17926955078115=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17926955078115=venta|239990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17926955082106=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.
-ped:p17930313908980=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313908980=venta|144990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313909701=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313909701=venta|139990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313910422=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313910422=venta|169990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313911123=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313911123=venta|158990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313911854=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313911854=venta|139990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313912565=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313912565=venta|79990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313913256=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
+ped:p17926955078115=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17926955078115=venta|197990|precio de la competencia (deja 53%) para el maximo de compra
+ped:p17926955082106=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=1
+ped:p17930313908980=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313908980=venta|142980|precio de la competencia (deja 38%) para el maximo de compra
+ped:p17930313909701=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313909701=venta|131990|precio de la competencia (deja 41%) para el maximo de compra
+ped:p17930313910422=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313910422=venta|122710|precio de la competencia (deja 63%) para el maximo de compra
+ped:p17930313911123=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313911123=venta|171030|precio de la competencia (deja 45%) para el maximo de compra
+ped:p17930313911854=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313911854=venta|131210|precio de la competencia (deja 39%) para el maximo de compra
+ped:p17930313912565=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313912565=venta|64130|precio de la competencia (deja 36%) para el maximo de compra
+ped:p17930313913256=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17930313913256=venta|79990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313913987=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.
-ped:p17930313913987=venta|114990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1779912655490#1.4 Sexy Men=u|0|Hola Tito! El 1.4 Sexy Men no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#1.4 W Mujer=u|0|Hola Tito! El 1.4 W Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#1.4M Hombre=u|0|Hola Tito! El 1.4M Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Abismo=u|0|Hola Tito! El Abismo no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p17930313913987=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
+ped:p17930313913987=venta|105600|precio de la competencia (deja 36%) para el maximo de compra
+ped:p1779912655490#1.4 Sexy Men=u|0|Hola Tito! El 1.4 Sexy Men no hace falta: se venden unos 1 por mes y ya hay 9, alcanza para unos 261 días.
+ped:p1779912655490#1.4 W Mujer=u|0|Hola Tito! El 1.4 W Mujer no hace falta: se venden unos 1 por mes y ya hay 4, alcanza para unos 136 días.
+ped:p1779912655490#1.4M Hombre=u|0|Hola Tito! El 1.4M Hombre no hace falta: se venden unos 6 por mes y ya hay 5, alcanza para unos 26 días.
+ped:p1779912655490#Abismo=u|1|Hola Tito! Te pido 1 del Abismo: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 1 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
 ped:p1779912655490#Acqua=u|0|Hola Tito! Acqua: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más.
-ped:p1779912655490#Barbarella=u|0|Hola Tito! El Barbarella no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Bella=u|0|Hola Tito! El Bella no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Blue Men=u|0|Hola Tito! El Blue Men no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Blush=u|0|Hola Tito! El Blush no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Boy=u|0|Hola Tito! El Boy no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Dark=u|0|Hola Tito! El Dark no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Debutant Hombre=u|0|Hola Tito! El Debutant Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Debutante Mujer=u|0|Hola Tito! El Debutante Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Dream Way=u|0|Hola Tito! El Dream Way no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Flores=u|0|Hola Tito! El Flores no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Free Love=u|0|Hola Tito! El Free Love no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Fuego=u|0|Hola Tito! El Fuego no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Gentleman=u|0|Hola Tito! El Gentleman no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Gold Hombre=u|0|Hola Tito! El Gold Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Gold Lady=u|0|Hola Tito! El Gold Lady no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Good Mujer=u|0|Hola Tito! El Good Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Green=u|0|Hola Tito! El Green no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#H For men=u|0|Hola Tito! El H For men no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#H Woman=u|0|Hola Tito! El H Woman no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Héroes For Men=u|0|Hola Tito! El Héroes For Men no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Hot=u|0|Hola Tito! El Hot no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p1779912655490#Barbarella=u|0|Hola Tito! El Barbarella no hace falta: se venden unos 4 por mes y ya hay 20, alcanza para unos 147 días.
+ped:p1779912655490#Bella=u|0|Hola Tito! El Bella no hace falta: se venden unos 11 por mes y ya hay 20, alcanza para unos 56 días.
+ped:p1779912655490#Blue Men=u|0|Hola Tito! El Blue Men no hace falta: se venden unos 8 por mes y ya hay 26, alcanza para unos 98 días.
+ped:p1779912655490#Blush=u|0|Hola Tito! El Blush no lo compres: todavía no se vendió nunca.
+ped:p1779912655490#Boy=u|0|Hola Tito! El Boy no hace falta: se venden unos 4 por mes y ya hay 6, alcanza para unos 41 días.
+ped:p1779912655490#Dark=u|0|Hola Tito! El Dark no hace falta: se venden unos 0 por mes y ya hay 5.
+ped:p1779912655490#Debutant Hombre=u|0|Hola Tito! El Debutant Hombre no hace falta: se venden unos 1 por mes y ya hay 4, alcanza para unos 116 días.
+ped:p1779912655490#Debutante Mujer=u|3|Hola Tito! Te pido 3 del Debutante Mujer: se venden unos 7 por mes y entre Full, la oficina y lo que viene en camino hay 7. Con 3 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
+ped:p1779912655490#Dream Way=u|0|Hola Tito! El Dream Way no hace falta: se venden unos 2 por mes y ya hay 30, alcanza para unos 480 días.
+ped:p1779912655490#Flores=u|0|Hola Tito! El Flores no hace falta: se venden unos 6 por mes y ya hay 14, alcanza para unos 70 días.
+ped:p1779912655490#Free Love=u|0|Hola Tito! El Free Love no hace falta: se venden unos 0 por mes y ya hay 7.
+ped:p1779912655490#Fuego=u|5|Hola Tito! Te pido 5 del Fuego: se venden unos 8 por mes y entre Full, la oficina y lo que viene en camino hay 6. Con 5 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
+ped:p1779912655490#Gentleman=u|0|Hola Tito! El Gentleman no hace falta: se venden unos 2 por mes y ya hay 7, alcanza para unos 98 días.
+ped:p1779912655490#Gold Hombre=u|0|Hola Tito! El Gold Hombre no hace falta: se venden unos 4 por mes y ya hay 11, alcanza para unos 80 días.
+ped:p1779912655490#Gold Lady=u|0|Hola Tito! El Gold Lady no hace falta: se venden unos 3 por mes y ya hay 5, alcanza para unos 58 días.
+ped:p1779912655490#Good Mujer=u|0|Hola Tito! El Good Mujer no hace falta: se venden unos 8 por mes y ya hay 43, alcanza para unos 172 días.
+ped:p1779912655490#Green=u|0|Hola Tito! El Green no hace falta: se venden unos 0 por mes y ya hay 6.
+ped:p1779912655490#H For men=u|0|Hola Tito! El H For men no hace falta: se venden unos 0 por mes y ya hay 3.
+ped:p1779912655490#H Woman=u|0|Hola Tito! El H Woman no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 58 días.
+ped:p1779912655490#Héroes For Men=u|0|Hola Tito! El Héroes For Men no hace falta: se venden unos 1 por mes y ya hay 4, alcanza para unos 116 días.
+ped:p1779912655490#Hot=u|0|Hola Tito! El Hot no hace falta: se venden unos 5 por mes y ya hay 10, alcanza para unos 60 días.
 ped:p1779912655490#Indigo Mujer=u|0|Hola Tito! Indigo Mujer: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más.
 ped:p1779912655490#Invictus=u|0|Hola Tito! Invictus: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local.
-ped:p1779912655490#Jules Hombre=u|0|Hola Tito! El Jules Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#L´extase=u|0|Hola Tito! El L´extase no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Leyton Hombre=u|0|Hola Tito! El Leyton Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Libre=u|0|Hola Tito! El Libre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Luna=u|0|Hola Tito! El Luna no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p1779912655490#Jules Hombre=u|0|Hola Tito! El Jules Hombre no hace falta: se venden unos 1 por mes y ya hay 6, alcanza para unos 324 días.
+ped:p1779912655490#L´extase=u|0|Hola Tito! El L´extase no hace falta: se venden unos 2 por mes y ya hay 6, alcanza para unos 96 días.
+ped:p1779912655490#Leyton Hombre=u|0|Hola Tito! El Leyton Hombre no hace falta: se venden unos 1 por mes y ya hay 9, alcanza para unos 234 días.
+ped:p1779912655490#Libre=u|6|Hola Tito! Te pido 6 del Libre: se venden unos 7 por mes y entre Full, la oficina y lo que viene en camino hay 5. Con 6 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
+ped:p1779912655490#Luna=u|0|Hola Tito! El Luna no hace falta: se venden unos 1 por mes y ya hay 12, alcanza para unos 624 días.
 ped:p1779912655490#Miss Mujer=u|0|Hola Tito! Miss Mujer: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más.
-ped:p1779912655490#Only Glow=u|0|Hola Tito! El Only Glow no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Paradise=u|0|Hola Tito! El Paradise no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#pasion=u|0|Hola Tito! El pasion no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Persea=u|0|Hola Tito! El Persea no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
+ped:p1779912655490#Only Glow=u|0|Hola Tito! El Only Glow no hace falta: se venden unos 0 por mes y ya hay 4.
+ped:p1779912655490#Paradise=u|0|Hola Tito! El Paradise no hace falta: se venden unos 0 por mes y ya hay 6.
+ped:p1779912655490#pasion=u|0|Hola Tito! El pasion no hace falta: se venden unos 4 por mes y ya hay 3, alcanza para unos 26 días.
+ped:p1779912655490#Persea=u|2|Hola Tito! Te pido 2 del Persea: se venden unos 24 por mes y entre Full, la oficina y lo que viene en camino hay 35. Con 2 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
 ped:p1779912655490#Phantom=u|0|Hola Tito! Phantom: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local.
-ped:p1779912655490#Privé Hombre=u|0|Hola Tito! El Privé Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Red Hombre=u|0|Hola Tito! El Red Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Rose Mujer=u|0|Hola Tito! El Rose Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Scarf=u|0|Hola Tito! El Scarf no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Sexy Mujer=u|0|Hola Tito! El Sexy Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Sí=u|0|Hola Tito! El Sí no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Silver Hombre=u|0|Hola Tito! El Silver Hombre no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Teikirisi=u|0|Hola Tito! El Teikirisi no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Transparent Mujer=u|0|Hola Tito! El Transparent Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Turbulence=u|0|Hola Tito! El Turbulence no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Victory=u|0|Hola Tito! El Victory no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Witch Night=u|0|Hola Tito! El Witch Night no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490#Young Mujer=u|0|Hola Tito! El Young Mujer no lo compres: al precio de hoy deja 32% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.
-ped:p1779912655490=venta|13572|precio de la ultima venta ($13572) para el maximo de compra
+ped:p1779912655490#Privé Hombre=u|0|Hola Tito! El Privé Hombre no hace falta: se venden unos 1 por mes y ya hay 7, alcanza para unos 378 días.
+ped:p1779912655490#Red Hombre=u|0|Hola Tito! El Red Hombre no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 70 días.
+ped:p1779912655490#Rose Mujer=u|0|Hola Tito! El Rose Mujer no hace falta: se venden unos 1 por mes y ya hay 4, alcanza para unos 92 días.
+ped:p1779912655490#Scarf=u|0|Hola Tito! El Scarf no hace falta: se venden unos 0 por mes y ya hay 4.
+ped:p1779912655490#Sexy Mujer=u|0|Hola Tito! El Sexy Mujer no hace falta: se venden unos 3 por mes y ya hay 3, alcanza para unos 35 días.
+ped:p1779912655490#Sí=u|7|Hola Tito! Te pido 7 del Sí: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 7 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
+ped:p1779912655490#Silver Hombre=u|0|Hola Tito! El Silver Hombre no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días.
+ped:p1779912655490#Teikirisi=u|0|Hola Tito! El Teikirisi no hace falta: se venden unos 1 por mes y ya hay 5, alcanza para unos 145 días.
+ped:p1779912655490#Transparent Mujer=u|0|Hola Tito! El Transparent Mujer no hace falta: se venden unos 0 por mes y ya hay 9.
+ped:p1779912655490#Turbulence=u|0|Hola Tito! El Turbulence no hace falta: se venden unos 4 por mes y ya hay 6, alcanza para unos 42 días.
+ped:p1779912655490#Victory=u|0|Hola Tito! El Victory no hace falta: se venden unos 2 por mes y ya hay 7, alcanza para unos 135 días.
+ped:p1779912655490#Witch Night=u|0|Hola Tito! El Witch Night no hace falta: se venden unos 2 por mes y ya hay 22, alcanza para unos 286 días.
+ped:p1779912655490#Young Mujer=u|0|Hola Tito! El Young Mujer no hace falta: se venden unos 3 por mes y ya hay 6, alcanza para unos 70 días.
+ped:p1779912655490=venta|23700|precio de la venta mas cara de 365 dias (deja 92%) para el maximo de compra
 ped:p1779912655490#1.4 Sexy Men=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#1.4 W Mujer=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#1.4M Hombre=venta|14840|precio de la ultima venta de ese color ($14840) para el maximo de compra
-ped:p1779912655490#Abismo=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
+ped:p1779912655490#Abismo=venta|14950|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#Acqua=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Barbarella=venta|23700|precio de la ultima venta de ese color ($23700) para el maximo de compra
+ped:p1779912655490#Barbarella=venta|23700|precio de la venta mas cara de 365 dias de ese color (deja 92%) para el maximo de compra
 ped:p1779912655490#Bella=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Blue Men=venta|13572|precio de la ultima venta de ese color ($13572) para el maximo de compra
 ped:p1779912655490#Boy=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Dark=venta|13700|precio de la ultima venta de ese color ($13700) para el maximo de compra
+ped:p1779912655490#Dark=venta|14990|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#Debutant Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Debutante Mujer=venta|18790|precio de la ultima venta de ese color ($18790) para el maximo de compra
-ped:p1779912655490#Dream Way=venta|14270|precio de la ultima venta de ese color ($14270) para el maximo de compra
+ped:p1779912655490#Debutante Mujer=venta|18790|precio de la venta mas cara de 365 dias de ese color (deja 52%) para el maximo de compra
+ped:p1779912655490#Dream Way=venta|18990|precio de la venta mas cara de 365 dias de ese color (deja 54%) para el maximo de compra
 ped:p1779912655490#Flores=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Free Love=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Fuego=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
-ped:p1779912655490#Gentleman=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
+ped:p1779912655490#Fuego=venta|14950|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
+ped:p1779912655490#Gentleman=venta|14950|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#Gold Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Gold Lady=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Good Mujer=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
+ped:p1779912655490#Good Mujer=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 78%) para el maximo de compra
 ped:p1779912655490#Green=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
+ped:p1779912655490#H For men=venta|14990|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#H Woman=venta|14840|precio de la ultima venta de ese color ($14840) para el maximo de compra
 ped:p1779912655490#Héroes For Men=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Hot=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Indigo Mujer=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
+ped:p1779912655490#Indigo Mujer=venta|14950|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#Invictus=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Jules Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#L´extase=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
-ped:p1779912655490#Leyton Hombre=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
-ped:p1779912655490#Libre=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
+ped:p1779912655490#L´extase=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 78%) para el maximo de compra
+ped:p1779912655490#Leyton Hombre=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 78%) para el maximo de compra
+ped:p1779912655490#Libre=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 78%) para el maximo de compra
 ped:p1779912655490#Luna=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Miss Mujer=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Only Glow=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Paradise=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#pasion=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Persea=venta|19490|precio de la ultima venta de ese color ($19490) para el maximo de compra
+ped:p1779912655490#Persea=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 77%) para el maximo de compra
 ped:p1779912655490#Phantom=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Privé Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Red Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Rose Mujer=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
+ped:p1779912655490#Rose Mujer=venta|14950|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#Scarf=venta|13700|precio de la ultima venta de ese color ($13700) para el maximo de compra
 ped:p1779912655490#Sexy Mujer=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Sí=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
+ped:p1779912655490#Sí=venta|14990|precio de la venta mas cara de 365 dias de ese color (deja 36%) para el maximo de compra
 ped:p1779912655490#Silver Hombre=venta|13590|precio de la ultima venta de ese color ($13590) para el maximo de compra
 ped:p1779912655490#Teikirisi=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Transparent Mujer=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Turbulence=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Victory=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Witch Night=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
+ped:p1779912655490#Witch Night=venta|18790|precio de la venta mas cara de 365 dias de ese color (deja 52%) para el maximo de compra
 ped:p1779912655490#Young Mujer=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra

@@ -16,3 +16,7 @@ wrangler.jsonc
 index.html.fn
 index.html.id
 index.html.var
+*.txt
+*.json
+*.mjs
+*.py

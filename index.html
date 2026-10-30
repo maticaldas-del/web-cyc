@@ -2604,7 +2604,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2658,6 +2658,8 @@ function startApp(){
     state.fact_cancel=d.fact_cancel||{};  // facturación de ventas canceladas/devueltas por cuenta y mes (para igualar a ML)
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
+    state.retiro_congelado=d.retiro_congelado||{};
+    state.afip_fact=d.afip_fact||{};   // revisión etapa 4, 30/10/2026: "Facturado real AFIP" de Ajustes se guardaba y nunca se volvía a leer   // 9a del 30/10: el retiro de un mes ya empezado no se mueve
     state.cobro_corr=d.cobro_corr||{};
     state.costocongelado=d.costocongelado||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
     state.stockDiario=d.stockDiario||{};
@@ -3240,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.26';
+const APP_VERSION='28.28';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3253,6 +3255,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.28',f:'30/10',h:'05:30',c:[{n:2,t:'🔍 Revisión de choques y fallas: el formulario ✏️ de una deuda ya no pisa lo que cambió el robot mientras estaba abierto · "Facturado real AFIP" de Ajustes se vuelve a leer al recargar · avisa si no pudo anotar algo sin etiqueta · una venta sin costo o con el neto estimado no se congela al cerrar el mes.'}]},
+  {v:'28.27',f:'30/10',h:'23:59',c:[{n:2,t:'🏪 Local (lo que decidiste 7a 9a 11a): una venta en cuotas cuenta el día que se vendió, no el de la primera cuota · el retiro de un mes que ya empezó queda quieto (si después se corrige el cierre, la diferencia va al mes siguiente) · lo que devuelve una perfumería sin vender se ve en Ver deudas (↩️ devolvió N) y baja su ganancia.'}]},
   {v:'28.26',f:'30/10',h:'23:31',c:[{n:1,t:'Ventas: tarjeta nueva 📦 Costo mercadería = lo que nos costó traer esos productos a la oficina (proveedor + flete, en pesos), sin impuestos ni cargos de ML.'}]},
   {v:'28.25',f:'30/10',h:'10:00',c:[{n:1,t:'Arqueo → Productos: al elegir una estrategia se ven las fichas de siempre (filtradas), sin la lista aparte; el botón dice cuál es y la ✕ la saca.'}]},
   {v:'28.24',f:'30/10',h:'22:47',c:[{n:3,t:'🔍 Revisión del Local: los pagos parciales de una perfumería se ven y se descuentan bien · la ganancia de lo dejado a una persona cuenta en el Local (octubre $531.000 → $871.000, igual web y robot) · lo apartado para la perfumería no se pide de menos ni va a Full · Cobrado del Local mira el período entero · colores de las tarjetas iguales a las líneas · las deudas cargadas de noche quedan en su día'}]},
@@ -4764,15 +4768,28 @@ function renderCobroCrec(){
 }
 // EL RETIRO ES AUTOMÁTICO desde noviembre 2026 (29/10/2026, él: "siempre vamos a cobrar lo que diga ahí en 'cobro de
 // noviembre'"): el de un mes = 2 × el cobro del cierre del mes anterior. No hay casilla. null = no hay cierre todavía.
-function _retiroAuto(ym){
-  if(!ym)return null;const pr=_puntMesPrev(ym);
+// EL RETIRO DE UN MES YA COBRADO QUEDA QUIETO (9a de la revisión etapa 9, 30/10/2026, él): cuando el mes del retiro ya empezó, el monto
+// se congela la primera vez que se calcula (`cyc/retiro_congelado/<AAAA_MM>` = {v,ts}). Si después se corrige el cierre de antes (un
+// `cobro_corr`, un arqueo rehecho), la diferencia NO cambia lo que ya se retiró: va al retiro del mes siguiente (`_retiroCalc`).
+function _retiroCongelado(ym){const z=(state.retiro_congelado||{})[ym];return z&&z.v!=null&&isFinite(Number(z.v))?Math.round(Number(z.v)):null;}
+function _retiroCalc(ym,_prof){
+  if(!ym||(_prof||0)>24)return null;const pr=_puntMesPrev(ym);
   if(pr<COBRO_CRECE_DESDE)return null;
-  const c=_cobroCrec(pr);return c?2*c.porSocio:null;
+  const c=_cobroCrec(pr);if(!c)return null;let v=2*c.porSocio;
+  const fz=_retiroCongelado(pr);if(fz!=null){const cp=_retiroCalc(pr,(_prof||0)+1);if(cp!=null)v+=cp-fz;}   // lo que quedó corto o de más el mes pasado
+  return Math.max(0,v);
 }
-// El robot lee cyc/retiro_mes: se le deja escrito el automático (sólo si cambió).
+function _retiroAuto(ym){
+  if(!ym||_puntMesPrev(ym)<COBRO_CRECE_DESDE)return null;
+  const fz=_retiroCongelado(ym);return fz!=null?fz:_retiroCalc(ym);
+}
+// El robot lee cyc/retiro_mes: se le deja escrito el automático (sólo si cambió). El mes en curso (o pasado) se congela la primera vez.
 function _retiroAutoGuardar(){
+  const cur=_curYM();
   for(const k of Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE)){
-    const sig=_mesSigYM(k),v=_retiroAuto(sig);if(v==null)continue;
+    const sig=_mesSigYM(k);
+    if(sig<=cur&&_retiroCongelado(sig)==null){const v0=_retiroCalc(sig);if(v0!=null){state.retiro_congelado=state.retiro_congelado||{};state.retiro_congelado[sig]={v:v0,ts:Date.now()};fbSet('retiro_congelado/'+sig,{v:v0,ts:Date.now()});}}
+    const v=_retiroAuto(sig);if(v==null)continue;
     const r=(state.retiro_mes||{})[sig];
     if(r==null||r===''||Number(r)!==v){state.retiro_mes=state.retiro_mes||{};state.retiro_mes[sig]=v;fbSet('retiro_mes/'+sig,v);}
   }
@@ -4783,7 +4800,9 @@ async function congelarMes(ym){
   if(!ym||(state.costocongelado||{})[ym])return;
   const m={};
   Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.entries(state.ventaprod[k]||{}).forEach(([id,v])=>{
-    if(!v||v.cancelada)return;m[id]=Math.round(efectivoCostoVP({...v,id,_dateKey:k})*100)/100;}));
+    // Revisión etapa 4, 30/10/2026: lo PROVISORIO no se congela (sigue vivo hasta que se arregle): una venta sin costo o sin vincular (quedaba con
+    // ganancia $0 para siempre aunque después se cargara el costo) y una con el neto estimado (al llegar el real, el envío quedaba restado dos veces).
+    if(!v||v.cancelada)return;const vv={...v,id,_dateKey:k};if(ventaSinCostoVP(vv)||ventaEstimadaVP(vv))return;m[id]=Math.round(efectivoCostoVP(vv)*100)/100;}));
   if(!Object.keys(m).length)return;
   state.costocongelado=state.costocongelado||{};state.costocongelado[ym]=m;
   try{await fbSet('costocongelado/'+ym,m);}catch(_){delete state.costocongelado[ym];}
@@ -5370,7 +5389,8 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {etapa:9,t:'30/10 · 12 decisiones del Local',que:'perfumes del local en el pedido de Paraguay (cobro de octubre) · Oficina Local a mano · pedidos de la perfumería en papelera · lo que viaja · qué es Oficina Local · nombres ya públicos · día de una venta en cuotas · devolvió de más · retiro ya cobrado · % de las perfumerías · devoluciones · Persea fijo',pedi:'resolvamos las del Local'},
+  {etapa:4,t:'30/10 · 4 decisiones de Choques y fallas',que:'octubre congelado con ventas provisorias · nombres de personas en el registro público · ¿Cierra el mes? con cierre antes de fin de mes · la Oficina Local al pasar a contada',pedi:'resolvamos'},
+  {etapa:9,t:'30/10 · 8 decisiones del Local (7, 9, 11 y 12 resueltas)',que:'perfumes del local en el pedido de Paraguay (cobro de octubre) · Oficina Local a mano · pedidos de la perfumería en papelera · lo que viaja · qué es Oficina Local · nombres ya públicos · devolvió de más · % de las perfumerías',pedi:'resolvamos las del Local'},
   {etapa:3,t:'29/10 · 8 decisiones de Mercadería',que:'renombrar fichas viejas al vincular · sin etiqueta por cuenta · Tenders y su caja · envío pausado y el cupo · costos antes del ticket · recompra más barata · lo pagado que no vino · precios de proveedores en el registro',pedi:'resolvamos las de Mercadería'},
   {etapa:2,t:'27/10 · 6 decisiones de Plata',que:'saldos de MP en el registro público · congelar el mes cobrado · cuándo cargar el retiro · ventas sin factura después de 45 días · stock de Full no disponible · Valor de Stock de Resumen vs Arqueo',pedi:'resolvamos las de Plata'},
   // 21/10/2026: eligió las 62 decisiones (etapas 1, 5, 6 y 7), todas (a), y quedaron aplicadas en v25.75.
@@ -5400,7 +5420,8 @@ const REV_HIST={
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
      {f:'2026-09-30',t:'Fallas mudas y privacidad: ~35 reales arregladas; él decidió aprobar a mano los chats nuevos de Telegram y cómo contar días con stock.'},
-     {f:'2026-10-20',t:'Choques y fallas mudas: 4 revisores; arreglados doble toque, ventas borradas que volvían, descuentos mudos, corridas canceladas que seguían escribiendo, errores de ML sin código y ml-daily dos veces por noche. Sus 2 decisiones: listas de proveedores cifradas (1a) y lo que cancela ML no se reactiva.'}],
+     {f:'2026-10-20',t:'Choques y fallas mudas: 4 revisores; arreglados doble toque, ventas borradas que volvían, descuentos mudos, corridas canceladas que seguían escribiendo, errores de ML sin código y ml-daily dos veces por noche. Sus 2 decisiones: listas de proveedores cifradas (1a) y lo que cancela ML no se reactiva.'},
+     {f:'2026-10-30',t:'Choques y fallas mudas: 4 revisores en máximo; ~17 arreglos (caja vieja que bajaba precios, gemela de envío que se reactivaba, el 35% de Pedidos con datos que faltan, código de devolución tapado, retiro a mano que la web pisaba, comando para lo viejo cargado tarde, formulario de deudas que pisaba al robot); 4 decisiones para él.'}],
   5:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'},
      {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'},
      {f:'2026-10-21',t:'4 revisores en máximo (ficha, línea de tiempo, robot de datos, web): 44 arreglos (v25.62: ficha y techo95 sin borrar historia, remate con historia, canceladas tarde, línea por color y sin stock inventado). 2 decisiones suyas.'}],
@@ -7189,7 +7210,9 @@ function esVentaDeuda(d){return !!d&&((!d.sinGan&&(Number(d.costo)>0||Object.val
 function deudaMovsProd(d){return Object.values((d&&d.movs)||{}).filter(x=>x&&Number(x.m)>0&&(x.prodNom||x.gan!=null));}
 // EL DÍA DE UNA DEUDA (revisión etapa 9, 30/10/2026): `fecha0` o el día de ACÁ en que se cargó (`_isoDe`). Antes `new Date(ts).toISOString()`
 // (hora de Londres): una venta cargada después de las 21 caía al día siguiente, y la del 31 a las 22 en el mes siguiente.
-function fechaDeuda(d){return (d&&d.fecha0)||(d&&d.ts?_isoDe(d.ts):'');}
+// 7a (30/10/2026, él): el día de una venta en cuotas = el día en que se vendió. Las cargadas antes por el robot con `fecha0` = la primera cuota
+// (a futuro) usan el día en que se cargaron.
+function fechaDeuda(d){if(!d)return'';const fc=d.ts?_isoDe(d.ts):'';return(d.fecha0&&!(d.vence1&&d.fecha0===d.vence1&&fc&&d.fecha0>fc))?d.fecha0:fc;}
 function cuotaMovsSuma(d){return Object.values(d.movs||{}).reduce((s,x)=>s+(Number(x&&x.m)||0),0);}
 function cuotasLista(){return Object.entries(state.debencuotas||{}).filter(([,d])=>d&&typeof d==='object'&&d.nom).map(([id,d])=>{const n=Math.max(1,Number(d.n)||1),monto=Number(d.monto)>0?Number(d.monto):(Number(d.cuota)||0)*n,pagadas=Math.min(n,Number(d.pagadas)||0),cuota=monto/n;
     const resta=Math.max(0,monto-pagadas*cuota+cuotaMovsSuma(d));return{id,...d,n,monto,cuota,pagadas,resta,fin:resta<=0.5};}).sort((a,b)=>(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0));}
@@ -7197,13 +7220,14 @@ function cuotasRestaPesos(){return cuotasLista().reduce((s,d)=>s+d.resta,0);}
 function _isoDe(ts){const t=new Date(Number(ts));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';}
 // La historia entera de una deuda, la más nueva arriba: cómo empezó, cada cuota pagada y cada movimiento.
 function cuotaHistoria(d){const H=[];
-  if(d.monto>0)H.push({f:d.fecha0||_isoDe(d.ts),ts:Number(d.ts)||0,m:d.monto,txt:(d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial')+(d.det?` · se llevó ${d.det}`:'')});
+  if(d.monto>0)H.push({f:fechaDeuda(d),ts:Number(d.ts)||0,m:d.monto,txt:(d.n>1?`deuda inicial · ${d.n} cuotas de ${_pesos(d.cuota)}`:'deuda inicial')+(d.det?` · se llevó ${d.det}`:'')});
   const ps=Object.entries(d.pagos||{}).sort((a,b)=>Number(a[0])-Number(b[0]));
   ps.forEach(([k,v],i)=>H.push({f:(v&&v.f)||_isoDe(k),ts:Number(k),m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n}`:'pagó todo'}));
   for(let i=ps.length;i<d.pagadas;i++)H.push({f:'',ts:0,m:-(d.n>1?d.cuota:d.monto),txt:d.n>1?`pagó la cuota ${i+1} de ${d.n} (sin fecha)`:'pagó todo (sin fecha)'});
   // Mercadería dejada en una perfumería (28/10/2026): el renglón dice qué, cuántas y dónde, y la ganancia en verde (sólo se ve acá).
   const LOC={soares:'Soares',sarmiento:'Sarmiento',ceballos:'Ceballos'};
-  Object.entries(d.movs||{}).forEach(([k,v])=>{if(!v||!Number(v.m))return;const pr=v.prodNom?`🛍️ ${Number(v.u)>1?v.u+' × ':''}${v.prodNom}${v.local?' · en '+(LOC[v.local]||v.local):''}`:'';
+  // ↩️ Lo que la perfumería devolvió sin vender (11a del 30/10, `debenmov:…=devuelve`): el renglón ya viene achicado y dice cuántas volvieron.
+  Object.entries(d.movs||{}).forEach(([k,v])=>{if(!v||(!Number(v.m)&&!(Number(v.devU)>0)))return;const _dv=Number(v.devU)>0?` · ↩️ devolvió ${v.devU} (${Object.values(v.devs||{}).map(z=>z&&z.f).filter(Boolean).join(', ')})`:'';const pr=v.prodNom?`🛍️ ${Number(v.u)>1?v.u+' × ':''}${v.prodNom}${v.local?' · en '+(LOC[v.local]||v.local):''}${_dv}`:'';
     H.push({nom:v.prodNom||'',u:Number(v.u)||0,loc:v.prodNom?(LOC[v.local]||v.local||''):'',nota:v.nota||'',f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:[pr,v.nota].filter(Boolean).join(' · ')||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k,prod:!!v.prodNom&&Number(v.m)>0,pagado:v.pagado||null,pagadoM:Number(v.pagadoM)||0,gan:Number.isFinite(Number(v.gan))&&v.gan!==undefined&&v.gan!==null?Number(v.gan):null,costoU:Number(v.costoU)||null,pu:Number(v.pu)||null});});
   return H.sort((a,b)=>String(b.f).localeCompare(String(a.f))||b.ts-a.ts);}
 let _debenMig=false;
@@ -7421,7 +7445,10 @@ function cuotasPanel(){const b=[...document.querySelectorAll('#page-inventario .
   window._arqAbierta='deben';arqPintarAbierta();
   setTimeout(()=>{document.getElementById('arq-panel')?.scrollIntoView({behavior:'smooth',block:'start'});},30);}
 function cuotasVerCampos(){const c=document.getElementById('cq_concuotas').checked;document.getElementById('cq_costobox').style.display=document.getElementById('cq_singan').checked?'none':'';document.getElementById('cq_cuotasbox').style.display=c?'':'none';document.getElementById('cq_vence_lbl').textContent=c?'Primera cuota vence el':'Tiene que pagar el (opcional)';}
-function _cuotasLlenar(d){const g=i=>document.getElementById(i);g('cq_id').value=d?d.id:'';g('cq_titulo').textContent=d?'✏️ Editar deuda':'➕ Deuda nueva';
+// Revisión etapa 4, 30/10/2026: lo que tenía la deuda al abrir el ✏️. Si el robot la cambió mientras estaba abierto (`debenmov` =costo,
+// =nombre, =det, =desde), Guardar no la pisa con lo viejo: avisa y vuelve a cargar el formulario con lo de hoy.
+let _cqAbierta=null;const _cqSig=d=>d?JSON.stringify(['nom','det','monto','n','costo','sinGan','vence1','frec','cadaDias','tipo','pagadas'].map(k=>d[k]??null).concat([Object.keys(d.movs||{}).length])):'';
+function _cuotasLlenar(d){_cqAbierta=d&&d.id?{id:d.id,sig:_cqSig((state.debencuotas||{})[d.id])}:null;const g=i=>document.getElementById(i);g('cq_id').value=d?d.id:'';g('cq_titulo').textContent=d?'✏️ Editar deuda':'➕ Deuda nueva';
   g('cq_nom').value=d?d.nom:'';g('cq_det').value=d&&d.det?d.det:'';g('cq_monto').value=d?Math.round(d.monto):'';g('cq_costo').value=d&&Number(d.costo)>0?Math.round(d.costo):'';
   g('cq_singan').checked=!!(d&&d.sinGan);g('cq_fija').checked=!!(d&&cuotaFija(d));g('cq_concuotas').checked=!!(d&&d.n>1);g('cq_n').value=d&&d.n>1?d.n:'';const fq=d&&d.frec==='quin'?'dias':((d&&d.frec)||'men');g('cq_frec').value=fq;g('cq_dias').value=d&&d.frec==='quin'?15:(d&&d.cadaDias)||'';g('cq_diasbox').style.display=fq==='dias'?'':'none';g('cq_vence').value=(d&&d.vence1)||'';
   cuotasVerCampos();cuotasTotalVivo();g('cuotas-form').style.display='block';g('cq_nom').focus();g('cuotas-form').scrollIntoView({behavior:'smooth',block:'nearest'});}
@@ -7442,6 +7469,7 @@ async function cuotasGuardar(){
   if(!nom||!(monto>=0)||!(n>0)||(n>1&&!(monto>0))){toast(n>1?'Falta el nombre, el monto o cuántas cuotas':'Falta el nombre','err');return;}
   if(n>1&&!vence){toast('Poné cuándo vence la primera cuota (así avisa en rojo si se atrasa)','err');return;}
   const ya=id0?(state.debencuotas||{})[id0]:null;if(id0&&!ya){toast('No encuentro esa deuda','err');return;}
+  if(ya&&_cqAbierta&&_cqAbierta.id===id0&&_cqSig(ya)!==_cqAbierta.sig){const dl=cuotasLista().find(x=>x.id===id0);if(dl)_cuotasLlenar(dl);toast('Esta deuda cambió mientras la tenías abierta: la volví a cargar con lo de ahora. Revisá y guardá de nuevo.','err');return;}
   const pag=ya?Math.min(n,Number(ya.pagadas)||0):0;
   if(ya&&(Number(ya.pagadas)||0)>n&&!confirm(`Ya pagó ${ya.pagadas} cuotas y ahora serían ${n}: queda pagada entera. ¿Sigo?`))return;
   const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),det:g('cq_det').value.trim().slice(0,160)||null,monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,sinGan:sinGan||null,fija:g('cq_fija').checked,vence1:vence||null,frec:n>1?frec:null,cadaDias:n>1&&frec==='dias'?cadaDias:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
@@ -8867,7 +8895,7 @@ async function sinEtiqSumar(pid,variante,n){
   const r=(state.sinetiq=state.sinetiq||{})[pid]=(state.sinetiq[pid]||{});
   const loc=x=>Math.max(0,(parseInt(x)||0)+n);
   if(variante){r.v=r.v||{};r.v[sid(String(variante))]=loc(r.v[sid(String(variante))]);}else r.t=loc(r.t);
-  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+sub).transaction(v=>loc(v)||null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}catch(e){console.warn('sinetiq',e);}}
+  if(db){try{await db.ref('cyc/sinetiq/'+pid+'/'+sub).transaction(v=>loc(v)||null);await db.ref('cyc/sinetiq/'+pid+'/ts').set(Date.now());}catch(e){console.warn('sinetiq',e);toast('⚠️ No pude anotar '+n+' sin etiqueta: al recargar no van a aparecer. Avisale a Claude.','err');}}   // revisión etapa 4, 30/10/2026: antes callado
   try{renderSinEtiqCard();}catch(_){}
 }
 // ✅ YA LO ETIQUETÉ (25/10/2026, él: "que haya un botón para que pasen a etiquetadas, ya que el chat en local imprime las etiquetas

@@ -1,0 +1,15 @@
+MLA1754449117_20261022=nocuenta|Masajeador bola de hielo 16.990 a 22.990: se cortó el stock en el medio, la medición no sirve
+MLA2141745210_20261022=nocuenta|Balanza cocina 9.990 a 12.990: de 5 a 0 pero se quedó sin stock en el medio, no mide el precio
+MLA2155325857_20261022=espera|Victoria's Secret 64.990 a 84.990: 1 antes y 0 en 8 días, muy pocas ventas para juzgar. Lo decide techo95 o la liquidación de 30 días
+MLA2202431017_20261022=nocuenta|Auriculares Xiaomi con cable 17.990 a 20.990: sin ventas antes ni después, sin dato de volumen
+MLA2202584825_20261022=nocuenta|Auriculares Xiaomi Basic 19.990 a 23.990: sin ventas antes ni después, sin dato de volumen
+MLA2815629580_20261022=espera|Lupa 60mm x10 32.999 a 47.990: 1 antes y 0 en 8 días. Pocas ventas: lo decide techo95
+MLA3233166498_20261022=gano|Sábanas 105 a 23.490: 0 antes y 1 después, cada una deja unos 3.500 más
+MLA4087791306_20261022=nocuenta|Switch TP-Link 189.990 a 229.990: lanzamiento sin ventas antes ni después
+MLA4087791340_20261022=nocuenta|Mouse pad Redragon 21.809 a 23.990: sin ventas antes ni después
+MLA2202584687_20261022=nocuenta|Mouse Corsair Harpoon corrección de precio mal puesto 259.980 a 112.990 antes de activarlo: no es una prueba
+MLA3547331578_20261022=nocuenta|Animale Sexy 119.990 a 139.990: se cortó el stock en el medio
+MLA2128197015_20261022=nocuenta|Piedra Gua Sha 6.790 a 8.990: de 3 a 0 pero quedó sin stock en el medio
+MLA4075575108_20261022=nocuenta|Animale Original 101.990 a 132.990: se cortó el stock en el medio
+MLA2655470590_20261022=perdio|Sábanas 2 y media 24.990 a 32.990: de 2 a 0 en 7 días, pierde unos 16.000. Pocas ventas: techo95 lo mide para la escalera
+MLA1714540251_20261023=nocuenta|Masajeador de cara 22.990 a 29.990: sin ventas antes ni después
