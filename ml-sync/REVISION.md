@@ -4239,6 +4239,8 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 
 - 30/10 (él, con la Tendencia de 🔀 ML + Local): el cartel al pasar el dedo dice el % de ML y de Local sobre el total del punto (`_tot` en los datasets, index.html), de lo vendido o de la ganancia según el campo activo. Chequear: los dos % suman 100 y cambian al elegir Ganancia.
 
+- 30/10 (él, con 🔀 ML + Local: *"y acá?"*): `metAccts` en 🔀 = ML + Perfumería + Tienda (KPIs, Participación, % de Ganancia); la Tendencia sigue con dos capas (ML y Local) y el globito del Local suma 🛍️/🏬 con su %. El detalle por día de abajo sigue ML · Local · Total. Chequear: ML + Perfumería + Tienda = el total de antes.
+
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
 Él: *"agregar esa web de venta local a revisión y largala ahora. que revise todo en máximo esfuerzo"*. La tienda pública por encargo (`tienda/index.html`, `tienda/productos.json`; comando `tienda[;go]` en sync.mjs; `ml-tienda.yml` a mano y el paso de ml-daily cada noche; la dirección de la tienda no va en los textos del repo, 30/10).
 - **Lo que no se rompe nunca:** en la página, en `productos.json` y en el historial de ese archivo NO aparece Nissei, Paraguay, comprasparaguay, códigos de Nissei, nombres en portugués, US$, costos ni recargos (él: *"NADIE SABE QUE LO TRAEMOS DE PARAGUAY"*). Nada del panel (ni datos ni links) se ve desde la tienda.
