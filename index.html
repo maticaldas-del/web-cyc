@@ -3242,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.32';
+const APP_VERSION='28.33';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3255,6 +3255,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.33',f:'30/10',h:'14:43',c:[{n:2,t:'🤖 Textos para el chat de Chrome: arriba de todo, "🧠 Todo (para un chat nuevo)" junta todo lo que sabe el chat local (quién es quién, reglas, la tienda y todas sus tareas). Se arma solo cada noche.'}]},
   {v:'28.32',f:'30/10',h:'14:38',c:[{n:1,t:'🔍 Revisiones: etapa nueva 10 · Tienda (la tienda pública de CYC), cada 7 días como Local.'}]},
   {v:'28.31',f:'30/10',h:'14:30',c:[{n:1,t:'📦 Armar caja: cuando esperar no cuesta nada, el cartel dice que nada se queda sin stock y que la ganancia de la caja se cobra igual una semana después.'}]},
   {v:'28.30',f:'30/10',h:'13:25',c:[{n:2,t:'💵 La perfumería paga por plata: lo pagado tacha los productos del más viejo al más nuevo, el que queda a medias se llena hasta su %, y lo que sobra cubre lo que se deje después'}]},
@@ -8960,7 +8961,7 @@ function promptCopiar(k){const x=(state.prompts||{})[k];if(!x||!x.txt)return;
 function _promptCopiaVieja(t){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();}
 function renderPromptsCard(){
   const el=document.getElementById('ofi-prompts-card');if(!el)return;
-  const P=Object.entries(state.prompts||{}).filter(([,x])=>x&&x.txt).sort((a,b)=>String(a[1].t).localeCompare(String(b[1].t)));
+  const P=Object.entries(state.prompts||{}).filter(([,x])=>x&&x.txt).sort((a,b)=>(a[0]==='0todo'?-1:b[0]==='0todo'?1:0)||String(a[1].t).localeCompare(String(b[1].t)));   // 🧠 Todo, siempre primero (30/10/2026)
   if(!P.length){el.innerHTML='';return;}
   const _ab=el.querySelector('details')?.open;
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${_ab?' open':''}>
