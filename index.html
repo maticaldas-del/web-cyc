@@ -1970,8 +1970,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
        local; Todo = las dos, una abajo de la otra. Recuerda la elección en este aparato. -->
   <div id="met-vista" style="display:flex;gap:6px;margin:-6px 0 12px">
     <button class="vbtn" data-metv="ml" onclick="metVista('ml')">📦 ML</button>
-    <button class="vbtn" data-metv="local" onclick="metVista('local')">🏪 Local</button>
-    <button class="vbtn" data-metv="todo" onclick="metVista('todo')" title="ML y el local mezclados: por fecha, cuánto vendió y ganó cada uno y la suma">🔀 ML + Local</button>
+    <button class="vbtn" data-metv="perf" onclick="metVista('perf')">🛍️ Perfumería</button>
+    <button class="vbtn" data-metv="tienda" onclick="metVista('tienda')">🏬 Tienda</button>
+    <button class="vbtn" data-metv="todo" onclick="metVista('todo')" title="ML, Perfumería y Tienda juntos: por fecha, cuánto vendió y ganó cada uno y la suma">🔀 Todo</button>
   </div>
   <!-- 29/10/2026 (él: "esto nunca lo uso. ¿podés ponerlos todos en un desplegable?"): los 11 atajos van en un solo desplegable. -->
   <div id="met-indice" style="margin:-6px 0 18px">
@@ -2075,10 +2076,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
        pero separado"): lo que se le vende a las perfumerías (al costo + 25%, como deuda) y las otras ventas a cuenta. No toca ningún número de ML. -->
   <!-- 🔀 TODO = ML y LOCAL MEZCLADOS (29/10/2026, él: "yo decía 'todo' como algo que mezcle las métricas, entonces puedo ver cuánto vendió por fecha
        cada cosa ml y local, ganancia y todo eso"): una sola tabla por fecha con ML, local y la suma; reemplaza el "una abajo de la otra". -->
-  <div class="stitle" id="met-todo-t">🔀 ML + Local <span id="met-todo-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div class="stitle" id="met-todo-t">🔀 Todo <span id="met-todo-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-todo"></div>
 
-  <div class="stitle" id="met-local-t">🏪 Local <span id="met-local-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
+  <div class="stitle" id="met-local-t">🛍️ Perfumería <span id="met-local-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-local"></div>
 
   <footer>CYC · Métricas · datos independientes</footer>
@@ -3245,7 +3246,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.45';
+const APP_VERSION='28.46';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3258,6 +3259,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.46',f:'30/10',h:'18:46',c:[{n:3,t:'📊 Métricas: el "Local" ya no existe. Arriba hay 📦 ML · 🛍️ Perfumería (Soares, Sarmiento y Ceballos, con sus barras, mes a mes, productos y sus deudas) · 🏬 Tienda (las ventas por afuera y sus deudas) · 🔀 Todo (ML, Perfumería y Tienda: tres tarjetas, tres capas en la Tendencia y tres columnas por día).'}]},
   {v:'28.45',f:'30/10',h:'18:43',c:[{n:1,t:'🔀 Métricas → ML + Local: las tarjetas de arriba, la Participación y el % de Ganancia muestran tres: 📦 ML, 🛍️ Perfumería y 🏬 Tienda. En la Tendencia, el Local dice cuánto es de cada una.'}]},
   {v:'28.44',f:'30/10',h:'18:24',c:[{n:2,t:'🇵🇾 Recargo de Paraguay: ahora se mide contra lo que se pagó según el ticket, no contra el precio de la web. El descuento de Nissei sale aparte en los gastos del pedido (🎁) y ya no achica el %.'}]},
   {v:'28.43',f:'30/10',h:'18:11',c:[{n:1,t:'🔀 Métricas → ML + Local: al pasar el dedo por la Tendencia, ML y Local dicen qué % son del total (de lo vendido o de la ganancia, según lo que esté elegido).'}]},
@@ -24414,6 +24416,7 @@ function _netoMesData(ym){
 function metGetValDay(key,acct,field){
   if(acct==='ml')return MET_ACCTS.reduce((t,a)=>t+metGetValDay(key,a,field),0);
   if(acct==='local')return LOC_ACCTS.reduce((t,a)=>t+metGetValDay(key,a,field),0);
+  if(acct==='loc_perf')return PERF_ACCTS.reduce((t,a)=>t+metGetValDay(key,a,field),0);
   if(LOC_SET.has(acct)){const o=(_metLocalDia()[key]||{})[acct];return o?(field==='ganancia'||field==='gananciaCYC'?o.g:o.v):0;}
   const vpDay=Object.values(state.ventaprod[key]||{}).filter(v=>!v.cancelada); // canceladas/reclamos no cuentan
   const computed=(field==='neto'||field==='ganancia'||field==='gananciaCYC');
@@ -24466,6 +24469,7 @@ function metGetGestDay(key,acct){
 function metCostoPctDay(key,acct){
   if(acct==='ml')return MET_ACCTS.reduce((t,a)=>t+metCostoPctDay(key,a),0);
   if(acct==='local')return LOC_ACCTS.reduce((t,a)=>t+metCostoPctDay(key,a),0);
+  if(acct==='loc_perf')return PERF_ACCTS.reduce((t,a)=>t+metCostoPctDay(key,a),0);
   if(LOC_SET.has(acct)){const o=(_metLocalDia()[key]||{})[acct];return o?o.c:0;}
   return metGetCostoDay(key,acct)+metGetGestDay(key,acct);}
 // 🏪 MÉTRICAS DEL LOCAL CON LAS MISMAS PIEZAS QUE ML (29/10/2026, él: "armarlo de la misma forma que está métricas ML, todo. así me es familiar.
@@ -24476,19 +24480,25 @@ let metSrc='ml';
 // 🛍️ PERFUMERÍA Y 🏬 TIENDA (30/10/2026, él: "local se divide en dos perfumería y tienda… todo lo que se venda fuera de la perfumería es tienda…
 // la perfumería va a quedar sólo con deuda mp y mercadería"): las "cuentas" del local son dos. Perfumería = lo dejado en Mercadería Perfumería
 // (las tres juntas; cuál le compra más sigue abajo, en las barras) · Tienda = toda otra venta a cuenta (antes "Otras ventas").
-const LOC_ACCTS=['loc_perf','loc_tienda'];const LOC_SET=new Set(LOC_ACCTS);
-const METX_LABELS={...MET_LABELS,loc_perf:'🛍️ Perfumería',loc_tienda:'🏬 Tienda',ml:'📦 ML',local:'🏪 Local'};
-const METX_COLORS={...MET_COLORS,loc_perf:'#ec4899',loc_tienda:'#a78bfa',ml:'#3b82f6',local:'#f59e0b'};
-function metAccts(){if(metSrc==='local')return LOC_ACCTS;return metSrc==='todo'?['ml',...LOC_ACCTS]:MET_ACCTS;}   // 🔀: ML · 🛍️ Perfumería · 🏬 Tienda (30/10/2026, él: "y acá?")
-let _metLocMemo=null;
+// 30/10/2026 a la noche (él: "local ya no existe más. hay perfumería y tienda. separados todos"): cuatro vistas, 📦 ML · 🛍️ Perfumería
+// (sus "cuentas" son Soares, Sarmiento, Ceballos y "sin perfumería" si hay) · 🏬 Tienda (una sola cuenta) · 🔀 Todo (ML, Perfumería y Tienda).
+// `loc_perf` = las perfumerías sumadas; `local` (interno) = perfumería + tienda.
+const PERF_ACCTS=['loc_soares','loc_sarmiento','loc_ceballos','loc_sinperf'];
+const LOC_ACCTS=[...PERF_ACCTS,'loc_tienda'];const LOC_SET=new Set(LOC_ACCTS);
+const METX_LABELS={...MET_LABELS,loc_soares:'Soares',loc_sarmiento:'Sarmiento',loc_ceballos:'Ceballos',loc_sinperf:'Sin perfumería',loc_perf:'🛍️ Perfumería',loc_tienda:'🏬 Tienda',ml:'📦 ML',local:'Perfumería + Tienda'};
+const METX_COLORS={...MET_COLORS,loc_soares:'#f59e0b',loc_sarmiento:'#22c55e',loc_ceballos:'#ec4899',loc_sinperf:'#94a3b8',loc_perf:'#ec4899',loc_tienda:'#a78bfa',ml:'#3b82f6',local:'#f59e0b'};
+const _vLoc=()=>metSrc==='perf'||metSrc==='tienda';
+function metAccts(){if(metSrc==='perf'){_metLocalDia();return _metLocSinPerf?PERF_ACCTS:PERF_ACCTS.filter(a=>a!=='loc_sinperf');}if(metSrc==='tienda')return['loc_tienda'];return metSrc==='todo'?['ml','loc_perf','loc_tienda']:MET_ACCTS;}
+let _metLocMemo=null,_metLocSinPerf=false;
 function _metLocalDia(){
   if(_metLocMemo)return _metLocMemo;
   const out={};const _n=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const kOf=f=>String(f||'').slice(0,10).replace(/-/g,'_');
-  const add=(k,a,v,g,c)=>{if(!/^\d{4}_\d{2}_\d{2}$/.test(k))return;const d=out[k]=out[k]||{};const o=d[a]=d[a]||{v:0,g:0,c:0};o.v+=v;o.g+=g;o.c+=c;};
+  _metLocSinPerf=false;
+  const add=(k,a,v,g,c)=>{if(!/^\d{4}_\d{2}_\d{2}$/.test(k))return;if(a==='loc_sinperf')_metLocSinPerf=true;const d=out[k]=out[k]||{};const o=d[a]=d[a]||{v:0,g:0,c:0};o.v+=v;o.g+=g;o.c+=c;};
   const D=(typeof cuotasLista==='function'?cuotasLista():Object.values(state.debencuotas||{})).filter(d=>d&&d.nom);
   const M=D.find(d=>/perfumeria/.test(_n(d.nom))&&/mercader/.test(_n(d.nom)));
-  if(M)Object.values(M.movs||{}).forEach(x=>{if(!x||!(Number(x.m)>0)||!x.prodNom)return;const a='loc_perf';
+  if(M)Object.values(M.movs||{}).forEach(x=>{if(!x||!(Number(x.m)>0)||!x.prodNom)return;const lc=_n(x.local);const a=['soares','sarmiento','ceballos'].includes(lc)?'loc_'+lc:'loc_sinperf';
     const m=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),a,m,g,x.gan!=null?m-g:0);});
   // Revisión etapa 9, 30/10/2026: venta = `esVentaDeuda` (la de Ver deudas), el día de ACÁ (`fechaDeuda`; antes la hora de Londres) y, además
   // de la deuda, cada producto que se le dejó a una persona (`debenmov:<persona>=…|prod=…`) en su día, como lo de la perfumería: antes Ver deudas
@@ -24508,7 +24518,7 @@ function sumMetFields(keys,field){
 }
 
 // Igual que getMetKeys/getPrevMetKeys pero combinando claves de ventaprod + metricas.
-function _allMetUnionKeys(){if(metSrc==='local')return Object.keys(_metLocalDia());if(metSrc==='todo')return[...new Set([...Object.keys(state.ventaprod||{}),...Object.keys(state.metricas||{}),...Object.keys(_metLocalDia())])];return[...new Set([...Object.keys(state.ventaprod||{}),...Object.keys(state.metricas||{})])];}
+function _allMetUnionKeys(){if(_vLoc())return Object.keys(_metLocalDia());if(metSrc==='todo')return[...new Set([...Object.keys(state.ventaprod||{}),...Object.keys(state.metricas||{}),...Object.keys(_metLocalDia())])];return[...new Set([...Object.keys(state.ventaprod||{}),...Object.keys(state.metricas||{})])];}
 // `all0` (revisión etapa 9, 30/10/2026): la MISMA regla de período aplicada a otra lista de días (los pagos de las perfumerías, en renderMetLocal).
 function getAllMetKeys(scope,all0){
   const d=new Date(),all=all0||_allMetUnionKeys();
@@ -25328,15 +25338,15 @@ function renderMetTodo(curKeys,prevKeys,lbl){
   const ks=(curKeys||[]).slice().sort();if(!ks.length){el.innerHTML='<div style="font-size:.66rem;color:var(--muted)">Sin datos en este período.</div>';return;}
   const k0=ks[0],k1=ks[ks.length-1];
   // lo del local por día
-  const loc={};const addL=(k,m,g)=>{if(!(k>=k0&&k<=k1))return;const o=loc[k]=loc[k]||{v:0,g:0};o.v+=m;o.g+=g;};
+  const loc={};const addL=(k,m,g,t)=>{if(!(k>=k0&&k<=k1))return;const o=loc[k]=loc[k]||{v:0,g:0,pv:0,pg:0,tv:0,tg:0};o.v+=m;o.g+=g;if(t){o.tv+=m;o.tg+=g;}else{o.pv+=m;o.pg+=g;}};
   // Revisión etapa 9, 30/10/2026: la MISMA cuenta que los KPIs del local (`_metLocalDia`: perfumerías + otras ventas, con lo dejado a personas y el
   // día de acá). Antes era una copia aparte que no veía los productos dejados a personas y fechaba por la hora de Londres.
-  {const LD=_metLocalDia();for(const [k,ac] of Object.entries(LD))for(const o of Object.values(ac||{}))addL(k,Number(o.v)||0,Number(o.g)||0);}
+  {const LD=_metLocalDia();for(const [k,ac] of Object.entries(LD))for(const [a,o] of Object.entries(ac||{}))addL(k,Number(o.v)||0,Number(o.g)||0,a==='loc_tienda');}
   // días del período: los de ML más los del local
   const dias=[...new Set([...ks,...Object.keys(loc)])].filter(k=>k>=k0&&k<=k1).sort();
   const mlDia=(k,f)=>MET_ACCTS.reduce((t,a)=>t+(metGetValDay(k,a,f)||0),0);
   const porMes=dias.length>62;
-  const fila={};for(const k of dias){const b=porMes?k.slice(0,7):k;const o=fila[b]=fila[b]||{mv:0,mg:0,lv:0,lg:0};o.mv+=mlDia(k,'total');o.mg+=mlDia(k,'ganancia');if(loc[k]){o.lv+=loc[k].v;o.lg+=loc[k].g;}}
+  const fila={};for(const k of dias){const b=porMes?k.slice(0,7):k;const o=fila[b]=fila[b]||{mv:0,mg:0,lv:0,lg:0,pv:0,pg:0,tv:0,tg:0};o.mv+=mlDia(k,'total');o.mg+=mlDia(k,'ganancia');if(loc[k]){o.lv+=loc[k].v;o.lg+=loc[k].g;o.pv+=loc[k].pv;o.pg+=loc[k].pg;o.tv+=loc[k].tv;o.tg+=loc[k].tg;}}
   const bs=Object.keys(fila).sort();
   const T=bs.reduce((t,b)=>{const o=fila[b];t.mv+=o.mv;t.mg+=o.mg;t.lv+=o.lv;t.lg+=o.lg;return t;},{mv:0,mg:0,lv:0,lg:0});
   const pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';
@@ -25345,15 +25355,16 @@ function renderMetTodo(curKeys,prevKeys,lbl){
   // 29/10/2026 (él: "armarlo de la misma forma que está métricas ML"): los totales y el gráfico ahora son los KPIs y la Tendencia de arriba
   // (con ML y Local como "cuentas"); acá queda sólo el detalle por día.
   let h=`    <div style="font-size:.7rem;font-weight:700;margin:0 0 4px">${porMes?'Por mes':'Por día'}</div>
-    <div style="display:grid;grid-template-columns:4em 1fr 1fr 1fr;gap:2px 8px;font-size:.6rem;color:var(--muted);padding:2px 0"><span></span><span style="text-align:right">📦 ML</span><span style="text-align:right">🛍️ Local</span><span style="text-align:right">Total</span></div>`;
+    <div style="display:grid;grid-template-columns:3.4em 1fr 1fr 1fr 1fr;gap:2px 6px;font-size:.58rem;color:var(--muted);padding:2px 0"><span></span><span style="text-align:right">📦 ML</span><span style="text-align:right">🛍️ Perf.</span><span style="text-align:right">🏬 Tienda</span><span style="text-align:right">Total</span></div>`;
   // Ganancia con su signo y en rojo si es negativa (revisión etapa 9, 30/10/2026, `_pesosSg`): un día que ML perdió decía "+$-110.902".
   const _gc=v=>v<0?'var(--red)':'var(--green)';
   for(const b of bs.slice().reverse()){const o=fila[b];
     h+=`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.64rem">
-      <div style="display:grid;grid-template-columns:4em 1fr 1fr 1fr;gap:0 8px;font-family:'DM Mono',monospace">
+      <div style="display:grid;grid-template-columns:3.4em 1fr 1fr 1fr 1fr;gap:0 6px;font-family:'DM Mono',monospace;font-size:.92em">
         <span style="color:var(--muted)">${etq(b)}</span>
         <span style="text-align:right">${_pesos(o.mv)}<br><span style="color:${_gc(o.mg)}">${_pesosSg(o.mg)}</span></span>
-        <span style="text-align:right">${o.lv?_pesos(o.lv):'—'}<br><span style="color:${_gc(o.lg)}">${o.lv?_pesosSg(o.lg):''}</span></span>
+        <span style="text-align:right">${o.pv?_pesos(o.pv):'—'}<br><span style="color:${_gc(o.pg)}">${o.pv?_pesosSg(o.pg):''}</span></span>
+        <span style="text-align:right">${o.tv?_pesos(o.tv):'—'}<br><span style="color:${_gc(o.tg)}">${o.tv?_pesosSg(o.tg):''}</span></span>
         <b style="text-align:right">${_pesos(o.mv+o.lv)}<br><span style="color:${_gc(o.mg+o.lg)}">${_pesosSg(o.mg+o.lg)}</span></b></div>
       </div>`;}
   el.innerHTML=h;
@@ -25369,14 +25380,14 @@ function metVista(v){
   let enML=false;for(const ch of wrap.children){
     if(ch.id==='met-indice'){enML=true;ch.style.display=cur==='ml'?'':'none';continue;}   // el índice (Línea de todo, KPIs…) es sólo de ML (29/10, él)
     if(ch.id==='met-todo-t'||ch.id==='met-todo'){ch.style.display=cur==='todo'?'':'none';enML=false;continue;}
-    if(ch.id==='met-local-t'||ch.id==='met-local'){ch.style.display=cur==='local'?'':'none';enML=false;continue;}
+    if(ch.id==='met-local-t'||ch.id==='met-local'){ch.style.display=(cur==='perf'||cur==='tienda')?'':'none';if(ch.id==='met-local-t'&&ch.firstChild)ch.firstChild.nodeValue=cur==='tienda'?'🏬 Tienda ':'🛍️ Perfumería ';enML=false;continue;}
     if(ch.tagName==='FOOTER')continue;
     if(enML&&!ch.dataset.metc){if(cur!=='ml'){if(ch.style.display!=='none'){ch.style.display='none';ch.dataset.metOcultoPorVista='1';}}else if(ch.dataset.metOcultoPorVista){ch.style.display='';delete ch.dataset.metOcultoPorVista;}}   // lo que ya estaba oculto por otra razón (ej. carga del Día) no se toca
   }
   const tx=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
-  tx('met-view-cuentas',cur==='local'?'Perfumería y Tienda':cur==='todo'?'ML y Local':'Cuentas');tx('met-pct-cuentas',cur==='local'?'Perfumería y Tienda':cur==='todo'?'ML y Local':'Cuentas');
-  tx('met-part-t',cur==='local'?'Participación Perfumería y Tienda':cur==='todo'?'Participación ML y Local':'Participación por cuenta');
-  tx('chart-bar-title',cur==='local'?'Ventas Perfumería y Tienda':cur==='todo'?'Ventas ML y Local':'Ventas por cuenta');
+  const _cN=cur==='perf'?'Perfumerías':cur==='tienda'?'Tienda':cur==='todo'?'ML, Perfumería y Tienda':'Cuentas';tx('met-view-cuentas',_cN);tx('met-pct-cuentas',_cN);
+  tx('met-part-t',cur==='perf'?'Participación por perfumería':cur==='tienda'?'Participación':cur==='todo'?'Participación ML, Perfumería y Tienda':'Participación por cuenta');
+  tx('chart-bar-title',cur==='perf'?'Ventas por perfumería':cur==='tienda'?'Ventas de la Tienda':cur==='todo'?'Ventas ML, Perfumería y Tienda':'Ventas por cuenta');
 }
 function renderMetLocal(curKeys,prevKeys,lbl){
   // 29/10/2026 (él: "quiero ver qué perfumería le vendemos más, con barras. ganancia local y ml juntas. deudas. todo. quiero poder analizarlo igual
@@ -25418,11 +25429,16 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const otrasDe=r=>[..._otrasD.filter(d=>(Number(d.monto)>0||Number(d.costo)>0)&&en(fechaDeuda(d),r)).map(d=>({nom:d.nom,m:Number(d.monto)||0,g:Number(d.costo)>0?d.monto-Number(d.costo):null,c:Number(d.costo)||0})),
     ..._otrasD.flatMap(d=>deudaMovsProd(d).filter(x=>en(x.f,r)).map(x=>({nom:`${d.nom} · 🛍️ ${Number(x.u)>1?x.u+' × ':''}${x.prodNom||'producto'}`,m:Number(x.m)||0,g:x.gan!=null?Number(x.gan)||0:null,c:x.gan!=null?(Number(x.m)||0)-(Number(x.gan)||0):0})))];
   const otras=otrasDe(R);
-  let h=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Todo lo del local, sin nada de ML: dos partes: 🛍️ Perfumería (Soares, Sarmiento, Ceballos; lo que se les deja queda como deuda y cuenta el día que se deja) y 🏬 Tienda (todo lo que vendemos por afuera de la perfumería), más las deudas. Para verlo junto con ML, 🔀 ML + Local.</div>`;
+  // 🛍️ PERFUMERÍA Y 🏬 TIENDA, CADA UNA SU PANTALLA (30/10/2026, él: "local ya no existe más. hay perfumería y tienda. separados todos"):
+  // la misma función dibuja una u otra según la vista (`metSrc` 'perf' o 'tienda').
+  const VT=metSrc==='tienda';
+  let h=VT?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Todo lo que vendemos por afuera de ML y de la perfumería: ventas a personas y lo de la Tienda. Cuenta el día que se vende.</div>`
+    :`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Lo que se les deja a Soares, Sarmiento y Ceballos (queda como deuda y cuenta el día que se deja) y lo que nos deben.</div>`;
   // 29/10/2026 (él: "acá en perfumería mezcla, que sea sólo perfumería" y después "esto es métrica de local, no de perfumería… perfumería es lo más
   // grande, pero local tiene más cosas"): sin nada de ML (eso vive en 🔀 ML + Local); acá perfumerías + otras ventas a cuenta + deudas.
   // 2 · Perfumerías: resumen
-  const _gc=v=>v<0?'var(--red)':'var(--green)';   // ganancia con su signo (`_pesosSg`) y en rojo si es negativa (revisión etapa 9, 30/10/2026: decía "+$-5.000")
+  const _gc=v=>v<0?'var(--red)':'var(--green)';
+  if(!VT){   // ganancia con su signo (`_pesosSg`) y en rojo si es negativa (revisión etapa 9, 30/10/2026: decía "+$-5.000")
   h+=tit('🛍️ Perfumerías')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
     ${box('Vendido',_pesos(vend)+cmp(vend,vendP),`${fmtN(sum(dC,'u'))} u. en ${dC.length} entrega${dC.length===1?'':'s'}`)}
     ${box('Ganancia',`<span style="color:${colPctLocal(gan,costoC)}">${_pesosSg(gan)}</span>`,pc(gan,costoC)+' sobre el costo · la regla es '+LOCAL_PCT+'%')}
@@ -25445,10 +25461,15 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const porP={};dC.forEach(x=>{const k=x.prodNom;const o=porP[k]=porP[k]||{m:0,u:0,g:0,c:0,loc:new Set()};o.m+=Number(x.m)||0;o.u+=Number(x.u)||0;if(x.gan!=null){o.g+=Number(x.gan);o.c+=Number(x.m)-Number(x.gan);}o.loc.add(LOC[x.local]||x.local||'');});
   const prA=Object.entries(porP).sort((a,b)=>b[1].m-a[1].m),mxP=Math.max(1,...prA.map(([,o])=>o.m));
   h+=tit('📦 Productos dejados · en el período')+(prA.length?prA.slice(0,15).map(([k,o])=>`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.66rem"><div style="display:flex;gap:8px;align-items:baseline"><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escC(k)} <span style="color:var(--muted)">· ${[...o.loc].filter(Boolean).join(', ')}</span></span><span style="color:var(--muted)">${fmtN(o.u)} u.</span><b style="font-family:'DM Mono',monospace">${_pesos(o.m)}</b><span style="color:${colPctLocal(o.g,o.c)};font-family:'DM Mono',monospace">${_pesosSg(o.g)} · ${pc(o.g,o.c)}</span></div>${barra(o.m/mxP*100,'#ec4899')}</div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Nada dejado en este período.</div>');
+  }
+  // 🏬 Tienda: resumen del período
+  if(VT){const vT=otras.reduce((t,o)=>t+(o.m||0),0),gT=otras.filter(o=>o.g!=null).reduce((t,o)=>t+o.g,0),cT=otras.filter(o=>o.g!=null).reduce((t,o)=>t+(o.c||0),0);
+    const oP=otrasDe(RP),vTP=oP.reduce((t,o)=>t+(o.m||0),0);
+    h+=tit('🏬 Tienda')+`<div style="display:flex;gap:8px;flex-wrap:wrap">${box('Vendido',_pesos(vT)+cmp(vT,vTP),`${otras.length} venta${otras.length===1?'':'s'}`)}${box('Ganancia',`<span style="color:${colPctLocal(gT,cT)}">${_pesosSg(gT)}</span>`,pc(gT,cT)+' sobre el costo')}</div>`;}
   // 6 · Deudas (hoy): ventas a cobrar y préstamos, atrasadas
   const esV=esVentaDeuda;   // revisión etapa 9, 30/10/2026: la misma regla que Ver deudas
   const hoyI=(typeof _isoHoy==='function')?_isoHoy():new Date().toISOString().slice(0,10);
-  const act=D.filter(d=>!d.fin&&(Number(d.resta)||0)>0),ven=act.filter(esV),pre=act.filter(d=>!esV(d));
+  const act=D.filter(d=>!d.fin&&(Number(d.resta)||0)>0&&(VT?!/perfumeria/.test(_n(d.nom)):/perfumeria/.test(_n(d.nom)))),ven=act.filter(esV),pre=act.filter(d=>!esV(d));
   const atr=act.filter(d=>{try{const v=cuotaVence(d);return v&&v<hoyI;}catch(e){return false;}});
   const sR=a=>a.reduce((t,d)=>t+(Number(d.resta)||0),0),totD=sR(act);
   h+=tit('📥 Deudas hoy')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -25457,21 +25478,21 @@ function renderMetLocal(curKeys,prevKeys,lbl){
     ${box('⚠️ Atrasadas',atr.length?`<span style="color:var(--red)">${_pesos(sR(atr))}</span>`:'$0',atr.length?`${atr.length} con la cuota vencida`:'ninguna vencida')}</div>`
     +(()=>{const arr=act.slice().sort((a,b)=>(Number(b.resta)||0)-(Number(a.resta)||0)),mx=Math.max(1,...arr.map(d=>Number(d.resta)||0));return arr.map(d=>`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.66rem"><div style="display:flex;gap:8px"><span style="flex:1">${_escC(d.nom)} <span style="color:var(--muted)">· ${esV(d)?'venta':'préstamo'}</span></span><b style="font-family:'DM Mono',monospace">${_pesos(Number(d.resta)||0)}</b></div>${barra((Number(d.resta)||0)/mx*100,esV(d)?'#22c55e':'#94a3b8')}</div>`).join('');})();
   // 7 · Otras ventas a cuenta del período
-  h+=tit('🏬 Tienda · ventas en el período <span style="font-weight:400;color:var(--muted)">(todo lo que no es de la perfumería)</span>')+(otras.length?otras.map(o=>`<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border);font-size:.66rem"><span style="flex:1">${_escC(o.nom)}</span><b style="font-family:'DM Mono',monospace">${_pesos(o.m)}</b><span style="color:${o.g==null?'var(--muted)':colPctLocal(o.g,o.c)};font-family:'DM Mono',monospace">${o.g!=null?_pesosSg(o.g)+' · '+pc(o.g,o.c):'costo sin cargar'}</span></div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Ninguna cargada en este período.</div>');
+  if(VT)h+=tit('🏬 Ventas en el período')+(otras.length?otras.map(o=>`<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border);font-size:.66rem"><span style="flex:1">${_escC(o.nom)}</span><b style="font-family:'DM Mono',monospace">${_pesos(o.m)}</b><span style="color:${o.g==null?'var(--muted)':colPctLocal(o.g,o.c)};font-family:'DM Mono',monospace">${o.g!=null?_pesosSg(o.g)+' · '+pc(o.g,o.c):'costo sin cargar'}</span></div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Ninguna cargada en este período.</div>');
   el.innerHTML=h;
 }
 // LA VISTA (📦/🏪/🔀) ES `metSrc` (revisión etapa 9, 30/10/2026): el aparato la recuerda (`cyc_metvista`), pero se lee UNA vez y validada. Antes
 // cada dibujo la releía: si el navegador no dejaba guardar, tocar 🏪 Local no hacía nada (volvía a ML), y un valor raro guardado mostraba los
 // números de ML con todas sus secciones escondidas y ningún botón prendido.
-const MET_VISTAS=['ml','local','todo'];let _metSrcLeido=false,_metNetoAntes=null;
+const MET_VISTAS=['ml','perf','tienda','todo'];let _metSrcLeido=false,_metNetoAntes=null;
 function renderMetricas(){
-  if(!_metSrcLeido){_metSrcLeido=true;try{const s=localStorage.getItem('cyc_metvista');if(MET_VISTAS.includes(s))metSrc=s;}catch(e){}}
+  if(!_metSrcLeido){_metSrcLeido=true;try{let s=localStorage.getItem('cyc_metvista');if(s==='local')s='perf';if(MET_VISTAS.includes(s))metSrc=s;}catch(e){}}
   if(!MET_VISTAS.includes(metSrc))metSrc='ml';_metLocMemo=null;
   // 29/10/2026 (él: "en métricas local que desaparezca el neto, ya que no hay diferencia entre total y neto")
   // Revisión etapa 9, 30/10/2026: al volver a ML o a ML + Local el 💚 Neto vuelve a como estaba (`_metNetoAntes`); antes quedaba apagado.
-  {const bn=document.getElementById('met-field-neto');if(bn)bn.style.display=metSrc==='local'?'none':'';let cambio=false;
-   if(metSrc==='local'&&metViewFields.includes('neto')){_metNetoAntes={i:metViewFields.indexOf('neto'),solo:metViewFields.length===1};metViewFields=metViewFields.filter(f=>f!=='neto');if(!metViewFields.length)metViewFields=['total'];cambio=true;}
-   else if(metSrc!=='local'&&_metNetoAntes){const a=_metNetoAntes;_metNetoAntes=null;
+  {const bn=document.getElementById('met-field-neto');if(bn)bn.style.display=_vLoc()?'none':'';let cambio=false;
+   if(_vLoc()&&metViewFields.includes('neto')){_metNetoAntes={i:metViewFields.indexOf('neto'),solo:metViewFields.length===1};metViewFields=metViewFields.filter(f=>f!=='neto');if(!metViewFields.length)metViewFields=['total'];cambio=true;}
+   else if(!_vLoc()&&_metNetoAntes){const a=_metNetoAntes;_metNetoAntes=null;
      if(!metViewFields.includes('neto')){if(a.solo&&metViewFields.length===1&&metViewFields[0]==='total')metViewFields=[];metViewFields.splice(Math.min(a.i,metViewFields.length),0,'neto');cambio=true;}}
    if(cambio){metViewField=metViewFields[0];if(metChartLine){metChartLine.destroy();metChartLine=null;}if(metChartBar){metChartBar.destroy();metChartBar=null;}_syncMetFieldBtns();}}
   _syncMetFieldBtns(); // deja los botones prendidos/apagados según las métricas activas
@@ -25522,7 +25543,7 @@ function renderMetricas(){
     // La gestión de Full va en el DIVISOR y no restada de la ganancia: el neto de ML ya la tiene
     // descontada, restarla otra vez la cobraría dos veces.
     // 10a (30/10/2026): el % de una "cuenta" del local (perfumerías, otras ventas, o Local en 🔀) se pinta contra el 25% del local (`colPctLocalP`).
-    const _esLoc=a=>a==='local'||String(a||'').startsWith('loc_')||(a==null&&metSrc==='local');
+    const _esLoc=a=>a==='local'||String(a||'').startsWith('loc_')||(a==null&&_vLoc());
     const mkLine=(g,c,pg,pc,a)=>{
       if(!(c>0))return'';
       const mk=g/c*100;
@@ -25547,7 +25568,7 @@ function renderMetricas(){
     const span=getMetPeriodSpan(metScopeMode);
     const spanTxt=span.n+' '+span.unit+(span.n!==1?'s':'')+(curKeys.length<span.n?` · ${curKeys.length} con ventas`:'');
     const totCmp=cmpBox(cmpLine(curTotal,prevTotal,prevLbl),cmpLine(curTotal,yearTotal,'año pasado'));
-    const totalCard=`<div class="met-kpi ct"><div class="mk-lbl">${fieldLbl}</div><div class="mk-val">${fmt(curTotal)}</div><div class="mk-sub" title="${spanTxt}">${mkLine(ganTot,cosTot,ganTotPrev,cosTotPrev,metSrc==='local'?null:'ml').replace(/^ · /,'')||spanTxt}</div>${totCmp}</div>`;
+    const totalCard=`<div class="met-kpi ct"><div class="mk-lbl">${fieldLbl}</div><div class="mk-val">${fmt(curTotal)}</div><div class="mk-sub" title="${spanTxt}">${mkLine(ganTot,cosTot,ganTotPrev,cosTotPrev,_vLoc()?null:'ml').replace(/^ · /,'')||spanTxt}</div>${totCmp}</div>`;
     kpiEl.innerHTML=cards+totalCard;
   }
   if(metScopeMode==='dia')loadMetricasDelDia();
@@ -25683,7 +25704,7 @@ function renderLineChartFromScope(scope){
   // misma regla que Ganancia CYC) para abajo. Siempre del día, aunque la línea sea acumulativa, y
   // sólo del período actual: la comparación queda en las líneas.
   let barDet=null;
-  if(!multi&&metChartLineView==='general'&&metSrc!=='local'){   // el local no tiene gastos de CYC
+  if(!multi&&metChartLineView==='general'&&!_vLoc()){   // el local no tiene gastos de CYC
     const ganB=totOf(buckets,'ganancia');
     // EL RETIRO NO ES UN GASTO DE LA GANANCIA (27/10/2026, él: "en ganancia creo que suma como gasto los retiros nuestros. para mí no debería
     // ir… ingresos − gastos (sin retiros)"): en 💰 Ganancia la barra roja muestra sólo los gastos; el retiro de los dueños aparece sólo en
@@ -25703,16 +25724,20 @@ function renderLineChartFromScope(scope){
   if(metSrc==='todo'&&!multi){
     const _cum=arr=>{let t=0;return arr.map(v=>t+=(v||0));};
     const serie=a=>{const r=buckets.map(keys=>keys.reduce((t,k)=>t+metGetValDay(k,a,metViewField),0));return metChartAccum?_cum(r):r;};
-    const sML=serie('ml'),sLo=serie('local'),sPe=serie('loc_perf'),sTi=serie('loc_tienda');
-    const _tot=sML.map((v,k)=>(v||0)+(sLo[k]||0));   // 30/10/2026, él: "al lado las ventas de ml y de local poner el % que supone en las ventas totales o ganancia"
+    // 🔀 TODO EN TRES CAPAS (30/10/2026 a la noche, él: "local ya no existe más… separados todos"): abajo 📦 ML (azul), en el medio 🛍️ Perfumería
+    // (rosa) y arriba 🏬 Tienda (violeta), apiladas hasta el total. Cada capa guarda lo suyo en `_real` y el total del punto en `_tot`.
+    const sML=serie('ml'),sPe=serie('loc_perf'),sTi=serie('loc_tienda');
+    const _tot=sML.map((v,k)=>(v||0)+(sPe[k]||0)+(sTi[k]||0));
+    const sMP=sML.map((v,k)=>(v||0)+(sPe[k]||0));
+    const capaML={label:'📦 ML',data:sML,_real:sML,_capa:0,_tot,borderColor:'#3b82f6',backgroundColor:'#3b82f655',borderWidth:2.5,tension:.3,pointRadius:2,fill:'origin',order:0};
+    const capaPe={label:'🛍️ Perfumería',data:sMP,_real:sPe,_capa:1,_tot,borderColor:'#ec4899',backgroundColor:'#ec489955',borderWidth:2.5,tension:.3,pointRadius:2,fill:'-1',order:0};
     if(metChartLineView==='general'){
       const ci=datasets.findIndex(d=>d.label===CMP_LBL_CUR);
-      if(ci>=0){const cur=datasets[ci];Object.assign(cur,{_cur:true,label:'🏪 Local',borderColor:'#f59e0b',backgroundColor:'#f59e0b55',fill:'-1',_real:sLo,_tot,_pe:sPe,_ti:sTi,order:0});
-        datasets.forEach(d=>{if(d.label===CMP_LBL_YEAR)d.borderColor='#a78bfa';});   // el año pasado no puede ser naranja: se confunde con el local
-        datasets.splice(ci,0,{label:'📦 ML',data:sML,_tot,borderColor:'#3b82f6',backgroundColor:'#3b82f655',borderWidth:2.5,tension:.3,pointRadius:2,fill:'origin',order:0});}
+      if(ci>=0){const cur=datasets[ci];Object.assign(cur,{_cur:true,_capa:2,label:'🏬 Tienda',borderColor:'#a78bfa',backgroundColor:'#a78bfa55',fill:'-1',_real:sTi,_tot,order:0});
+        datasets.forEach(d=>{if(d.label===CMP_LBL_YEAR)d.borderColor='#14b8a6';});   // el año pasado no puede ser violeta: se confunde con la Tienda
+        datasets.splice(ci,0,capaML,capaPe);}
     } else {
-      datasets=[{label:'📦 ML',data:sML,_tot,borderColor:'#3b82f6',backgroundColor:'#3b82f655',borderWidth:2.5,tension:.3,pointRadius:2,fill:'origin'},
-        {label:'🏪 Local',data:sML.map((v,k)=>v+(sLo[k]||0)),_real:sLo,_tot,_pe:sPe,_ti:sTi,borderColor:'#f59e0b',backgroundColor:'#f59e0b55',borderWidth:2.5,tension:.3,pointRadius:2,fill:'-1'}];
+      datasets=[capaML,capaPe,{label:'🏬 Tienda',data:_tot.slice(),_real:sTi,_capa:2,_tot,borderColor:'#a78bfa',backgroundColor:'#a78bfa55',borderWidth:2.5,tension:.3,pointRadius:2,fill:'-1'}];
     }
   }
   metCortarEnHoy(datasets,buckets);
@@ -25752,7 +25777,7 @@ function renderLineChartFromScope(scope){
   if(multi)scales.y.beginAtZero=true; // arrancar en 0, si no las diferencias se ven infladas
   if(barDet)scales.x.offset=true; // si no, la primera y la última barra salen cortadas a la mitad
   metChartLine=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}},onClick:_metLegendClick},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+((i.dataset._real?i.dataset._real[i.dataIndex]:i.raw)||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>{const ds=item.dataset,r=ds._real?ds._real[item.dataIndex]:item.raw;const _tt=ds._tot?ds._tot[item.dataIndex]:0;const t=' '+ds.label+': $'+Math.round(r||0).toLocaleString('es-AR')+(ds._tot&&_tt>0?' ('+Math.round((r||0)/_tt*100)+'%)':'');const _pt=ds._pe&&_tt>0?['   🛍️ Perfumería: $'+Math.round(ds._pe[item.dataIndex]||0).toLocaleString('es-AR')+' ('+Math.round((ds._pe[item.dataIndex]||0)/_tt*100)+'%)','   🏬 Tienda: $'+Math.round(ds._ti[item.dataIndex]||0).toLocaleString('es-AR')+' ('+Math.round((ds._ti[item.dataIndex]||0)/_tt*100)+'%)']:[];return ds._cur?[t,..._pt,' Total ML + Local: $'+Math.round((ds._apilado?ds._apilado[item.dataIndex]:item.raw)||0).toLocaleString('es-AR')]:(_pt.length?[t,..._pt]:t);},afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const dif=_metTipDifs(items,false);return dif.length||detL.length?['',...dif,...detL]:'';}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
+    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}},onClick:_metLegendClick},tooltip:{callbacks:{title:items=>{const total=items.reduce((s,i)=>s+((i.dataset._real?i.dataset._real[i.dataIndex]:i.raw)||0),0);return metChartLineView==='cuentas'?[items[0].label,'Total: $'+Math.round(total).toLocaleString('es-AR')]:[items[0].label];},label:item=>{const ds=item.dataset,r=ds._real?ds._real[item.dataIndex]:item.raw;const _tt=ds._tot?ds._tot[item.dataIndex]:0;const t=' '+ds.label+': $'+Math.round(r||0).toLocaleString('es-AR')+(ds._tot&&_tt>0?' ('+Math.round((r||0)/_tt*100)+'%)':'');return ds._cur?[t,' Total: $'+Math.round((ds._apilado?ds._apilado[item.dataIndex]:item.raw)||0).toLocaleString('es-AR')]:t;},afterBody:items=>{if(metChartLineView!=='general'||metViewFields.length>1)return '';const det=(barDet&&barDet[items[0].dataIndex])||[];const detL=det.length?['','Gastos de ese día:',...det.map(x=>'  · '+x.t+': −$'+Math.round(x.m).toLocaleString('es-AR'))]:[];const dif=_metTipDifs(items,false);return dif.length||detL.length?['',...dif,...detL]:'';}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales}
   });
 }
 
@@ -25789,8 +25814,13 @@ function _metLegendClick(e,item,legend){
   // 🔀 (revisión etapa 9, 30/10/2026): la línea naranja de ML + Local guarda el TOTAL (ML abajo + local arriba). Si se escondía 📦 ML desde la
   // leyenda, el naranja bajaba hasta el 0 y se leía "Local $5.602.984" con $2.453.500 de local: con ML escondido muestra sólo lo del local
   // (`_real`) y al volver ML se apila de nuevo (`_apilado`). El globito y las diferencias siguen con el total (`_apilado`).
-  if(metSrc==='todo'&&ds&&ds.label==='📦 ML'){const lo=ch.data.datasets.find(d=>d._real);if(lo){if(!lo._apilado)lo._apilado=lo.data;
-    lo.data=ch.isDatasetVisible(item.datasetIndex)?lo._apilado:lo._apilado.map((v,i)=>v==null?null:(lo._real[i]||0));ch.update();}}
+  // Tres capas (30/10/2026): al esconder una, las de arriba se vuelven a apilar sobre las que quedan; `_apilado` guarda el total de la de
+  // arriba para el globito y las diferencias.
+  if(metSrc==='todo'&&ds&&ds._capa!=null){const caps=ch.data.datasets.map((d,i)=>({d,i})).filter(o=>o.d._capa!=null).sort((a,b)=>a.d._capa-b.d._capa);
+    caps.forEach(o=>{if(!o.d._mask)o.d._mask=o.d.data.map(v=>v==null);if(o.d._cur&&!o.d._apilado)o.d._apilado=o.d.data.slice();});
+    let acc=null;caps.forEach(o=>{const vis=ch.isDatasetVisible(o.i);const base=acc||o.d._real.map(()=>0);const nueva=o.d._real.map((v,k)=>(base[k]||0)+(v||0));
+      o.d.data=nueva.map((v,k)=>o.d._mask[k]?null:v);if(vis)acc=nueva;});
+    ch.update();}
   if(ds&&ds._barra){try{const m=JSON.parse(localStorage.getItem('cycMetBarras')||'{}');m[ds.label==='Gastos del día'?'gas':'gan']=ch.isDatasetVisible(item.datasetIndex);localStorage.setItem('cycMetBarras',JSON.stringify(m));}catch(x){}}
 }
 // LAS LÍNEAS DEL PERÍODO ACTUAL CORTAN EN EL DÍA DE HOY, no siguen hasta fin de mes.
@@ -25945,7 +25975,7 @@ function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
     +`<span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px;vertical-align:middle"></span>${lbl}</span>`
     +`<span style="font-size:1rem;font-weight:700;color:var(--text)">${fmtP(val)}</span>${extra}</div>`;
   // revisión max (rev4): el título decía "meta 40%" escrito a mano; va la meta del Puntaje de este mes.
-  try{const sp=document.getElementById('met-pct-period');if(sp){const n=new Date();void n;sp.textContent='· sobre el costo · objetivo '+(metSrc==='local'?LOCAL_PCT+'% (la regla del local)':_pctPisoMeta().meta+'%');}}catch(e){}
+  try{const sp=document.getElementById('met-pct-period');if(sp){const n=new Date();void n;sp.textContent='· sobre el costo · objetivo '+(_vLoc()?LOCAL_PCT+'% (la regla del local)':_pctPisoMeta().meta+'%');}}catch(e){}
   // CONTRA EL ANTERIOR ENTERO (08/10/2026, él: "quiero que el mes pasado tome el promedio final del mes, no del período
   // donde va este mes"). El número grande y la flecha van contra el período anterior COMPLETO; "a esta altura" queda abajo, chico.
   el.innerHTML=chip(CMP_CUR,'Promedio actual',cur,delta(cur,prev,'anterior'))
@@ -25979,7 +26009,7 @@ function renderPctChartFromScope(scope){
     buckets.forEach(keys=>{metAccts().forEach(a=>{let g=0,c=0;keys.forEach(k=>{g+=metGetValDay(k,a,'ganancia');c+=metCostoPctDay(k,a);});gan[a].push(g);cos[a].push(c);});});
     datasets=metAccts().map(a=>({label:METX_LABELS[a],data:metPctMode==='promedio'?runAvg(gan[a],cos[a]):labels.map((_,i)=>pct(gan[a][i],cos[a][i])),borderColor:METX_COLORS[a],backgroundColor:METX_COLORS[a]+'22',borderWidth:2,tension:.3,pointRadius:2,spanGaps:true}));
   }
-  {const _mP=metSrc==='local'?LOCAL_PCT:vpMinPct();   // 10a (30/10/2026): en 🏪 Local la vara es el 25% del local
+  {const _mP=_vLoc()?LOCAL_PCT:vpMinPct();   // 10a (30/10/2026): en 🏪 Local la vara es el 25% del local
   datasets.push({label:'Meta '+_mP+'%',data:labels.map(()=>_mP),borderColor:'#6b6b7a',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false,tension:0});}
   metCortarEnHoy(datasets,buckets);
   if(sinPrev)datasets=datasets.filter(ds=>ds.label!==CMP_LBL_PREV);
