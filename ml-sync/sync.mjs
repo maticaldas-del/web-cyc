@@ -5758,11 +5758,11 @@ async function detectarErrores(db, o = {}) {
     if (x.sinLeer) { console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ❓ no pude leer sus ventas: mirarlo a mano`); return; }
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${({ nuevo: '🆕', techo: '📈', escasez: '🔥', sinrepo: '⏳' })[x.ult] || '📈'} a este precio desde ${fecha(x.tsU)} · vendió ${x.uds} u. (la primera ${fecha(x.primera)}) · hoy ${x.P ? $(x.P) : '¿?'}`);
     const esc = x.ult === 'escasez' || x.ult === 'sinrepo';
-    // 1b del 30/10/2026: la suba es +50% del % de ganancia (`%x1.5`: decido busca el precio que deja 1,5 veces el % de hoy; las gemelas lo copian).
-    const crz = x.P < UMBRAL_ENVIO_GRATIS ? '!cruza' : '';
-    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=%x1.5${crz}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% del % de ganancia (1b del 30/10, el detector);go`
-      : x.cruzaE ? `   ▶️ decido:${x.mla}=%x1.5!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% del % de ganancia (1b del 30/10, el detector);go`
-      : `   ▶️ decido:${x.mla}=%x1.5!vendio${crz}#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% del % de ganancia (1b del 30/10, el detector);go`);
+    // 30/10/2026: la suba sigue siendo +50% del PRECIO (él: "me gusta la subida que tenemos ahora… sólo dije lo del % por el tema de las premium y
+    // clásicas": todas las formas de venta quedan con el mismo %, que ya lo hacen las gemelas). `decido` igual acepta `=%N` / `=%xK` si hace falta.
+    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
+      : x.cruzaE ? `   ▶️ decido:${x.mla}=${x.obj}!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% sobre ese precio y la Clásica cruza la barrera (él, 30/10, el detector);go`
+      : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lzC.lento || 0} 📈 que venden menos de 1 por semana (4a: quedan 💰) · ${lanza.length} para subir)`);
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
@@ -5804,7 +5804,7 @@ async function detectarErrores(db, o = {}) {
   const subir48 = vendio48.filter((x) => x.obj > x.P);
   bloque('🔎 VENDIERON AYER U HOY SIN TECHO MEDIDO Y NO ESTÁN BUSCANDO TECHO · subir +50% a buscar techo EN ESTA VUELTA', subir48, (x) => {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult || 'sin estrategia'} · vendió ${x.u} u. en 48 h · hoy ${$(x.P)}`);
-    console.log(`   ▶️ decido:${x.mla}=%x1.5${x.P < UMBRAL_ENVIO_GRATIS ? '!cruza' : ''}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo, +50% del % de ganancia (1b del 30/10);go`);
+    console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo (él, 27/10);go`);
   });
   { const resto = vendio48.filter((x) => !(x.obj > x.P)); if (resto.length) { console.log('   (no suben:)'); for (const x of resto) console.log(`   · ${x.mla} · ${String(x.e.title || '?').slice(0, 40)} · ${x.ult || 'sin estrategia'} · ${x.P ? $(x.P) : '¿?'} · ${x.no}`); } }
   console.log(`(vendieron en 48 h: ${v48C.vendieron} Clásicas · ${v48C.inact} no activas · ${v48C.enPrueba} ya en 📈/🆕 (lista de arriba) · ${v48C.conTecho} con techo medido · ${v48C.explica} con una estrategia que explica no subir · ${subir48.length} para subir)`);
