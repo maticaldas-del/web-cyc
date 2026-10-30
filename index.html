@@ -3242,7 +3242,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.30';
+const APP_VERSION='28.31';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3255,6 +3255,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.31',f:'30/10',h:'14:30',c:[{n:1,t:'📦 Armar caja: cuando esperar no cuesta nada, el cartel dice que nada se queda sin stock y que la ganancia de la caja se cobra igual una semana después.'}]},
   {v:'28.30',f:'30/10',h:'13:25',c:[{n:2,t:'💵 La perfumería paga por plata: lo pagado tacha los productos del más viejo al más nuevo, el que queda a medias se llena hasta su %, y lo que sobra cubre lo que se deje después'}]},
   {v:'28.29',f:'30/10',h:'13:22',c:[{n:2,t:'🏪 Lo de Paraguay que ya es del local (cobrado como deuda) ya no cuenta como mercadería en camino, y al llegar no entra a la oficina'},{n:2,t:'🏪 Oficina Local = lo sólo del local + lo apartado para la perfumería + la Oficina Local; lo nuevo sin publicar queda en Oficina ML'},{n:2,t:'📥 Si alguien devuelve de más, la deuda queda en negativo ("le debemos"), no en $0'},{n:1,t:'🛍️ El % del local (Ver deudas y Métricas → Local) se pinta contra 25%, la regla del local'},{n:2,t:'🔍 ¿Cierra el mes? cuenta la ganancia hasta la hora del cierre cuando el mes se cerró antes de terminar'},{n:2,t:'🛍️ Pedidos: lo que pide la perfumería y en ML está en la papelera, en "no traer" o es "sólo local" ahora le llega a Tito (sólo para ella, nada para ML), con el chip "sólo perfumería"'},{n:2,t:'🛍️ Pedidos: lo de la perfumería que ya viene viajando ya no se vuelve a pedir'},{n:3,t:'🏷️ Sin etiqueta por cuenta: la tarjeta de Contar lo que hay va agrupada por la cuenta que lleva la etiqueta (lo de antes queda en "Sin cuenta asignada") y ✅ Etiquetadas resta sólo de ese renglón; Armar caja cuenta lo de la cuenta elegida'},{n:2,t:'📦 Armar caja: los Tenders salen en su propia caja cuando juntan una caja llena o se cortan en 14 días (antes esperaban a que no hubiera chicos); "Cargar lo sugerido" no los mezcla con los chicos y lo dice'},{n:1,t:'⏸️ Envío en pausa: dice que sigue contando como en camino y ocupando el cupo de Full'},{n:2,t:'🧪 Pedidos: la compra de prueba al 35% sólo donde no hay competencia medida; donde la competencia vende más barato queda en 0 con su motivo'},{n:2,t:'🇵🇾 Costos de Paraguay: se ponen recién con el ticket real (lo que se pagó), nunca con el precio de la web. Sin ticket las fichas no se tocan y el pedido lo dice.'},{n:2,t:'🇵🇾 Si un probado se vuelve a comprar más barato, el costo de la ficha baja al que pagaste (lo que ya se vendió queda con el costo viejo). En 💲 Costos del pedido sale "⬇️ bajaron".'},{n:2,t:'🇵🇾 Pedido de Paraguay: lo que no había sale tachado en rojo con "no había"; lo que se pagó y no llegó sale en rojo arriba de Pedidos → Paraguay y en el pedido, para reclamarlo, hasta que se resuelva.'}]},
   {v:'28.28',f:'30/10',h:'05:30',c:[{n:2,t:'🔍 Revisión de choques y fallas: el formulario ✏️ de una deuda ya no pisa lo que cambió el robot mientras estaba abierto · "Facturado real AFIP" de Ajustes se vuelve a leer al recargar · avisa si no pudo anotar algo sin etiqueta · una venta sin costo o con el neto estimado no se congela al cerrar el mes.'}]},
@@ -8389,7 +8390,9 @@ function renderOfiCaja(){
         ?`usa todo el cupo de Full que queda (${cv.uTot} u.): esperar no la llena más, lo vendido no devuelve cupo`
         :cv.llena
         ?`la caja ya va llena (${pctLl}%)`
-        :`esperar ${cv.espera} días te cuesta ${fmt(Math.round(cv.perdida))} · mandarla a medias, ${fmt(Math.round(cv.extra))} de más`;
+        :(cv.perdida<1   // 30/10/2026 (él con Luciana: "¿por qué dice que espere y hay 1M de ganancia?"): la ganancia de la caja no se pierde esperando
+          ?`nada de lo que va se queda sin stock en Full si esperás ${cv.espera} días, y los ${fmt(Math.round(cv.gTotal||0))} de ganancia se cobran igual una semana después · mandarla a medias cuesta ${fmt(Math.round(cv.extra))} más de envío`
+          :`esperar ${cv.espera} días te cuesta ${fmt(Math.round(cv.perdida))} · mandarla a medias, ${fmt(Math.round(cv.extra))} de más`);
       const nom=x=>(x.p.name||'').replace(/</g,'&lt;')+(x.variante?' · '+String(x.variante).replace(/</g,'&lt;'):'');
       const top=cv.cortan.slice(0,3).map(x=>`· ${nom(x)} — ${x.corte<=0?'ya está en 0':'se corta en '+x.corte+' d'} · ~${fmtN(Math.round(x.u))} u. · ${fmt(Math.round(x.pe))}`).join('<br>');
       const cpu=cv.uTot>0?cv.costo/cv.uTot:0, cpuLl=cv.uLlena?cv.costo/cv.uLlena:null;
