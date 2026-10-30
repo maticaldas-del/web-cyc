@@ -11182,6 +11182,35 @@ function pyPersonalARS(c) {
   const dol = (Number(p.mercaderia) || 0) + (Number(p.cambista) || 0);
   return cyc + pu > 0 ? Math.round(dol * pu / (cyc + pu)) : 0;
 }
+// 🛍️ LA PERFUMERÍA PAGA POR PLATA, NO POR PRODUCTO (30/10/2026, él: "la deuda/mercadería de la perfumería se cobra por plata no por producto…
+// me gustaría ir tachando de abajo hacia arriba y si alguna venta queda por la mitad que se llene hasta el % que llegó… también tené en cuenta
+// que se van a ir agregando productos y ventas nuevas"). La cuenta es DERIVADA, no se guarda: todo lo pagado de una deuda (cada movimiento `−`,
+// con o sin `prod=`, más las cuotas pagadas) se reparte del cargo MÁS VIEJO al más nuevo (la deuda inicial y cada `+`, por fecha y hora). Así un
+// producto o un pago nuevo rehace todo solo. Lo que sobra es saldo a favor y cubre lo que se deje después. Las marcas viejas `pagado`/`pagadoM`
+// de cada renglón ya no mandan (los pagos con producto también son plata). La ganancia del local no cambia (cuenta el día que se deja).
+// Devuelve { por: {<movKey|_ini>: {m, pag, pct, full, f}}, sobra, ent, medias, pctMedias[] } (ent/medias sólo de renglones con producto).
+// Misma regla que `deudaFifo` de index.html: si se toca una, la otra.
+function deudaFifoBot(d) {
+  const dia = (ts) => new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 10);
+  const n = Math.max(1, Number(d && d.n) || 1), monto = Number(d && d.monto) || 0, pagadas = Math.min(n, Number(d && d.pagadas) || 0);
+  const fc = d && d.ts ? dia(d.ts) : '', f0 = d && d.fecha0 && !(d.vence1 && d.fecha0 === d.vence1 && fc && d.fecha0 > fc) ? d.fecha0 : fc;
+  const car = [], pag = [];
+  if (monto > 0) car.push({ k: '_ini', f: f0, ts: Number(d.ts) || 0, m: monto, prod: false });
+  if (pagadas > 0) pag.push({ f: f0, ts: Number(d.ts) || 0, m: pagadas * monto / n });
+  for (const [k, x] of Object.entries((d && d.movs) || {})) { const m = Number(x && x.m) || 0; const f = String((x && x.f) || dia(Number(k) || 0));
+    if (m > 0) car.push({ k, f, ts: Number(k) || 0, m, prod: !!(x.prodNom || x.prod) }); else if (m < 0) pag.push({ f, ts: Number(k) || 0, m: -m }); }
+  const ord = (a, b) => String(a.f).localeCompare(String(b.f)) || a.ts - b.ts;
+  car.sort(ord); pag.sort(ord);
+  let i = 0; for (const c of car) c.pag = 0;
+  let sobra = 0;
+  for (const p of pag) { let a = p.m;
+    while (a > 0.005 && i < car.length) { const c = car[i], t = Math.min(a, c.m - c.pag); c.pag += t; a -= t; if (c.m - c.pag <= 0.5) { c.full = true; c.fp = String(p.f) > String(c.f) ? p.f : c.f; i++; } }
+    sobra += a; }
+  const por = {}; let ent = 0, medias = 0; const pctMedias = [];
+  for (const c of car) { const pct = c.m > 0 ? Math.min(100, c.pag / c.m * 100) : 100; por[c.k] = { m: c.m, pag: c.pag, pct, full: !!c.full, f: c.fp || null };
+    if (c.prod) { if (c.full) ent++; else if (c.pag > 0.5) { medias++; pctMedias.push(Math.round(pct)); } } }
+  return { por, sobra, ent, medias, pctMedias };
+}
 function recargoRealPedido(c, opt) {
   const falta = PY_GASTOS.filter((g) => !pyGastoCargado(c, g)).map((g) => g.nom);
   const tc = parseFloat(c && c.tcPedido) || parseFloat(c && c.tcPanel) || 0;
@@ -40604,17 +40633,18 @@ async function main() {
         if (!pcD.length) { const pw = _n(extra.prod).split(' ').filter(Boolean); pcD = products.filter((x) => pw.every((w) => (' ' + _n(x.name) + ' ').includes(w))); }
         if (pcD.length !== 1) { console.log(`❌ producto "${extra.prod}" agarra ${pcD.length} fichas${pcD.length ? ': ' + pcD.slice(0, 8).map((x) => `${x.name} (${x.id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const pD = pcD[0], uD = parseInt(extra.u, 10), fD = mDev[1] || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
-        const ab = Object.entries(dD.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === pD.id && !x.pagado && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(a[0]) - Number(b[0]));
+        // Pago por plata (30/10/2026): "sin pagar" = lo que la plata pagada todavía no cubre entero, del más viejo al más nuevo (`deudaFifoBot`).
+        const fifoD = deudaFifoBot(dD);
+        const ab = Object.entries(dD.movs || {}).filter(([k, x]) => x && Number(x.m) > 0 && x.prod === pD.id && !(fifoD.por[k] && fifoD.por[k].full) && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(a[0]) - Number(b[0]));
         const hay = ab.reduce((t, [, x]) => t + Number(x.u), 0);
         if (hay < uD) { console.log(`❌ en ${locD} hay ${hay} sin pagar de ${pD.name}${hay ? '' : ' (o ya está pagado: lo pagado no se devuelve por acá)'}; pidió devolver ${uD}. No escribo nada.`); return; }
         console.log(`=== DEVOLUCIÓN EN "${_tapaNom(dD)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
         let falta = uD, bajaM = 0, bajaG = 0; const cambios = [];
         for (const [k, x] of ab) { if (!falta) break; const uX = Number(x.u), q = Math.min(falta, uX), pu = Number(x.pu) > 0 ? Number(x.pu) : Number(x.m) / uX;
           const gU = x.gan != null ? Number(x.gan) / uX : null, nuevoU = uX - q, nuevoM = Math.round(Number(x.m) - pu * q);
-          const pm = Number(x.pagadoM) || 0;
-          if (nuevoM < pm - 0.5) { console.log(`❌ el renglón del ${x.f} ya lleva pagado ${money(pm)}: devolviendo ${q} quedaría en ${money(nuevoM)}. Decidilo con Matías. No escribo nada.`); return; }
+          // Lo que ya estaba pagado a medias de este renglón no se pierde: al achicarlo, la plata sigue al próximo (la cuenta es derivada).
           const devs = { ...(x.devs || {}) }; devs[String(Date.now() + cambios.length)] = { u: q, f: fD };
-          cambios.push([k, { u: nuevoU, m: nuevoM, ...(gU != null ? { gan: Math.round(gU * nuevoU) } : {}), devU: (Number(x.devU) || 0) + q, devs, ...(pm > 0 && nuevoM <= pm + 0.5 ? { pagado: fD, parcial: null } : {}) }]);
+          cambios.push([k, { u: nuevoU, m: nuevoM, ...(gU != null ? { gan: Math.round(gU * nuevoU) } : {}), devU: (Number(x.devU) || 0) + q, devs }]);
           bajaM += Number(x.m) - nuevoM; if (gU != null) bajaG += gU * q;
           console.log(`  ↩️ ${q} × ${x.prodNom} dejado el ${x.f}: ${uX} → ${nuevoU} u. · ${money(Number(x.m))} → ${money(nuevoM)}${gU != null ? ` · ganancia ${money(Math.round(Number(x.gan)))} → ${money(Math.round(gU * nuevoU))}` : ''}`);
           falta -= q; }
@@ -40646,8 +40676,6 @@ async function main() {
       let montoU = mPct ? null : Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
       const LOCALES = ['soares', 'sarmiento', 'ceballos'];
       let local = null; if (extra.local) { local = LOCALES.find((l) => _n(extra.local).includes(l)); if (!local) { console.log(`❌ local "${extra.local}": va soares, sarmiento o ceballos.`); return; } }
-      // Revisión etapa 9, 30/10/2026: un pago CON producto dice qué perfumería pagó (`|local=`): sin eso marcaba el renglón de cualquiera de las tres.
-      if (m[1] === '-' && extra.prod && !local) { console.log('❌ un pago con |prod= va con |local=<soares|sarmiento|ceballos> (qué perfumería pagó). No escribo nada.'); return; }
       let prodF = null, costoU = null;
       if (extra.prod) {
         let pc = products.filter((x) => x.id === extra.prod);
@@ -40657,6 +40685,9 @@ async function main() {
         const cp = costoPesos(prodF, 1, tcM); costoU = Math.round((cp.costBaseUSD || 0) * tcM);
         if (!(costoU > 0)) { console.log(`⚠️ ${prodF.name} no tiene costo cargado: la ganancia no se puede calcular (se guarda igual, sin ganancia).`); costoU = null; }
       }
+      // PAGO POR PLATA (30/10/2026, él: "cobramos de la perfumería 200.000 de deuda, o de mercadería, y vos restás a la cuenta que corresponde"): un
+      // pago (`-N`) ya no elige producto: la plata se reparte del más viejo al más nuevo (`deudaFifoBot`). Con `prod=` se avisa y se toma como plata.
+      if (m[1] === '-' && prodF) { console.log(`  ℹ️ los pagos van por plata (del producto más viejo al más nuevo): |prod=${extra.prod} no elige producto, se toma como plata`); prodF = null; costoU = null; }
       if (mPct) { if (!(costoU > 0)) { console.log(`❌ ${prodF.name} sin costo cargado: no puedo sacar el ${mPct[1]}%. No escribo nada.`); return; }
         montoU = Math.round(costoU * (1 + parseFloat(mPct[1].replace(',', '.')) / 100)); }
       // Revisión etapa 9, 30/10/2026: en un PAGO el monto es la plata que pagaron, entera: `u=` no la multiplica (antes −100000|u=2 restaba $200.000).
@@ -40678,27 +40709,16 @@ async function main() {
       console.log(`=== MOVIMIENTO EN "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
       if (prodF && signo > 0) console.log(`  🛍️ ${u} × ${prodF.name}${local ? ' · en ' + local : ''} · paga ${money(montoU)} c/u · costo ${costoU != null ? money(costoU) + ' c/u' : '—'}${costoU != null ? ` · ganancia ${money((montoU - costoU) * u)} (${Math.round((montoU - costoU) / costoU * 100)}% sobre el costo)` : ''}  (sólo para Ver deudas: no entra en ML ni en la ganancia del mes)`);
-      // Un pago CON producto (`=-N|prod=…|local=…`) va al producto dejado que corresponde (el más viejo sin pagar de ESA perfumería).
-      // Revisión etapa 9, 30/10/2026: queda pagado (en verde) SÓLO si la plata cubre lo que le falta a ese renglón; si no, sigue abierto y anota
-      // cuánto lleva ("pagó X de Y", `pagadoM`/`parcial`). Antes se marcaba entero con cualquier monto: 3 relojes de $50.000, pagan uno → el
-      // renglón de $150.000 en verde y "productos sin pagar" en $0. Se busca ANTES del ;go para que la prueba lo diga.
-      let pagaK = null, pagaRow = null, pagaYa = 0, pagaCubre = false;
-      if (signo < 0 && prodF) { const ab = Object.entries(d.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === prodF.id && !x.pagado && x.local === local).sort((a, b) => Number(a[0]) - Number(b[0]));
-        if (ab.length) { [pagaK, pagaRow] = ab[0];
-          pagaYa = Object.values(d.movs || {}).filter((x) => x && x.pagaDe === pagaK && Number(x.m) < 0).reduce((t, x) => t - Number(x.m), 0);
-          const faltaRow = Math.max(0, Number(pagaRow.m) - pagaYa); pagaCubre = monto >= faltaRow - 0.5;
-          console.log(`  🛍️ pago de ${Number(pagaRow.u) > 1 ? pagaRow.u + ' × ' : ''}${pagaRow.prodNom} (${local}) dejado el ${pagaRow.f}: ${money(Number(pagaRow.m))} · ya pagó ${money(pagaYa)} · falta ${money(faltaRow)} → ${pagaCubre ? '✅ queda pagado' + (monto > faltaRow + 0.5 ? ` (${money(monto - faltaRow)} más de lo que le faltaba a ese renglón)` : '') : `sigue abierto: pagó ${money(pagaYa + monto)} de ${money(Number(pagaRow.m))}`}`); }
-        else console.log(`  ⚠️ no encontré ${prodF.name} dejado sin pagar en ${local}: se resta la plata igual, sin marcar ningún producto`);
-        if (extra.u) console.log('  (en un pago u= no cuenta: se resta la plata que dice)'); }
       console.log(`  falta: ${money(Math.round(antes))} → ${money(Math.round(despues))}${signo < 0 && monto > antes + 0.5 ? `  ⚠️ devolvió más de lo que debía: queda en negativo (le debemos ${money(Math.round(-despues))})` : ''}`);
+      // Cómo queda la plata pagada sobre los productos dejados, del más viejo al más nuevo (`deudaFifoBot`). Sin nombres: sólo cuántos.
+      { const kP = String(Date.now()), mvP = { m: signo * monto, f, ...(prodF ? { prod: prodF.id, prodNom: 'x' } : {}) };
+        const FA = deudaFifoBot(d), FB = deudaFifoBot({ ...d, movs: { ...(d.movs || {}), [kP]: mvP } });
+        const txtF = (F) => `cubre ${F.ent} producto${F.ent === 1 ? '' : 's'} entero${F.ent === 1 ? '' : 's'}${F.medias ? ` y ${F.medias} a medias (${F.pctMedias.map((x) => x + '%').join(', ')})` : ''}${F.sobra > 0.5 ? ` · saldo a favor ${money(Math.round(F.sobra))} (cubre lo que se deje después)` : ''}`;
+        if (Object.values(d.movs || {}).some((x) => x && Number(x.m) > 0 && (x.prodNom || x.prod)) || prodF) console.log(`  🛍️ lo pagado ${txtF(FA)} → ${txtF(FB)}`); }
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
-      const llevaTxt = pagaK && !pagaCubre ? `${money(pagaYa + monto)} de ${money(Number(pagaRow.m))}` : null, parcialTxt = llevaTxt ? 'pagó ' + llevaTxt : null;
-      const k = String(Date.now()); const mv = signo < 0 && prodF
-        ? { m: -monto, f, nota: (nota || (llevaTxt ? `pagó ${money(monto)} de ${prodF.name} (lleva ${llevaTxt})` : `pagó ${prodF.name}`)).slice(0, 120), quien: 'robot', ...(pagaK ? { pagaDe: pagaK } : {}) }
-        : { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
+      const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
       await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
-      if (pagaK) await db.patch(`cyc/debencuotas/${id}/movs/${pagaK}`, pagaCubre ? { pagado: f, pagadoM: pagaYa + monto, parcial: null } : { pagadoM: pagaYa + monto, parcial: parcialTxt });
       const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
       console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
