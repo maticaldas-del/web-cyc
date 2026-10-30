@@ -5721,7 +5721,10 @@ async function detectarErrores(db, o = {}) {
       // $33.000 con envío gratis) y la Clásica cruza la barrera (`!cruza`: decido igual mide que cruzar deje más). Mientras la Clásica siga
       // abajo de $33.000, haber subido hasta la barrera no alcanza.
       const P0 = Number((np[m] || {}).precio) || 0;
-      const envPend = pEnv >= UMBRAL_ENVIO_GRATIS && P0 > 0 && P0 < UMBRAL_ENVIO_GRATIS;
+      // ya "consumida": si después de esa venta la Clásica subió 45%+ (la suba de +50% que le tocaba), no vuelve a contar (Lupa 100mm, 30/10)
+      const cDesp = Object.values(cc).filter((c) => c && herS.includes(String(c.mla)) && Number(c.ts) > tsEnv).sort((x, y) => Number(x.ts) - Number(y.ts))[0];
+      const pAlVender = cDesp ? Number(cDesp.de) || P0 : P0;
+      const envPend = pEnv >= UMBRAL_ENVIO_GRATIS && P0 > 0 && P0 < UMBRAL_ENVIO_GRATIS && P0 < pAlVender * 1.45;
       if (subio && !envPend) { lzC.subio++; continue; }
       if (nbDet[m] && nbDet[m].congelado) { lzC.congelada++; continue; }   // 🧊 él pidió que el precio quede ahí (`nobajar …!congelar`)
       const P = Number((np[m] || {}).precio) || 0; let obj = P > 0 ? Math.min(objTerm(P * TECHO_SUBA) || TECHO_DURO, TECHO_DURO) : 0;
