@@ -85,10 +85,17 @@ if (_MASCARA_PLATA) {
   const _ol = console.log.bind(console);
   console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')) : x)));
 }
+// ⚠️ UN COMANDO QUE SE NIEGA NO QUEDA COMO "BIEN" (revisión etapa 4, 30/10/2026): el bucle de los workflows escribe "✓ terminó" si node sale
+// con 0, y un comando que dice "No escribo nada" o "DATOS INCOMPLETOS" sale con 0. Al terminar se deja un renglón que se ve en el registro.
+if (process.env.BILLING_PROBE) {
+  let _seNego = 0; const _ol2 = console.log.bind(console);
+  console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/no escribo nada|DATOS INCOMPLETOS|^❌ Usá/i.test(t)) _seNego++; } catch { /* */ } _ol2(...a); };
+  process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
+}
 const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -645,7 +652,7 @@ async function armarCostoWeb(db, vp) {
   return (v, dk) => {
     if (!v || v.cancelada) return { costo: 0, sinCosto: false, gest: 0 };
     const ym = String(dk || '').slice(0, 7);
-    { const fz = congel[ym]; if (fz && v.id && fz[v.id] != null) return { costo: Number(fz[v.id]) || 0, sinCosto: false, gest: 0, congelado: true }; }
+    { const fz = congel[ym]; if (fz && v.id && fz[v.id] != null) return { costo: Number(fz[v.id]) || 0, sinCosto: false, gest: gestDe(v, prodDe(v)), congelado: true }; }   // revisión etapa 4, 30/10/2026: el envío de Full sigue en el divisor, como la web (`gestDivVP`); antes 0 y el % del robot daba más
     const p = prodDe(v);
     const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoPct(ym)) / 100;
     const gest = gestDe(v, p);
@@ -13650,6 +13657,9 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
 //    las lleva al precio que deja ganar y después se activan solas (decisión 3a del 08/10). No va.
 //  · todo lo demás va, con un renglón que dice que el cerebro no lo pudo resolver solo — salvo lo que es
 //    de él directo (`opt.directo`: recordatorios y el aviso de seguridad del bot).
+// Revisión etapa 4, 30/10/2026: el código para recibir una devolución va SÓLO a Telegram. Las copias de los avisos (`cerebroavisos`,
+// `alertaslog`) las reimprimen `informe` y `alertas` en el registro público: ahí se guarda tapado.
+function _tapaCodigo(t) { return String(t).replace(/(c[oó]digo[^:\n]{0,30}:\s*)\S+/gi, '$1•••'); }
 // Cada aviso (vaya o no) queda en `mlapi/cerebroavisos/<ts>` para poder mirar qué se tragó el cerebro.
 function cerebroDeAvisos(text, opt = {}) {
   const t = String(text || '');
@@ -13742,7 +13752,7 @@ async function sendAlerta(text, opt = {}) {
     try {
       const ts = Date.now();
       const dk = (x) => new Date(x - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
-      await DB_REF.set(`mlapi/cerebroavisos/${dk(ts)}/${ts}`, { ts, va: cv.va, por: cv.por, t: String(text).replace(/<[^>]+>/g, '').slice(0, 800) });
+      await DB_REF.set(`mlapi/cerebroavisos/${dk(ts)}/${ts}`, { ts, va: cv.va, por: cv.por, t: _tapaCodigo(String(text).replace(/<[^>]+>/g, '')).slice(0, 800) });
       if (!sendAlerta._podado) {
         sendAlerta._podado = true;
         for (let d = 15; d <= 21; d++) { try { await DB_REF.set(`mlapi/cerebroavisos/${dk(ts - d * 864e5)}`, null); } catch { /* */ } }
@@ -13790,7 +13800,7 @@ async function sendAlerta(text, opt = {}) {
   if (DB_REF) {
     try {
       const ts = Date.now();
-      await DB_REF.set(`mlapi/alertaslog/${ts}`, { ts, t: String(text).replace(/<[^>]+>/g, '').slice(0, 6000), wf: String(process.env.GITHUB_WORKFLOW || ''), probe: String(process.env.BILLING_PROBE || '').slice(0, 60) });
+      await DB_REF.set(`mlapi/alertaslog/${ts}`, { ts, t: _tapaCodigo(String(text).replace(/<[^>]+>/g, '')).slice(0, 6000), wf: String(process.env.GITHUB_WORKFLOW || ''), probe: String(process.env.BILLING_PROBE || '').slice(0, 60) });
     } catch (e) { console.log('⚠️ No pude guardar la copia del aviso: ' + (e && e.message || e)); }
   }
   return true;
@@ -20953,7 +20963,7 @@ async function main() {
           console.log(`\n── MENSAJE SIN LEER ──`);
           if (CRUDO) console.log('  CRUDO (sólo nombres de campo): ' + Object.keys(u || {}).join(', '));
           // ML no manda el nº de paquete suelto: viene adentro de una ruta, tipo
-          // "/packs/2000014220310455/sellers/354425757". Hay que sacarlo de ahí.
+          // "/packs/20000…0455/sellers/354425757". Hay que sacarlo de ahí.
           const pack = u.resource_id || u.pack_id
             || (String(u.resource || '').match(/packs\/(\d+)/) || [])[1];
           if (!pack) { console.log('  (no encontré el nº de paquete · campos: ' + Object.keys(u || {}).join(', ') + ')'); continue; }
@@ -23682,7 +23692,7 @@ async function main() {
       console.log(`=== AVISOS MANDADOS A TELEGRAM · últimas ${hrs} h · ${xs.length} ===`);
       for (const x of xs) {
         console.log(`\n--- ${new Date(x.ts - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá) · ${x.wf || '?'}${x.probe ? ' · ' + x.probe : ''} ---`);
-        console.log(String(x.t || '').replace(/\d{9,}/g, m => '…' + m.slice(-4)));
+        console.log(_tapaCodigo(String(x.t || '')).replace(/\d{9,}/g, m => '…' + m.slice(-4)));
       }
       return;
     }
@@ -35481,7 +35491,7 @@ async function main() {
     }
     // BILLING_PROBE=faltanventas[:días] → QUÉ VENTAS TIENE ML Y NO TIENE EL PANEL.
     //
-    // Lo encontró él el 03/09/2026: la venta #2000014842321883 estaba en ML y en el panel no
+    // Lo encontró él el 03/09/2026: la venta #20000…1883 estaba en ML y en el panel no
     // aparecía por ningún lado. Textual: "puede que haya más así. no lo sé". Y tiene razón en
     // preocuparse: una venta que no entra no sólo falta en la lista — descuadra la facturación,
     // el margen del mes, el stock y el Puntaje. Todos los números salen mal a la vez y en silencio.
@@ -35570,7 +35580,7 @@ async function main() {
     // lados juntos, el neto que informa Mercado Pago y el que quedó guardado. Solo lee.
     if (String(process.env.BILLING_PROBE || '').startsWith('unaorden')) {
       const OID = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim();
-      if (!OID) { console.log('Falta el número: unaorden:2000014358253051'); return; }
+      if (!OID) { console.log('Falta el número: unaorden:20000…3051'); return; }
       let ord = null, tok = null, label = null;
       for (const l of labels) {
         const acc = accounts[l];
@@ -36636,6 +36646,26 @@ async function main() {
     //   sin nada        → muestra el monto configurado y qué tiene cargado cada mes
     //   :<monto>        → cambia el monto de acá en adelante (ej: retiromes:2000000)
     //   :probar:<mes>   → dice qué HARÍA con ese mes, sin escribir nada
+    // BILLING_PROBE=cobrocorr[:<AAAA_MM>=<pesos>|<nota>[;go]] · LO VIEJO CARGADO TARDE EN UN CIERRE (revisión etapa 4, 30/10/2026): la web resta
+    // `cyc/cobro_corr/<mes>` ({ars, nota}) en el 💸 cobro de ese cierre ("− lo viejo cargado tarde"), pero no había cómo cargarlo. Pesos que NO
+    // son crecimiento de ese mes (mercadería vieja que se contó tarde, algo contado dos veces). `=0` lo saca. Sin `;go` sólo muestra. Si el retiro
+    // del mes siguiente ya empezó, queda congelado (9a) y la corrección va al retiro del otro mes.
+    if (/^cobrocorr(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('cobrocorr'.length).replace(/^:/, ''); const GOc = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
+      const all = (await db.get('cyc/cobro_corr')) || {};
+      if (!body) { console.log('=== LO VIEJO CARGADO TARDE (cyc/cobro_corr) ==='); const ks = Object.keys(all).sort(); if (!ks.length) console.log('  (nada cargado)'); for (const k of ks) console.log(`  ${k}: ${money(Number(all[k].ars) || 0)}${all[k].nota ? ' · ' + all[k].nota : ''}`); console.log('Usá: cobrocorr:<AAAA_MM>=<pesos>|<nota>;go (=0 lo saca)'); return; }
+      const mC = body.match(/^(\d{4}_\d{2})=(-?[\d.,]+)(?:\|(.*))?$/);
+      if (!mC) { console.log('❌ Usá: cobrocorr:<AAAA_MM>=<pesos>|<nota>;go (el mes del CIERRE, ej. 2026_10; =0 lo saca)'); return; }
+      const ymC = mC[1], ars = Math.round(pesosArg(mC[2].replace(/^-/, '')) * (mC[2].startsWith('-') ? -1 : 1)), nota = String(mC[3] || '').trim().slice(0, 120);
+      if (!Number.isFinite(ars)) { console.log('❌ monto inválido'); return; }
+      if (ars !== 0 && !nota) { console.log('❌ falta |<nota>: qué es lo viejo que se cargó tarde'); return; }
+      console.log(`=== LO VIEJO CARGADO TARDE EN EL CIERRE DE ${ymC.replace('_', '/')} ${GOc ? '· APLICANDO' : '· PRUEBA'} ===\n  hoy: ${all[ymC] ? money(Number(all[ymC].ars) || 0) + (all[ymC].nota ? ' · ' + all[ymC].nota : '') : '(nada)'} → ${ars ? money(ars) + ' · ' + nota : '(se saca)'}\n  el cobro de ese cierre baja ${money(Math.abs(ars) / 3)} por socio (antes del redondeo de a $100.000); si el retiro del mes siguiente ya empezó, la diferencia va al retiro del otro mes`);
+      if (!GOc) { console.log('No se guardó nada (falta ;go).'); return; }
+      await db.set('cyc/cobro_corr/' + ymC, ars ? { ars, nota, ts: Date.now() } : null);
+      const rC = await db.get('cyc/cobro_corr/' + ymC);
+      console.log((ars ? rC && Number(rC.ars) === ars : !rC) ? '  ✓ guardado y releído (la web rehace el cobro al abrir el Arqueo)' : '  ⚠️ no lo pude releer');
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('retiromes')) {
       const _r = String(process.env.BILLING_PROBE).split(':');
       const cfgR = (await db.get('cyc/mlconfig')) || {};
@@ -36656,6 +36686,9 @@ async function main() {
         const ymR = _mm[1], montoR = pesosArg(String(_mm[2]));   // 2.400.000,50 daba 240.000.050 (revisión Plata 27/10/2026)
         const goR = _r.slice(2).includes('go');
         if (!(montoR > 0)) { console.log('Usá: retiromes:2026_11=2400000:go'); return; }
+        // Revisión etapa 4, 30/10/2026: desde noviembre 2026 el retiro es automático (2 × el cobro del cierre anterior, lo escribe la web y se
+        // congela al empezar el mes, 9a). Cargarlo acá decía "✓" y la web lo pisaba al abrir el Arqueo. Una corrección va por `cobrocorr`.
+        if (ymR >= '2026_11') { console.log(`❌ El retiro de ${ymR.replace('_', '/')} es automático (2 × el cobro del cierre anterior): no se carga a mano. Si hay algo viejo cargado tarde, va con cobrocorr:<mes del cierre>=<pesos>|<nota>;go y se corrige en el retiro del mes siguiente.`); return; }
         const antes = await db.get('cyc/retiro_mes/' + ymR);
         console.log(`=== RETIRO DE ${ymR.replace('_', '/')} ===`);
         console.log(`  hoy cargado: ${antes != null && antes !== '' ? money(Number(antes)) : '(nada)'} → ${money(montoR)} · ${money(Math.round(montoR / 2))} cada uno`);
@@ -46706,7 +46739,7 @@ async function main() {
       const hrs = Number(String(process.env.BILLING_PROBE).split(':')[1]) || 12;
       const ahoraI = Date.now(), desde = ahoraI - hrs * 3600e3;
       const hl = (t) => new Date(t - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
-      const corta = (t, n) => String(t || '').replace(/\s+/g, ' ').replace(/\d{9,}/g, (m) => '…' + m.slice(-4)).slice(0, n);
+      const corta = (t, n) => _tapaCodigo(String(t || '')).replace(/\s+/g, ' ').replace(/\d{9,}/g, (m) => '…' + m.slice(-4)).slice(0, n);
       // Revisión 9 (13/10/2026): una lectura que falla NO es "no hubo ventas". Antes `.catch(() => ({}))` dejaba el
       // informe entero diciendo 0 ventas y 0 publicaciones. Sin publicaciones o sin ventas no se arma; sin autoprecio o
       // sin el registro de avisos sale, pero diciendo qué falta.
@@ -56072,7 +56105,7 @@ async function main() {
     // Cuando el comprador se lleva dos productos juntos, ML arma una ORDEN por producto y les pone
     // el mismo nº de paquete (pack_id) — el número que él ve en la web. El problema es que los
     // costos del paquete NO se reparten: ML le carga el envío y las cuotas a UNA sola de las
-    // órdenes. Los dos Ferraris del 08/09/2026 (venta #2000014927347373) lo mostraron así:
+    // órdenes. Los dos Ferraris del 08/09/2026 (venta #20000…7373) lo mostraron así:
     //   · Negro $61.870 → neto $52.574 (ML se quedó 15%)  → el panel decía +39% de ganancia
     //   · Rojo  $64.550 → neto $31.622 (ML se quedó 51%)  → el panel decía −1%, o sea perdiendo
     // El Rojo cargaba SOLO los $14.580 del envío de los dos y los $8.649 de las cuotas. Juntos

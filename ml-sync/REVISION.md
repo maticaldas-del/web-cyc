@@ -1920,6 +1920,19 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+### 🔍 Revisión de la etapa 4 (30/10/2026, 4 revisores en máximo · v28.28)
+- **🥊 `mantenerCaja` sólo con la caja de ESTA vuelta** (`cajaTs` de menos de 75 min): si ML no contestó el price_to_win quedaba la de antes y bajaba hasta 15% hacia un precio viejo, saltando F0-F14. Chequear: con caja vieja dice "la caja no se pudo leer en esta vuelta: no se toca".
+- **🥊 La baja de `mantenerCaja` va con `por:'ganarcaja'`** en `claudecambios` y el detector `errores` la saltea (salía ❌ por F10/F3/F14 y la vuelta la deshacía cada hora). Si no se anota, lo dice.
+- **📦 `alinearGemelasEnvio`**: la de envío se reactiva sólo con su Clásica ACTIVA y abajo de $33.000 (antes bastaba que la Clásica no estuviera activa).
+- **🛒 `pedidostodo` · M35**: sin leer `cyc/techofull` no se mide (antes todo "M35 no" → compra de prueba de 1 semana); si ML no da la comisión a ese precio, no sale M35 (Pedidos usa el precio de hoy); el ritmo a ese precio cuenta cada día UNA vez aunque haya dos publicaciones, y si falta una línea no se mide. Pendiente: no cuenta lo vendido por las gemelas.
+- **💸 `retiromes` se niega desde 2026_11** (el retiro es automático y la web lo pisaba). **Comando nuevo `cobrocorr[:<AAAA_MM>=<pesos>|<nota>;go]`** (ml-sync): carga lo viejo cargado tarde que el 💸 cobro resta (`cyc/cobro_corr`), que no escribía nadie. Chequear: antes del 1/11 si octubre tiene algo que corregir.
+- **✏️ Ver deudas**: si la deuda cambió mientras el formulario estaba abierto (`debenmov` =costo/=nombre/=det/=desde), Guardar no pisa: avisa y recarga (`_cqAbierta`, `_cqSig`).
+- **🧊 `congelarMes` no congela lo provisorio** (venta sin costo o con neto estimado): sigue viva. Octubre ya quedó congelado así: decisión suya. El robot devuelve el envío (`gestDe`) también en lo congelado (antes 0: "un solo %" roto).
+- **🙈 Privacidad**: el código para recibir una devolución se guarda tapado en `cerebroavisos`/`alertaslog` y `informe`/`alertas` lo tapan al imprimir (`_tapaCodigo`); `pedidos.txt` de la raíz (salida de prueba) borrado y `.assetsignore` con `*.txt *.json *.mjs *.py`; 5 números de orden enteros acortados (HISTORIA y comentarios de sync.mjs). Ojo: el historial de git los sigue teniendo.
+- **⚠️ Comando que se niega**: el robot deja al final "##### ⚠️ este comando SE NEGÓ o le faltaron datos" (antes el registro decía "todos bien"). ml-daily: `nombreml` y `prompts` entran a `FALLOS_NOCHE`.
+- **Web**: `afip_fact` (Facturado real AFIP de Ajustes) entra a `CYC_KEYS` (se guardaba y no se leía) · `sinEtiqSumar` avisa si no pudo anotar.
+- **Quedan para mirar (no arreglados):** `decide_pedidos.py` sólo frena con "NO LEÍ", no con "DATOS INCOMPLETOS" · `ofi35` toma lecturas fallidas como "no llega"/"sin publicación" · `cargarCajaReal` vacía si falla · línea de la noche con `rem:0` si no lee la estrategia · `pycat`/`pycatvuelta` y `oficyc` en ml-consulta en paralelo pueden pisarse · el texto del comando (con nombres de personas en `debenmov`) sale entero en el registro de GitHub (decisión suya).
+
 ### 📨 Al grupo de los resúmenes, sólo resúmenes (29/10/2026, él)
 - **Qué es:** `sendTelegram(text, tipo)`: con tipo distinto de `resumen` (baja, dólar, venta) manda por `sendAlerta(...,{directo:true})` al canal privado. La baja ya no se manda dos veces.
 - **Qué chequear:** que en el grupo no aparezca nada que no sea el resumen; que una baja de ML llegue una sola vez al privado.
