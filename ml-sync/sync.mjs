@@ -41387,6 +41387,26 @@ async function main() {
       // Revisión etapa 9, 30/10/2026: en un PAGO el monto es la plata que pagaron, entera: `u=` no la multiplica (antes −100000|u=2 restaba $200.000).
       const monto = extra.prod && m[1] === '+' ? montoU * u : montoU;
       const hoyAR = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10), f = m[3] || hoyAR, nota = notaP.join('|').trim().slice(0, 120);
+      // COBRO DE "PERFUMERÍA" SIN DECIR CUÁL (30/10/2026, él: "cuando te digo cobré 300.000 de perfumería, primero liquidá MercadoPago; una vez
+      // que no haya más MercadoPago seguís con la mercadería… puede que vuelva MercadoPago, ahí volver a liquidar MercadoPago"):
+      // `debenmov:perfumeria=-N|nota;go` → primero a Deuda Perfumería (MercadoPago) hasta dejarla en 0, lo que sobra a Mercadería Perfumería
+      // (del producto más viejo al más nuevo, `deudaFifoBot`). Se mira el saldo de MercadoPago EN CADA cobro: si volvió a deber, vuelve a ir primero ahí.
+      if (m[1] === '-' && _n(quien) === 'perfumeria') {
+        const dMP = lista.find(([, d]) => /perfumer/.test(_n(d.nom)) && !/mercader/.test(_n(d.nom)));
+        const dMe = lista.find(([, d]) => /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
+        if (!dMP || !dMe) { console.log('❌ no encuentro las dos deudas de la perfumería (MercadoPago y Mercadería). No escribo nada.'); return; }
+        const sMP = Math.max(0, Math.round(saldo(dMP[1]))), aMP = Math.min(monto, sMP), aMe = monto - aMP;
+        console.log(`=== COBRO DE PERFUMERÍA ${money(monto)} · ${f} ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+        console.log(`  1º ${_tapaNom(dMP[1])}: debía ${money(sMP)} → paga ${money(aMP)} → queda ${money(sMP - aMP)}`);
+        console.log(`  2º ${_tapaNom(dMe[1])}: ${aMe > 0 ? `paga ${money(aMe)} · falta ${money(Math.round(saldo(dMe[1])))} → ${money(Math.round(saldo(dMe[1]) - aMe))}` : 'no le toca nada'}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        const k0 = Date.now(), notaC = (nota || 'cobro perfumería').slice(0, 100);
+        if (aMP > 0) await db.patch(`cyc/debencuotas/${dMP[0]}/movs/${k0}`, { m: -aMP, f, nota: notaC, quien: 'robot' });
+        if (aMe > 0) await db.patch(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`, { m: -aMe, f, nota: notaC, quien: 'robot' });
+        const r1 = aMP > 0 ? await db.get(`cyc/debencuotas/${dMP[0]}/movs/${k0}`) : true, r2 = aMe > 0 ? await db.get(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`) : true;
+        console.log(r1 && r2 ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        return;
+      }
       let cand = lista.filter(([id]) => id === quien);
       if (!cand.length) { const pal = _n(quien).split(' ').filter(Boolean); cand = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
       if (cand.length !== 1) { console.log(`❌ "${quien}" agarra ${cand.length} deudas${cand.length ? ': ' + cand.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
