@@ -3245,7 +3245,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.41';
+const APP_VERSION='28.42';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3258,6 +3258,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.42',f:'30/10',h:'18:08',c:[{n:2,t:'🏪 El local se divide en dos: 🛍️ Perfumería (Mercadería y MercadoPago de las perfumerías) y 🏬 Tienda (todo lo que vendemos por afuera de la perfumería). En Métricas → 🏪 Local las dos son las "cuentas"; en Ver deudas las ventas que no son de la perfumería dicen 🏬 TIENDA.'}]},
   {v:'28.41',f:'30/10',h:'16:20',c:[{n:1,t:'🔒 La web publica sólo el Panel y la Tienda: las notas y el robot ya no se pueden abrir desde la dirección, y el Panel pide no aparecer en buscadores.'}]},
   {v:'28.40',f:'30/10',h:'16:07',c:[{n:2,t:'🏷️ Estrategias con el motivo de verdad: lo que se baja porque paga stock antiguo dice ⏰ pagando stock, y lo de 30 días sin vender 📉 liquidando (ya no todo "📦 sobra stock").'}]},
   {v:'28.39',f:'30/10',h:'15:55',c:[{n:1,t:'🛍️ El botón de la Tienda ahora está en Inicio, al lado del dólar (sale del menú ☰).'}]},
@@ -7420,7 +7421,7 @@ function renderCuotas(){
   // MercadoPago (plata) en Préstamos, cada una con "PERFUMERÍA ·" adelante. La tarjeta que las juntaba (`_perfG`) ya no se usa.
   const _filas=[];
   const _pMv=_pM?{..._pM,nom:'🛍️ PERFUMERÍA · Mercadería'}:null,_pDv=_pD?{..._pD,nom:'🛍️ PERFUMERÍA · MercadoPago'}:null;
-  if(_pM||_ven.length){const r=[];if(_pMv)r.push(fila(_pMv));_ven.forEach(d=>r.push(fila(d)));
+  if(_pM||_ven.length){const r=[];if(_pMv)r.push(fila(_pMv));_ven.forEach(d=>r.push(fila({...d,nom:'🏬 TIENDA · '+d.nom})));   // 30/10/2026, él: "todo lo que se venda fuera de la perfumería es tienda"
     _filas.push(_grp('ven',_sec('🛒 Ventas a cobrar',_sumR(_ven)+(_pM?Number(_pM.resta)||0:0),`<span style="color:${_ganV>=0?'var(--green)':'var(--red)'};font-size:.68rem">${_ganV>=0?'+':'−'}${_pesos(Math.abs(_ganV))}</span>`),r));}   // con su signo (revisión etapa 9: decía "+$-150.000")
   if(_pD||_pre.length){const r=[];if(_pDv)r.push(fila(_pDv));_pre.forEach(d=>r.push(fila(d)));
     _filas.push(_grp('pre',_sec('💵 Préstamos',_sumR(_pre)+(_pD?Number(_pD.resta)||0:0),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'),r));}
@@ -24468,31 +24469,30 @@ function metCostoPctDay(key,acct){
 // son dos: ML (las 4 juntas) y Local. Todo lo de Métricas pide los números por cuenta a metGetValDay/metCostoPctDay, que acá despachan.
 // Vendido = lo que se deja (día que se deja) · ganancia = la anotada en cada entrega · el costo del % sólo de lo que tiene ganancia anotada.
 let metSrc='ml';
-// 'loc_sinperf' (revisión etapa 9, 30/10/2026): lo dejado en Mercadería Perfumería SIN decir en qué perfumería. Antes caía en "Otras ventas" (las
-// personas) mientras abajo, en 🛍️ Perfumerías, salía como "sin perfumería": ahora es su propia tarjeta, con el mismo nombre, y sólo aparece si
-// hay alguna (`_metLocSinPerf`). "Local" (ML + Local) suma las cinco siempre.
-const LOC_ACCTS=['loc_soares','loc_sarmiento','loc_ceballos','loc_sinperf','loc_otras'];const LOC_SET=new Set(LOC_ACCTS);
-const METX_LABELS={...MET_LABELS,loc_soares:'Soares',loc_sarmiento:'Sarmiento',loc_ceballos:'Ceballos',loc_sinperf:'Sin perfumería',loc_otras:'Otras ventas',ml:'📦 ML',local:'🏪 Local'};
-const METX_COLORS={...MET_COLORS,loc_soares:'#f59e0b',loc_sarmiento:'#22c55e',loc_ceballos:'#ec4899',loc_sinperf:'#94a3b8',loc_otras:'#a78bfa',ml:'#3b82f6',local:'#f59e0b'};
-function metAccts(){if(metSrc==='local'){_metLocalDia();return _metLocSinPerf?LOC_ACCTS:LOC_ACCTS.filter(a=>a!=='loc_sinperf');}return metSrc==='todo'?['ml','local']:MET_ACCTS;}
-let _metLocMemo=null,_metLocSinPerf=false;
+// 🛍️ PERFUMERÍA Y 🏬 TIENDA (30/10/2026, él: "local se divide en dos perfumería y tienda… todo lo que se venda fuera de la perfumería es tienda…
+// la perfumería va a quedar sólo con deuda mp y mercadería"): las "cuentas" del local son dos. Perfumería = lo dejado en Mercadería Perfumería
+// (las tres juntas; cuál le compra más sigue abajo, en las barras) · Tienda = toda otra venta a cuenta (antes "Otras ventas").
+const LOC_ACCTS=['loc_perf','loc_tienda'];const LOC_SET=new Set(LOC_ACCTS);
+const METX_LABELS={...MET_LABELS,loc_perf:'🛍️ Perfumería',loc_tienda:'🏬 Tienda',ml:'📦 ML',local:'🏪 Local'};
+const METX_COLORS={...MET_COLORS,loc_perf:'#ec4899',loc_tienda:'#a78bfa',ml:'#3b82f6',local:'#f59e0b'};
+function metAccts(){if(metSrc==='local')return LOC_ACCTS;return metSrc==='todo'?['ml','local']:MET_ACCTS;}
+let _metLocMemo=null;
 function _metLocalDia(){
   if(_metLocMemo)return _metLocMemo;
   const out={};const _n=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const kOf=f=>String(f||'').slice(0,10).replace(/-/g,'_');
-  _metLocSinPerf=false;
-  const add=(k,a,v,g,c)=>{if(!/^\d{4}_\d{2}_\d{2}$/.test(k))return;if(a==='loc_sinperf')_metLocSinPerf=true;const d=out[k]=out[k]||{};const o=d[a]=d[a]||{v:0,g:0,c:0};o.v+=v;o.g+=g;o.c+=c;};
+  const add=(k,a,v,g,c)=>{if(!/^\d{4}_\d{2}_\d{2}$/.test(k))return;const d=out[k]=out[k]||{};const o=d[a]=d[a]||{v:0,g:0,c:0};o.v+=v;o.g+=g;o.c+=c;};
   const D=(typeof cuotasLista==='function'?cuotasLista():Object.values(state.debencuotas||{})).filter(d=>d&&d.nom);
   const M=D.find(d=>/perfumeria/.test(_n(d.nom))&&/mercader/.test(_n(d.nom)));
-  if(M)Object.values(M.movs||{}).forEach(x=>{if(!x||!(Number(x.m)>0)||!x.prodNom)return;const lc=_n(x.local);const a=['soares','sarmiento','ceballos'].includes(lc)?'loc_'+lc:'loc_sinperf';
+  if(M)Object.values(M.movs||{}).forEach(x=>{if(!x||!(Number(x.m)>0)||!x.prodNom)return;const a='loc_perf';
     const m=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),a,m,g,x.gan!=null?m-g:0);});
   // Revisión etapa 9, 30/10/2026: venta = `esVentaDeuda` (la de Ver deudas), el día de ACÁ (`fechaDeuda`; antes la hora de Londres) y, además
   // de la deuda, cada producto que se le dejó a una persona (`debenmov:<persona>=…|prod=…`) en su día, como lo de la perfumería: antes Ver deudas
   // sumaba esa ganancia y Métricas y ¿Cierra el mes? no (un reloj dejado a una persona: "+$40.000" en Ver deudas, $0 acá). Una deuda en $0 no
 // suma un día vacío.
   D.filter(d=>d!==M&&!/perfumeria/.test(_n(d.nom))&&esVentaDeuda(d)).forEach(d=>{const m=Number(d.monto)||0,c=Number(d.costo)||0;
-    if(m>0||c>0)add(kOf(fechaDeuda(d)),'loc_otras',m,c>0?m-c:0,c>0?c:0);
-    deudaMovsProd(d).forEach(x=>{const mm=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),'loc_otras',mm,g,x.gan!=null?mm-g:0);});});
+    if(m>0||c>0)add(kOf(fechaDeuda(d)),'loc_tienda',m,c>0?m-c:0,c>0?c:0);
+    deudaMovsProd(d).forEach(x=>{const mm=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),'loc_tienda',mm,g,x.gan!=null?mm-g:0);});});
   return _metLocMemo=out;
 }
 
@@ -25370,9 +25370,9 @@ function metVista(v){
     if(enML&&!ch.dataset.metc){if(cur!=='ml'){if(ch.style.display!=='none'){ch.style.display='none';ch.dataset.metOcultoPorVista='1';}}else if(ch.dataset.metOcultoPorVista){ch.style.display='';delete ch.dataset.metOcultoPorVista;}}   // lo que ya estaba oculto por otra razón (ej. carga del Día) no se toca
   }
   const tx=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
-  tx('met-view-cuentas',cur==='local'?'Perfumerías':cur==='todo'?'ML y Local':'Cuentas');tx('met-pct-cuentas',cur==='local'?'Perfumerías':cur==='todo'?'ML y Local':'Cuentas');
-  tx('met-part-t',cur==='local'?'Participación por perfumería':cur==='todo'?'Participación ML y Local':'Participación por cuenta');
-  tx('chart-bar-title',cur==='local'?'Ventas por perfumería':cur==='todo'?'Ventas ML y Local':'Ventas por cuenta');
+  tx('met-view-cuentas',cur==='local'?'Perfumería y Tienda':cur==='todo'?'ML y Local':'Cuentas');tx('met-pct-cuentas',cur==='local'?'Perfumería y Tienda':cur==='todo'?'ML y Local':'Cuentas');
+  tx('met-part-t',cur==='local'?'Participación Perfumería y Tienda':cur==='todo'?'Participación ML y Local':'Participación por cuenta');
+  tx('chart-bar-title',cur==='local'?'Ventas Perfumería y Tienda':cur==='todo'?'Ventas ML y Local':'Ventas por cuenta');
 }
 function renderMetLocal(curKeys,prevKeys,lbl){
   // 29/10/2026 (él: "quiero ver qué perfumería le vendemos más, con barras. ganancia local y ml juntas. deudas. todo. quiero poder analizarlo igual
@@ -25414,7 +25414,7 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const otrasDe=r=>[..._otrasD.filter(d=>(Number(d.monto)>0||Number(d.costo)>0)&&en(fechaDeuda(d),r)).map(d=>({nom:d.nom,m:Number(d.monto)||0,g:Number(d.costo)>0?d.monto-Number(d.costo):null,c:Number(d.costo)||0})),
     ..._otrasD.flatMap(d=>deudaMovsProd(d).filter(x=>en(x.f,r)).map(x=>({nom:`${d.nom} · 🛍️ ${Number(x.u)>1?x.u+' × ':''}${x.prodNom||'producto'}`,m:Number(x.m)||0,g:x.gan!=null?Number(x.gan)||0:null,c:x.gan!=null?(Number(x.m)||0)-(Number(x.gan)||0):0})))];
   const otras=otrasDe(R);
-  let h=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Todo lo del local, sin nada de ML: las perfumerías (Soares, Sarmiento, Ceballos; lo que se les deja queda como deuda y cuenta el día que se deja), las otras ventas a cuenta y las deudas. Para verlo junto con ML, 🔀 ML + Local.</div>`;
+  let h=`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">Todo lo del local, sin nada de ML: dos partes: 🛍️ Perfumería (Soares, Sarmiento, Ceballos; lo que se les deja queda como deuda y cuenta el día que se deja) y 🏬 Tienda (todo lo que vendemos por afuera de la perfumería), más las deudas. Para verlo junto con ML, 🔀 ML + Local.</div>`;
   // 29/10/2026 (él: "acá en perfumería mezcla, que sea sólo perfumería" y después "esto es métrica de local, no de perfumería… perfumería es lo más
   // grande, pero local tiene más cosas"): sin nada de ML (eso vive en 🔀 ML + Local); acá perfumerías + otras ventas a cuenta + deudas.
   // 2 · Perfumerías: resumen
@@ -25453,7 +25453,7 @@ function renderMetLocal(curKeys,prevKeys,lbl){
     ${box('⚠️ Atrasadas',atr.length?`<span style="color:var(--red)">${_pesos(sR(atr))}</span>`:'$0',atr.length?`${atr.length} con la cuota vencida`:'ninguna vencida')}</div>`
     +(()=>{const arr=act.slice().sort((a,b)=>(Number(b.resta)||0)-(Number(a.resta)||0)),mx=Math.max(1,...arr.map(d=>Number(d.resta)||0));return arr.map(d=>`<div style="padding:4px 0;border-top:1px solid var(--border);font-size:.66rem"><div style="display:flex;gap:8px"><span style="flex:1">${_escC(d.nom)} <span style="color:var(--muted)">· ${esV(d)?'venta':'préstamo'}</span></span><b style="font-family:'DM Mono',monospace">${_pesos(Number(d.resta)||0)}</b></div>${barra((Number(d.resta)||0)/mx*100,esV(d)?'#22c55e':'#94a3b8')}</div>`).join('');})();
   // 7 · Otras ventas a cuenta del período
-  h+=tit('🤝 Otras ventas a cuenta · en el período <span style="font-weight:400;color:var(--muted)">(no son de la perfumería)</span>')+(otras.length?otras.map(o=>`<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border);font-size:.66rem"><span style="flex:1">${_escC(o.nom)}</span><b style="font-family:'DM Mono',monospace">${_pesos(o.m)}</b><span style="color:${o.g==null?'var(--muted)':colPctLocal(o.g,o.c)};font-family:'DM Mono',monospace">${o.g!=null?_pesosSg(o.g)+' · '+pc(o.g,o.c):'costo sin cargar'}</span></div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Ninguna cargada en este período.</div>');
+  h+=tit('🏬 Tienda · ventas en el período <span style="font-weight:400;color:var(--muted)">(todo lo que no es de la perfumería)</span>')+(otras.length?otras.map(o=>`<div style="display:flex;gap:8px;padding:3px 0;border-top:1px solid var(--border);font-size:.66rem"><span style="flex:1">${_escC(o.nom)}</span><b style="font-family:'DM Mono',monospace">${_pesos(o.m)}</b><span style="color:${o.g==null?'var(--muted)':colPctLocal(o.g,o.c)};font-family:'DM Mono',monospace">${o.g!=null?_pesosSg(o.g)+' · '+pc(o.g,o.c):'costo sin cargar'}</span></div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Ninguna cargada en este período.</div>');
   el.innerHTML=h;
 }
 // LA VISTA (📦/🏪/🔀) ES `metSrc` (revisión etapa 9, 30/10/2026): el aparato la recuerda (`cyc_metvista`), pero se lee UNA vez y validada. Antes
