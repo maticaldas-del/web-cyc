@@ -497,7 +497,6 @@ for p,q,d,rent in res:
                 if (p['id'],v['v']) in BAJA_ML or v.get('nunca'): avisos.append(f"{p['n']} #{v['v']}: la perfumería pide {p['perf'][0]} pero no viene más: no lo pido (avisale a Matías)")
                 else: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
-        if p.get('perf') and not filas: avisos.append(f"{p['n']}: la perfumería pide {p['perf'][0]} pero no tiene ningún color con datos: decidilo a mano")
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
             # una decisión mía vieja, se borra (=auto) para que no quede pidiendo unidades de otro momento.

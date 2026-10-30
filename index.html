@@ -25339,7 +25339,7 @@ function loadMetricasDelDia(){
 
 function updateMetKpis(){
   // Solo para modo día — re-renderiza en vivo mientras tipea
-  const cur={};metAccts().forEach(a=>cur[a]=parseFloat(document.getElementById('ma_'+a)?.value)||0);
+  const cur={};MET_ACCTS.forEach(a=>cur[a]=parseFloat(document.getElementById('ma_'+a)?.value)||0);
   renderBarChartFromData(cur);
 }
 
@@ -25355,13 +25355,13 @@ async function saveMetricas(silent=false){
   const date=document.getElementById('met-date')?.value;if(!date)return;
   const key=date.replace(/-/g,'_');
   const obj={};
-  metAccts().forEach(a=>{obj[a]=parseFloat(document.getElementById('ma_'+a)?.value)||0;});
-  const hasData=metAccts().some(a=>obj[a]>0);
+  MET_ACCTS.forEach(a=>{obj[a]=parseFloat(document.getElementById('ma_'+a)?.value)||0;});
+  const hasData=MET_ACCTS.some(a=>obj[a]>0);
   if(!hasData&&silent)return;
   await fbSet('metricas/'+key,obj);
   if(!silent)await log('Métricas '+date+' guardadas');
   if(!state.metricas)state.metricas={};state.metricas[key]={...obj};
-  metAccts().forEach(a=>{
+  MET_ACCTS.forEach(a=>{
     const prev=document.getElementById('ma_'+a+'_prev');
     if(prev)prev.textContent=obj[a]>0?'✓ '+fmt(obj[a]):'';
   });
