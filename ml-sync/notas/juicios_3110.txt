@@ -1,0 +1,16 @@
+MLA1869295911_20261013=espera|Dalí L Ocelot 150.150 a 189.990: medición en curso, sin ventas suficientes para juzgar
+MLA3070987014_20261020=espera|Cartas Españolas 5.990 a 7.790: en curso, 7 días y deja más por unidad, falta volumen para juzgar
+MLA1771186477_20261023=espera|Ferrari Rojo 70.990 a 92.990: 0 antes y 0 después en 8 días, lanzamiento sin ventas, lo decide techo95
+MLA1841629857_20261023=espera|Ferrari Rojo (la otra) 70.990 a 92.990: 0 y 0 en 8 días, lo decide techo95
+MLA2191590747_20261023=nocuenta|Midnight Fantasy 74.990 a 97.990: se quedó sin stock en el medio, no mide el precio
+MLA3160807424_20261023=nocuenta|Sábanas 1 y media 17.990 a 23.390: 0 y 0 con quiebre de stock, no mide el precio
+MLA1955022122_20261023=espera|Chispero vuelve a 9.390: 9 antes y 0 después en 8 días, revisar si se quedó sin stock antes de juzgar
+MLA1998586178_20261023=espera|Joystick x3 a 32.990: 0 y 0 en 8 días, muy pocas ventas para juzgar
+MLA1998605914_20261023=perdio|Fascitis 10.990 a 14.290: 1 venta antes y 0 en 8 días (techo95 lo da 94 por ciento): ya está arriba de su techo medido, va a la escalera cuando llegue al 95
+MLA3018947968_20261023=espera|Espejo 8 pulgadas 20.630 a 26.890: 0 y 0 en 8 días, pocas ventas para juzgar
+MLA4095170024_20261023=espera|Mascarilla de barro 59.990 a 71.990: lanzamiento, 0 y 0 en 7 días sin dato de volumen
+MLA4087804994_20261023=nocuenta|Auriculares Sony 9mm 29.999 a 32.990: quiebre de stock en el medio, no mide el precio
+MLA4095143530_20261023=espera|Micrófono corbatero 73.900 a 86.990: lanzamiento con casi cero visitas, lo decide techo95
+MLA4095182332_20261023=espera|Tarjeta Lexar 256 297.699 a 385.990: lanzamiento sin ventas en 7 días, lo decide techo95
+MLA2126175931_20261024=espera|Kit Jade 14.990 a 19.990: en curso, sin ventas suficientes
+MLA2191590795_20261024=espera|Mercedes Ultimate 143.990 a 169.990: lanzamiento en curso, lo decide techo95
