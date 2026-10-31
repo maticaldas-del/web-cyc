@@ -12713,6 +12713,8 @@ function tiendaGrande(nombre) {
 }
 // Usados, de vidriera, sin caja o de prueba (30/10/2026, revisión de la tienda): en portugués Nissei los llama Recondicionado, CPO, Seminovo,
 // Swap, Vitrine o "Sem caixa". Afuera, igual que el tester.
+// 31/10/2026: lo de Apple que sale sin precio en la tienda (el nombre EMPIEZA con el equipo, así "Funda para iPhone" sigue con precio).
+const TIENDA_APPLE = /^\s*(celular\s+|smartphone\s+|tablet\s+|notebook\s+|auriculares?\s+|reloj\s+|smartwatch\s+)?(apple\s+)?(iphone|ipad|macbook|imac|mac\s+(mini|studio|pro)|airpods|apple\s+watch|watch\s+(series|ultra|se)\b)/i;
 const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbished|seminov[oa]s?|swap|vitrine|cpo|usad[oa]s?|open\s*box|sem\s+caixa|sin\s+caja)\b/i;
 // Marcas conocidas: van primero en la cola de búsquedas y marcan `m:1` en el archivo (la vidriera de la página usa ESA marca; una sola
 // lista, 30/10/2026). Las que son palabras comunes van con su modelo ("poco x6", "honor x5", "pixel 9", "nothing phone").
@@ -31051,7 +31053,7 @@ async function main() {
         if (!x.fotos || !x.fotos.length) { no('sin foto de ML'); continue; }
         if (prohibido(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
         if (x.nuevo && tiendaGrande(n)) { no('grande o pesado (por el nombre de ML)'); continue; }
-        const p = precioDe(x.usd);
+        let p = precioDe(x.usd);
         // 🧐 FRENO DE PRECIO CONTRA ML (30/10/2026, revisión de la tienda): el precio de la tienda tiene que estar entre la mitad y 1,6 veces el
         // de ML para ese catálogo; si no, casi seguro el catálogo es otro producto (la Xbox Series S al precio de la X, un juego al precio de la
         // consola, "Lente Sony" a $1.162.990) y queda afuera. Sin precio de ML para comparar entra igual (se cuenta). Una FICHA se compara con
@@ -31060,7 +31062,19 @@ async function main() {
         // 31/10/2026 (él eligió 2a: "que entre todo"): el freno ya no deja afuera; sólo se cuenta cuántos no cuadran.
         // 31/10/2026 (él: "que no haya cosas ridículas"): si entró con el MÁS PARECIDO de ML (no el exacto) y el precio está a menos de la mitad o
         // más de 1,6 veces el de ML, casi seguro es otro producto (un lápiz con la foto de la tablet): afuera. Los exactos entran igual (2a del 31/10).
-        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; } } else sinRef++;
+        // 31/10/2026 (él eligió 2a y 3a, con la lista de `tiendacaros`): (2a) a más de 1,6 veces el de ML queda afuera SIEMPRE (casi todos eran
+        // otro producto: la consola con el nombre del juego, un proyector con el nombre de un snoot); (3a) entre 1,05 y 1,6 veces se baja al
+        // precio de ML (terminado en 990, abajo del de ML) si ahí deja 10%+ sobre el costo; si no llega al 10%, afuera.
+        if (x.mpRef > 0) {
+          const k = p / x.mpRef;
+          if (k > 1.6) { no('más de 1,6 veces el precio de ML (casi seguro otro producto)'); continue; }
+          if (k < (x.ficha ? 0.3 : 0.5)) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; }
+          else if (k > 1.05) {
+            const costo = x.usd * RECT * tc, m = x.mpRef, pML = m >= 10000 ? Math.floor((m + 10) / 1000) * 1000 - 10 : Math.floor((m + 10) / 100) * 100 - 10;
+            if (!(pML > 0) || pML / costo - 1 < 0.10) { no('más caro que ML y a su precio deja menos del 10%'); continue; }
+            p = pML; nv.aML = (nv.aML || 0) + 1;
+          }
+        } else sinRef++;
         // 31/10/2026 (él: "que no haya cosas ridículas"): sin precio de ML no se puede comparar (son 7.761, no se pueden sacar todos). Para lo que
         // entró con el MÁS PARECIDO se mira el nombre: (1) si uno es un accesorio (funda, cable, soporte, lápiz…) y el otro no, es otro producto
         // (el iPad con la foto de una funda a $1.083.990); (2) si casi no comparten palabras (el shampoo a $5.308.990), también afuera.
@@ -31104,7 +31118,10 @@ async function main() {
           const id = publicados.has(viejo) && !idsUsados.has(viejo) ? (idsUsados.add(viejo), viejo) : idNuevo();
           ent = { id, cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), desde: diaAR, usd: x.usd, p, n: n.slice(0, 120) }; idsCambia[clave] = ent; idsNuevos++;
         } else if (Number(ent.usd) !== x.usd || Number(ent.p) !== p || String(ent.cod || '') !== String(x.cod || '')) idsCambia[clave] = { ...ent, cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), usd: x.usd, p, n: n.slice(0, 120) };
-        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p, c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0 });
+        // 31/10/2026 (él eligió 1a: "apple están carísimos… si los saco van a decir aaa no tienen iphone"): los Apple (iPhone, iPad, Mac,
+        // AirPods, Watch) salen SIN precio ("Consultar precio"): el precio no va ni en el archivo. Los accesorios para Apple siguen con precio.
+        const cp = TIENDA_APPLE.test(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
+        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0 });
       }
       // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
       out.sort((a, b) => (a.c === 'Otros') - (b.c === 'Otros') || a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
@@ -31119,7 +31136,7 @@ async function main() {
         // Con ;go, sólo cantidades: los motivos juntos y en palabras neutras (los de "no es el mismo" ya vienen sin el detalle).
         const todo = {}; for (const o of [fuera, nv.fuera]) for (const [m, k] of Object.entries(o)) { const t = /^grande o pesado/.test(m) ? 'grande o pesado' : m; todo[t] = (todo[t] || 0) + k; }
         console.log('afuera: ' + (Object.entries(todo).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
-        console.log(`catálogo completo: entran ${nvOut} (${nv.aprox || 0} con el más parecido de ML · ${nv.noCuadra || 0} con el precio lejos del de ML) · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
+        console.log(`catálogo completo: entran ${nvOut} (${nv.aprox || 0} con el más parecido de ML · ${nv.noCuadra || 0} con el precio lejos del de ML · ${nv.aML || 0} bajados al precio de ML · ${nv.apple || 0} Apple sin precio) · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
       } else {
         console.log('afuera: ' + (Object.entries(fuera).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
         console.log(`\n── TODO NISSEI MENOS LO GRANDE (camino nuevo, 30/10) ──`);
