@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,7 +45,8 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           TIENDA_ARCHIVO: ${{ runner.temp }}/tienda/productos.json
           BILLING_PROBE: tienda;go
-        run: exec node ml-sync/sync.mjs
+        run: node ml-sync/sync.mjs | tee "$RUNNER_TEMP/tienda.log"; exit ${PIPESTATUS[0]}
+        shell: bash
       - name: Subir la tienda a la web
         timeout-minutes: 30
         env:
@@ -79,3 +81,13 @@ jobs:
           done
           echo "No pude subir la tienda."
           exit 1
+      # SE VUELVE A LANZAR SOLA HASTA TERMINAR (31/10/2026): el `schedule` de GitHub no corrió ni una vez en 3 horas. Si la corrida dice
+      # "quedan N" con N > 0, se pide la siguiente (`workflow_dispatch` lanzado desde acá sí arranca otra). Cuando quede en 0, para sola.
+      - name: Seguir si quedan por buscar
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Q=$(grep -o 'quedan [0-9]*' "$RUNNER_TEMP/tienda.log" | tail -1 | grep -o '[0-9]*' || echo 0)
+          echo "quedan: ${Q:-0}"
+          if [ "${Q:-0}" -gt 0 ]; then gh workflow run ml-tienda.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" && echo "→ lancé la siguiente"; else echo "→ terminó: no lanzo otra"; fi
