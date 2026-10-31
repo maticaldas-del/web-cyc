@@ -199,3 +199,5 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 1. **Revisar qué se ve hoy en público** (archivos, historial y registros del robot) buscando datos de personas o del negocio que no deberían estar: (a) sugerida: sí, y le digo cuántos encontré · (b) no por ahora.
 2. **Cómo queda armado:** (a) sugerida: sigue público y se saca del repo lo más sensible del negocio (montos de monotributo, costos, proveedores), que queda en la base con su cuenta · (b) privado y el robot se muda a un servidor propio (~US$ 5-10/mes, trabajo grande) · (c) privado pagándole a GitHub (cientos de dólares por mes, a medir).
 
+
+- **31/10 · Envío 81061560 (Ayelen):** ML no dejó modificarlo y salió con 1 P47 negro (YCAZ61507) que no estaba en la oficina. Cuando llegue a Full va a faltar esa unidad: marcarla con `cajallego:<seg>!P47 negro=0` (faltante real) y no esperar que entre. Oficina ML del P47 negro quedó en 0 (él: "no tengo ninguno").
