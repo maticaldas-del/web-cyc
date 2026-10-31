@@ -12715,6 +12715,18 @@ function tiendaGrande(nombre) {
 // Swap, Vitrine o "Sem caixa". Afuera, igual que el tester.
 // 31/10/2026: lo de Apple que sale sin precio en la tienda (el nombre EMPIEZA con el equipo, así "Funda para iPhone" sigue con precio).
 const TIENDA_APPLE = /^\s*(celular\s+|smartphone\s+|tablet\s+|notebook\s+|auriculares?\s+|reloj\s+|smartwatch\s+)?(apple\s+)?(iphone|ipad|macbook|imac|mac\s+(mini|studio|pro)|airpods|apple\s+watch|watch\s+(series|ultra|se)\b)/i;
+// 31/10/2026 (él: "los filamentos están caros"): Nissei "Elegoo PLA+ 3 KG" entraba con el nombre de ML "1 kg" a $111.990 (parecía 1 kg
+// carísimo; eran 3). Si el nombre del proveedor y el de ML dicen la MISMA medida (kg, g, ml, l, GB, TB, unidades) con números distintos, es
+// otro producto (pack o tamaño): afuera.
+function tiendaMedidaDistinta(a, b) {
+  const med = (t) => { const o = {}; const re = /(\d+(?:[.,]\d+)?)\s*(kg|kgs|g|gr|grs|ml|l|lt|litros?|gb|tb|unidades|unid|un)\b/gi; let m;
+    while ((m = re.exec(String(t || '')))) { let u = m[2].toLowerCase(); u = /^(g|gr|grs)$/.test(u) ? 'g' : /^(l|lt|litros?)$/.test(u) ? 'l' : /^(unidades|unid|un)$/.test(u) ? 'u' : u === 'kgs' ? 'kg' : u;
+      (o[u] = o[u] || new Set()).add(Number(m[1].replace(',', '.'))); }
+    return o; };
+  const A = med(a), B = med(b);
+  for (const u of Object.keys(A)) if (B[u] && ![...A[u]].some((v) => B[u].has(v))) return true;
+  return false;
+}
 const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbished|seminov[oa]s?|swap|vitrine|cpo|usad[oa]s?|open\s*box|sem\s+caixa|sin\s+caja)\b/i;
 // Marcas conocidas: van primero en la cola de búsquedas y marcan `m:1` en el archivo (la vidriera de la página usa ESA marca; una sola
 // lista, 30/10/2026). Las que son palabras comunes van con su modelo ("poco x6", "honor x5", "pixel 9", "nothing phone").
@@ -31078,6 +31090,7 @@ async function main() {
         // 31/10/2026 (él: "que no haya cosas ridículas"): sin precio de ML no se puede comparar (son 7.761, no se pueden sacar todos). Para lo que
         // entró con el MÁS PARECIDO se mira el nombre: (1) si uno es un accesorio (funda, cable, soporte, lápiz…) y el otro no, es otro producto
         // (el iPad con la foto de una funda a $1.083.990); (2) si casi no comparten palabras (el shampoo a $5.308.990), también afuera.
+        if (x.nn && tiendaMedidaDistinta(x.nn, n)) { no('el proveedor y ML dicen otra medida (pack o tamaño distinto)'); continue; }
         if (x.ap) {
           const ACC = /^\s*(kit\s+)?(funda|capa|case|estuche|cabo|cable|soporte|suporte|protector|pel[ií]cula|vidrio|templado|correa|pulseira|malla|cargador|carregador|adaptador|l[aá]piz|caneta|stylus|teclado|mouse\s*pad|control(e)?\s+remoto|base|bolso|bolsa|mochila|tapa|repuesto|tampa|refil|recarga|filtro|almohadillas|ear\s*pads|puntas|tips|lente\s+protector|cage|jaula|tr[ií]pode|tripode)\b/i;
           const accN = ACC.test(x.nn || ''), accM = ACC.test(n);
