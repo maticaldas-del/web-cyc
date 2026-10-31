@@ -31022,7 +31022,16 @@ async function main() {
         // 31/10/2026 (él eligió 2a: "que entre todo"): el freno ya no deja afuera; sólo se cuenta cuántos no cuadran.
         // 31/10/2026 (él: "que no haya cosas ridículas"): si entró con el MÁS PARECIDO de ML (no el exacto) y el precio está a menos de la mitad o
         // más de 1,6 veces el de ML, casi seguro es otro producto (un lápiz con la foto de la tablet): afuera. Los exactos entran igual (2a del 31/10).
-        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; } } else if (x.ap) { no('el más parecido sin precio de ML para comparar (no se puede saber si es el mismo)'); continue; } else sinRef++;   // 31/10: el shampoo a $5.308.990 y la Switch a $47.990 eran de éstos
+        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; } } else sinRef++;
+        // 31/10/2026 (él: "que no haya cosas ridículas"): sin precio de ML no se puede comparar (son 7.761, no se pueden sacar todos). Para lo que
+        // entró con el MÁS PARECIDO se mira el nombre: (1) si uno es un accesorio (funda, cable, soporte, lápiz…) y el otro no, es otro producto
+        // (el iPad con la foto de una funda a $1.083.990); (2) si casi no comparten palabras (el shampoo a $5.308.990), también afuera.
+        if (x.ap) {
+          const ACC = /^\s*(kit\s+)?(funda|capa|case|estuche|cabo|cable|soporte|suporte|protector|pel[ií]cula|vidrio|templado|correa|pulseira|malla|cargador|carregador|adaptador|l[aá]piz|caneta|stylus|teclado|mouse\s*pad|control(e)?\s+remoto|base|bolso|bolsa|mochila|tapa|repuesto|tampa|refil|recarga|filtro|almohadillas|ear\s*pads|puntas|tips|lente\s+protector|cage|jaula|tr[ií]pode|tripode)\b/i;
+          const accN = ACC.test(x.nn || ''), accM = ACC.test(n);
+          if (accN !== accM) { no('el más parecido es un accesorio y el producto no (o al revés)'); continue; }
+          if (tiendaParecido(x.nn || '', n) < 0.2) { no('el más parecido casi no se parece (otro producto)'); continue; }
+        }
         lista.push({ x, n, p, nn: normNom(n) });
       }
       // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
