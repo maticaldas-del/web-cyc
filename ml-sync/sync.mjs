@@ -30783,7 +30783,7 @@ async function main() {
       // el mismo), y por catálogo de candidatos y fichas `C_<catálogo>` = {mn, f, mp, ts} (nombre, fotos y precio de ML: no se piden todas las
       // noches). Se guarda de a TM_GUARDAR_CADA, así un corte a mitad no pierde lo buscado.
       // 30/10/2026: `v` = la versión del match con que se decidió; lo "no es el mismo" de una versión vieja se vuelve a buscar (después de lo nuevo).
-      const TM_VER = 2;
+      const TM_VER = 3;   // 31/10/2026: 3 = sin "no es el mismo" (entra el más parecido de ML): lo decidido con la 2 se vuelve a buscar
       const tmCache = tmObj || {}, tmUpd = {}; let tmPend = 0, tmGuardados = 0, tmGuardarFallo = 0;
       const TM_GUARDAR_CADA = 100;
       const guardarMemoria = async (final) => {
@@ -30799,19 +30799,22 @@ async function main() {
       const nombrePy = (cod) => String(((pycat || {})[String(cod || '')] || {}).n || '');
       // (2) Fichas de origen Paraguay.
       const linksDe = {}; for (const [mla, L] of Object.entries(links || {})) if (L && L.prodId && !L.gemelaDe) (linksDe[L.prodId] = linksDe[L.prodId] || []).push(mla);
+      // 31/10/2026 (él: "que entre todo"): lo que (1) o (2) no pudieron usar (sin catálogo confirmado, ficha sin publicación…) ya no queda
+      // afuera: cae al paso (3) y se busca en ML como cualquier otro. Acá se anotan sólo los códigos que (1)/(2) USARON o que no van a propósito.
+      const codUsados = [];
       const fichasSinCat = [], fichasConCat = [];
       for (const p of Object.values(prodsObj)) {
         if (!p || String(p.origen || '').toLowerCase() !== 'py') continue;
         if (provPyDeBot(p) !== 'nissei') { no('otro proveedor'); continue; }
         const usd = Number(p.nisseiUSD) || 0; if (!(usd > 0)) { no('ficha sin precio de hoy'); continue; }
-        if (sinSt && sinSt[p.id]) { no('ya no lo tienen'); continue; }
-        if (marcaFrenadaDe({ nombre: p.name, marca: p.marca }, marcasNo)) { no('marca prohibida'); continue; }
+        if (sinSt && sinSt[p.id]) { no('ya no lo tienen'); codUsados.push(p.codPy); continue; }
+        if (marcaFrenadaDe({ nombre: p.name, marca: p.marca }, marcasNo)) { no('marca prohibida'); codUsados.push(p.codPy); continue; }
         const ts = Math.max(Number(p.nisseiTs) || 0, Number(((pycat || {})[String(p.codPy || '')] || {}).ts) || 0);
         if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const mlas = (linksDe[p.id] || []).sort();
         const base = { usd, ts, cod: String(p.codPy || ''), nn: nombrePy(p.codPy) || String(p.name || ''), ficha: 1 };
-        if (p.mlCatalogo) fichasConCat.push({ ...base, key: String(p.mlCatalogo).toUpperCase(), cat: String(p.mlCatalogo).toUpperCase() });
-        else if (mlas.length) fichasSinCat.push({ p, mlas, base });
+        if (p.mlCatalogo) { fichasConCat.push({ ...base, key: String(p.mlCatalogo).toUpperCase(), cat: String(p.mlCatalogo).toUpperCase() }); codUsados.push(p.codPy); }
+        else if (mlas.length) { fichasSinCat.push({ p, mlas, base }); codUsados.push(p.codPy); }
         else no('ficha sin publicación ni catálogo');
       }
       // Las fichas sin catálogo anotado: el catálogo (o el título, las fotos y el precio) de sus publicaciones, de a 20. Lo leído queda en la
@@ -30836,7 +30839,7 @@ async function main() {
         const act = its.find((y) => y.status === 'active') || its[0];
         const mpPub = Number(act.price) || null;   // el precio de NUESTRA publicación: la referencia de ML para el freno de precio
         const cats = [...new Set(its.map((b) => String(b.catalog_product_id || '').toUpperCase()).filter((c) => /^MLA\d+$/.test(c)))];
-        if (cats.length) for (const c of cats) meter({ ...x.base, key: c, cat: c, mpRef: mpPub });
+        if (cats.length) for (const c of cats) meter({ ...x.base, key: c, cat: c, mpRef: mpPub });   // (sin foto en la publicación: afuera, ver abajo)
         else meter({ ...x.base, key: 'F' + x.p.id, nombre: String(act.title || ''), fotos: fotosDe(act.pictures), mpRef: mpPub });
       }
       // (1) Candidatos de Para probar con el catálogo confirmado.
@@ -30844,10 +30847,10 @@ async function main() {
         if (!c || c.prodId || c.no) continue;
         if (provPyDeBot(c) !== 'nissei') continue;
         if (!candCatChequeado(c)) { no('candidato sin el catálogo confirmado'); continue; }
-        if (marcaFrenadaDe(c, marcasNo)) { no('marca prohibida'); continue; }
+        if (marcaFrenadaDe(c, marcasNo)) { no('marca prohibida'); codUsados.push(c.cod); continue; }
         const usd = Number(c.usd) || 0; if (!(usd > 0)) { no('candidato sin precio'); continue; }
         const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
-        const cat = candCatDe(c);
+        const cat = candCatDe(c); codUsados.push(c.cod);
         meter({ key: cat, cat, usd, ts, cod: String(c.cod || ''), nn: String(c.nombre || ''), mpRef: Number(c.mlPrecio) || null, titRes: c.mlTit, fotoRes: c.mlFoto });
       }
       // (3) TODO EL CATÁLOGO DE NISSEI MENOS LO GRANDE (30/10/2026, él: "no está la PS5, iPhone, todo eso, porque el robot no lo vio ya que
@@ -30863,12 +30866,11 @@ async function main() {
       // Cada código vence en su día (dispersión por código: no vence todo junto la misma noche).
       const dispersa = (k, dias) => (dias + parseInt(createHash('md5').update('tm|' + k).digest('hex').slice(0, 6), 16) % Math.max(1, Math.round(dias / 3))) * 864e5;
       const nv = { entra: 0, fuera: {}, quedan: 0, cache: 0, vencida: 0, renovados: 0, muestra: [] }; const nvNo = (m) => { nv.fuera[m] = (nv.fuera[m] || 0) + 1; };
-      const yaCand = pyCodMatcher(Object.values(cands).filter((c) => c && c.cod && provPyDeBot(c) === 'nissei').map((c) => c.cod));
-      const yaFicha = pyCodMatcher(Object.values(prodsObj).filter((p) => p && p.codPy && provPyDeBot(p) === 'nissei').map((p) => p.codPy));
+      const yaUsado = pyCodMatcher(codUsados.filter(Boolean).map(String));
       const cola3 = [];
       for (const [cod, e] of Object.entries(pycat || {})) {
         if (!e || !e.n || pycatProvDe(cod, e) !== 'nissei') continue;
-        if (yaCand(cod) || yaFicha(cod)) continue;   // ésos van por (1) y (2)
+        if (yaUsado(cod)) continue;   // ésos van por (1) y (2)
         const usd = Number(e.u) || 0; if (!(usd > 0)) { nvNo('sin precio'); continue; }
         if (usd > TM_USD_MAX) { nvNo('más caro que el tope de la tienda'); continue; }
         if (!fresco(e.ts)) { nvNo(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
@@ -30925,6 +30927,10 @@ async function main() {
         for (const x of res) { const m = tiendaMismoProducto(e.n, x.name); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
         buenos.sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name) || String(a.name || '').length - String(b.name || '').length);   // empatados: el nombre más limpio
         for (const x of buenos) { const m = await aceptar(x, x.name); if (!m) return r; motivo = motivo || m; }
+        // 31/10/2026 (él: "nunca nada de Nissei; si tiene catálogo carga eso, si no comparalo con MercadoLibre y poné siempre foto y nombre de
+        // ML"): si ninguno pasa el match exacto, entra el MÁS PARECIDO de lo que trajo ML (con su nombre y sus fotos), marcado `ap` (aproximado).
+        const resto = res.filter((x) => !buenos.includes(x)).sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name));
+        for (const x of resto.slice(0, 3)) { const m = await aceptar(x, x.name); if (!m) { r.ap = 1; return r; } }
         if (!res.length && !motivo) motivo = 'ML no trajo nada';
         Object.assign(r, { no: motivo ? (/^ML no trajo|^el catálogo/.test(motivo) ? motivo : 'el más parecido de ML no es el mismo (' + motivo + ')') : 'sin catálogo en ML', ...(parecido ? { mt: parecido, mc: parecidoCat } : {}) });
         return r;
@@ -30952,6 +30958,7 @@ async function main() {
         if (!r.cat) { nvNo(String(r.no || 'sin catálogo en ML').replace(/ \(.*$/, '')); continue; }
         const mpRef = String(r.cat) === String(e.mi || '').toUpperCase() && Number(e.mp) > 0 ? Math.round(Number(e.mp)) : (Number(r.mp) || null);
         meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: r.mn, fotos: r.f, mpRef, nuevo: 1 });
+        if (r.ap) nv.aprox = (nv.aprox || 0) + 1;
         nv.entra++; if (nv.muestra.length < 20) nv.muestra.push(`${String(e.n).slice(0, 70)}  →  ${String(r.mn).slice(0, 80)}`);
       }
       // Nombre, fotos y precio de ML de los catálogos de candidatos y fichas: de la memoria (`C_<catálogo>`, se renueva a los TM_DIAS días)
@@ -30996,7 +31003,8 @@ async function main() {
         // consola, "Lente Sony" a $1.162.990) y queda afuera. Sin precio de ML para comparar entra igual (se cuenta). Una FICHA se compara con
         // NUESTRA publicación, que puede estar cara a propósito (buscando techo): ahí el piso es 0,3 (el producto es el que vendemos; lo que
         // se busca es un costo mal cargado).
-        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { no('precio no cuadra con ML'); continue; } } else sinRef++;
+        // 31/10/2026 (él eligió 2a: "que entre todo"): el freno ya no deja afuera; sólo se cuenta cuántos no cuadran.
+        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) nv.noCuadra = (nv.noCuadra || 0) + 1; } else sinRef++;
         lista.push({ x, n, p, nn: normNom(n) });
       }
       // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
@@ -31042,11 +31050,11 @@ async function main() {
         // Con ;go, sólo cantidades: los motivos juntos y en palabras neutras (los de "no es el mismo" ya vienen sin el detalle).
         const todo = {}; for (const o of [fuera, nv.fuera]) for (const [m, k] of Object.entries(o)) { const t = /^grande o pesado/.test(m) ? 'grande o pesado' : m; todo[t] = (todo[t] || 0) + k; }
         console.log('afuera: ' + (Object.entries(todo).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
-        console.log(`catálogo completo: entran ${nvOut} · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
+        console.log(`catálogo completo: entran ${nvOut} (${nv.aprox || 0} con el más parecido de ML · ${nv.noCuadra || 0} con el precio lejos del de ML) · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
       } else {
         console.log('afuera: ' + (Object.entries(fuera).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
         console.log(`\n── TODO NISSEI MENOS LO GRANDE (camino nuevo, 30/10) ──`);
-        console.log(`entran ${nv.entra} (${nvOut} en el archivo, después del chequeo final) con su catálogo de ML exacto · ${nv.cache} ya buscados antes (sin gastar ML) · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${nv.renovados} renovados · ${tmLlamadas} llamadas a ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para buscar en las próximas corridas${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: no busqué más` : ''}`);
+        console.log(`entran ${nv.entra} (${nvOut} en el archivo, después del chequeo final) con su catálogo de ML (${nv.aprox || 0} con el más parecido, no exacto · ${nv.noCuadra || 0} con el precio lejos del de ML) · ${nv.cache} ya buscados antes (sin gastar ML) · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${nv.renovados} renovados · ${tmLlamadas} llamadas a ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para buscar en las próximas corridas${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: no busqué más` : ''}`);
         console.log('afuera: ' + (Object.entries(nv.fuera).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
         if (nv.muestra.length) { console.log(`muestra (${nv.muestra.length}) · Nissei → catálogo de ML, para revisar que sea el mismo:`); for (const t of nv.muestra) console.log('  ' + t); }
         for (const x of out.slice(0, 12)) console.log(`  ${x.id} · ${x.c} · ${money(x.p)} · ${x.n.slice(0, 70)} · ${x.f.length} foto(s)${x.m ? ' · marca' : ''}`);
