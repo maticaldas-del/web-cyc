@@ -3246,7 +3246,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.51';
+const APP_VERSION='28.52';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3259,6 +3259,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.52',f:'31/10',h:'00:55',c:[{n:2,t:'🇵🇾 Pedido del momento: el máximo es US$ 600 y los botones de Llenar nunca lo pasan. Cuentan todo lo cargado (también lo de uso personal) y los probados también entran sólo hasta ese tope.'}]},
   {v:'28.51',f:'30/10',h:'19:57',c:[{n:1,t:'📬 Mi oficina → Mensaje para Claude: nueva línea "🤖 Última vez del chat de Chrome" con cuántos días hace que hizo cada tarea (rutina, cajas, Nissei, listas, Once, Imega, tienda). El chat la mira al prenderse y hace lo que toca.'}]},
   {v:'28.50',f:'30/10',h:'19:29',c:[{n:2,t:'🛍️ Perfumería y Tienda: lo dejado al costo (sin ganancia) ya no entra en el %; cuenta en lo vendido pero el % es sólo de lo que se dejó con ganancia.'}]},
   {v:'28.49',f:'30/10',h:'19:13',c:[{n:2,t:'🛍️ La Tienda se mudó a su propia dirección (tiendacyc.github.io). El botón 🛍️ Tienda de Inicio abre la nueva y la dirección vieja manda sola a la nueva.'}]},
@@ -17661,8 +17662,10 @@ function puntajeHTML(p){if(p==null)return '';const ok=p>=CAND_MIN_VENTAS;return 
 // La vara de ventas la puso él el 19/09 (*"que todos tengan más de 100 ventas en ML"*) y acá hace
 // falta además para que *"los mejores"* quiera decir algo: sin ella el llenado automático metería
 // primero los que tienen 0 ventas y 41% de margen.
-const PED_TOPE_USD=500, PED_MAX_U=2, PED_MIN_VENT=100;
-const pedTopeUSD =()=>{const v=parseFloat((state.mlconfig||{}).pedTopeUSD); return (isFinite(v)&&v>0)?v:PED_TOPE_USD;};
+const PED_TOPE_USD=600, PED_MAX_U=2, PED_MIN_VENT=100;
+// 31/10/2026 (él: "que el pedido máximo sea de 600. que nunca lo pase al clickear llenar"): US$ 600 es el techo duro; el número de la
+// configuración sólo puede bajarlo. Cuenta TODO lo del pedido del momento, también lo de uso personal (es lo que se ve arriba).
+const pedTopeUSD =()=>{const v=parseFloat((state.mlconfig||{}).pedTopeUSD); return Math.min(PED_TOPE_USD,(isFinite(v)&&v>0)?v:PED_TOPE_USD);};
 const pedMaxU    =()=>{const v=parseInt((state.mlconfig||{}).pedMaxU);      return (isFinite(v)&&v>0)?v:PED_MAX_U;};
 const pedMinVent =()=>{const v=parseInt((state.mlconfig||{}).pedMinVent);   return (isFinite(v)&&v>=0)?v:PED_MIN_VENT;};
 async function pedNuevosCfg(campo,valor){
@@ -18110,7 +18113,7 @@ async function pedNuevosLlenar(g){
   // El tope es del pedido ENTERO (03/10/2026): lo cargado en probados se descuenta antes de llenar con nuevos.
   // En Nissei cada pedido del momento (perfumería / resto) tiene su tope (19/10/2026).
   g=g||null;
-  const _crA=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0);
+  const _crA=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0)+pyPersonalFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0);
   const tope=Math.max(0,pedTopeUSD()-_crA), maxU=pedMaxU(), minV=pedMinVent();
   const vivos=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre));
   const {suma,total,sinVentas,flojos,viajando}=pedLlenarPlan(vivos,tope,maxU,minV);
@@ -18168,6 +18171,8 @@ function pedViejosLista(g){
 // rojo, 26/10); lo ya cargado no se toca. 2º nuevos: con lo que queda del tope, de ⭐ para abajo (`candCombo`), mismos filtros que el otro botón.
 function pedLlenarTodoPlan(g){
   g=g||null;const arm=state.pyArmado||{},prob=[],vistos=new Set();let usdP=0;
+  const crA=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0)+pyPersonalFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0);
+  let libre=Math.max(0,pedTopeUSD()-crA);   // 31/10/2026: los probados tampoco pasan el tope (antes entraban todos y los nuevos usaban lo que sobraba)
   for(const ped of (state.pedidos_py||[])){
     if(!ped||esPedidoPaulvic(ped)||ped.estado==='suficiente')continue;
     const cant=parseInt(ped.cantidad)||0;if(cant<=0)continue;
@@ -18178,10 +18183,10 @@ function pedLlenarTodoPlan(g){
     if(pyProbVeredicto(ped,{sinFecha:true}).k!=='da')continue;
     const nu=pyNuDePedido(pr,ped)||0;if(!(nu>0))continue;
     const cols=(ped.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>[String(x.v),parseInt(x.q)||0]);
-    const u=cols.length?cols.reduce((a,[,q])=>a+q,0):cant;
-    prob.push({pr,u,cols,nu});usdP+=nu*u;
+    let u=cols.length?cols.reduce((a,[,q])=>a+q,0):cant;
+    if(nu*u>libre+0.0001){if(cols.length)continue;u=Math.floor((libre+0.0001)/nu);if(u<1)continue;}
+    prob.push({pr,u,cols,nu});usdP+=nu*u;libre-=nu*u;
   }
-  const crA=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0);
   const tope=Math.max(0,pedTopeUSD()-crA-usdP);
   const vivos=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre));
   return{prob,usdP:Math.round(usdP*100)/100,crA,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
@@ -18204,7 +18209,7 @@ async function _pedLlenarTodo(g){
   if(!confirm(`Agregar al pedido${g==='perf'?' de PERFUMERÍA':g==='resto'?' del RESTO':''}:\n\n`
     +`✅ PROBADOS (lo que pide Pedidos, dan ${PY_PROB_PISO}%+): ${L.prob.length} · ${uP} u. · ${fmtUS2(L.usdP)}\n${detP||'  (ninguno)'}\n\n`
     +`🆕 NUEVOS (de ⭐ gana mucho y sale mucho para abajo): ${suma.length} · ${uN} u.\n${detN||'  (ninguno: no queda tope o no hay)'}\n\n`
-    +`El pedido queda en ${fmtUS2(fin)} de ${fmtUS2(topeT)}.${L.crA+L.usdP>topeT+0.005?' ⚠️ Los probados solos ya pasan el tope.':''}\nNo saco nada de lo que ya cargaste.`+vjTxt))return;
+    +`El pedido queda en ${fmtUS2(fin)} de ${fmtUS2(topeT)} (máximo).${L.crA>topeT+0.005?' ⚠️ Lo que ya estaba cargado pasa el tope: no agrego nada, sacá algo a mano.':''}\nNo saco nada de lo que ya cargaste.`+vjTxt))return;
   let saltP=0;
   for(const x of L.prob){
     try{if(db){const sn=await db.ref('cyc/py_armado/'+x.pr.id).once('value');if((parseInt((sn.val()||{}).u)||0)>0){saltP++;continue;}}}catch(e){}
