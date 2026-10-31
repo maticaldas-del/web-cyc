@@ -12763,7 +12763,7 @@ function tiendaDetalle(p, prohibido) {
   const a = []; const vistos = new Set();
   for (const at of p.attributes || []) {
     const nn = limpio(at && at.name), vv = limpio(at && (at.value_name || (at.values && at.values[0] && at.values[0].name)));
-    if (!nn || !vv || NO.test(nn) || vistos.has(nn) || !ok(nn + ' ' + vv) || vv.length > 80) continue;
+    if (!nn || !vv || /^(undefined|null|n\/a|-|\.)$/i.test(vv) || NO.test(nn) || vistos.has(nn) || !ok(nn + ' ' + vv) || vv.length > 80) continue;
     vistos.add(nn); a.push([nn.slice(0, 50), vv]); if (a.length >= 16) break;
   }
   let sd = limpio(p.short_description && p.short_description.content); if (!ok(sd)) sd = ''; if (sd.length > 900) sd = sd.slice(0, 897).replace(/\s+\S*$/, '') + '…';
@@ -31219,7 +31219,7 @@ async function main() {
             await guardarDet(false);
           }
           await guardarDet(true);
-          for (const q of out) { const m = q._cat && detMem[q._cat]; if (m && m.d) detPorId[q.id] = m.d; }
+          for (const q of out) { const m = q._cat && detMem[q._cat]; if (m && m.d) { const d = { ...m.d }; if (d.a) { d.a = d.a.filter((x) => !/^(undefined|null|n\/a|-|\.)$/i.test(String(x[1]))); if (!d.a.length) delete d.a; } if (d.t || d.a || d.s) detPorId[q.id] = d; } }
           nv.quedan = (nv.quedan || 0) + detQuedan;
         }
       }
