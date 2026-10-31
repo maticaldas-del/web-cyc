@@ -37,7 +37,7 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    Con eso decidís qué toca, en este orden de importancia:
    a) RUTINA → si no dice "hoy". Siempre primero (cupo, Mercado Pago y el pedido de Nissei cambian todos los días).
    b) CAJAS → NUNCA por tu cuenta (31/10/2026, él: "puede haber mercadería que sé que está por llegar y la arma, y no quiero aún"). Sólo cuando Matías te diga "arrancá" o "armá la caja". Si ves "MANDALA YA", como mucho avisale en el chat que hay una caja lista; no cargues nada en ML.
-   c) GUAY → si hace 7 días o más (o "nunca"). Es la más larga: si no termina, la próxima vez seguís desde la página donde quedó.
+   c) GUAY → TODOS LOS DÍAS, después de la RUTINA (31/10/2026, él: "para la tienda quiero que esté actualizado al día qué hay y qué no… voy a dejar la PC prendida siempre"). Seguís desde la página donde quedaste; al llegar a la última cerrás con `;fin=<productos que dice la web>` y la próxima vez empezás otra vuelta desde la página 1. Lo que Nissei ya no tiene sale solo de la Tienda cuando termina una vuelta sin verlo.
    d) LISTAS → si hace 7 días o más.
    e) ONCE → si hace 7 días o más (1 o 2 mayoristas nuevos, una hora como mucho).
    f) IMEGA → si hace 14 días o más.
