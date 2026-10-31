@@ -12750,6 +12750,26 @@ function tiendaNombreProv(nn) {
   t = t.replace(/\s+/g, ' ').trim();
   return t ? t[0].toUpperCase() + t.slice(1) : '';
 }
+// El balde del archivo de detalles de la tienda (el mismo cálculo está en tienda/index.html: si se cambia, cambiar los dos).
+function tiendaBalde(id) { let h = 0; const t = String(id || ''); for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return h % 64; }
+// Los detalles de un catálogo de ML para la tienda: características principales (t), ficha técnica (a: [nombre, valor]) y descripción corta
+// (s). Nada de códigos (EAN, SKU…) ni garantía; lo que tenga una palabra que no puede salir se deja afuera.
+function tiendaDetalle(p, prohibido) {
+  if (!p) return null;
+  const limpio = (x) => String(x || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const ok = (x) => x && !prohibido(x);
+  const t = (p.main_features || []).map((f) => limpio(f && f.text)).filter(ok).map((x) => x.slice(0, 200)).slice(0, 6);
+  const NO = /c[oó]digo|gtin|ean|upc|sku|mpn|garant[ií]a|isbn|n[uú]mero de pieza|part number|^id\b|cat[aá]logo|pa[ií]s de origen|homologaci|registro|anmat|inv[ií]ma/i;
+  const a = []; const vistos = new Set();
+  for (const at of p.attributes || []) {
+    const nn = limpio(at && at.name), vv = limpio(at && (at.value_name || (at.values && at.values[0] && at.values[0].name)));
+    if (!nn || !vv || NO.test(nn) || vistos.has(nn) || !ok(nn + ' ' + vv) || vv.length > 80) continue;
+    vistos.add(nn); a.push([nn.slice(0, 50), vv]); if (a.length >= 16) break;
+  }
+  let sd = limpio(p.short_description && p.short_description.content); if (!ok(sd)) sd = ''; if (sd.length > 900) sd = sd.slice(0, 897).replace(/\s+\S*$/, '') + '…';
+  if (!t.length && !a.length && !sd) return null;
+  return { ...(t.length ? { t } : {}), ...(a.length ? { a } : {}), ...(sd ? { s: sd } : {}) };
+}
 const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbished|seminov[oa]s?|swap|vitrine|cpo|usad[oa]s?|open\s*box|sem\s+caixa|sin\s+caja)\b/i;
 // Marcas conocidas: van primero en la cola de búsquedas y marcan `m:1` en el archivo (la vidriera de la página usa ESA marca; una sola
 // lista, 30/10/2026). Las que son palabras comunes van con su modelo ("poco x6", "honor x5", "pixel 9", "nothing phone").
@@ -31171,11 +31191,39 @@ async function main() {
         // 31/10/2026 (él eligió 1a: "apple están carísimos… si los saco van a decir aaa no tienen iphone"): los Apple (iPhone, iPad, Mac,
         // AirPods, Watch) salen SIN precio ("Consultar precio"): el precio no va ni en el archivo. Los accesorios para Apple siguen con precio.
         const cp = TIENDA_APPLE.test(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
-        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0 });
+        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
       }
       // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
       out.sort((a, b) => (a.c === 'Otros') - (b.c === 'Otros') || a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
       const nvOut = out.filter((q) => q._nuevo).length; for (const q of out) delete q._nuevo;
+      // 📋 DETALLES DE ML (31/10/2026, él: "¿se puede agregar los detalles que están en ML a los productos? hoy sólo dice nombre y foto"):
+      // del catálogo de ML (`/products/<cat>`) las características principales, la ficha técnica y la descripción corta. Se guardan en
+      // `mlapi/tiendadet/<cat>` = {ts, d:{t,a,s}} (o {ts, no:1}) y se releen cada 60 días; por corrida, con el cupo que dejó la búsqueda.
+      // Van en 64 archivos aparte (`detalles/d<n>.json`, n = tiendaBalde(id)): la página baja SÓLO el del producto que se abre.
+      const detPorId = {}; let detQuedan = 0, detLeidos = 0;
+      if (GOt && !CONSULTA_SOLO_LEE) {
+        let detMem = {}; try { detMem = (await db.get('mlapi/tiendadet')) || {}; } catch { detMem = null; }
+        if (detMem) {
+          const DET_DIAS = 60, detMax = Math.max(0, Math.min(2500, TM_MAX - tmLlamadas));
+          const falta = [...new Set(out.map((q) => q._cat).filter(Boolean))].filter((c) => { const m = detMem[c]; return !(m && hoy - Number(m.ts || 0) < DET_DIAS * 864e5); });
+          const leer = falta.slice(0, detMax); detQuedan = falta.length - leer.length;
+          const lote = {}; let nl = 0;
+          const guardarDet = async (fin) => { if (!nl || (!fin && nl < 200)) return; const l = { ...lote }; for (const k of Object.keys(lote)) delete lote[k]; nl = 0; try { await db.patch('mlapi/tiendadet', l); } catch { /* se vuelve a leer la próxima */ } };
+          for (let i = 0; i < leer.length; i += 5) {
+            if (mlCortado) { detQuedan += leer.length - i; break; }
+            await Promise.all(leer.slice(i, i + 5).map(async (c) => {
+              let p = null; try { p = await leer404('/products/' + c); } catch { return; }
+              const d = tiendaDetalle(p, prohibido); const r = d ? { ts: hoy, d } : { ts: hoy, no: 1 };
+              detMem[c] = r; lote[c] = r; nl++; detLeidos++;
+            }));
+            await guardarDet(false);
+          }
+          await guardarDet(true);
+          for (const q of out) { const m = q._cat && detMem[q._cat]; if (m && m.d) detPorId[q.id] = m.d; }
+          nv.quedan = (nv.quedan || 0) + detQuedan;
+        }
+      }
+      for (const q of out) delete q._cat;
       const wa = String(waRaw || '').replace(/\D/g, '');
       // La fecha de los precios, con la hora de acá (Argentina, UTC−3): a la noche ya no da "mañana".
       const json = JSON.stringify({ act: diaAR, wa: wa.length >= 8 ? wa : '', productos: out });
@@ -31215,6 +31263,11 @@ async function main() {
       const releido = JSON.parse(readFileSync(ruta, 'utf8'));
       if (releido.productos.length !== out.length) { negar(`❌ El archivo no quedó bien (releí ${releido.productos.length} de ${out.length}).`); return; }
       console.log(`✓ escrito: ${releido.productos.length} de ${out.length} productos (releído)`);
+      { const dir = (ruta.replace(/\/[^/]*$/, '') || '.') + '/detalles'; mkdirSync(dir, { recursive: true });
+        const baldes = Array.from({ length: 64 }, () => ({})); let nd = 0;
+        for (const [id, d] of Object.entries(detPorId)) { baldes[tiendaBalde(id)][id] = d; nd++; }
+        let malo = 0; baldes.forEach((b, i) => { const t = JSON.stringify(b); if (prohibido(t.replace(/https:\/\/[^"]+/g, ''))) { malo++; writeFileSync(dir + '/d' + i + '.json', '{}\n'); } else writeFileSync(dir + '/d' + i + '.json', t + '\n'); });
+        console.log(`📋 detalles: ${nd} de ${out.length} productos con detalles de ML · ${detLeidos} leídos hoy · faltan ${detQuedan}${malo ? ` · ⚠️ ${malo} archivo(s) vaciados por una palabra que no puede salir` : ''}`); }
       return;
     }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").

@@ -162,6 +162,12 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .toast { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; white-space: nowrap; }
 .toast.si { opacity: 1; }
 footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0 24px; }
+.det { margin-top: 14px; font-size: 14px; }
+.det:empty { display: none; }
+.det h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .4px; color: var(--ink2); margin: 14px 0 6px; }
+.det ul { margin: 0; padding-left: 18px; } .det li { margin: 3px 0; }
+.det table { width: 100%; border-collapse: collapse; } .det td { padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
+.det td:first-child { color: var(--ink2); width: 42%; } .det p { margin: 0; white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -217,7 +223,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     <div class="dlg-cab"><h2 id="tVer">Producto</h2><button class="cerrar" type="button" data-cerrar aria-label="Cerrar">✕</button></div>
     <div class="dlg-cuerpo" style="padding:0">
       <div class="gal" id="gal"><div class="galeria" id="galeria" tabindex="0" aria-label="Fotos"></div><button class="flecha izq" type="button" data-foto="-1" aria-label="Foto anterior">‹</button><button class="flecha der" type="button" data-foto="1" aria-label="Foto siguiente">›</button><span class="num" id="galNum"></span></div>
-      <div class="ver-info"><div class="nom" id="verNom"></div><div class="precio" id="verPrecio"></div><div id="verCant"></div></div>
+      <div class="ver-info"><div class="nom" id="verNom"></div><div class="precio" id="verPrecio"></div><div id="verCant"></div><div class="det" id="verDet"></div></div>
     </div>
   </div>
 </dialog>
@@ -404,12 +410,32 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     actualizarBarra();
   }
 
+  // 📋 DETALLES DE ML (31/10/2026, él: "agregar los detalles que están en ML"): 64 archivos chicos; se baja sólo el del producto que se abre.
+  // El balde se calcula igual que en el robot (`tiendaBalde` de sync.mjs): si se cambia uno, cambiar los dos.
+  var DET = {};
+  function balde(id) { var h = 0, t = String(id || ""); for (var i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) >>> 0; return h % 64; }
+  function pintarDetalles(id) {
+    var caja = $("verDet"); caja.innerHTML = ""; var b = balde(id);
+    var mostrar = function (m) {
+      if ($("verCant").dataset.id !== id) return;
+      var d = m && m[id]; if (!d) { caja.innerHTML = ""; return; }
+      var h = "";
+      if (d.t && d.t.length) h += "<h3>Lo más importante</h3><ul>" + d.t.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+      if (d.a && d.a.length) h += "<h3>Características</h3><table>" + d.a.map(function (x) { return "<tr><td>" + esc(x[0]) + "</td><td>" + esc(x[1]) + "</td></tr>"; }).join("") + "</table>";
+      if (d.s) h += "<h3>Descripción</h3><p>" + esc(d.s) + "</p>";
+      caja.innerHTML = h;
+    };
+    if (DET[b]) { mostrar(DET[b]); return; }
+    fetch("detalles/d" + b + ".json", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : {}; }).then(function (m) { DET[b] = m || {}; mostrar(DET[b]); }).catch(function () {});
+  }
+
   function ver(id) {
     var p = POR_ID[id]; if (!p) return;
     $("galeria").innerHTML = p.f.map(function (u, i) { return '<img src="' + esc(foto(u, "-F.jpg")) + '"' + respaldo(u) + ' alt="Foto ' + (i + 1) + ' de ' + p.f.length + '" referrerpolicy="no-referrer">'; }).join("");
     $("galeria").scrollLeft = 0; $("gal").classList.toggle("varias", p.f.length > 1); $("galNum").textContent = p.f.length > 1 ? "1/" + p.f.length : ""; $("tVer").textContent = p.n.length > 40 ? p.n.slice(0, 38) + "…" : p.n;
     $("verNom").textContent = p.n; $("verPrecio").textContent = p.cp ? "Consultar precio" : pesos(p.p);
     $("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);
+    pintarDetalles(id);
     abrir($("dlgVer"));
   }
 
