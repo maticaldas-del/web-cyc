@@ -30790,7 +30790,7 @@ async function main() {
       // el mismo), y por catálogo de candidatos y fichas `C_<catálogo>` = {mn, f, mp, ts} (nombre, fotos y precio de ML: no se piden todas las
       // noches). Se guarda de a TM_GUARDAR_CADA, así un corte a mitad no pierde lo buscado.
       // 30/10/2026: `v` = la versión del match con que se decidió; lo "no es el mismo" de una versión vieja se vuelve a buscar (después de lo nuevo).
-      const TM_VER = 3;   // 31/10/2026: 3 = sin "no es el mismo" (entra el más parecido de ML): lo decidido con la 2 se vuelve a buscar
+      const TM_VER = 4;   // 4 (31/10): los "no es el mismo" que quedaron por falta de cupo se vuelven a buscar   // 31/10/2026: 3 = sin "no es el mismo" (entra el más parecido de ML): lo decidido con la 2 se vuelve a buscar
       const tmCache = tmObj || {}, tmUpd = {}; let tmPend = 0, tmGuardados = 0, tmGuardarFallo = 0;
       const TM_GUARDAR_CADA = 100;
       const guardarMemoria = async (final) => {
@@ -30935,11 +30935,12 @@ async function main() {
         const buenos = [];
         for (const x of res) { const m = tiendaMismoProducto(e.n, x.name); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
         buenos.sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name) || String(a.name || '').length - String(b.name || '').length);   // empatados: el nombre más limpio
-        for (const x of buenos) { const m = await aceptar(x, x.name); if (!m) return r; motivo = motivo || m; }
+        for (const x of buenos) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) return r; motivo = motivo || m; }
         // 31/10/2026 (él: "nunca nada de Nissei; si tiene catálogo carga eso, si no comparalo con MercadoLibre y poné siempre foto y nombre de
         // ML"): si ninguno pasa el match exacto, entra el MÁS PARECIDO de lo que trajo ML (con su nombre y sus fotos), marcado `ap` (aproximado).
         const resto = res.filter((x) => !buenos.includes(x)).sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name));
-        for (const x of resto.slice(0, 3)) { const m = await aceptar(x, x.name); if (!m) { r.ap = 1; return r; } }
+        // 31/10/2026: sin cupo para leer las fotos NO es "no es el mismo" (quedaba guardado 90 días: 3.881 afuera); se reintenta la próxima corrida.
+        for (const x of resto.slice(0, 3)) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) { r.ap = 1; return r; } }
         if (!res.length && !motivo) motivo = 'ML no trajo nada';
         Object.assign(r, { no: motivo ? (/^ML no trajo|^el catálogo/.test(motivo) ? motivo : 'el más parecido de ML no es el mismo (' + motivo + ')') : 'sin catálogo en ML', ...(parecido ? { mt: parecido, mc: parecidoCat } : {}) });
         return r;
