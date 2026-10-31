@@ -18,7 +18,20 @@ SIN_ESTIRAR=[l.strip().lower() for l in open(_SE)] if os.path.exists(_SE) else N
 SIN_ESTIRAR=[x for x in SIN_ESTIRAR if x and not x.startswith('#')] if SIN_ESTIRAR is not None else None
 def hoy_de(t):
     h=re.search(r' · HOY (\d+)/(\d+)',t or '')
-    return (int(h.group(1)),int(h.group(2))) if h else None
+    # 31/10/2026 (él con las Cartas Casino: "está tomando la ganancia de las últimas ventas y el ritmo de cuando no se había aumentado"):
+    # si el precio de hoy es 1,5 veces o más el mediano de 60 días y todavía no hay 7 días con stock a ese precio, el ritmo de 30 días es
+    # de un precio que ya no existe. Se marca `suba` y `r_de` usa sólo lo vendido al precio de hoy (sin eso, nada salvo el mínimo en cero).
+    # Cuenta los días seguidos (del más nuevo para atrás) en que el precio estuvo a 2/3 o más del de hoy: si son menos de 7 y antes hubo uno
+    # más barato, es `suba`. (Con el mediano de 60 días caía el Cubreasiento, que ya vendía hace 46 días a precios parecidos.)
+    pr=re.search(r' · precio \$(\d+) \(([^)]*)\)',t or ''); suba=False
+    if pr:
+        hoyP=int(pr.group(1)); dias=0; corta=False
+        for b_,n_ in re.findall(r'\$\d+→\$(\d+) (\d+)d',pr.group(2)):
+            if int(b_)*1.5<hoyP: corta=True; break
+            dias+=int(n_)
+        suba=corta and dias<7
+    if h: return (int(h.group(1)),int(h.group(2)),suba)
+    return (0,0,True) if suba else None
 def parejo(v30,v60,dcs):
     # "vendió todas las semanas de los últimos 2 meses": el log no trae semanas, así que se pide lo que lo aproxima:
     # 4+ en 30 días (una por semana), 8+ en 60, stock casi todo el mes y los dos meses parecidos (ni subiendo ni cayendo).
@@ -35,6 +48,7 @@ def r_de(v30,v60,v180,tiene,dcs=30,hoy=None):
     # con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio (`HOY u/d` de
     # pedidostodo), se manda con lo que se vende A ESE PRECIO. Si no, después de una suba se mandaban 37 días al ritmo del precio barato.
     if hoy and hoy[1]>=7: return hoy[0]/hoy[1],f"al precio de hoy vende {hoy[0]} en {hoy[1]} días con stock (desde el último cambio de precio)"
+    if hoy and len(hoy)>2 and hoy[2]: return 0,f"subió mucho de precio hace poco ({hoy[0]} vendidas en {hoy[1]} días a este precio): el ritmo de antes era a un precio más barato y no vale, sólo va el mínimo si está en cero"
     d=max(7,min(30,dcs))
     if v30>=3: return max(v30/d,v60/60*0.8),(f"vende {v30} en {d} d con stock" if d<30 else f"vende {v30} en 30 d")
     if v60>=3: return v60/60,f"vendió {v60} en 60 d"
