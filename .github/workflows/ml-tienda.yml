@@ -4,11 +4,6 @@ name: ml-tienda
 # "Tienda pública" y "Subir la tienda a la web" de ml-daily, sin el resto de la noche (no manda resúmenes ni toca precios).
 
 on:
-  # A FONDO HASTA LLENARLA, cada media hora (31/10/2026, él: "¿no se puede llenar más rápida la tienda? enfocar el 100% en eso sin romper nada"): cada hora
-  # (1.000 búsquedas en ~8 min, medido el 30/10 con 2 cortes de ML de 1.012) hasta que "quedan" llegue a 0; después se SACA este
-  # schedule y queda sólo la de la noche (ml-daily). Misma corrida que la de la noche: misma memoria, mismo freno del 75%.
-  schedule:
-    - cron: '10,40 * * * *'
   workflow_dispatch:
     inputs:
       forzar:
