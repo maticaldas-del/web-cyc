@@ -12666,6 +12666,7 @@ const PY_TRAD = [
   [/\blumin[aá]ria\b/gi, 'lampara'], [/\bbrinquedo\b/gi, 'juguete'], [/\bboneca\b/gi, 'muñeca'], [/\bjogo\b/gi, 'juego'], [/\bcontrole\b/gi, 'control'],
   [/\b[oó]culos\b/gi, 'anteojos'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
   [/\bt[eê]nis\b/gi, 'zapatillas'], [/\blanterna\b/gi, 'linterna'], [/\bbalan[cç]a\b/gi, 'balanza'], [/\btesoura\b/gi, 'tijera'],
+  [/\bimpressora\b/gi, 'impresora'], [/\bconsole\b/gi, 'consola'], [/\bteclado\s+sem\s+fio\b/gi, 'teclado inalambrico'], [/\bcompat[ií]vel\b/gi, 'compatible'],
   [/\bsuporte\b/gi, 'soporte'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
@@ -12732,6 +12733,12 @@ function tiendaMedidaFalta(a, b) {
   const u = m[2].toLowerCase(), uN = /^(l|lt|litros?)$/.test(u) ? 'l' : u === 'kgs' ? 'kg' : u;
   const reB = uN === 'kg' ? /\d\s*(kg|kgs|kilos?)\b/i : uN === 'ml' ? /\d\s*ml\b/i : /\d\s*(l|lt|litros?)\b/i;
   return reB.test(String(b || '')) ? '' : m[1].replace('.', ',') + ' ' + uN;
+}
+// El nombre del proveedor para la tienda (31/10/2026): traducido, medidas en minúscula con espacio ("3 KG" → "3 kg"), primera en mayúscula.
+function tiendaNombreProv(nn) {
+  let t = traducirPyNombre(nn).replace(/(\d)\s*(KG|ML|GB|TB|G|L)\b/g, (m0, d, u) => d + ' ' + (u === 'GB' || u === 'TB' ? u : u.toLowerCase()));
+  t = t.replace(/\s+/g, ' ').trim();
+  return t ? t[0].toUpperCase() + t.slice(1) : '';
 }
 const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbished|seminov[oa]s?|swap|vitrine|cpo|usad[oa]s?|open\s*box|sem\s+caixa|sin\s+caja)\b/i;
 // Marcas conocidas: van primero en la cola de búsquedas y marcan `m:1` en el archivo (la vidriera de la página usa ESA marca; una sola
@@ -31083,7 +31090,16 @@ async function main() {
         // 31/10/2026 (él eligió 2a y 3a, con la lista de `tiendacaros`): (2a) a más de 1,6 veces el de ML queda afuera SIEMPRE (casi todos eran
         // otro producto: la consola con el nombre del juego, un proyector con el nombre de un snoot); (3a) entre 1,05 y 1,6 veces se baja al
         // precio de ML (terminado en 990, abajo del de ML) si ahí deja 10%+ sobre el costo; si no llega al 10%, afuera.
-        if (x.mpRef > 0) {
+        // 31/10/2026 (él: "¿no se resuelve poniendo el título de Nissei? que no esté en portugués"): si el proveedor y ML dicen la misma
+        // unidad con otro número (pack de 3 kg contra el rollo de 1 kg de ML, perfume de 50 contra el de 100), va con el NOMBRE DEL PROVEEDOR
+        // traducido (y la foto de ML); el precio de ML no sirve para comparar (es de otro tamaño). Si la traducción deja algo en portugués, afuera.
+        let otraMedida = false;
+        if (x.nn && tiendaMedidaDistinta(x.nn, n)) {
+          const nt = tiendaNombreProv(x.nn);
+          if (!nt || prohibido(nt)) { no('el proveedor y ML dicen otra medida (y su nombre no se pudo traducir)'); continue; }
+          n = nt; otraMedida = true; nv.nombreProv = (nv.nombreProv || 0) + 1;
+        }
+        if (x.mpRef > 0 && !otraMedida) {
           const k = p / x.mpRef;
           if (k > 1.6) { no('más de 1,6 veces el precio de ML (casi seguro otro producto)'); continue; }
           if (k < (x.ficha ? 0.3 : 0.5)) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; }
@@ -31096,7 +31112,6 @@ async function main() {
         // 31/10/2026 (él: "que no haya cosas ridículas"): sin precio de ML no se puede comparar (son 7.761, no se pueden sacar todos). Para lo que
         // entró con el MÁS PARECIDO se mira el nombre: (1) si uno es un accesorio (funda, cable, soporte, lápiz…) y el otro no, es otro producto
         // (el iPad con la foto de una funda a $1.083.990); (2) si casi no comparten palabras (el shampoo a $5.308.990), también afuera.
-        if (x.nn && tiendaMedidaDistinta(x.nn, n)) { no('el proveedor y ML dicen otra medida (pack o tamaño distinto)'); continue; }
         // …y si ML no dice el peso/volumen y el proveedor sí (Nissei "Rapid PLA+ 5 KG", ML "Pla Rapid+, blanco"), se le agrega al nombre.
         if (x.nn) { const fal = tiendaMedidaFalta(x.nn, n); if (fal) { n = n + ' (' + fal + ')'; nv.medidaAgregada = (nv.medidaAgregada || 0) + 1; } }
         if (x.ap) {
