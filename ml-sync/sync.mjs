@@ -12738,8 +12738,10 @@ function tiendaMedidaFalta(a, b) {
     const reB = uN === 'kg' ? /\d\s*(kg|kgs|kilos?)\b/i : uN === 'ml' ? /\d\s*ml\b/i : /\d\s*(l|lt|litros?)\b/i;
     if (!reB.test(B)) return m[1].replace('.', ',') + ' ' + uN;
   }
-  const un = /(\d+)\s*(unidades|unidade|unid|un|pcs|pçs|pe[çc]as|pzs)\b/i.exec(A) || /\b(?:kit|pack|pacote)\s+(?:com\s+|de\s+|x\s*)?(\d+)\b/i.exec(A);
-  if (un && Number(un[1]) > 1 && !new RegExp('\\b' + un[1] + '\\s*(unidades|unid|un|u|pcs|piezas|pzs)\\b|\\b(x|pack|kit|de)\\s*' + un[1] + '\\b', 'i').test(B)) return un[1] + ' unidades';
+  // Unidades: sólo si el proveedor lo dice con la palabra ("4 unidades", "20und", "3 peças"; no "kit 24", eran lentes 24-105 mm), entre 2 y 100,
+  // y ML no habla de pack/set/kit ni tiene ese número.
+  const un = /(?:^|[^\d-])(\d{1,3})\s*(unidades|unidade|unid|und|pcs|pçs|pe[çc]as)\b/i.exec(A);
+  if (un && Number(un[1]) >= 2 && Number(un[1]) <= 100 && !/\b(pack|set|kit|piezas?|unidad(es)?|und|pares?|combo)\b|\d\s*-?\s*pack|\bx\s*\d/i.test(B) && !new RegExp('(^|\\D)' + un[1] + '(\\D|$)').test(B)) return un[1] + ' unidades';
   return '';
 }
 // El nombre del proveedor para la tienda (31/10/2026): traducido, medidas en minúscula con espacio ("3 KG" → "3 kg"), primera en mayúscula.
