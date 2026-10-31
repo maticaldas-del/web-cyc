@@ -12741,7 +12741,7 @@ function tiendaMedidaFalta(a, b) {
   // Unidades: sólo si el proveedor lo dice con la palabra ("4 unidades", "20und", "3 peças"; no "kit 24", eran lentes 24-105 mm), entre 2 y 100,
   // y ML no habla de pack/set/kit ni tiene ese número.
   const un = /(?:^|[^\d-])(\d{1,3})\s*(unidades|unidade|unid|und|pcs|pçs|pe[çc]as)\b/i.exec(A);
-  if (un && Number(un[1]) >= 2 && Number(un[1]) <= 100 && !/\b(pack|set|kit|piezas?|unidad(es)?|und|pares?|combo)\b|\d\s*-?\s*pack|\bx\s*\d/i.test(B) && !new RegExp('(^|\\D)' + un[1] + '(\\D|$)').test(B)) return un[1] + ' unidades';
+  if (un && Number(un[1]) >= 2 && Number(un[1]) <= 100 && !/\b(pack|set|kit|piezas?|unidad(es)?|und|pares?|combo|conjunto)\b|\d\s*-?\s*(pack|pcs|und|piezas?|unidad)|\bx\s*\d/i.test(B) && !new RegExp('(^|\\D)' + un[1] + '(\\D|$)').test(B)) return un[1] + (/^(pcs|pçs|pe[çc]as)$/i.test(un[2]) ? ' piezas' : ' unidades');
   return '';
 }
 // El nombre del proveedor para la tienda (31/10/2026): traducido, medidas en minúscula con espacio ("3 KG" → "3 kg"), primera en mayúscula.
