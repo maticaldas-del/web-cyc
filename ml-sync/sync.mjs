@@ -30967,7 +30967,7 @@ async function main() {
         }
         if (!r.cat) { nvNo(String(r.no || 'sin catálogo en ML').replace(/ \(.*$/, '')); continue; }
         const mpRef = String(r.cat) === String(e.mi || '').toUpperCase() && Number(e.mp) > 0 ? Math.round(Number(e.mp)) : (Number(r.mp) || null);
-        meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: r.mn, fotos: r.f, mpRef, nuevo: 1 });
+        meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: r.mn, fotos: r.f, mpRef, nuevo: 1, ...(r.ap ? { ap: 1 } : {}) });
         if (r.ap) nv.aprox = (nv.aprox || 0) + 1;
         nv.entra++; if (nv.muestra.length < 20) nv.muestra.push(`${String(e.n).slice(0, 70)}  →  ${String(r.mn).slice(0, 80)}`);
       }
@@ -31020,7 +31020,9 @@ async function main() {
         // NUESTRA publicación, que puede estar cara a propósito (buscando techo): ahí el piso es 0,3 (el producto es el que vendemos; lo que
         // se busca es un costo mal cargado).
         // 31/10/2026 (él eligió 2a: "que entre todo"): el freno ya no deja afuera; sólo se cuenta cuántos no cuadran.
-        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) nv.noCuadra = (nv.noCuadra || 0) + 1; } else sinRef++;
+        // 31/10/2026 (él: "que no haya cosas ridículas"): si entró con el MÁS PARECIDO de ML (no el exacto) y el precio está a menos de la mitad o
+        // más de 1,6 veces el de ML, casi seguro es otro producto (un lápiz con la foto de la tablet): afuera. Los exactos entran igual (2a del 31/10).
+        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; } } else sinRef++;
         lista.push({ x, n, p, nn: normNom(n) });
       }
       // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
