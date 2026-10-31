@@ -41205,6 +41205,32 @@ async function main() {
         console.log(r2 && Number(r2.monto) === nD && !r2.movs ? `  ✓ guardado y releído: falta ${money(nD)}` : '  ⚠️ no lo pude releer bien');
         return;
       }
+      // VER Y CORREGIR LA DEUDA INICIAL (31/10/2026, él: "1.907.400 ahí saqué bien la cuenta y eso nos debe la perfumería de mercadería… hoy
+      // cobré los 158.000, o sea era 2.065.400. anotá eso" y "en deuda inicial ponele que le ganamos un 25%"): `=ver` lista los movimientos
+      // (sólo de las dos de la perfumería: son del negocio) · `=inicial <pesos>[|gan=<%>]` cambia la deuda inicial (sin tocar productos ni
+      // pagos) y le pone costo = inicial ÷ (1 + gan%) (25% si no se dice).
+      const mvi = String(resto).trim().match(/^(ver|inicial\s*\$?\s*([\d.,]+)(?:\s*\|\s*gan\s*=\s*([\d.,]+)%?)?)$/i);
+      if (mvi) {
+        let cI = lista.filter(([id]) => id === quien);
+        if (!cI.length) { const pal = _n(quien).split(' ').filter(Boolean); cI = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cI.length !== 1) { console.log(`❌ "${quien}" agarra ${cI.length} deudas. No escribo nada.`); return; }
+        const [id, d] = cI[0];
+        if (!/perfumer/.test(_n(d.nom))) { console.log('❌ =ver e =inicial son sólo para las dos de la perfumería (el registro es público). No escribo nada.'); return; }
+        if (/^ver$/i.test(mvi[1])) {
+          console.log(`=== ${_tapaNom(d)} · inicial ${money(Math.round(Number(d.monto) || 0))}${Number(d.costo) > 0 ? ' · costo ' + money(Math.round(d.costo)) : ''} · falta ${money(Math.round(saldo(d)))} ===`);
+          for (const [k, x] of Object.entries(d.movs || {}).sort((a, b) => Number(a[0]) - Number(b[0]))) if (x) console.log(`  ${x.f || '?'} · ${Number(x.m) > 0 ? '+' : '−'}${money(Math.abs(Math.round(Number(x.m) || 0)))}${x.u ? ' · ' + x.u + ' u.' : ''}${x.prodNom ? ' · ' + String(x.prodNom).slice(0, 50) : ''}${x.local ? ' · ' + x.local : ''}${x.nota ? ' · ' + String(x.nota).slice(0, 60) : ''}`);
+          return;
+        }
+        const nI = Math.round(parseFloat(mvi[2].replace(/\./g, '').replace(',', '.')) || 0), gP = mvi[3] ? parseFloat(mvi[3].replace(',', '.')) : 25;
+        if (!(nI > 0) || !(gP >= 0) || Math.max(1, Number(d.n) || 1) > 1) { console.log('❌ monto o % inválido (o la deuda va en cuotas). No escribo nada.'); return; }
+        const cI2 = Math.round(nI / (1 + gP / 100)), dif = nI - (Number(d.monto) || 0);
+        console.log(`=== DEUDA INICIAL DE ${_tapaNom(d)} ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${money(Math.round(Number(d.monto) || 0))} → ${money(nI)} · costo ${money(cI2)} (gana ${gP}% = ${money(nI - cI2)}) · falta ${money(Math.round(saldo(d)))} → ${money(Math.round(saldo(d) + dif))}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch(`cyc/debencuotas/${id}`, { monto: nI, costo: cI2, sinGan: null, editado: Date.now() });
+        const rI = await db.get(`cyc/debencuotas/${id}`);
+        console.log(rI && Number(rI.monto) === nI && Number(rI.costo) === cI2 ? `  ✓ guardado y releído: falta ${money(Math.round(saldo(rI)))}` : '  ⚠️ no lo pude releer bien');
+        return;
+      }
       // VENTA O PRÉSTAMO (29/10/2026, él: "los que tienen ganancia son Ventas y los que no tienen son deudores… primo, gastón, seba son ventas
       // también, pero no tengo el costo"; eligió 1a 2a): `=tipo venta|prestamo` (o `-` para volver a lo automático). Sin marca, la web pone
       // en 🛒 Ventas a cobrar lo que tiene costo o ganancia y en 💵 Préstamos lo demás.
