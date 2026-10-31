@@ -30859,7 +30859,11 @@ async function main() {
       } catch (er) { negar(`❌ DATOS INCOMPLETOS (una lectura de la base falló: ${String((er && er.message) || er).slice(0, 80)}): no escribo nada.`); return; }
       if (!cands || !prodsObj || dbConteo.fallos > fallos0) { negar('❌ DATOS INCOMPLETOS (no pude leer los candidatos o las fichas, o una lectura falló): no escribo nada.'); return; }
       const marcasNo = {};
-      const hoy = Date.now(), fresco = (t) => Number(t) > 0 && hoy - Number(t) <= TIENDA_DIAS * 864e5;
+      // 31/10/2026 (él: "quiero que esté actualizado al día qué hay y qué no"): además de los 30 días, si hay una VUELTA COMPLETA de Nissei de
+      // los últimos 10 días (`cyc/mlconfig/nisseiVuelta`, 90%+ copiado), lo que no se vio en esa vuelta ya no está en Nissei: sale de la tienda
+      // (se oculta: su código queda guardado en `mlapi/tiendaids` y si vuelve a aparecer, vuelve con el mismo código).
+      let VD = 0; try { const v = await db.get('cyc/mlconfig/nisseiVuelta'); if (v && Number(v.fin) > 0 && Number(v.desde) > 0 && Number(v.pct) >= 90 && Date.now() - Number(v.fin) <= 10 * 864e5) VD = Number(v.desde) - 864e5; } catch { VD = 0; }
+      const hoy = Date.now(), fresco = (t) => Number(t) > 0 && hoy - Number(t) <= TIENDA_DIAS * 864e5 && (!VD || Number(t) >= VD);
       const fuera = {}; const no = (m) => { fuera[m] = (fuera[m] || 0) + 1; };
       // LA MEMORIA (`mlapi/tiendamatch`): por código de Nissei {n, ts, cat, mn, f, mp, v} (lo encontrado) o {n, ts, no, mt, mc, v} (lo que no es
       // el mismo), y por catálogo de candidatos y fichas `C_<catálogo>` = {mn, f, mp, ts} (nombre, fotos y precio de ML: no se piden todas las
@@ -30892,7 +30896,7 @@ async function main() {
         if (sinSt && sinSt[p.id]) { no('ya no lo tienen'); codUsados.push(p.codPy); continue; }
         if (marcaFrenadaDe({ nombre: p.name, marca: p.marca }, marcasNo)) { no('marca prohibida'); codUsados.push(p.codPy); continue; }
         const ts = Math.max(Number(p.nisseiTs) || 0, Number(((pycat || {})[String(p.codPy || '')] || {}).ts) || 0);
-        if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
+        if (!fresco(ts)) { no(`ya no está en Nissei (no se vio en la última vuelta completa) o mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const mlas = (linksDe[p.id] || []).sort();
         const base = { usd, ts, cod: String(p.codPy || ''), nn: nombrePy(p.codPy) || String(p.name || ''), ficha: 1 };
         if (p.mlCatalogo) { fichasConCat.push({ ...base, key: String(p.mlCatalogo).toUpperCase(), cat: String(p.mlCatalogo).toUpperCase() }); codUsados.push(p.codPy); }
@@ -30931,7 +30935,7 @@ async function main() {
         if (!candCatChequeado(c)) { no('candidato sin el catálogo confirmado'); continue; }
         if (marcaFrenadaDe(c, marcasNo)) { no('marca prohibida'); codUsados.push(c.cod); continue; }
         const usd = Number(c.usd) || 0; if (!(usd > 0)) { no('candidato sin precio'); continue; }
-        const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
+        const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`ya no está en Nissei (no se vio en la última vuelta completa) o mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const cat = candCatDe(c); codUsados.push(c.cod);
         meter({ key: cat, cat, usd, ts, cod: String(c.cod || ''), nn: String(c.nombre || ''), mpRef: Number(c.mlPrecio) || null, titRes: c.mlTit, fotoRes: c.mlFoto });
       }
@@ -30955,7 +30959,7 @@ async function main() {
         if (yaUsado(cod)) continue;   // ésos van por (1) y (2)
         const usd = Number(e.u) || 0; if (!(usd > 0)) { nvNo('sin precio'); continue; }
         if (usd > TM_USD_MAX) { nvNo('más caro que el tope de la tienda'); continue; }
-        if (!fresco(e.ts)) { nvNo(`precio mirado hace más de ${TIENDA_DIAS} días`); continue; }
+        if (!fresco(e.ts)) { nvNo(`ya no está en Nissei (no se vio en la última vuelta completa) o mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const gr = tiendaGrande(e.n); if (gr) { nvNo('grande o pesado: ' + gr); continue; }
         if (TIENDA_USADO.test(e.n)) { nvNo('usado, de vidriera, sin caja o tester'); continue; }
         const c0 = tmCache[cod], mismoN = !!(c0 && c0.n === e.n);
