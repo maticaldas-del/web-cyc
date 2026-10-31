@@ -243,7 +243,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var mas = p.f.length > 1 ? '<span class="mas">' + p.f.length + ' fotos</span>' : "";
     return '<article class="card' + (pedido[p.id] ? " en" : "") + '" data-id="' + p.id + '">' +
       '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + '</div>' +
-      '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + pesos(p.p) + '</div><div class="cuotas">3 cuotas sin interés de ' + pesos(Math.ceil(p.p / 3)) + '</div><div class="slot">' + cantHtml(p.id) + '</div></div></article>';
+      '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + (p.cp ? "Consultar precio" : pesos(p.p)) + '</div><div class="cuotas">' + (p.cp ? "Te lo pasamos por WhatsApp" : "3 cuotas sin interés de " + pesos(Math.ceil(p.p / 3))) + '</div><div class="slot">' + cantHtml(p.id) + '</div></div></article>';
   }
 
   function filtrados() {
@@ -331,9 +331,9 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     // 31/10/2026 (él: "no quiero mucho lío: nombre del producto, código, precio y algo importante"): un renglón por producto con código
     // y precio, el total y cuándo llegaría (7 días hábiles).
     var r = ["¡Hola! Quiero hacer este pedido en CYC (pedido " + codigo(ls) + "):", ""];
-    ls.forEach(function (l) { r.push("• " + (l.q > 1 ? l.q + " × " : "") + l.p.n + " · cód. " + l.p.id + " · " + (VIEJO ? "consultar precio" : pesos(l.p.p * l.q))); });
+    ls.forEach(function (l) { r.push("• " + (l.q > 1 ? l.q + " × " : "") + l.p.n + " · cód. " + l.p.id + " · " + (VIEJO || l.p.cp ? "consultar precio" : pesos(l.p.p * l.q))); });
     r.push("");
-    r.push(VIEJO ? "Total: a confirmar" : "Total: " + pesos(total(ls)));
+    r.push(VIEJO ? "Total: a confirmar" : "Total: " + pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + lo que hay que consultar" : ""));
     r.push("Llegaría aprox. el " + llegaAprox() + " (7 días hábiles)");
     return r.join("\n");
   }
@@ -356,10 +356,10 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function pintarPedido() {
     var ls = lineasPedido();
     $("lineas").innerHTML = ls.length ? ls.map(function (l) {
-      return '<div class="lin"><img src="' + esc(l.p.f[0]) + '" alt="" referrerpolicy="no-referrer"><div class="t">' + esc(l.p.n) + "<small>" + pesos(l.p.p) + (l.q > 1 ? " c/u · " + pesos(l.p.p * l.q) : "") + "</small></div>" +
+      return '<div class="lin"><img src="' + esc(l.p.f[0]) + '" alt="" referrerpolicy="no-referrer"><div class="t">' + esc(l.p.n) + "<small>" + (l.p.cp ? "consultar precio" : pesos(l.p.p) + (l.q > 1 ? " c/u · " + pesos(l.p.p * l.q) : "")) + "</small></div>" +
         '<div class="c"><button type="button" data-menos="' + l.p.id + '" aria-label="Uno menos">−</button><span>' + l.q + '</span><button type="button" data-mas="' + l.p.id + '" aria-label="Uno más">+</button></div></div>';
     }).join("") : '<div class="vacio">Todavía no elegiste nada.</div>';
-    $("pedTot").textContent = pesos(total(ls));
+    $("pedTot").textContent = pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + a consultar" : "");
     $("pedCuo").textContent = total(ls) > 0 ? "o 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)) : "";
     $("pedCod").textContent = ls.length ? codigo(ls) : "—";
     $("copiar").disabled = !ls.length; $("wa").disabled = !ls.length;
@@ -385,7 +385,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var p = POR_ID[id]; if (!p) return;
     $("galeria").innerHTML = p.f.map(function (u, i) { return '<img src="' + esc(foto(u, "-F.jpg")) + '"' + respaldo(u) + ' alt="Foto ' + (i + 1) + ' de ' + p.f.length + '" referrerpolicy="no-referrer">'; }).join("");
     $("galeria").scrollLeft = 0; $("gal").classList.toggle("varias", p.f.length > 1); $("galNum").textContent = p.f.length > 1 ? "1/" + p.f.length : ""; $("tVer").textContent = p.n.length > 40 ? p.n.slice(0, 38) + "…" : p.n;
-    $("verNom").textContent = p.n; $("verPrecio").textContent = pesos(p.p);
+    $("verNom").textContent = p.n; $("verPrecio").textContent = p.cp ? "Consultar precio" : pesos(p.p);
     $("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);
     abrir($("dlgVer"));
   }
@@ -436,7 +436,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   };
 
   fetch("productos.json", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
-    PRODS = (d && d.productos || []).filter(function (p) { return p && p.id && p.n && p.p > 0 && p.f && p.f.length; });
+    PRODS = (d && d.productos || []).filter(function (p) { return p && p.id && p.n && (p.p > 0 || p.cp) && p.f && p.f.length; });
     PRODS.forEach(function (p) { POR_ID[p.id] = p; });
     WA = String(d && d.wa || "").replace(/\D/g, "");
     if (WA.length >= 8) { $("wa").hidden = false; $("botones").classList.add("dos"); }
