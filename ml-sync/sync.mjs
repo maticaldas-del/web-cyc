@@ -30869,7 +30869,7 @@ async function main() {
       // nombre cambiado, decidido con un match viejo o de hace TM_DIAS_NO días. MEMORIA VENCIDA SIN CUPO O CON ML FALLANDO: se usa lo guardado si
       // pasa el match de hoy (que no se caigan productos una noche). Tras TM_FALLAS_SEGUIDAS fallas seguidas de ML no se busca más esta noche.
       // Por ml-consulta TM_MAX = 0: sólo lee (lo que buscara no se podría guardar).
-      const TM_MAX = CONSULTA_SOLO_LEE ? 0 : 1000, TM_DIAS = 14, TM_DIAS_NO = 90, TM_USD_MAX = 2000, TM_FALLAS_SEGUIDAS = 20;
+      const TM_MAX = CONSULTA_SOLO_LEE ? 0 : 3000, TM_DIAS = 14, TM_DIAS_NO = 90, TM_USD_MAX = 2000, TM_FALLAS_SEGUIDAS = 20;
       // Cada código vence en su día (dispersión por código: no vence todo junto la misma noche).
       const dispersa = (k, dias) => (dias + parseInt(createHash('md5').update('tm|' + k).digest('hex').slice(0, 6), 16) % Math.max(1, Math.round(dias / 3))) * 864e5;
       const nv = { entra: 0, fuera: {}, quedan: 0, cache: 0, vencida: 0, renovados: 0, muestra: [] }; const nvNo = (m) => { nv.fuera[m] = (nv.fuera[m] || 0) + 1; };
