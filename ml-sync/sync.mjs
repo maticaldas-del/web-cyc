@@ -30706,6 +30706,18 @@ async function main() {
     // 📱 Número de WhatsApp de la tienda (30/10/2026, él lo pasó por el chat): `tienda:wa=<código de área + número, sin 0 ni 15>[;go]`
     // guarda `cyc/mlconfig/tiendaWa` en el formato de wa.me (549 + número); `tienda:wa=-;go` lo saca y el botón se apaga. El registro es
     // público: el número sale tapado (sólo los últimos 4).
+    // 🚫 `tienda:fuera=<ID>[,<ID>…][|motivo][;go]` saca productos de la tienda a mano (31/10/2026); `tienda:fuera=-<ID>;go` lo vuelve a poner.
+    // Sin ;go muestra qué producto de Nissei es cada ID (código y nombre, sólo para Claude: el registro es público, pero el código de Nissei
+    // no es dato de nadie).
+    if (/^tienda:fuera=/.test(String(process.env.BILLING_PROBE || ''))) {
+      const rawF = String(process.env.BILLING_PROBE).replace(/^tienda:fuera=/, ''); const GOf = /;go$/.test(rawF); const [lst, ...motF] = rawF.replace(/;go$/, '').split('|');
+      const ids = lst.split(/[,\s]+/).map((x) => x.trim().toUpperCase()).filter(Boolean); const motivoF = motF.join('|').trim().slice(0, 80) || 'ridículo';
+      const mapa = (await db.get('mlapi/tiendaids')) || {}; const porId = {}; for (const e of Object.values(mapa)) if (e && e.id) porId[String(e.id).toUpperCase()] = e;
+      for (const i0 of ids) { const saca = !i0.startsWith('-'); const id = i0.replace(/^-/, ''); const e = porId[id];
+        console.log(`  ${saca ? '🚫 saco' : '↩️ vuelve'} ${id} · ${e ? `$${e.p} · ${String(e.n || '').slice(0, 60)} ← Nissei ${e.cod || '?'} ${String(e.nn || '').slice(0, 60)}` : 'ID desconocido'}`);
+        if (GOf && e) await db.set('cyc/mlconfig/tiendaFuera/' + id, saca ? motivoF : null); }
+      console.log(GOf ? '✓ guardado: sale con la próxima corrida de la tienda' : 'PRUEBA (con ;go se guarda)'); return;
+    }
     if (/^tienda:wa=/.test(String(process.env.BILLING_PROBE || ''))) {
       const rawW = String(process.env.BILLING_PROBE).replace(/^tienda:wa=/, ''); const GOw = /;go$/.test(rawW); const v = rawW.replace(/;go$/, '').trim();
       const tapa = (w) => 'wa.me/549…' + String(w).slice(-4);
@@ -31054,8 +31066,11 @@ async function main() {
       const idNuevo = () => { for (;;) { let s = ''; for (let i = 0; i < 7; i++) s += ABC_ID[randomInt(ABC_ID.length)]; if (!idsUsados.has(s)) { idsUsados.add(s); return s; } } };
       const diaAR = new Date(hoy - 3 * 36e5).toISOString().slice(0, 10);
       const idsCambia = {}; let idsNuevos = 0;
+      // 🚫 SACADOS A MANO (31/10/2026, él: "que no haya cosas ridículas"): `cyc/mlconfig/tiendaFuera/<ID>` = motivo (lo carga `tienda:fuera=`).
+      let fueraMano = {}; try { fueraMano = (await db.get('cyc/mlconfig/tiendaFuera')) || {}; } catch { fueraMano = {}; }
       const out = [];
       for (const { x, n, p } of finales) {
+        { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); continue; } }
         const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
         let ent = mapaIds[clave];
         if (!ent || !ent.id) {
