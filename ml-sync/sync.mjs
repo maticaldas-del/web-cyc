@@ -12727,6 +12727,12 @@ function tiendaMedidaDistinta(a, b) {
   for (const u of Object.keys(A)) if (B[u] && ![...A[u]].some((v) => B[u].has(v))) return true;
   return false;
 }
+function tiendaMedidaFalta(a, b) {
+  const re = /(\d+(?:[.,]\d+)?)\s*(kg|kgs|ml|l|lt|litros?)\b/i, m = re.exec(String(a || '')); if (!m) return '';
+  const u = m[2].toLowerCase(), uN = /^(l|lt|litros?)$/.test(u) ? 'l' : u === 'kgs' ? 'kg' : u;
+  const reB = uN === 'kg' ? /\d\s*(kg|kgs|kilos?)\b/i : uN === 'ml' ? /\d\s*ml\b/i : /\d\s*(l|lt|litros?)\b/i;
+  return reB.test(String(b || '')) ? '' : m[1].replace('.', ',') + ' ' + uN;
+}
 const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbished|seminov[oa]s?|swap|vitrine|cpo|usad[oa]s?|open\s*box|sem\s+caixa|sin\s+caja)\b/i;
 // Marcas conocidas: van primero en la cola de búsquedas y marcan `m:1` en el archivo (la vidriera de la página usa ESA marca; una sola
 // lista, 30/10/2026). Las que son palabras comunes van con su modelo ("poco x6", "honor x5", "pixel 9", "nothing phone").
@@ -31060,7 +31066,7 @@ async function main() {
       // Precio de referencia de ML para el freno: el que vio la medición (pycat), el del candidato, el de nuestra publicación o el ganador del catálogo.
       const lista = []; let sinRef = 0;
       for (const x of elegidos) {
-        const n = tiendaLimpiarNombre(String(x.nombre || '').replace(/\s+/g, ' ').trim());
+        let n = tiendaLimpiarNombre(String(x.nombre || '').replace(/\s+/g, ' ').trim());
         if (!n) { no('sin nombre de ML'); continue; }
         if (!x.fotos || !x.fotos.length) { no('sin foto de ML'); continue; }
         if (prohibido(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
@@ -31091,6 +31097,8 @@ async function main() {
         // entró con el MÁS PARECIDO se mira el nombre: (1) si uno es un accesorio (funda, cable, soporte, lápiz…) y el otro no, es otro producto
         // (el iPad con la foto de una funda a $1.083.990); (2) si casi no comparten palabras (el shampoo a $5.308.990), también afuera.
         if (x.nn && tiendaMedidaDistinta(x.nn, n)) { no('el proveedor y ML dicen otra medida (pack o tamaño distinto)'); continue; }
+        // …y si ML no dice el peso/volumen y el proveedor sí (Nissei "Rapid PLA+ 5 KG", ML "Pla Rapid+, blanco"), se le agrega al nombre.
+        if (x.nn) { const fal = tiendaMedidaFalta(x.nn, n); if (fal) { n = n + ' (' + fal + ')'; nv.medidaAgregada = (nv.medidaAgregada || 0) + 1; } }
         if (x.ap) {
           const ACC = /^\s*(kit\s+)?(funda|capa|case|estuche|cabo|cable|soporte|suporte|protector|pel[ií]cula|vidrio|templado|correa|pulseira|malla|cargador|carregador|adaptador|l[aá]piz|caneta|stylus|teclado|mouse\s*pad|control(e)?\s+remoto|base|bolso|bolsa|mochila|tapa|repuesto|tampa|refil|recarga|filtro|almohadillas|ear\s*pads|puntas|tips|lente\s+protector|cage|jaula|tr[ií]pode|tripode)\b/i;
           const accN = ACC.test(x.nn || ''), accM = ACC.test(n);
