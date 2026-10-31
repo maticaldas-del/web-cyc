@@ -179,6 +179,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
       <div class="fila"><span>Total</span><b id="pedTot">$0</b></div>
       <div class="cuotas" id="pedCuo" style="text-align:right;margin:2px 0 6px;height:auto"></div>
       <div class="nota">Código del pedido: <span class="codigo" id="pedCod">—</span></div>
+      <div class="nota">💳 Pagás por transferencia o con tarjeta (link de pago). Te pasamos los datos por WhatsApp cuando confirmamos tu pedido.</div>
       <div class="nota" id="pedNota" hidden></div>
       <div class="botones" id="botones">
         <button class="btn wa" id="wa" type="button" hidden>Mandar por WhatsApp</button>
@@ -327,14 +328,13 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 
   function textoPedido() {
     var ls = lineasPedido(); if (!ls.length) return "";
-    var r = ["¡Hola! Te hago este pedido (CYC " + codigo(ls) + "):"];
-    if (VIEJO) {   // la lista tiene más de 3 días: los precios se confirman al contestar
-      ls.forEach(function (l) { r.push("• " + l.q + " × " + l.p.n + " — consultar precio [" + l.p.id + "]"); });
-      r.push("Total: consultar precio (la lista es del " + fechaCorta(ACT) + ")");
-      return r.join("\n");
-    }
-    ls.forEach(function (l) { r.push("• " + l.q + " × " + l.p.n + " — " + pesos(l.p.p * l.q) + (l.q > 1 ? " (" + pesos(l.p.p) + " c/u)" : "") + " [" + l.p.id + "]"); });
-    r.push("Total " + pesos(total(ls)) + " (o 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)) + ")");
+    // 31/10/2026 (él: "no quiero mucho lío: nombre del producto, código, precio y algo importante"): un renglón por producto con código
+    // y precio, el total y la pregunta de si está (es por encargo: se confirma antes de cobrar).
+    var r = ["¡Hola! Quiero hacer este pedido en CYC (pedido " + codigo(ls) + "):", ""];
+    ls.forEach(function (l) { r.push("• " + (l.q > 1 ? l.q + " × " : "") + l.p.n + " · cód. " + l.p.id + " · " + (VIEJO ? "consultar precio" : pesos(l.p.p * l.q))); });
+    r.push("");
+    r.push(VIEJO ? "Total: a confirmar" : "Total: " + pesos(total(ls)));
+    r.push("¿Me confirmás si está y cuándo llega?");
     return r.join("\n");
   }
 
