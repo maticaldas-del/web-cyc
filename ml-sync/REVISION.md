@@ -2243,6 +2243,12 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🔍 Revisión de la etapa 7 (31/10/2026, 4 revisores en máximo · sólo propuestas)
+- **Qué se hizo:** Inicio/Ventas, Plata (Arqueo, Ver deudas, Métricas), Mercadería (Pedidos, Armar caja, Oficina) y Productos/Rotación/🧠/Ajustes dibujados con el CSS real a 360/390/1200 px y medidos con código. ~40 problemas (lo que se corta, botones que se corren, toques chicos, contraste, letra mezclada) y 20 propuestas con maqueta; 13 decisiones en `notas/para_mati.md`.
+- **Para la próxima:** los armados para dibujar quedaron en el scratchpad de la sesión (`d7_inicio`, `d7_plata`, `d7_merc` con Firebase falso que guarda lo escrito, `d7_prod`). Ojo: la foto de página entera de Playwright (`fullPage`) apaga el modo táctil: medir con una pantalla alta.
+- **Anotado de paso:** la etapa 10 (Tienda) corrió el 30/10 y no tenía renglón en `REV_HIST` (la agenda decía "nunca se hizo"): agregado. CLAUDE.md: el ⚖️ vive en Inicio → Facturas y el cartel en Ajustes.
+- **Qué chequear:** cuando él elija, cada arreglo se mide de nuevo a los 3 anchos (nada que se corte, ningún botón que se corra al cambiar un monto o un nombre largo).
+
 ### 🧾 Inicio → Facturas: barritas de cuán llena va cada cuenta (28/10/2026, él: "que muestre barritas de cuán lleno van las cuentas")
 - **Qué es:** una barra por cuenta contra el tope de H: lleno = facturado oficial hoy, clarito = a dónde llega al cierre de ARCA (misma cuenta que la ⚖️, `parejoDatos`); % de hoy; rojo si al cierre se pasa, ámbar desde 85%. En el teléfono sin ícono y más finitas.
 - **Dónde vive:** `renderNcFacBarras` (la llama `renderNcFacAviso`), `#nc-fac-barras`, clase `ht-fac` (index.html).

@@ -76,7 +76,7 @@
   ("marroquinería") → "venta al por menor por internet"; facturas entre las cuatro cuentas (inflan facturación); intereses/multas de H.
 - **Topes ARCA vigentes ago-2026 a ene-2027** (`MONO_CATS`): G $53.995.798,87 · H $81.924.660,37 · K $126.610.838,75 (límite compras
   = 80% de K). **Actualizarlos en febrero 2027.** Ventana de 12 meses corridos, por CUIT. **Él no quiere pasarse de H, menos RI.**
-- **Tope de H en Inicio (⚖️, una sola tarjeta):** facturado oficial = el MAYOR (por cuenta, ventana entera) entre ARCA y ventas
+- **Tope de H (⚖️, una sola tarjeta, en Inicio → Facturas):** facturado oficial = el MAYOR (por cuenta, ventana entera) entre ARCA y ventas
   (`_facVentana`); ARCA de ene-sep cargado con `factarca` (4 cuentas, 01/10); desde ago-2026 las facturas del facturador de ML con CAE
   (`cyc/facturas`) + ventas sin factura (`facturas_sin`) + `cyc/fact_fuera`. El robot (`topeh`, `catmono`) todavía no lee `fact_arca`.
 - **Comprar con factura** (13/08): no comprar más, comprar lo mismo con factura a nombre de: Ayelen 40% · Adriana 35% · Luciana 25% ·
@@ -467,7 +467,7 @@
   8 Reglas del cerebro (cada 7 días, adelante cuando le toca) · **9 Local** (cada 7 días, 29/10, él: *"vamos a ir haciendo cambios grandes todo el mes sobre local"*: todo cambio del local se anota en esa etapa). Cada madrugada a las **04:00** toca la que hace más que no se revisa
   (`REV_HIST`/`REV_HECHAS`; nunca una de los últimos 6 días). 4 revisores con esfuerzo **máximo**. Tarea `trig_01TT94wnEKk299d85Sj6ePWw`:
   **PRENDIDA otra vez el 24/10/2026 01:02 UTC** (vie 23/10 22:02 de acá, como pidió él; estuvo pausada desde el 21/10). Primera revisión sáb 24/10 04:00.
-- **El cartel de Inicio lo manejo yo** (`REV_PENDIENTE` / `REV_HECHAS`, sin botón): algo resuelto ENTERO sale de pendiente con su fecha.
+- **El cartel de revisiones (Ajustes) lo manejo yo** (`REV_PENDIENTE` / `REV_HECHAS`, sin botón): algo resuelto ENTERO sale de pendiente con su fecha.
 - Etapas 6 y 7 traen siempre cosas que den gusto (efectos con sentido, comodidad, duplicados, faltantes) con maqueta. La 7 **dibuja**
   cada pantalla con el CSS real (Playwright 360/390/1200 px) y mide que nada se corte y que **ningún botón se corra al cambiar un texto**.
 - Lo que se mira en TODAS: contar dos veces lo mismo · fallas leídas como dato · dos fórmulas para un número · datos de terceros en el log.
