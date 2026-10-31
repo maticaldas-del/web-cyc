@@ -201,3 +201,5 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 
 
 - **31/10 · Envío 81061560 (Ayelen):** ML no dejó modificarlo y salió con 1 P47 negro (YCAZ61507) que no estaba en la oficina. Cuando llegue a Full va a faltar esa unidad: marcarla con `cajallego:<seg>!P47 negro=0` (faltante real) y no esperar que entre. Oficina ML del P47 negro quedó en 0 (él: "no tengo ninguno").
+
+- **31/10 · Pasada semanal de Nissei:** la vuelta completa ya la hizo el chat de Chrome el 30/10 (12.202 de 12.205), no se mandó texto nuevo. Probados que Nissei ya no tiene (el código no está en el catálogo): Pendrive Cruzer Blade 16gb (82788) · VS Bliss (142409) · Sennheiser CX 80s (151150) · Britney Midnight Fantasy (95416) · Tommy Men 100 ml (77482) · Revlon Colorstay 18 (115509) · Tiras nasales Gudsport (145978) · Auriculares Xiaomi tipo C (128646). Que los mire en la página por si cambió el código. Sin código: Ted Lapidus Rumba, Cuba Gold, Philips TAT2206 (no aparecen en Nissei).
