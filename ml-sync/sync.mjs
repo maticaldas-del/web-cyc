@@ -30994,7 +30994,13 @@ async function main() {
         const porCod = new Map(); for (const x of xs) { const k = x.cod || ('?' + x.key); const v = porCod.get(k); if (!v || x.ts > v.ts) porCod.set(k, x); }
         const u = [...porCod.values()]; if (u.length === 1) return u[0];
         const max = u.reduce((a, b) => (b.usd > a.usd ? b : a)), min = Math.min(...u.map((x) => x.usd));
-        return max.usd > min * 1.05 ? null : max;
+        if (max.usd <= min * 1.05) return max;
+        // 31/10/2026 (él: "muchos me piden la Xiaomi Pad 2, no hay ni una cargada… si buscan algo y no está no compran"): antes, dos códigos
+        // con precios distintos en el mismo catálogo dejaban AFUERA a los dos (1.050 productos, todas las Redmi Pad 2). Ahora queda el código
+        // cuyo nombre de Nissei más se parece al nombre de ML (capacidad, color, modelo); empatados, el más barato.
+        const nomML = String(u[0].nombre || '');
+        const sc = (x) => (nomML ? tiendaParecido(x.nn || '', nomML) : 0);
+        return u.slice().sort((a, b) => sc(b) - sc(a) || a.usd - b.usd)[0];
       };
       const elegidos = [];
       for (const xs of grupos.values()) { const x = resolver(xs); if (x) elegidos.push(x); else no('el mismo producto con dos precios distintos'); }
@@ -31023,8 +31029,9 @@ async function main() {
       for (const ys of porNom.values()) {
         if (ys.length === 1) { finales.push(ys[0]); continue; }
         const max = ys.reduce((a, b) => (b.x.usd > a.x.usd ? b : a)), min = Math.min(...ys.map((y) => y.x.usd));
-        if (max.x.usd > min * 1.05) { for (let i = 0; i < ys.length; i++) no('el mismo producto con dos precios distintos'); continue; }
-        finales.push(max); for (let i = 1; i < ys.length; i++) no('repetido (mismo nombre)');
+        // 31/10/2026: con precios distintos queda el que más se parece al nombre de ML (antes afuera los dos).
+        const elegido = max.x.usd > min * 1.05 ? ys.slice().sort((a, b) => tiendaParecido(b.x.nn || '', b.n) - tiendaParecido(a.x.nn || '', a.n) || a.x.usd - b.x.usd)[0] : max;
+        finales.push(elegido); for (let i = 1; i < ys.length; i++) no('repetido (mismo nombre)');
       }
       // IDS FIJOS (30/10/2026, revisión de la tienda): el código de cada producto (`id`, el [XXXXX] del pedido) se asigna UNA vez y no cambia más,
       // en `mlapi/tiendaids/<clave>` = {id, cod (código del proveedor), nn (su nombre), desde, usd, p, n}. Los que ya estaban publicados conservan su código de 5;
