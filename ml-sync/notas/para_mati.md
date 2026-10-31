@@ -225,3 +225,11 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 5. **Centímetro Rosa a $17.490:** 0 vendidas de ~29 esperadas en 2,6 días (antes ~9 por día); esperar al 03/11 cuesta ~$2.500 por día. (a) sugerida: esperar al 03/11 como elegiste (son 3 días) · (b) primer escalón como descuento a $14.890 ya.
 6. **Mazo de Poker x12 (1 u.):** el 06/11 cumple 30 días sin vender a $23.320 o más y ahí la escalera arranca sola (−15% como descuento, a $25.590). El 26/10 dijiste que no a bajarlo. (a) sugerida: dejar que arranque el 06/11 · (b) seguir esperando.
 - **31/10 · Pasada semanal de Nissei:** la vuelta completa ya la hizo el chat de Chrome el 30/10 (12.202 de 12.205), no se mandó texto nuevo. Probados que Nissei ya no tiene (el código no está en el catálogo): Pendrive Cruzer Blade 16gb (82788) · VS Bliss (142409) · Sennheiser CX 80s (151150) · Britney Midnight Fantasy (95416) · Tommy Men 100 ml (77482) · Revlon Colorstay 18 (115509) · Tiras nasales Gudsport (145978) · Auriculares Xiaomi tipo C (128646). Que los mire en la página por si cambió el código. Sin código: Ted Lapidus Rumba, Cuba Gold, Philips TAT2206 (no aparecen en Nissei).
+
+### 31/10 · RESPUESTAS a la lista de decisiones (él)
+- 1a **Recortadora 4 en 1** queda a $48.990 (38%) hasta que la unidad más vieja llegue a 90 días de stock; ahí lo vemos.
+- 2 · 3 · 4 **Redmi Watch 4, Disco WD 480, Adaptador TP-Link**: no bajar del **30%** hasta los 90 días de stock (después lo vemos). Pidió que le diga cuántos días tiene cada uno (pendiente: `antiguo` no los lista; sacarlos de la ficha en la completa).
+- 5 **Dalí L'Ocelot**: HECHO 31/10 — descuento propio a $153.990 (35,8% peor caso), lista sigue en $209.990 (🔐 73CH autorizada).
+- 6 · 7 · 8 **Paulvic Scarf (y Green/Paradise/Gentleman), Centímetro Rosa, Mazo Poker x12**: seguir las reglas (si tiene techo bajar en escalera hasta que venda; si vendió a ese precio, se queda).
+- 9a revisar qué se ve en público · 10a sigue público y se saca lo sensible SIN ROMPER NADA · 11a arreglar todo lo que se corta (él: "manejalo") · 12a mismos techos en 🧠/Rotación que la línea · 13a sí a todo el diseño 3-13 → PENDIENTE DE HACER (trabajo mío).
+- 14b la Tienda espera la revisión; lo que más le importa es que estén todos los productos cargados.
