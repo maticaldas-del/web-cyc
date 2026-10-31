@@ -12729,10 +12729,18 @@ function tiendaMedidaDistinta(a, b) {
   return false;
 }
 function tiendaMedidaFalta(a, b) {
-  const re = /(\d+(?:[.,]\d+)?)\s*(kg|kgs|ml|l|lt|litros?)\b/i, m = re.exec(String(a || '')); if (!m) return '';
-  const u = m[2].toLowerCase(), uN = /^(l|lt|litros?)$/.test(u) ? 'l' : u === 'kgs' ? 'kg' : u;
-  const reB = uN === 'kg' ? /\d\s*(kg|kgs|kilos?)\b/i : uN === 'ml' ? /\d\s*ml\b/i : /\d\s*(l|lt|litros?)\b/i;
-  return reB.test(String(b || '')) ? '' : m[1].replace('.', ',') + ' ' + uN;
+  // 31/10/2026: kg, ml, litros (sólo "lt/litro", la "L" sola eran lúmenes en un proyector) y unidades (él: "que diga los kg o, depende del
+  // producto, unidades").
+  const A = String(a || ''), B = String(b || '');
+  const m = /(\d+(?:[.,]\d+)?)\s*(kg|kgs|ml|lt|litros?)\b/i.exec(A);
+  if (m) {
+    const u = m[2].toLowerCase(), uN = /^(lt|litros?)$/.test(u) ? 'l' : u === 'kgs' ? 'kg' : u;
+    const reB = uN === 'kg' ? /\d\s*(kg|kgs|kilos?)\b/i : uN === 'ml' ? /\d\s*ml\b/i : /\d\s*(l|lt|litros?)\b/i;
+    if (!reB.test(B)) return m[1].replace('.', ',') + ' ' + uN;
+  }
+  const un = /(\d+)\s*(unidades|unidade|unid|un|pcs|pçs|pe[çc]as|pzs)\b/i.exec(A) || /\b(?:kit|pack|pacote)\s+(?:com\s+|de\s+|x\s*)?(\d+)\b/i.exec(A);
+  if (un && Number(un[1]) > 1 && !new RegExp('\\b' + un[1] + '\\s*(unidades|unid|un|u|pcs|piezas|pzs)\\b|\\b(x|pack|kit|de)\\s*' + un[1] + '\\b', 'i').test(B)) return un[1] + ' unidades';
+  return '';
 }
 // El nombre del proveedor para la tienda (31/10/2026): traducido, medidas en minúscula con espacio ("3 KG" → "3 kg"), primera en mayúscula.
 function tiendaNombreProv(nn) {
