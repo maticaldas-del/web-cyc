@@ -30887,7 +30887,9 @@ async function main() {
         // ¿Qué toca con lo guardado? 'ok' = vigente · 'vencido' = encontrado y venció (o no pasa el match de hoy) · 'no' = "no es el mismo" vigente ·
         // 'nuevo' = nunca buscado o cambió el nombre · 'noviejo' = "no es el mismo" de un match viejo o de hace 90+ días.
         let est = 'nuevo';
-        if (mismoN && c0.cat) est = !tiendaMismoProducto(e.n, c0.mn || '') && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
+        // 31/10/2026: lo que entró con el más parecido (`ap`) no pasa el match exacto a propósito: sin esto se volvía a buscar en CADA corrida
+        // (999 de 3.000 consultas por corrida) y la cola no avanzaba.
+        if (mismoN && c0.cat) est = (c0.ap || !tiendaMismoProducto(e.n, c0.mn || '')) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
         else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
         cola3.push({ cod, e, usd, est, c0, marca: TIENDA_MARCAS.test(e.n) ? 0 : 1 });
       }
@@ -30947,7 +30949,7 @@ async function main() {
         let r = null;
         // Sin cupo o con ML fallando, lo guardado que pasa el match de hoy sigue aunque haya vencido (que no se caiga una noche); lo
         // "no es el mismo" queda como estaba.
-        const deMemoria = () => { if (est === 'vencido' && c0.cat && !tiendaMismoProducto(e.n, c0.mn || '')) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
+        const deMemoria = () => { if (est === 'vencido' && c0.cat && (c0.ap || !tiendaMismoProducto(e.n, c0.mn || ''))) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
         if (est === 'ok' || est === 'no') {
           r = c0; nv.cache++;
           // Lo encontrado antes del freno de precio no tiene el precio de ML: se pide una vez (una llamada) para poder compararlo.
