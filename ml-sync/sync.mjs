@@ -30749,6 +30749,32 @@ async function main() {
       }
       return;
     }
+    // 31/10/2026 (él: "mirá productos que estén más caros que ML y decime qué opinás"): la tienda contra el precio de ML que guardó la memoria.
+    // Sólo lee. Imprime nombre de ML, nuestro precio, el de ML y la relación (nada del proveedor). `tiendacaros[:<mínimo>]` (por defecto 1,0).
+    if (/^tiendacaros(:[\d.]+)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const MIN = parseFloat((String(process.env.BILLING_PROBE).split(':')[1]) || '1') || 1;
+      const [ids, tm] = await Promise.all([db.get('mlapi/tiendaids'), db.get('mlapi/tiendamatch')]);
+      const filas = []; let conRef = 0, total = 0;
+      for (const [k, x] of Object.entries(ids || {})) {
+        if (!x || !(Number(x.p) > 0)) continue; total++;
+        const m = (x.cod && tm && tm[x.cod]) || {}, c = (tm && tm['C_' + k]) || {};
+        const mp = Number(m.mp) > 0 ? Number(m.mp) : (Number(c.mp) > 0 ? Number(c.mp) : 0);
+        if (!mp) continue; conRef++;
+        filas.push({ n: String(x.n || m.mn || c.mn || k).slice(0, 70), p: Number(x.p), mp, r: Number(x.p) / mp });
+      }
+      const caros = filas.filter((f) => f.r >= MIN).sort((a, b) => b.r - a.r);
+      const tramos = [[0, 0.8], [0.8, 0.95], [0.95, 1.05], [1.05, 1.2], [1.2, 1.4], [1.4, 9]];
+      console.log(`=== TIENDA CONTRA ML · ${total} con precio · ${conRef} con precio de ML guardado ===`);
+      for (const [a, b] of tramos) { const n = filas.filter((f) => f.r >= a && f.r < b).length; console.log(`   ${a.toFixed(2)}-${b.toFixed(2)} veces ML: ${n} (${conRef ? Math.round(n * 100 / conRef) : 0}%)`); }
+      const mitad = filas.map((f) => f.r).sort((a, b) => a - b)[Math.floor(filas.length / 2)] || 0;
+      console.log(`   la mitad está a menos de ${mitad.toFixed(2)} veces el precio de ML`);
+      console.log(`\n── ${caros.length} a ${MIN.toFixed(2)}+ veces el de ML (los 120 más caros) ──`);
+      for (const f of caros.slice(0, 120)) console.log(`   ${f.r.toFixed(2)}× · nuestro ${money(f.p)} · ML ${money(f.mp)} · ${f.n}`);
+      const ip = filas.filter((f) => /iphone|ipad|macbook|airpods|apple watch/i.test(f.n)).sort((a, b) => b.p - a.p);
+      console.log(`\n── Apple (${ip.length}) ──`);
+      for (const f of ip.slice(0, 40)) console.log(`   ${f.r.toFixed(2)}× · nuestro ${money(f.p)} · ML ${money(f.mp)} · ${f.n}`);
+      return;
+    }
     if (/^tienda(;go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const GOt = /;go$/.test(String(process.env.BILLING_PROBE));
       // CON ;go TODA NEGATIVA SALE CON ERROR Y SIN ARCHIVO (revisión de la tienda, 30/10/2026): sin dólar, sin token, datos incompletos, una
