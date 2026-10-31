@@ -23,7 +23,7 @@ REGLAS QUE NO SE ROMPEN
 
 LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - "rutina" (todos los días): cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
-- "arrancá" (cajas): armar en ML las cajas de Full que el panel marca "MANDALA YA" (cargar Planificación de envíos, sin confirmar).  → CAJAS
+- "arrancá" (cajas): SÓLO cuando Matías lo pide, armar en ML las cajas de Full que el panel marca "MANDALA YA" (cargar Planificación de envíos, sin confirmar).  → CAJAS
 - "PROMPT GUAY" / pasada de los sábados: copiar el catálogo de Nissei de comprasparaguay y los precios de lo que pide el panel.  → GUAY
 - Listas de proveedores: copiar listas de precios y dejarlas medidas.  → LISTAS
 - Mayoristas del Once con precios en internet.  → ONCE
@@ -36,7 +36,7 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
 2. En Mi oficina → 📬 Mensaje para Claude está la línea "🤖 Última vez del chat de Chrome" (cuántos días hace que se hizo cada tarea).
    Con eso decidís qué toca, en este orden de importancia:
    a) RUTINA → si no dice "hoy". Siempre primero (cupo, Mercado Pago y el pedido de Nissei cambian todos los días).
-   b) CAJAS → si en Oficina ML → Armar caja alguna dice "MANDALA YA" (cargás la planificación sin confirmar y le avisás a Matías).
+   b) CAJAS → NUNCA por tu cuenta (31/10/2026, él: "puede haber mercadería que sé que está por llegar y la arma, y no quiero aún"). Sólo cuando Matías te diga "arrancá" o "armá la caja". Si ves "MANDALA YA", como mucho avisale en el chat que hay una caja lista; no cargues nada en ML.
    c) GUAY → si hace 7 días o más (o "nunca"). Es la más larga: si no termina, la próxima vez seguís desde la página donde quedó.
    d) LISTAS → si hace 7 días o más.
    e) ONCE → si hace 7 días o más (1 o 2 mayoristas nuevos, una hora como mucho).
