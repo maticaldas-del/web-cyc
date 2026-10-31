@@ -2854,6 +2854,13 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
         const b = row.body || {}; const mla = b.id;
         if (!mla || !links[mla] || b.error || typeof b.status === 'number') continue;
         conteo.miradas++;
+        // CÓDIGO DE ETIQUETA SOLO (31/10/2026, él con Armar caja lleno de "sin código": "que el robot ponga los códigos"): ML da el
+        // `inventory_id` apenas se crea la publicación, aunque esté pausada y sin nada en Full (medido con `fijarinv`: 7 de 7). Antes sólo se
+        // guardaba de lo que tenía stock en Full; ahora, en la corrida real, todo lo que no tiene código (sin variantes: ésas van por color).
+        if (opt.pausarFuera && !links[mla].inv && b.inventory_id && !(Array.isArray(b.variations) && b.variations.length)) {
+          const invN = String(b.inventory_id).toUpperCase();
+          try { await db.patch('cyc/mllinks/' + mla, { inv: invN }); links[mla].inv = invN; conteo.invNuevos = (conteo.invNuevos || 0) + 1; } catch { /* la próxima hora */ }
+        }
         if (b.status !== 'paused') {
           conteo.activas++;
           // ACTIVA Y FUERA DE FULL (auditoría del 18/10/2026): él no vende nada fuera de Full; si alguien compra, hay que mandarla
