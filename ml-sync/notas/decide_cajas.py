@@ -143,6 +143,13 @@ FIJO={
   ('p1792881567867','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
   ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son blancas/celestes (él 25/10, con foto) y la publicación es la NEGRA. Van al local: en ML no llega al 35%'),
   ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
+  ('p17934023964270','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
+  ('p17934023965311','','Ayelen'):(2,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
+  ('p17934023966843','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
+  ('p17934023967884','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
+  ('p17934023968925','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
+  ('p17934023969966','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
+  ('p17934023971007','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
 }
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[];soloPerfFuera=[]
 # Revisión etapa 3, 29/10/2026: lo que CALCULA este script lleva esta marca al final del motivo. Así se distingue, sin adivinar por el
