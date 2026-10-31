@@ -5441,6 +5441,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:7,t:'31/10 · 13 decisiones de Diseño',que:'lo que se corta o se corre · el 🧠 igual que la línea · Ventas de hoy fija · dólar y Tienda · tarjetas de Inicio · ventas nuevas · pedido en dos pisos · Armar caja en grilla · Cerrar la caja que se llena · perfumería y deudas · colores · línea en el teléfono · repetidos',pedi:'resolvamos'},
   {etapa:4,t:'30/10 · 4 decisiones de Choques y fallas',que:'octubre congelado con ventas provisorias · nombres de personas en el registro público · ¿Cierra el mes? con cierre antes de fin de mes · la Oficina Local al pasar a contada',pedi:'resolvamos'},
   {etapa:9,t:'30/10 · 8 decisiones del Local (7, 9, 11 y 12 resueltas)',que:'perfumes del local en el pedido de Paraguay (cobro de octubre) · Oficina Local a mano · pedidos de la perfumería en papelera · lo que viaja · qué es Oficina Local · nombres ya públicos · devolvió de más · % de las perfumerías',pedi:'resolvamos las del Local'},
   {etapa:3,t:'29/10 · 8 decisiones de Mercadería',que:'renombrar fichas viejas al vincular · sin etiqueta por cuenta · Tenders y su caja · envío pausado y el cupo · costos antes del ticket · recompra más barata · lo pagado que no vino · precios de proveedores en el registro',pedi:'resolvamos las de Mercadería'},
@@ -5482,9 +5483,11 @@ const REV_HIST={
      {f:'2026-10-21',t:'4 revisores en máximo (datos de ML sin usar, plata, trabajo a mano, gusto): 24 ideas para elegir (el cupo de Ayelen repartido por plata, publicar lo nuevo desde el chat, la venta que dice qué significa, Pedidos con lo que cambió).'}],
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'},
-     {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'}],
+     {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'},
+     {f:'2026-10-31',t:'4 revisores en máximo dibujaron cada pantalla a 360/390/1200 px: ~40 cosas que se cortan o se corren y 20 propuestas con maqueta; 13 decisiones para él (sólo propone).'}],
   8:[{f:'2026-10-28',t:'4 revisores en máximo (contradicciones, decisiones de la semana, frenos contra el código, correcciones): cerebro y VENTAS al día, ~15 frenos arreglados en el robot, 53 correcciones contadas; 4 decisiones a para_mati.'},{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'}],
-  9:[{f:'2026-10-30',t:'Primera (4 revisores en máximo: robot, pedidos/cajas, Arqueo/deudas, Métricas): ~40 reales, todos arreglados y probados; 12 decisiones a para_mati.'}]
+  9:[{f:'2026-10-30',t:'Primera (4 revisores en máximo: robot, pedidos/cajas, Arqueo/deudas, Métricas): ~40 reales, todos arreglados y probados; 12 decisiones a para_mati.'}],
+  10:[{f:'2026-10-30',t:'Primera revisión de la Tienda: lo más grave era que desde su dirección se llegaba a archivos que dicen de dónde viene la mercadería (cerrado). Anotada el 31/10 por la revisión de Diseño.'}]
 };
 // Las etapas en el orden en que van a tocar (20/10/2026): una por día, primero la que hace más que no se revisa (`revProxima`).
 function _revHoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
