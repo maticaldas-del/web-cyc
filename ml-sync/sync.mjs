@@ -31022,7 +31022,7 @@ async function main() {
         // 31/10/2026 (él eligió 2a: "que entre todo"): el freno ya no deja afuera; sólo se cuenta cuántos no cuadran.
         // 31/10/2026 (él: "que no haya cosas ridículas"): si entró con el MÁS PARECIDO de ML (no el exacto) y el precio está a menos de la mitad o
         // más de 1,6 veces el de ML, casi seguro es otro producto (un lápiz con la foto de la tablet): afuera. Los exactos entran igual (2a del 31/10).
-        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; } } else sinRef++;
+        if (x.mpRef > 0) { const k = p / x.mpRef; if (k < (x.ficha ? 0.3 : 0.5) || k > 1.6) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; } } else if (x.ap) { no('el más parecido sin precio de ML para comparar (no se puede saber si es el mismo)'); continue; } else sinRef++;   // 31/10: el shampoo a $5.308.990 y la Switch a $47.990 eran de éstos
         lista.push({ x, n, p, nn: normNom(n) });
       }
       // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
