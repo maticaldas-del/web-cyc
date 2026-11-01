@@ -31369,6 +31369,7 @@ async function main() {
       // 01/11/2026 (él, con lo que calculó el chat de la perfumería): costo × 1,65 — la perfumería paga IVA (~28.600 cada 165.000) e Ingresos
       // Brutos (~5.800): en efectivo le queda ~30%, con tarjeta ~26%. Antes 1,30 (sin contar esos impuestos).
       const ABEL_MULT = 1.65;
+      const ABEL_INFLA = 1.20;   // 01/11/2026: hasta +20% cuando ML está mucho más caro (sin pasar el 90% de ML)
       const outAbel = []; const abelNo = {}; const abelCuenta = { sinML: 0, abajo: 0, hasta10: 0 };
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
       // Control del 01/11: "Aqua Kiss Shimmer Victoria's Secret 250 ml" (en el proveedor "Colônia") es una bruma, no un perfume.
@@ -31390,7 +31391,13 @@ async function main() {
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlR = x.mlRaw > 0 ? x.mlRaw : x.mpRef; const mlVer = !cp && !om && !x.ap && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
         if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (x.nn || '')) && x.usd > 0) {
-          const costoR = x.usd * RECT * tc, pA = lindo(costoR * ABEL_MULT), mlA = x.mlRaw > 0 ? Math.round(x.mlRaw) : (x.mpRef > 0 ? Math.round(x.mpRef) : 0);   // ABEL no da cuotas: contra el precio que se ve en ML
+          const costoR = x.usd * RECT * tc, mlA = x.mlRaw > 0 ? Math.round(x.mlRaw) : (x.mpRef > 0 ? Math.round(x.mpRef) : 0);   // ABEL no da cuotas: contra el precio que se ve en ML
+          // 01/11/2026 (él: "hay perfumes como el ck one que hay mucha diferencia con ml. cuando es así sí se puede inflar un poco el precio
+          // para intentar ganar más. máximo un 20%"): si el precio base queda más de 10% abajo de ML, sube hasta +20% sin pasar el 90% de ML
+          // (que siga viéndose más barato que en ML).
+          let pA = lindo(costoR * ABEL_MULT);
+          if (mlA && pA < mlA * 0.90) { const abajoL = (v) => (v >= 10000 ? Math.floor((v + 10) / 1000) * 1000 - 10 : Math.floor((v + 10) / 100) * 100 - 10);
+            const pI = Math.min(lindo(costoR * ABEL_MULT * ABEL_INFLA), abajoL(mlA * 0.90)); if (pI > pA) { pA = pI; abelCuenta.inflado = (abelCuenta.inflado || 0) + 1; } }
           if (!mlA) abelCuenta.sinML++; else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
           if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
           else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), ...(x.cod ? { k: String(x.cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (01/11, él: el botón de WhatsApp lo manda con el nombre y el código)
@@ -31478,7 +31485,7 @@ async function main() {
         if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
         else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
         else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
-        console.log(`🌸 ABEL (costo × ${ABEL_MULT}): ${outAbel.length} perfumes · ${abelCuenta.abajo} más baratos o igual que ML · ${abelCuenta.hasta10} hasta 10% arriba de ML · ${abelCuenta.sinML} sin precio de ML para comparar · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
+        console.log(`🌸 ABEL (costo × ${ABEL_MULT}): ${outAbel.length} perfumes · ${abelCuenta.abajo} más baratos o igual que ML · ${abelCuenta.hasta10} hasta 10% arriba de ML · ${abelCuenta.sinML} sin precio de ML para comparar · ${abelCuenta.inflado || 0} subidos (hasta +20%, ML mucho más caro) · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
     }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
