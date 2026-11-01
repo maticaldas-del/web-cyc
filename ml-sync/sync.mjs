@@ -31154,7 +31154,7 @@ async function main() {
           if (accN !== accM) { no('el más parecido es un accesorio y el producto no (o al revés)'); continue; }
           if (tiendaParecido(x.nn || '', n) < 0.2) { no('el más parecido casi no se parece (otro producto)'); continue; }
         }
-        lista.push({ x, n, p, nn: normNom(n) });
+        lista.push({ x, n, p, nn: normNom(n), om: otraMedida });
       }
       // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
       const porNom = new Map(); for (const y of lista) (porNom.get(y.nn) || porNom.set(y.nn, []).get(y.nn)).push(y);
@@ -31179,7 +31179,7 @@ async function main() {
       // 🚫 SACADOS A MANO (31/10/2026, él: "que no haya cosas ridículas"): `cyc/mlconfig/tiendaFuera/<ID>` = motivo (lo carga `tienda:fuera=`).
       let fueraMano = {}; try { fueraMano = (await db.get('cyc/mlconfig/tiendaFuera')) || {}; } catch { fueraMano = {}; }
       const out = [];
-      for (const { x, n, p } of finales) {
+      for (const { x, n, p, om } of finales) {
         { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); continue; } }
         const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
         let ent = mapaIds[clave];
@@ -31191,7 +31191,10 @@ async function main() {
         // 31/10/2026 (él eligió 1a: "apple están carísimos… si los saco van a decir aaa no tienen iphone"): los Apple (iPhone, iPad, Mac,
         // AirPods, Watch) salen SIN precio ("Consultar precio"): el precio no va ni en el archivo. Los accesorios para Apple siguen con precio.
         const cp = TIENDA_APPLE.test(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
-        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
+        // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
+        // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
+        const mlVer = !cp && !om && !x.ap && x.mpRef > 0 && p <= x.mpRef * 0.95 && p >= x.mpRef * 0.5 ? Math.round(x.mpRef) : 0;
+        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
       }
       // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
       out.sort((a, b) => (a.c === 'Otros') - (b.c === 'Otros') || a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
