@@ -5802,7 +5802,8 @@ async function detectarErrores(db, o = {}) {
       // 1a del 28/10: una 🔥/⏳ con una suba que "NO rindió" vigente en la ficha (⛔, 30 días) YA tiene techo medido arriba: no se sube a ciegas
       // (el Pendrive 8gb ⏳ a $23.990: subir a $26.990 no rindió). Sin poder leer la ficha, tampoco.
       if (ult === 'escasez' || ult === 'sinrepo') { let l1 = null; try { l1 = String((await db.get('mlapi/ficha/' + m + '/linea1')) || ''); } catch { l1 = null; }
-        if (l1 === null || /no rindió/.test(l1)) { lzC.convenir++; continue; } }
+        // Revisión etapa 5, 01/11/2026: sólo frena una SUBA que no rindió ("⛔ bajar a $X no rindió" dice lo contrario: abajo no rinde, no es techo arriba).
+        if (l1 === null || /sub[^|]{0,60}no rindió/i.test(l1)) { lzC.convenir++; continue; } }
       // 4a (27/10/2026 a la noche, la corrida de la estrategia nueva: las Sábanas 1½ "vendió ayer" y decido la frenó por 0,4 por semana): un 📈
       // que vende menos de 1 por semana no sube (decido lo frena); queda 💰 #punto. El 🆕 que vendió sí sube (decido no lo frena).
       if (ult === 'techo') { const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs != null && infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { lzC.lento = (lzC.lento || 0) + 1; continue; } }
@@ -5815,7 +5816,7 @@ async function detectarErrores(db, o = {}) {
     const esc = x.ult === 'escasez' || x.ult === 'sinrepo';
     // 30/10/2026: la suba sigue siendo +50% del PRECIO (él: "me gusta la subida que tenemos ahora… sólo dije lo del % por el tema de las premium y
     // clásicas": todas las formas de venta quedan con el mismo %, que ya lo hacen las gemelas). `decido` igual acepta `=%N` / `=%xK` si hace falta.
-    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}#${x.ult}|Vendió a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
+    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}${x.cruzaE ? '!cruza' : ''}#${x.ult}|Vendió${x.cruzaE ? ' (por su gemela de envío gratis a ' + $(x.pEnv) + ')' : ''} a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
       : x.cruzaE ? `   ▶️ decido:${x.mla}=${x.obj}!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% sobre ese precio y la Clásica cruza la barrera (él, 30/10, el detector);go`
       : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
   });
@@ -9462,6 +9463,10 @@ async function clasificarRemates(db, vp, o) {
   // `estrat` = `cyc/estrategia` (5.1a, 21/10/2026): un remate decidido por mí (`decido …#liquidando/#remate`) prueba remate igual que la
   // marca liquidando, y una venta abajo de 20% con 📦 sobra vigente también (la sobra se baja para que salga, no es demanda).
   const { nosubir = {}, nosubirhist = {}, rescv = {}, autoprecio = {}, lineaDe, desde = '', estrat = null } = o || {};
+  // Revisión etapa 5, 01/11/2026: una venta por la GEMELA (Premium o envío gratis) toma la estrategia de su Clásica: las decisiones van a la
+  // Clásica y la gemela sólo tiene renglones "gemela" (antes la misma venta al 10% era remate por la Clásica y demanda por la gemela).
+  let _Lr = o && o.links; if (!_Lr && estrat) { try { _Lr = (await db.get('cyc/mllinks')) || {}; } catch { _Lr = {}; } }
+  const mlaEst = (m) => (m && _Lr && _Lr[m] && _Lr[m].gemelaDe) || m;
   setDevLive(vp);
   const cw = await armarCostoWeb(db, vp);
   const mapa = {}, info = {}, fallo = new Set();
@@ -9478,7 +9483,7 @@ async function clasificarRemates(db, vp, o) {
       const ns = v.mla && nosubir[v.mla]; const nsF = ns && ns.fecha ? Date.parse(ns.fecha) : NaN;
       const ap = v.mla && autoprecio[v.mla];
       let r = null;
-      const tgV = v.mla && estrat ? tagVigenteEn(estrat[v.mla], ts) : null;
+      const tgV = v.mla && estrat ? tagVigenteEn(estrat[mlaEst(v.mla)], ts) : null;
       if (et && et.estado === 'remate') r = { es: true, porque: 'la venta quedó etiquetada remate' };
       else if (isFinite(nsF) && nsF <= ts) r = { es: true, porque: 'estaba marcada liquidando' };
       else if (['liquidando', 'remate', 'sobra'].includes(tgV)) r = { es: true, porque: `tenía la estrategia ${ESTRATEGIAS[tgV]} cuando se vendió` };
@@ -20256,7 +20261,7 @@ async function main() {
         const R = lin && cu > 0 ? rayasPrecioLinea(lin, cu, imp, hoyK, 1, (await cargarCajaReal(db), pdCajaExtraU(e.cuenta, pr, tc))) : null;
         const t95 = Object.entries(est).some(([k, x]) => x && techookDeTecho95(x) && Number(k) > Date.now() - 60 * 864e5) || (ult === 'techook' && RE_TECHOOK_95.test(txtU));
         const conTecho = !!(R && R.techo) || t95;
-        let que; if (conTecho) { que = 'QUEDA: tiene línea de techo'; tot.queda++; } else if (sinLinB) { que = `MIRAR: ${sinLinB}`; tot.mirar++; } else if (rs == null) { que = 'MIRAR: no pude leer sus ventas o su línea de tiempo'; tot.mirar++; } else if (infB.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { que = `💰 PUNTO: vende ${rs.toFixed(1)}/semana en ${infB.diasSt} días con stock, no busca techo (4a)`; tot.punto++; } else { const obj = Math.ceil((P * 1.3 + 10) / 100) * 100 - 10; que = `📈 BUSCAR TECHO: vende ${rs.toFixed(1)}/semana${infB.diasSt < TECHO_RITMO_MIN_DIAS_ST ? ` (sólo ${infB.diasSt} días con stock: no alcanza para decir que es lenta)` : ''} y no tiene techo → ${f$(obj)} (+30%)`; tot.techo++; }
+        let que; if (conTecho) { que = 'QUEDA: tiene línea de techo'; tot.queda++; } else if (sinLinB) { que = `MIRAR: ${sinLinB}`; tot.mirar++; } else if (rs == null) { que = 'MIRAR: no pude leer sus ventas o su línea de tiempo'; tot.mirar++; } else if (infB.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { que = `💰 PUNTO: vende ${rs.toFixed(1)}/semana en ${infB.diasSt} días con stock, no busca techo (4a)`; tot.punto++; } else { const obj = Math.ceil((P * TECHO_SUBA + 10) / 100) * 100 - 10; que = `📈 BUSCAR TECHO: vende ${rs.toFixed(1)}/semana${infB.diasSt < TECHO_RITMO_MIN_DIAS_ST ? ` (sólo ${infB.diasSt} días con stock: no alcanza para decir que es lenta)` : ''} y no tiene techo → ${f$(obj)} (+50%, revisión etapa 5 01/11: antes +30% y decido lo rechazaba)`; tot.techo++; }
         console.log(`${m} · ${e.cuenta || '?'} · ${String(e.title || '?').slice(0, 40)} · hoy ${f$(P)} · 🏷 ${ult || '—'} · ${rs == null ? '?' : rs.toFixed(1)}/sem (7 d ${r7 == null ? '?' : r7.toFixed(1)} · 30 d ${r30 == null ? '?' : r30.toFixed(1)}) · techo ${R && R.techo ? f$(R.techo.p) : t95 ? '🏔️' : 'no'} · 💰 ${R && R.best ? f$(R.best.p) : '—'}${cu > 0 ? '' : ' · ⚠️ sin costo'}\n   → ${que}`);
       }
       console.log(`\n${mlas.length} miradas: ${tot.queda} quedan (con techo) · ${tot.punto} a 💰 punto (lentas) · ${tot.techo} a buscar techo · ${tot.mirar} para mirar`);
@@ -49821,7 +49826,7 @@ async function main() {
         }
         const ok = (R.techo && R.techo.por30 && !falta) || (seg != null && R.techo && seg >= (R.techo.umb || 0.95));
         const umbT = R.techo ? R.techo.umb : null, EP = R.enPrueba;
-        const epTxt = !R.techo && EP ? ` · 📈 prueba a ${$(EP.p)}: ${EP.u} vendidas en ${EP.dias} días medibles · ${(EP.seg * 100).toFixed(0)}% seguro de que es techo (decide con ${Math.round(EP.umb * 100)}%; baja hasta 70% a los 21 días)` : '';
+        const epTxt = !R.techo && EP ? ` · 📈 prueba a ${$(EP.p)}: ${EP.u} vendidas en ${EP.dias} días medibles · ${(EP.seg * 100).toFixed(0)}% seguro de que es techo (decide con ${Math.round(EP.umb * 100)}%; baja hasta 70% el día 44)` : '';
         console.log(`${ok ? '🏔️ SEGURO' : '📈 VOLVER A BUSCAR'} · ${mla} · ${nom} · techo ${$(P0)}${seg != null ? ' · ' + (seg * 100).toFixed(1) + '% seguro' + (umbT ? ' (decidido con ' + Math.round(umbT * 100) + '%)' : '') : ''}${txt ? ' · ' + txt : ''}${falta ? ' · ' + falta : ''}${epTxt}`);
         res.push({ mla, ok, seg, umb: umbT, txt, falta, P0, pH, hasta: hastaT, tHoy: (ultT(mla) || {}).t || '', ep: EP });
         if (BUSCANDO) {

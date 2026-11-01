@@ -65,8 +65,8 @@ está en su ficha): no se rehace el análisis de la venta vieja.
    tienen una retención chica (0,5-2%): sólo es motivo si explica la diferencia. "Dejó lo normal para su precio" = el problema es el
    PRECIO de hoy, no la venta.
 2. **PRIMERO, LA LÍNEA DE TECHO (🔒, regla suya del 21/10, manda sobre todo lo demás).** ¿Tiene 🔴 techo al 95% (rayas) o 🏔️ de
-   `techo95` (últimos 60 días)? **Si NO: la decisión es 📈 buscar techo (subir con salto grande)**, salvo sobra, sin reposición,
-   liquidando, remate, escasez o **lo que vende menos de 1 por semana** (4a/37a: no sube, queda 💰 punto, salvo llevarlo al 35% o 🔥/⏳ con stock para menos de 100 días). "Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan.
+   `techo95` (últimos 60 días)? **Si NO: la decisión es 📈 buscar techo (subir con salto grande)**, salvo sobra,
+   liquidando, remate o **lo que vende menos de 1 por semana** (🔥 escasez y ⏳ sin reposición SIN techo medido también suben +50% si vendieron: 1a del 28/10, el Espejo 4") (4a/37a: no sube, queda 💰 punto, salvo llevarlo al 35% o 🔥/⏳ con stock para menos de 100 días). "Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan.
 3. **Escasez / sobra / stock / reposición.** Días de stock en Full al ritmo CON stock; ¿se corta antes de que vuelva a haber?
    (caja despachada ~8 d · oficina ~10 d · Paraguay ~16-17 d · Bs As ~1 semana + caja · sin reposición = sin fecha). ¿Le sobra
    (+90 d)? ¿Paga o va a pagar stock antiguo (120 d lo chico, 60 lo grande/Tenders)? ¿Hay unidades en la oficina para mandar?
@@ -120,7 +120,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   al toque, es DEMANDA: el precio estaba barato.
 
 ### Techo (📈 → 🏔️)
-- **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba. Afuera: escasez,
+- **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba. Afuera (🔥/⏳ sin techo medido NO quedan afuera: si vendieron, +50%, 1a del 28/10):
   sobra (+90 d), lo que vende menos de 1 por semana (queda 💰 punto), liquidando, mis promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
 - 🔒 **Salto grande, nunca de a poco:** **+50% cada vez que vende** (27/10 a la noche; antes +30%). `decido` frena una suba `#techo` de menos de +50%, salvo
   frenar en $32.990 por la barrera, el techo de $650.000, o `!chico` con "EXCEPCIÓN: …" (un techo ya visto).
@@ -173,7 +173,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 - 🔒 **F12 · 🌸 perfumes nunca abajo del 10%** (26/10), salvo los 15 días antes del stock antiguo: ahí hasta el 0% (27/10, él:
   *"perfumes hasta 0%"*). 🔐 `!bajocero`.
 - 🔒 **F13 · abajo del 35% sólo con la unidad más vieja en Full de 90+ días** (27/10, él con el Paulvic Hot): antes ni la sobra ni
-  `!piso` lo abren (sí los 15 días antes del stock antiguo); a los 90 días se abre hasta el 0%. 🔐 `!bajocero`.
+  `!piso` lo abren (sí los 15 días antes del stock antiguo y la liquidación de 30 días sin vender, `liq30`, 29/10); a los 90 días se abre hasta el 0%. 🔐 `!bajocero`.
 - 🔒 **F14 · lo que vendió a su precio no se baja** (27/10 a la noche, él: *"primero buscar techo, segundo buscar 1 venta y quedarse ahí…
   normalmente siempre conviene mantener el precio más caro posible… 100 productos con pocas unidades que venden poco y ganan muchísimo"*):
   una venta (ésta, su gemela o las de su stock) desde el último cambio del precio que ve el comprador, en 30 días, frena toda baja y
@@ -253,6 +253,15 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 - **Él no toca precios ni promos**: lo que diga él para un producto manda (fila 1) y el 🧠 dice que vino de él.
 
 ---------------------------------------------------------------------------------------------------------------------------
+### Reglas del 29-30/10 que el ayudante tiene que saber (revisión etapa 5, 01/11/2026)
+- 🔒 **Vende cualquier forma de venta = vale para todas** (30/10, él con el Aer Jasmín): si vendió la gemela de envío gratis arriba de $33.000, el +50% va sobre ESE precio y la Clásica cruza la barrera (`!vendio!cruza`, o `!cruza` en 🔥/⏳).
+- 🧠 **Las formas de venta siguen al % más alto en las subas** y **bajan todas juntas** en las bajas a propósito (3a del 30/10).
+- 🧠 **La venta con cupón o plata de ML cuenta a NUESTRO precio** (15b del 29/10): no es "vendió más barato".
+- 🧠 **Aunque le sobre stock, la que vendió sin techo sube igual** (2b del 28/10).
+- 🧠 **Vender menos por las subas es a propósito** (29/10): la caída de unidades después de subir no es motivo para bajar.
+- 🔒 **30 días sin vender con stock = se liquida** (29/10, `liq30`): un escalón (≤15%) por semana, motivo "30 días sin vender" con `#liquidando`; abre F13.
+- 🧠 **⏰ pagando stock y 📉 liquidando se ven por el motivo** (30/10): el motivo de una baja por stock antiguo dice "stock antiguo".
+
 ## 5 · LOS COMANDOS (sintaxis real del código)
 
 Todos: **sin `;go` = PRUEBA** (muestra qué haría, no toca nada). Varios en uno se separan con `;` y el `;go` va al final. Los que
@@ -431,6 +440,8 @@ lleva y qué falta) (27/10, él con los Paulvic a $21.990: *"dame el % de seguri
   volver a comprarlo. Dar las dos cuentas (costo de hoy y de reponer) y el precio del 35% repuesto.
 - **Paulvic Hot (27/10):** se pidió bajarlo al 20% con menos de 90 días en Full. Abajo del 35% sólo con la unidad más vieja de 90+ días
   (F13); antes, ni la sobra ni `!piso`.
+- **Espejo 4" (28/10):** 🔥 escasez que vendió sin techo medido y no se subió. Él: *"¿por qué no lo subió? no tiene techo conocido aún"*. 🔥/⏳ sin techo que vende también sube +50%.
+- **Aer Jasmín (30/10):** vendió la gemela de envío gratis arriba de $33.000 y la Clásica no se movió. Él: *"no importa quién venda, si no tiene techo tiene que seguir buscando"*. La venta de cualquier forma de venta vale para todas (`!vendio!cruza`).
 
 ---------------------------------------------------------------------------------------------------------------------------
 ## 8 · PRIVACIDAD
