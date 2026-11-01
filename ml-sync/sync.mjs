@@ -31061,9 +31061,9 @@ async function main() {
         let est = 'nuevo';
         // 31/10/2026: lo que entró con el más parecido (`ap`) no pasa el match exacto a propósito: sin esto se volvía a buscar en CADA corrida
         // (999 de 3.000 consultas por corrida) y la cola no avanzaba.
-        if (mismoN && c0.cat) est = (c0.ap || !tiendaMismoProducto(e.n, c0.mn || '')) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
+        if (mismoN && c0.cat) est = (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap || !tiendaMismoProducto(e.n, c0.mn || ''))) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
         // 01/11/2026: un PERFUME buscado antes del control estricto (`pv`) se vuelve a buscar, ahora exigiendo `tiendaPerfumeSeguro`.
-        if (mismoN && RE_TIENDA_PERF.test(e.n) && !(Number(c0.pv) >= 2)) est = 'nuevo';
+        if (mismoN && RE_TIENDA_PERF.test(e.n) && !(Number(c0.pv) >= 3)) est = 'nuevo';
         else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
         cola3.push({ cod, e, usd, est, c0, marca: TIENDA_MARCAS.test(e.n) ? 0 : 1 });
       }
@@ -31082,7 +31082,7 @@ async function main() {
       // Busca SU catálogo en ML. Devuelve lo que se guarda, o tira error si ML no contestó.
       const buscar = async (cod, e, prev) => {
         const esPerf = RE_TIENDA_PERF.test(e.n), okPerf = (nom) => !esPerf || tiendaPerfumeSeguro(e.n, nom);
-        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 2 } : {}) };
+        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 3 } : {}) };
         const aceptar = async (p, nombre) => {
           let fotos = fotosDe(p.pictures), mp = precioBB(p);
           if ((!fotos.length || !mp) && !p._leido && hayCupo()) { let p2 = null; try { p2 = await mlGetT('/products/' + p.id); } catch { p2 = null; } if (p2) { if (!fotos.length) fotos = fotosDe(p2.pictures); mp = mp || precioBB(p2); } }
@@ -31094,13 +31094,13 @@ async function main() {
         // a) lo encontrado que venció: se relee ESE catálogo (una llamada) y, si sigue activo y pasa el match, se renueva
         if (prev && prev.cat && hayCupo()) {
           const p = await leer404('/products/' + prev.cat);   // un catálogo que ML borró se busca de nuevo
-          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name) && okPerf(p.name)) { p._leido = 1; if (!(await aceptar(p, p.name))) { nv.renovados++; return r; } }
+          if (p && p.id && (!p.status || p.status === 'active') && (esPerf ? okPerf(p.name) : !tiendaMismoProducto(e.n, p.name))) { p._leido = 1; if (!(await aceptar(p, p.name))) { nv.renovados++; return r; } }
         }
         let motivo = null, parecido = '', parecidoCat = '';
         // b) el catálogo que ya eligió la medición de cada noche, si pasa el match (con el nombre que da ML hoy)
         if (e.mi && e.mt && !tiendaMismoProducto(e.n, e.mt) && hayCupo()) {
           const p = await leer404('/products/' + e.mi);
-          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name) && okPerf(p.name)) { p._leido = 1; const m = await aceptar(p, p.name); if (!m) return r; motivo = m; }
+          if (p && p.id && (!p.status || p.status === 'active') && (esPerf ? okPerf(p.name) : !tiendaMismoProducto(e.n, p.name))) { p._leido = 1; const m = await aceptar(p, p.name); if (!m) return r; motivo = m; }
         }
         // c) si no, una búsqueda con el nombre traducido: de los que pasan el match, el MÁS PARECIDO (no el primero)
         if (!hayCupo()) return 'sincupo';
@@ -31110,7 +31110,7 @@ async function main() {
         const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
         const res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
         const buenos = [];
-        for (const x of res) { const m = tiendaMismoProducto(e.n, x.name) || (okPerf(x.name) ? '' : 'otro perfume (marca, línea, tipo o tamaño)'); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
+        for (const x of res) { const m = esPerf ? (okPerf(x.name) ? '' : 'otro perfume (marca, línea, tipo o tamaño)') : tiendaMismoProducto(e.n, x.name); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
         buenos.sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name) || String(a.name || '').length - String(b.name || '').length);   // empatados: el nombre más limpio
         for (const x of buenos) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) return r; motivo = motivo || m; }
         // 31/10/2026 (él: "nunca nada de Nissei; si tiene catálogo carga eso, si no comparalo con MercadoLibre y poné siempre foto y nombre de
@@ -31128,7 +31128,7 @@ async function main() {
         let r = null;
         // Sin cupo o con ML fallando, lo guardado que pasa el match de hoy sigue aunque haya vencido (que no se caiga una noche); lo
         // "no es el mismo" queda como estaba.
-        const deMemoria = () => { if (est === 'vencido' && c0.cat && (c0.ap || !tiendaMismoProducto(e.n, c0.mn || ''))) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
+        const deMemoria = () => { if (est === 'vencido' && c0.cat && (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap || !tiendaMismoProducto(e.n, c0.mn || '')))) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
         if (est === 'ok' || est === 'no') {
           r = c0; nv.cache++;
           // Lo encontrado antes del freno de precio no tiene el precio de ML: se pide una vez (una llamada) para poder compararlo.
