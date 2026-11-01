@@ -124,7 +124,7 @@ header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bot
 }
 .barra.si { transform: none; }
 .barra .wrap { display: flex; align-items: center; gap: 12px; padding: 0; }
-.barra .tot { flex: 1; min-width: 0; }
+.barra .tot { cursor: pointer;  flex: 1; min-width: 0; }
 .barra .tot b { font-size: 18px; display: block; font-variant-numeric: tabular-nums; }
 .barra .tot small { color: var(--ink2); }
 .btn { height: 46px; border-radius: 12px; border: 0; background: var(--acc); color: var(--acc-ink); font-weight: 700; padding: 0 18px; white-space: nowrap; }
@@ -208,8 +208,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 
 <div class="barra" id="barra">
   <div class="wrap">
-    <div class="tot"><b id="barraTot">$0</b><small id="barraN">0 productos</small></div>
-    <button class="btn" id="verPedido" type="button">Ver pedido</button>
+    <div class="tot" id="barraTot0" role="button" tabindex="0"><b id="barraTot">$0</b><small id="barraN">0 productos</small></div>
+    <button class="btn" id="verPedido" type="button">Ver o cambiar</button>
   </div>
 </div>
 
@@ -276,7 +276,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function cantHtml(id) {
     var q = pedido[id] || 0;
     if (!q) return '<button class="agregar" type="button" data-mas="' + id + '">Agregar</button>';
-    return '<div class="cant"><button type="button" data-menos="' + id + '" aria-label="Uno menos">−</button><span>' + q + '</span><button type="button" data-mas="' + id + '" aria-label="Uno más">+</button></div>';
+    return '<div class="cant"><button type="button" data-menos="' + id + '" aria-label="' + (q === 1 ? 'Sacar del pedido' : 'Uno menos') + '">' + (q === 1 ? '🗑' : '−') + '</button><span>' + q + '</span><button type="button" data-mas="' + id + '" aria-label="Uno más">+</button></div>';
   }
 
   var foto = function (u, t) { return String(u).replace(/-F\.jpg$/, t); };
@@ -405,14 +405,14 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var ls = lineasPedido(), n = ls.reduce(function (s, l) { return s + l.q; }, 0);
     $("barra").classList.toggle("si", n > 0);
     $("barraTot").textContent = pesos(total(ls));
-    $("barraN").textContent = n + (n === 1 ? " producto" : " productos");
+    $("barraN").textContent = n + (n === 1 ? " producto" : " productos") + " · tocá para cambiar";
   }
 
   function pintarPedido() {
     var ls = lineasPedido();
     $("lineas").innerHTML = ls.length ? ls.map(function (l) {
       return '<div class="lin"><img src="' + esc(l.p.f[0]) + '" alt="" referrerpolicy="no-referrer"><div class="t">' + esc(l.p.n) + "<small>" + (l.p.cp ? "consultar precio" : pesos(l.p.p) + (l.q > 1 ? " c/u · " + pesos(l.p.p * l.q) : "")) + "</small></div>" +
-        '<div class="c"><button type="button" data-menos="' + l.p.id + '" aria-label="Uno menos">−</button><span>' + l.q + '</span><button type="button" data-mas="' + l.p.id + '" aria-label="Uno más">+</button></div></div>';
+        '<div class="c"><button type="button" data-menos="' + l.p.id + '" aria-label="' + (l.q === 1 ? 'Sacar del pedido' : 'Uno menos') + '">' + (l.q === 1 ? '🗑' : '−') + '</button><span>' + l.q + '</span><button type="button" data-mas="' + l.p.id + '" aria-label="Uno más">+</button></div></div>';
     }).join("") : '<div class="vacio">Todavía no elegiste nada.</div>';
     $("pedTot").textContent = pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + a consultar" : "");
     $("pedCuo").textContent = total(ls) > 0 ? "o 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)) : "";
@@ -492,6 +492,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   conAtras($("dlgVer")); conAtras($("dlgPedido"));
   window.addEventListener("popstate", function () { ["dlgVer", "dlgPedido"].forEach(function (id) { if ($(id).open) cerrar($(id)); }); });
   $("verPedido").onclick = function () { pintarPedido(); abrir($("dlgPedido")); };
+  $("barraTot0").onclick = $("verPedido").onclick;
+  $("barraTot0").onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("verPedido").onclick(); } };
   $("vaciar").onclick = function () {
     if (!lineasPedido().length || !confirm("¿Vaciar el pedido?")) return;
     pedido = {}; guardar("cycT_pedido", pedido); pintar(); pintarPedido(); actualizarBarra();
