@@ -32,7 +32,8 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
       <div style="width:900px;margin-top:50px;font-size:52px;font-weight:700;line-height:1.2;text-align:center;max-height:190px;overflow:hidden">${esc(p.n)}</div>
       <div style="margin-top:36px;font-size:120px;font-weight:900">${pesos(p.p)}</div>
       <div style="font-size:46px;opacity:.9">En Mercado Libre <s>${pesos(p.ml)}</s></div>
-      <div style="margin-top:auto;margin-bottom:110px;background:#fff;color:#d9480f;border-radius:999px;padding:24px 50px;font-size:44px;font-weight:800">Pedilo en la Tienda · cód. ${esc(p.id)}</div>
+      <div style="margin-top:auto;margin-bottom:70px;text-align:center"><div style="background:#fff;color:#d9480f;border-radius:999px;padding:24px 50px;font-size:50px;font-weight:900">👉 tiendacyc.github.io</div>
+        <div style="margin-top:22px;font-size:38px;opacity:.95">Tocá el link del estado · hay miles de productos más</div></div>
       </body></html>`, { waitUntil: 'load' });
     await pg.waitForTimeout(800);
     const arch = path.join(OUT, `estado_${hoy}_${i + 1}.png`); await pg.screenshot({ path: arch });
