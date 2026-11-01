@@ -4396,3 +4396,10 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   falla: con el celu derecho se gira el gráfico con CSS (`#chart-fs.rot`, `_fsRotar`), se le da la medida a mano (`_fsResize`, Chart.js la medía al
   revés) y el plugin `fsRot` pasa el dedo al gráfico girado (el cartelito sale donde tocás). Probado en 390×844: gira, llena la pantalla, tocar el
   medio da el día 15 de 30, al cerrar vuelve como estaba. Qué chequear: en el iPhone de él, que se lea bien y que el ✕ Cerrar se alcance.
+
+- **(01/11) Etapa 3 · Tienda — lo que ML no tiene entra con la foto de Nissei y el nombre en castellano** (él: *"los productos que ML no tiene tienen
+  que aparecer también. Sólo que con foto de Nissei y nombre en español siempre. Pero antes fijarse si está en catálogo de ML"*). En la tienda, todo
+  código de Nissei sin un catálogo de ML que sea seguro el mismo entra con `e.f` (su foto) y `tiendaNombreProv` (traducido; arregla 5G→"5 g" y suma
+  memória/colônia/acessórios/creme/cartão/maquiagem/batom); clave `PY_<código>`, sin precio de ML (no hay "más barato que ML"). Si queda una palabra
+  en portugués (`TIENDA_PORTUGUES`) o no tiene foto, afuera con su motivo. Qué chequear: cuántos entran así, que las fotos de Nissei se vean en la
+  página y que el control diario no encuentre nombres en portugués.

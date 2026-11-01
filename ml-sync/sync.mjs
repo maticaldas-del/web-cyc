@@ -12752,8 +12752,11 @@ function tiendaMedidaFalta(a, b) {
   return '';
 }
 // El nombre del proveedor para la tienda (31/10/2026): traducido, medidas en minúscula con espacio ("3 KG" → "3 kg"), primera en mayúscula.
+// Palabras que delatan que el nombre quedó en portugués (01/11/2026: lo que entra con el nombre del proveedor tiene que estar en castellano).
+const TIENDA_PORTUGUES = /\b(preto|preta|branco|branca|cinza|vermelh[oa]|amarel[oa]|roxo|roxa|dourad[oa]|prateado|feminino|feminina|masculino|masculina|unissex|sem fio|fone|ouvido|rel[oó]gio|caixa de som|carregador|cabo|suporte|pel[ií]cula|capa|bolsa|garrafa|copo|tamanho|jogo|controle|teclado sem|mouse sem|com|para o|para a|da|do|das|dos|n[aã]o|cor|conjunto|aparelho|escova|secador|chapinha|barbeador|aspirador|panela|liquidificador|cafeteira|ventilador|l[aâ]mpada|tomada|pilha|bateria recarreg[aá]vel|colônia|acessórios?|memória|creme|cart[aã]o|lente de contato|maquiagem|batom|sombra de olhos)\b/i;
 function tiendaNombreProv(nn) {
-  let t = traducirPyNombre(nn).replace(/(\d)\s*(KG|ML|GB|TB|G|L)\b/g, (m0, d, u) => d + ' ' + (u === 'GB' || u === 'TB' ? u : u.toLowerCase()));
+  let t = traducirPyNombre(nn).replace(/(\d+)\s*(KG|ML|GB|TB|G|L)\b/g, (m0, d, u) => (u === 'G' && /^[2-6]$/.test(d) ? m0 : d + ' ' + (u === 'GB' || u === 'TB' ? u : u.toLowerCase())));   // 5G/4G (la red) no son gramos
+  for (const [re, r] of [[/\bmem[oó]ria\b/gi, 'memoria'], [/\bcol[oô]nia\b/gi, 'colonia'], [/\bacess[oó]rios\b/gi, 'accesorios'], [/\bacess[oó]rio\b/gi, 'accesorio'], [/\bcreme\b/gi, 'crema'], [/\bcart[aã]o\b/gi, 'tarjeta'], [/\bmaquiagem\b/gi, 'maquillaje'], [/\bbatom\b/gi, 'labial']]) t = t.replace(re, r);
   t = t.replace(/\s+/g, ' ').trim();
   return t ? t[0].toUpperCase() + t.slice(1) : '';
 }
@@ -31174,7 +31177,18 @@ async function main() {
           if (r && r !== 'sincupo') await anotar(cod, r);
           else { const sinCupo = r === 'sincupo'; r = deMemoria(); if (!r) { if (sinCupo) nv.quedan++; else nvNo('ML no contestó (se reintenta la próxima)'); continue; } }
         }
-        if (!r.cat) { nvNo(String(r.no || 'sin catálogo en ML').replace(/ \(.*$/, '')); continue; }
+        // 🇵🇾 SIN EL MISMO EN ML (01/11/2026, él: "los productos que ML no tiene tienen que aparecer también. Sólo que con foto de Nissei y
+        // nombre en español siempre. Pero antes fijarse si está en catálogo de ML para sacar datos de ahí"): primero se busca en ML (arriba);
+        // si no hay uno que sea seguro el mismo, entra con la FOTO DEL PROVEEDOR y su nombre TRADUCIDO (nunca la foto ni el nombre de otro
+        // producto). Sin foto del proveedor o con el nombre todavía en portugués, afuera.
+        if (!r.cat) {
+          const nt = tiendaNombreProv(e.n), foto = String(e.f || '').trim();
+          const motivoNo = String(r.no || 'sin catálogo en ML').replace(/ \(.*$/, '');
+          if (!/^https?:\/\//.test(foto)) { nvNo(motivoNo + ' y sin foto del proveedor'); continue; }
+          if (!nt || TIENDA_PORTUGUES.test(nt)) { nvNo(motivoNo + ' y el nombre del proveedor no se pudo pasar al castellano'); continue; }
+          meter({ key: 'PY_' + cod, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: nt, fotos: [foto], mpRef: null, nuevo: 1, prov: 1 });
+          nv.prov = (nv.prov || 0) + 1; nv.entra++; continue;
+        }
         const mpRef = String(r.cat) === String(e.mi || '').toUpperCase() && Number(e.mp) > 0 ? Math.round(Number(e.mp)) : (Number(r.mp) || null);
         meter({ key: r.cat, cat: r.cat, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: r.mn, fotos: r.f, mpRef, nuevo: 1, ...(r.ap ? { ap: 1 } : {}) });
         if (r.ap) nv.aprox = (nv.aprox || 0) + 1;
