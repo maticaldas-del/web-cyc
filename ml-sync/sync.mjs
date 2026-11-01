@@ -95,7 +95,7 @@ if (process.env.BILLING_PROBE) {
 const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -37744,6 +37744,53 @@ async function main() {
     // 1.6m, sacar los 1m que debía y poner los 600.000 en dólares mati"). Sólo `dolares_mati`, `dolares_tito`, `deuda_cyc` (lo que CYC les debe; en el
     // Arqueo están en DÓLARES): los pesos se pasan al dólar de hoy (`finanzas/tipo_cambio`). + = CYC les debe más. El total no se imprime (registro
     // público): sólo cuánto se sumó y si se releyó. Sin ;go sólo muestra.
+    // BILLING_PROBE=retiroauto[:<AAAA_MM>=<pesos>|<nota>][;go] · EL RETIRO DEL MES SE CARGA SOLO EL DÍA 1 (01/11/2026, él: "siempre el día 1 que se
+    // carguen automáticamente lo que dice que hay que cobrar según el cierre del mes anterior"). Corre cada mañana en ml-daily: si el mes de hoy no
+    // tiene su retiro congelado (`cyc/retiro_congelado/<mes>`), lo calcula con la MISMA cuenta que la web (`_cobroCrec` + `_retiroCalc`): 2 × el
+    // cobro del cierre anterior (lo que creció + lo ya retirado − `cobro_corr`, ÷ 3, redondo de a $100.000 para abajo) + lo que quedó corto/de más
+    // el mes pasado; lo congela, lo escribe en `cyc/retiro_mes/<mes>` y avisa a Mati. Ya congelado no se toca. `:<mes>=<pesos>|<nota>;go` lo fija a
+    // mano (cuando un congelado salió mal; queda la nota).
+    if (/^retiroauto(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('retiroauto'.length).replace(/^:/, ''); const GOr = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
+      const DESDE = '2026_10';
+      const prevYM = (ym) => { const [y, m] = ym.split('_').map(Number); return m === 1 ? (y - 1) + '_12' : y + '_' + String(m - 1).padStart(2, '0'); };
+      const curYM = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
+      const [snaps, retM, corrA, cong] = await Promise.all([db.get('cyc/snapshots'), db.get('cyc/retiro_mes'), db.get('cyc/cobro_corr'), db.get('cyc/retiro_congelado')].map((p) => p.then((x) => x || {})));
+      const congV = (ym) => { const z = cong[ym]; return z && z.v != null && isFinite(Number(z.v)) ? Math.round(Number(z.v)) : null; };
+      const retiroMesVal = (ym) => { const au = retiroAuto(ym); if (au != null) return au; const r = retM[ym]; return r != null && r !== '' ? Math.round(Number(r) || 0) : null; };
+      function cobroCrec(ym) { const B = snaps[ym], A = snaps[prevYM(ym)]; if (!B || !A || B.total == null || A.total == null) return null;
+        const tc = parseFloat(B.tipoCambio) || 0; if (!tc) return null; const crecio = Math.round((Number(B.total) - Number(A.total)) * tc);
+        const retiro = retiroMesVal(ym); if (retiro == null) return null; const corr = Number((corrA[ym] || {}).ars) || 0; const base = crecio + retiro - corr;
+        return { crecio, retiro, corr, base, porSocio: base > 0 ? Math.floor(base / 3 / 100000) * 100000 : 0 }; }
+      function retiroCalc(ym, prof = 0) { if (prof > 24) return null; const pr = prevYM(ym); if (pr < DESDE) return null; const c = cobroCrec(pr); if (!c) return null;
+        let v = 2 * c.porSocio; const fz = congV(pr); if (fz != null) { const cp = retiroCalc(pr, prof + 1); if (cp != null) v += cp - fz; } return Math.max(0, v); }
+      function retiroAuto(ym) { if (prevYM(ym) < DESDE) return null; const fz = congV(ym); return fz != null ? fz : retiroCalc(ym); }
+      // `retiroauto:cobro:<mes>:<mati|tito>|<nota>;go` = el ✅ "Ya lo cobró" de Gastos, por comando (él lo dice en el chat).
+      const mCob = body.match(/^cobro:(\d{4}_\d{2}):(mati|tito)\|(.+)$/i);
+      if (mCob) { const ymC = mCob[1], q = mCob[2].toLowerCase(), vC = retiroAuto(ymC); if (vC == null) { console.log('❌ ese mes no tiene retiro calculado'); return; }
+        const obj = { ts: Date.now(), v: Math.round(vC / 2), nota: String(mCob[3]).slice(0, 120), quien: 'robot' };
+        console.log(`=== ✅ retiro de ${q} en ${ymC.replace('_', '/')}: ${money(obj.v)} cobrado ${GOr ? '· APLICANDO' : '· PRUEBA'} ===`); if (!GOr) return;
+        await db.set(`cyc/retiro_cobrado/${ymC}/${q}`, obj); const rr = await db.get(`cyc/retiro_cobrado/${ymC}/${q}`); console.log(rr && rr.ts === obj.ts ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer'); return; }
+      const mFix = body.match(/^(\d{4}_\d{2})=([\d.,]+)\|(.+)$/);
+      if (body && !mFix) { console.log('❌ Usá: retiroauto[;go] o retiroauto:<AAAA_MM>=<pesos>|<nota>;go'); return; }
+      const ym = mFix ? mFix[1] : curYM;
+      const calc = retiroCalc(ym), fz = congV(ym), c = cobroCrec(prevYM(ym));
+      console.log(`=== 💸 RETIRO DE ${ym.replace('_', '/')} ${GOr ? '· APLICANDO' : '· PRUEBA'} ===`);
+      if (c) console.log(`  cierre de ${prevYM(ym).replace('_', '/')}: creció ${money(c.crecio)} + ya retirado ${money(c.retiro)} − lo viejo cargado tarde ${money(c.corr)} = ${money(c.base)} ÷ 3 → ${money(c.porSocio)} c/u`);
+      console.log(`  la cuenta da: ${calc == null ? '(sin cierre todavía)' : money(calc) + ' (' + money(Math.round(calc / 2)) + ' c/u)'} · congelado: ${fz == null ? '(nada)' : money(fz)}`);
+      let v = null, nota = '';
+      if (mFix) { v = Math.round(pesosArg(mFix[2])); nota = String(mFix[3]).slice(0, 120); if (!Number.isFinite(v)) { console.log('❌ monto inválido'); return; } }
+      else if (fz != null) { console.log('  ya estaba congelado: no toco nada'); return; }
+      else if (calc == null) { console.log('  todavía no hay cierre del mes anterior: no cargo nada'); return; }
+      else v = calc;
+      if (!GOr) { console.log(`  → con ;go queda ${money(v)}. No se guardó nada.`); return; }
+      await db.set('cyc/retiro_congelado/' + ym, { v, ts: Date.now(), ...(nota ? { nota } : {}), quien: 'robot' });
+      await db.set('cyc/retiro_mes/' + ym, v);
+      const r1 = await db.get('cyc/retiro_congelado/' + ym), r2 = await db.get('cyc/retiro_mes/' + ym);
+      const ok = r1 && Number(r1.v) === v && Number(r2) === v; console.log(ok ? `  ✓ retiro de ${ym.replace('_', '/')} = ${money(v)} guardado y releído` : '  ⚠️ no lo pude releer');
+      if (ok && !mFix) { try { await sendAlerta(`💸 Retiro de ${ym.replace('_', '/')}: ${money(Math.round(v / 2))} cada uno (${money(v)} los dos), según el cierre de ${prevYM(ym).replace('_', '/')}. Está en Gastos: marcá ✅ cuando lo cobren.`, { info: true }); } catch (e) { console.log('  (no pude avisar por Telegram: ' + (e && e.message || e) + ')'); } }
+      return;
+    }
     if (/^finsuma(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).slice('finsuma'.length).replace(/^:/, ''); const GOf = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
       const mF = body.match(/^(dolares_mati|dolares_tito|deuda_cyc)=([+-])([\d.,]+)\|(.+)$/);

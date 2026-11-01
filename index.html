@@ -2610,7 +2610,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2665,6 +2665,7 @@ function startApp(){
     state.puntaje=d.puntaje||{};
     state.retiro_mes=d.retiro_mes||{};
     state.retiro_congelado=d.retiro_congelado||{};
+    state.retiro_cobrado=d.retiro_cobrado||{};   // 01/11/2026: ✅ cobrado de cada socio en Gastos
     state.afip_fact=d.afip_fact||{};   // revisión etapa 4, 30/10/2026: "Facturado real AFIP" de Ajustes se guardaba y nunca se volvía a leer   // 9a del 30/10: el retiro de un mes ya empezado no se mueve
     state.cobro_corr=d.cobro_corr||{};
     state.costocongelado=d.costocongelado||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
@@ -3248,7 +3249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.55';
+const APP_VERSION='28.56';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3261,6 +3262,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.56',f:'01/11/2026',h:'14:00',c:[{n:2,t:'💸 Gastos del mes: el retiro de cada socio es un renglón más (❌ falta cobrar / ✅ Ya lo cobró) y entra en el total del mes. El día 1 el robot lo carga solo según el cierre del mes anterior y avisa.'}]},
   {v:'28.55',f:'01/11',h:'01:10',c:[{n:1,t:'📥 Ver deudas: cada deuda tiene su barra de llenado (verde = lo que ya pagó, gris = lo que falta) y el % pagado.'}]},
   {v:'28.54',f:'31/10',h:'23:40',c:[{n:1,t:'🌸 Inicio: al lado del dólar y de 🛍️ Tienda, nuevo botón 🌸 Perfumería ABEL que abre el catálogo de perfumes de las perfumerías ABEL.'}]},
   {v:'28.53',f:'31/10',h:'05:40',c:[{n:1,t:'🔍 Revisión de Diseño: dibujé cada pantalla en el teléfono y la PC; las propuestas (con fotos) te esperan para decidir. Ajustes: la revisión de la Tienda del 30/10 ya figura como hecha.'}]},
@@ -27583,7 +27585,12 @@ function renderComprasChecklist(){
   const pref=getKey('cmp','mes');
   const ymL=String(pref).substring(0,7);
   const filas=gastosChecklistMes(ymL);
-  const faltan=filas.filter(f=>!f.hay).length;
+  // EL RETIRO ADENTRO DE GASTOS (01/11/2026, él: "el retiro que sea parte de gastos. así no nos olvidamos de cobrarlo"): un renglón por socio con
+  // lo que dice el cobro del cierre anterior (lo carga solo el robot el día 1, `retiroauto`). ✅ cuando lo cobró (`cyc/retiro_cobrado/<mes>/<socio>`).
+  // Sólo se MUESTRA acá: no se guarda como gasto (el Resumen y el Puntaje ya restan el retiro aparte; si fuera gasto se restaría dos veces).
+  const _ret=_retiroAuto(ymL),_rc=(state.retiro_cobrado||{})[ymL]||{};
+  const filasRet=_ret!=null?[['mati','Mati'],['tito','Tito']].map(([q,nm])=>({q,nm,v:Math.round(_ret/2),hay:!!_rc[q],nota:(_rc[q]||{}).nota||''})):[];
+  const faltan=filas.filter(f=>!f.hay).length+filasRet.filter(f=>!f.hay).length;
   const buscar=(g)=>gastos.filter(x=>{
     if(g.cat&&(x.cat||'')!==g.cat)return false;
     const d=norm(x.desc);
@@ -27594,11 +27601,11 @@ function renderComprasChecklist(){
   const col=faltan?'var(--red)':'var(--green)';
   el.innerHTML=`<div style="background:var(--surface);border:1px solid ${faltan?'var(--red)':'var(--border)'};border-radius:var(--r);padding:14px">
     <div style="font-size:.86rem;font-weight:700;color:${col};margin-bottom:10px">
-      ${faltan?`❌ Faltan ${faltan} de ${filas.length}`:`✅ Están los ${filas.length}`}
+      ${faltan?`❌ Faltan ${faltan} de ${filas.length+filasRet.length}`:`✅ Están los ${filas.length+filasRet.length}`}
       <span style="font-weight:400;font-size:.68rem;color:var(--muted)">· lo que no puede cargarse solo</span>
       ${(()=>{/* 21/10/2026, él: "que el total gastado del mes aparezca ahí también": TODOS los gastos cargados del mes (no sólo los de la lista) */
         const gm=getComprasByPrefix(ymL).filter(x=>getCompraTipo(x)==='gasto');const t=gm.reduce((a,x)=>a+(Number(x.monto)||0),0);
-        return `<span style="float:right;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Total del mes <b>${fmt(t)}</b> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}</span></span>`;})()}
+        return `<span style="float:right;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Total del mes <b>${fmt(t+(_ret||0))}</b> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}${_ret!=null?' + el retiro '+fmt(_ret):''}</span></span>`;})()}
     </div>
     ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.noVa?'➖':(f.hay?'✅':(f.parcial?'⚠️':'❌'))}</span>
@@ -27610,12 +27617,27 @@ function renderComprasChecklist(){
                :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
       ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>`}
     </div>`).join('')}
+    ${filasRet.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
+      <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':'❌'}</span>
+      <span style="font-size:.76rem;font-weight:600;min-width:150px;flex:1" title="Lo que dice el 💸 cobro del cierre del mes anterior. Lo carga solo el robot el día 1.">💸 Retiro de ${f.nm}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.76rem;color:${f.hay?'var(--text)':'var(--red)'}">${fmt(f.v)} ${f.hay
+        ?`<span style="font-size:.6rem;color:var(--green)">cobrado${f.nota?' · '+_esc(f.nota):''}</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" onclick="setRetiroCobrado('${ymL}','${f.q}',false)">deshacer</button>`
+        :`<span style="font-size:.6rem">falta cobrar</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px" onclick="setRetiroCobrado('${ymL}','${f.q}',true)">✅ Ya lo cobró</button>`}</span>
+    </div>`).join('')}
     ${faltan?`<div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">
       Lo reconoce por la categoría y por palabras de la descripción. <strong>Si lo cargaste con otro nombre te lo va a marcar en rojo aunque esté</strong> — es preferible una alarma de más que dar por cargado algo que falta.
     </div>`:''}
   </div>`;
 }
 
+async function setRetiroCobrado(ym,q,val){
+  state.retiro_cobrado=state.retiro_cobrado||{};state.retiro_cobrado[ym]=state.retiro_cobrado[ym]||{};
+  const prev=state.retiro_cobrado[ym][q];const v=val?{ts:Date.now(),v:Math.round((_retiroAuto(ym)||0)/2)}:null;
+  if(v)state.retiro_cobrado[ym][q]=v;else delete state.retiro_cobrado[ym][q];
+  try{await fbSet('retiro_cobrado/'+ym+'/'+q,v);}catch(e){if(prev)state.retiro_cobrado[ym][q]=prev;else delete state.retiro_cobrado[ym][q];alert('No se pudo guardar: '+(e&&e.message||e));}
+  await log((val?'Retiro cobrado: ':'Retiro sin cobrar: ')+q+' · '+ym.replace('_','/'));
+  renderComprasChecklist();
+}
 function renderComprasCats(){
   const el=document.getElementById('compras-cats');if(!el)return;
   const items=getComprasByPrefix(getKey('cmp',cmpScopeMode)).filter(x=>getCompraTipo(x)==='gasto');

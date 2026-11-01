@@ -4367,3 +4367,11 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   los 1m que debía y poner los 600.000 en dólares mati"*). Suma pesos (al dólar de hoy) a lo que CYC le debe a un socio, guarda el movimiento en
   `cyc/finsuma/<ts>` y relee; no imprime el total. Primer uso: +$600.000 a Dólares Mati del cobro de noviembre; los $1.000.000 restantes pagaron
   su deuda en Ver deudas (`debenmov`). Qué chequear: Dólares Mati en el Arqueo subió US$ ~385 y la deuda de $1.000.000 quedó en ✅ Pagadas.
+
+- **(01/11) Etapa 2 · Plata — el retiro adentro de Gastos y cargado solo el día 1** (él: *"el retiro que sea parte de gastos. así no nos olvidamos
+  de cobrarlo… siempre el día 1 que se carguen automáticamente lo que dice que hay que cobrar según el cierre del mes anterior"*). Web: en la lista
+  de Gastos del mes, un renglón por socio (💸 Retiro de Mati / de Tito) con ❌ falta cobrar / ✅ Ya lo cobró (`cyc/retiro_cobrado/<mes>/<socio>`,
+  en `CYC_KEYS`) y el total del mes lo suma; NO se guarda como gasto (el Resumen y el Puntaje ya restan el retiro aparte). Robot: `retiroauto;go`
+  en ml-daily cada mañana: si el mes no tiene retiro congelado, lo calcula igual que la web (`_cobroCrec`+`_retiroCalc`), lo congela, lo escribe en
+  `retiro_mes` y avisa al canal privado. `retiroauto:<mes>=<pesos>|<nota>;go` lo fija a mano; `retiroauto:cobro:<mes>:<mati|tito>|<nota>;go` = el ✅.
+  Qué chequear: el 01/12 llega el aviso y Gastos de diciembre muestra los dos renglones con el monto del cobro de noviembre.
