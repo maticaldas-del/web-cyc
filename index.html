@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.61';
+const APP_VERSION='28.62';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.62',f:'01/11/2026',h:'20:00',c:[{n:1,t:'🇵🇾 Nuevos: arriba, ⏳ Para volver a mirar en Nissei, con los códigos de lo que da y se miró hace 2+ días (probados y nuevos). El chat de Chrome los busca cada día en la rutina.'}]},
   {v:'28.61',f:'01/11/2026',h:'19:58',c:[{n:2,t:'🇵🇾 Paraguay: Productos nuevos y probados muestran sólo lo mirado en Nissei hace menos de 2 días. Lo demás queda oculto (nuevos) o en "Falta revisar" (probados) hasta que se vuelva a mirar, y tampoco entra al pedido.'}]},
   {v:'28.60',f:'01/11/2026',h:'19:49',c:[{n:2,t:'🇵🇾 Pedido de Paraguay: lo mirado en Nissei hace más de 3 días ya no entra (ni con la casilla ni con los botones de llenar) hasta que se vuelva a mirar. Cada renglón tiene 🔗 Nissei para abrirlo.'}]},
   {v:'28.59',f:'01/11/2026',h:'14:40',c:[{n:1,t:'📊 Métricas → ⛶ Pantalla completa: el gráfico se pone de costado solo, aunque tengas el celular derecho (y el cartelito sale donde tocás).'}]},
@@ -17735,6 +17736,30 @@ function _pyViejoDe(t){t=Number(t)||0;const d=t?Math.floor((Date.now()-t)/864e5)
 function candVistoTs(c){let t=Math.max(Number(c&&c.visto)||0,Number(c&&c.ts)||0);if(c&&Number(c.renovTs)>0&&Math.abs(t-Number(c.renovTs))<5000)t=Number(c.renovDe)||0;return t;}
 function candViejoPy(c){return c?_pyViejoDe(candVistoTs(c)):null;}
 function pyProbViejo(pr){return pr?_pyViejoDe(pr.nisseiTs):null;}
+// ⏳ PARA VOLVER A MIRAR EN NISSEI (01/11/2026, él: "que el chat de chrome mire nissei todos los días"): lo que da y quedó oculto por
+// viejo (probados que pide Pedidos con ✅ y nuevos que llegan al piso). La rutina diaria del chat abre esta lista y deja `visto:` en el buzón.
+function pyParaMirar(){
+  const out=[],vistos=new Set();
+  for(const ped of (state.pedidos_py||[])){
+    if(!ped||esPedidoPaulvic(ped)||ped.estado==='suficiente')continue;
+    const pr=(state.products||[]).find(x=>x.id===ped.prodId)||prodByName(ped.producto);
+    if(!pr||vistos.has(pr.id)||pr.origen!=='py'||pyProvDe(pr)!==pyProv)continue;vistos.add(pr.id);
+    const vj=pyProbViejo(pr);if(!vj||pyProbVeredicto(ped,{sinFecha:true}).k!=='da')continue;
+    out.push({t:'probado',nom:pr.name,cod:String(pr.codPy||'').trim(),d:vj.d,url:pr.pyLink||''});
+  }
+  for(const c of candList().filter(candEnArmado)){
+    if(candEnPedido(c)||!candViejoPy(c))continue;
+    if(!(c.margen!=null&&Number(c.margen)>=candPisoDe(c)))continue;
+    out.push({t:'nuevo',nom:c.nombre,cod:String(c.cod||'').trim(),d:candViejoPy(c).d,url:c.link||''});
+  }
+  return out;
+}
+function pyParaMirarHTML(){
+  const L=pyParaMirar();if(!L.length)return'';
+  return `<details style="margin:8px 0;background:var(--surface);border:1px solid rgba(245,158,11,.45);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--amber)">⏳ Para volver a mirar en ${pyProvNom()} (${L.length}): dan, pero se miraron hace ${PY_VIEJO_DIAS} días o más ▾</summary>
+    <div style="font-size:.64rem;color:var(--muted);margin:6px 0">No se muestran ni entran al pedido hasta volver a mirarlos. El chat de Chrome los busca en la rutina de cada día (renglón <code>visto:</code> del buzón).</div>
+    ${L.map(x=>`<div style="font-size:.68rem;padding:2px 0">${x.cod?'🔖 '+x.cod:'<span style="color:var(--amber)">sin código</span>'} · ${x.nom} <span style="color:var(--muted)">· ${x.t} · ${x.d==null?'sin fecha':'hace '+x.d+' d'}</span>${/^https:\/\/(www\.)?comprasparaguay\.com\.ar\//.test(x.url)?` · <a href="${String(x.url).replace(/"/g,'%22')}" target="_blank" rel="noopener" style="color:var(--accent2)">🔗 Nissei</a>`:''}</div>`).join('')}</details>`;
+}
 function candPuedePedir(c,o){
   if(!c)return{ok:false,motivo:'no existe'};
   if(c.no)return{ok:false,motivo:'está descartado de la lista'};
@@ -19798,7 +19823,7 @@ function candidatosHTML(){
       ? `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">No queda ninguno para evaluar: ${enPed?`<b>${enPed}</b> está${enPed===1?'':'n'} en el pedido de arriba`:''}${enPed&&enVia?' y ':''}${enVia?`<b>${enVia}</b> ya ${enVia===1?'viaja':'viajan'}`:''}.</div>`
       : `<div class="empty-msg" style="font-size:.68rem;line-height:1.6">Todavía no hay ninguno.<br>
       ${pyProv==='nissei'?'El chat de Paraguay los carga cuando encuentra algo en comprasparaguay <b>que Nissei ofrezca</b>':'Se cargan de la lista de precios de <b>'+pyProvNom()+'</b> que me pasás'} (ahí salen juntos el código, el precio y que hay stock), cueste menos de US$ 250 puesto y no sea de una marca que ML frena.</div>`;
-    return cab(null)+pycatBuscarHTML()+vacio+_vencHTML+pycatNoDanHTML();   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
+    return cab(null)+pyParaMirarHTML()+pycatBuscarHTML()+vacio+_vencHTML+pycatNoDanHTML();   // 15/10: el simulador no se usa, se sacó de la pantalla (la función queda)
   }
   // El que más margen deja, primero. Los que todavía no tienen la cuenta hecha van al final:
   // no se pueden comparar contra los medidos y ponerlos arriba sería invitar a decidir sin número.
@@ -19963,7 +19988,7 @@ function candidatosHTML(){
   const _orden=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px"><span style="font-size:.66rem;color:var(--muted)">Ordenar:</span>${_sel([['combo','⭐ gana mucho y sale mucho'],['pct','% de ganancia'],['salida','🚀 puntaje de salida'],['usd','$ por dólar invertido'],['barato','más barato']],_candOrden,'candOrdenar')}</div>`;
   // 03/10/2026, él: el simulador y el historial "ahí no se usan y molestan": el simulador va al final y el
   // historial de pedidos vive en la pestaña 🧾 Pedido.
-  return cab(_verdes)+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
+  return cab(_verdes)+pyParaMirarHTML()+pycatBuscarHTML()+_orden+_arriba.map(_card).join('')
     +_vencHTML
     +(_sinChequear.length?`<details style="margin-top:12px;background:var(--surface);border:1px solid var(--amber);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.76rem;font-weight:700;color:var(--amber)" title="Dan el % y tienen las ventas, pero nadie confirmó todavía que el producto de ML sea el mismo. Abrí cada uno, mirá las dos fotos y tocá ✅ Es el mismo producto: ahí sube arriba y se puede pedir.">🔍 Dan, pero falta confirmar que es el mismo producto · ${_sinChequear.length}</summary><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${_sinChequear.map(_card).join('')}</div></details>`:'')
     +(()=>{const _fv=_arriba.filter(c=>!c.noML&&candVentasDe(c)==null).length;return (_fv?`<div style="font-size:.64rem;color:var(--muted);margin-top:8px">🛒 ${_fv} de los de arriba pasaron todo y todavía no tienen las vendidas de ML: entran igual, el chat de compras las mira al final (si da menos de ${CAND_MIN_VENTAS}, se van).</div>`:'')

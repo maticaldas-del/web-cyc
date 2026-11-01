@@ -22,7 +22,7 @@ REGLAS QUE NO SE ROMPEN
 - Nunca confirmes una compra, un envío a Full ni un pago: lo confirma Matías.
 
 LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
-- "rutina" (todos los días): cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
+- "rutina" (todos los días): cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei + los de "⏳ Para volver a mirar" (lo que da y se miró hace 2+ días; todos los días, 01/11) → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
 - "arrancá" (cajas): SÓLO cuando Matías lo pide, armar en ML las cajas de Full que el panel marca "MANDALA YA" (cargar Planificación de envíos, sin confirmar).  → CAJAS
 - "PROMPT GUAY" / pasada de los sábados: copiar el catálogo de Nissei de comprasparaguay y los precios de lo que pide el panel.  → GUAY
 - Listas de proveedores: copiar listas de precios y dejarlas medidas.  → LISTAS
