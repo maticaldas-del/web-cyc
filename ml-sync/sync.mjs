@@ -31393,7 +31393,7 @@ async function main() {
           const costoR = x.usd * RECT * tc, pA = lindo(costoR * ABEL_MULT), mlA = x.mlRaw > 0 ? Math.round(x.mlRaw) : (x.mpRef > 0 ? Math.round(x.mpRef) : 0);   // ABEL no da cuotas: contra el precio que se ve en ML
           if (!mlA) abelCuenta.sinML++; else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
           if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
-          else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), c: 'Perfumes' });
+          else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), ...(x.cod ? { k: String(x.cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (01/11, él: el botón de WhatsApp lo manda con el nombre y el código)
         }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
       }
@@ -31472,9 +31472,9 @@ async function main() {
         for (const [id, d] of Object.entries(detPorId)) { baldes[tiendaBalde(id)][id] = d; nd++; }
         let malo = 0; baldes.forEach((b, i) => { const t = JSON.stringify(b); if (prohibido(t.replace(/https:\/\/[^"]+/g, ''))) { malo++; writeFileSync(dir + '/d' + i + '.json', '{}\n'); } else writeFileSync(dir + '/d' + i + '.json', t + '\n'); });
         console.log(`📋 detalles: ${nd} de ${out.length} productos con detalles de ML · ${detLeidos} leídos hoy · faltan ${detQuedan}${malo ? ` · ⚠️ ${malo} archivo(s) vaciados por una palabra que no puede salir` : ''}`); }
-      { // 🌸 ABEL: su propio archivo (abel/productos.json), ordenado por nombre; sin WhatsApp (es sólo catálogo).
+      { // 🌸 ABEL: su propio archivo (abel/productos.json), ordenado por nombre. 01/11/2026 (él: "hoy no tienen forma de comunicarse"): lleva el WhatsApp para consultar cada perfume.
         outAbel.sort((a, b) => a.n.localeCompare(b.n, 'es'));
-        const jA = JSON.stringify({ act: diaAR, productos: outAbel });
+        const waA = String(waRaw || '').replace(/\D/g, ''); const jA = JSON.stringify({ act: diaAR, wa: waA.length >= 8 ? waA : '', productos: outAbel });
         if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
         else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
         else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
