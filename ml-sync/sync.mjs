@@ -30847,6 +30847,11 @@ async function main() {
     // US$ y el precio de la tienda. Sale del mapa fijo `mlapi/tiendaids` (lo arma `tienda;go`: el código de cada producto no cambia nunca).
     // BILLING_PROBE=tiendarevisa[:todo] → SÓLO LEE (01/11/2026). Revisa los perfumes de la tienda (o todo con :todo) contra su nombre del
     // proveedor con `tiendaPerfumeDistinto` y cuenta/lista los que no parecen el mismo.
+    if (/^tiendarevisa:no$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const tm = (await db.get('mlapi/tiendamatch')) || {}; let n = 0, sin = 0; const ej = [];
+      for (const [k, e] of Object.entries(tm)) { if (!e || !e.pv || !e.no) continue; n++; if (!e.mt) { sin++; continue; } if (ej.length < 80) ej.push(`prov: ${String(e.n).slice(0, 70)}  →  ML más parecido: ${String(e.mt).slice(0, 70)}`); }
+      console.log(`=== PERFUMES SIN UN CATÁLOGO SEGURO: ${n} (${sin} sin nada parecido) ===`); for (const t of ej) console.log('  ' + t); return;
+    }
     if (/^tiendarevisa(:todo)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const mapa = (await db.get('mlapi/tiendaids')) || {}; const malos = {}; let n = 0, mal = 0; const ej = [];
       for (const e of Object.values(mapa)) { if (!e || !e.nn || !e.n) continue; if (!/perfum|edp|edt|eau de|parfum|colonia|fragancia/i.test(e.n + ' ' + e.nn)) continue; n++;
