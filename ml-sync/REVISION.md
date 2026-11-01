@@ -4375,3 +4375,11 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   en ml-daily cada mañana: si el mes no tiene retiro congelado, lo calcula igual que la web (`_cobroCrec`+`_retiroCalc`), lo congela, lo escribe en
   `retiro_mes` y avisa al canal privado. `retiroauto:<mes>=<pesos>|<nota>;go` lo fija a mano; `retiroauto:cobro:<mes>:<mati|tito>|<nota>;go` = el ✅.
   Qué chequear: el 01/12 llega el aviso y Gastos de diciembre muestra los dos renglones con el monto del cobro de noviembre.
+
+- **(01/11) Etapa 3 · Tienda y ABEL — control diario: el "más parecido" de ML ya no entra si es otro producto.** Muestra al azar: Tienda 8 de 15 mal
+  (memoria 8 vs 16 GB, Tablet CM88 vs CM528, Superlight 2 vs 2SE, mouse pad y teclado de otra marca, crema de otra marca, Watch Ultra de otro color,
+  Lark M2 Lightning); ABEL 4 de 21 (Dior "Eau Sauvage" por Sauvage, Lacoste genérico por "Lacoste Original", Ferragamo 30 ml sin ml en el proveedor,
+  bruma VS Aqua Kiss Shimmer). Arreglo: `tiendaMismoProducto(…, blando)` para el más parecido y su memoria: sólo perdona palabras de más en ML;
+  marca y modelo del proveedor tienen que estar en ML, y números, color, versión y capacidad iguales (el código entero de modelo, ej. Casio, alcanza).
+  Perfumes: sin ml en el proveedor no entra, "eau <nombre>" tiene que estar en los dos, "original" ya no es palabra vacía, brumas (shimmer,
+  "colônia" de VS/BBW, VS/BBW de 236/250 ml) afuera de ABEL. Qué chequear: el próximo control al azar con 0 mal; cuántos productos quedan.
