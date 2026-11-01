@@ -618,6 +618,8 @@ input.qty:focus{border-color:var(--accent2)}
 #chart-fs .fs-body{flex:1;min-height:0;padding:10px;display:flex}
 #chart-fs .fs-body > div{flex:1;min-width:0;overflow:hidden!important;position:relative}
 #chart-fs .fs-body canvas{min-width:0!important}
+/* 01/11/2026 (él: "abrir pantalla completa en Métricas, quiero que se ponga de costado"): con el celu derecho, el gráfico se acuesta solo. */
+#chart-fs.open.rot{inset:auto;top:0;left:0;transform-origin:top left;transform:rotate(90deg) translateY(-100%)}
 .empty-msg{font-size:.68rem;color:var(--muted);text-align:center;padding:24px;border:1px dashed var(--border2);border-radius:var(--r)}
 
 /* ── VENTAS PAGE ── */
@@ -3249,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.56';
+const APP_VERSION='28.57';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3262,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.57',f:'01/11/2026',h:'14:40',c:[{n:1,t:'📊 Métricas → ⛶ Pantalla completa: el gráfico se pone de costado solo, aunque tengas el celular derecho (y el cartelito sale donde tocás).'}]},
   {v:'28.56',f:'01/11/2026',h:'14:00',c:[{n:2,t:'💸 Gastos del mes: el retiro de cada socio es un renglón más (❌ falta cobrar / ✅ Ya lo cobró) y entra en el total del mes. El día 1 el robot lo carga solo según el cierre del mes anterior y avisa.'}]},
   {v:'28.55',f:'01/11',h:'01:10',c:[{n:1,t:'📥 Ver deudas: cada deuda tiene su barra de llenado (verde = lo que ya pagó, gris = lo que falta) y el % pagado.'}]},
   {v:'28.54',f:'31/10',h:'23:40',c:[{n:1,t:'🌸 Inicio: al lado del dólar y de 🛍️ Tienda, nuevo botón 🌸 Perfumería ABEL que abre el catálogo de perfumes de las perfumerías ABEL.'}]},
@@ -27737,12 +27740,40 @@ function abrirGraficoFS(canvasId){
     chart.options.maintainAspectRatio=false;
     if(chart.canvas){chart.canvas.style.width='';chart.canvas.style.height='';}
   }
-  if(fs.requestFullscreen){fs.requestFullscreen().catch(()=>{});}
+  // De costado: en Android se traba la pantalla acostada (sólo anda en pantalla completa); en iPhone, que no deja, se gira el gráfico.
+  if(fs.requestFullscreen){fs.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock?screen.orientation.lock('landscape'):null).catch(()=>{}).then(()=>setTimeout(_fsRotar,150));}
+  else _fsRotar();
   setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},80);
   setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},400);
 }
+function _fsRotar(){
+  const fs=document.getElementById('chart-fs');if(!fs||!fs.classList.contains('open'))return;
+  const W=window.innerWidth,H=window.innerHeight,rot=H>W;
+  // La pantalla completa del navegador no deja girar nada (le saca el giro): si sigue derecho, se sale de ella y se gira el gráfico.
+  if(rot&&document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().then(()=>setTimeout(_fsRotar,80)).catch(()=>{});return;}
+  fs.classList.toggle('rot',rot);
+  fs.style.width=rot?H+'px':'';fs.style.height=rot?W+'px':'';
+  const h=fs.querySelector('.fs-hint');if(h)h.style.display=rot?'none':'';
+  // Girado, el gráfico mediría su lugar al revés (alto por ancho): se le da la medida a mano y no se mide solo mientras está girado.
+  if(_fsChart){if(rot){if(_fsChart.__resp===undefined)_fsChart.__resp=_fsChart.options.responsive;_fsChart.options.responsive=false;}
+    else if(_fsChart.__resp!==undefined){_fsChart.options.responsive=_fsChart.__resp;delete _fsChart.__resp;}}
+  setTimeout(_fsResize,60);setTimeout(_fsResize,300);
+}
+function _fsResize(){
+  if(!_fsChart)return;const fs=document.getElementById('chart-fs');
+  try{if(fs&&fs.classList.contains('rot')){const w=fs.querySelector('.fs-body > div');_fsChart.resize(w.clientWidth,w.clientHeight);}else _fsChart.resize();}catch(e){}
+}
+// Con el gráfico girado, el dedo cae en otro lugar: se pasa la posición al gráfico acostado (para que el cartelito salga donde tocás).
+try{Chart.register({id:'fsRot',beforeEvent(chart,args){
+  const fs=document.getElementById('chart-fs');if(chart!==_fsChart||!fs||!fs.classList.contains('rot'))return;
+  const ne=args.event&&args.event.native;if(!ne)return;const t=(ne.touches&&ne.touches[0])||(ne.changedTouches&&ne.changedTouches[0])||ne;
+  if(t.clientX==null)return;const r=chart.canvas.getBoundingClientRect();
+  args.event.x=t.clientY-r.top;args.event.y=r.right-t.clientX;
+}});}catch(e){}
 function cerrarGraficoFS(){
   const fs=document.getElementById('chart-fs');
+  fs.classList.remove('rot');fs.style.width='';fs.style.height='';
+  try{if(screen.orientation&&screen.orientation.unlock)screen.orientation.unlock();}catch(e){}
   if(document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(()=>{});}
   fs.classList.remove('open');
   document.body.style.overflow='';
@@ -27753,15 +27784,16 @@ function cerrarGraficoFS(){
   }
   if(_fsChart){
     const c=_fsChart;_fsChart=null;
+    if(c.__resp!==undefined){c.options.responsive=c.__resp;delete c.__resp;}
     c.options.maintainAspectRatio=(c.__mar!==undefined?c.__mar:true);
     if(c.canvas){c.canvas.style.width='';c.canvas.style.height='';}
     setTimeout(()=>{try{c.resize();c.update('none');}catch(e){}},60);
     setTimeout(()=>{try{c.resize();}catch(e){}},350);
   }
 }
-window.addEventListener('resize',()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}});
-document.addEventListener('fullscreenchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},60);});
-window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(()=>{try{_fsChart.resize();}catch(e){}},250);});
+window.addEventListener('resize',()=>{if(_fsChart)_fsRotar();});
+document.addEventListener('fullscreenchange',()=>{if(_fsChart)setTimeout(_fsRotar,60);});
+window.addEventListener('orientationchange',()=>{if(_fsChart)setTimeout(_fsRotar,250);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const fs=document.getElementById('chart-fs');if(fs&&fs.classList.contains('open'))cerrarGraficoFS();}});
 /* La barra de filtros de Métricas queda FIJA en su lugar. Antes se escondía sola al scrolear
    (transform:translateY) y volvía al subir: eso era lo que la hacía "salirse de su casilla". */

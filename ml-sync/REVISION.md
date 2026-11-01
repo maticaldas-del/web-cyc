@@ -4383,3 +4383,9 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   marca y modelo del proveedor tienen que estar en ML, y números, color, versión y capacidad iguales (el código entero de modelo, ej. Casio, alcanza).
   Perfumes: sin ml en el proveedor no entra, "eau <nombre>" tiene que estar en los dos, "original" ya no es palabra vacía, brumas (shimmer,
   "colônia" de VS/BBW, VS/BBW de 236/250 ml) afuera de ABEL. Qué chequear: el próximo control al azar con 0 mal; cuántos productos quedan.
+
+- **(01/11) Etapa 7 · Diseño — ⛶ Pantalla completa de Métricas se pone de costado sola** (él: *"quiero que se ponga de costado. así se ve mejor"*).
+  Android: pantalla completa + traba acostada (`screen.orientation.lock`). iPhone (no deja trabar ni pantalla completa de un elemento) o si la traba
+  falla: con el celu derecho se gira el gráfico con CSS (`#chart-fs.rot`, `_fsRotar`), se le da la medida a mano (`_fsResize`, Chart.js la medía al
+  revés) y el plugin `fsRot` pasa el dedo al gráfico girado (el cartelito sale donde tocás). Probado en 390×844: gira, llena la pantalla, tocar el
+  medio da el día 15 de 30, al cerrar vuelve como estaba. Qué chequear: en el iPhone de él, que se lea bien y que el ✕ Cerrar se alcance.
