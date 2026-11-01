@@ -31208,7 +31208,10 @@ async function main() {
       // 🌸 ABEL (01/11/2026, él: "nunca menos del 30% y nunca arriba de ML… si para llegar al 30% queda arriba de ML, máximo un 10%, si no
       // no se muestra… que diga ABEL"): el catálogo de las Perfumerías Abel = SÓLO perfumes, precio = costo REAL estimado (sin ganancia de
       // CYC) × 1,30; con precio de ML: si pasa 1,10 × ML queda afuera. Mismo código y mismas fotos/detalles que la tienda.
-      const outAbel = []; const abelNo = {};
+      // 01/11/2026 (él, con lo que calculó el chat de la perfumería): costo × 1,65 — la perfumería paga IVA (~28.600 cada 165.000) e Ingresos
+      // Brutos (~5.800): en efectivo le queda ~30%, con tarjeta ~26%. Antes 1,30 (sin contar esos impuestos).
+      const ABEL_MULT = 1.65;
+      const outAbel = []; const abelNo = {}; const abelCuenta = { sinML: 0, abajo: 0, hasta10: 0 };
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
       const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
       for (const { x, n, p, om } of finales) {
@@ -31227,8 +31230,9 @@ async function main() {
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlVer = !cp && !om && !x.ap && x.mpRef > 0 && p <= x.mpRef * 0.95 && p >= x.mpRef * 0.5 ? Math.round(x.mpRef) : 0;
         if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && x.usd > 0) {
-          const costoR = x.usd * RECT * tc, pA = lindo(costoR * 1.30), mlA = x.mpRef > 0 ? Math.round(x.mpRef) : 0;
-          if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML con el 30%'] = (abelNo['más de 10% arriba de ML con el 30%'] || 0) + 1;
+          const costoR = x.usd * RECT * tc, pA = lindo(costoR * ABEL_MULT), mlA = x.mpRef > 0 ? Math.round(x.mpRef) : 0;
+          if (!mlA) abelCuenta.sinML++; else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
+          if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
           else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), c: 'Perfumes' });
         }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
@@ -31314,7 +31318,7 @@ async function main() {
         if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
         else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
         else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
-        console.log(`🌸 ABEL: ${outAbel.length} perfumes · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
+        console.log(`🌸 ABEL (costo × ${ABEL_MULT}): ${outAbel.length} perfumes · ${abelCuenta.abajo} más baratos o igual que ML · ${abelCuenta.hasta10} hasta 10% arriba de ML · ${abelCuenta.sinML} sin precio de ML para comparar · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
     }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
