@@ -30875,6 +30875,16 @@ async function main() {
       for (const t of ej) console.log('  ' + t);
       return;
     }
+    // BILLING_PROBE=tienda:cod=<código de Nissei>[,…] → ¿POR QUÉ ESTÁ O NO ESTÁ EN LA TIENDA? (01/11/2026, él: "¿está el A57?"). SOLO LEE: lo que
+    // dice la memoria de la tienda para ese código (encontrado en ML, o el motivo por el que no entró, y cuándo se miró).
+    if (/^tienda:cod=/.test(String(process.env.BILLING_PROBE || ''))) {
+      const cods = String(process.env.BILLING_PROBE).replace(/^tienda:cod=/, '').split(/[;,\s]+/).filter(Boolean);
+      for (const c of cods) { const m = await db.get('mlapi/tiendamatch/' + c.replace(/[.#$[\]/]/g, '_'));
+        if (!m) { console.log(`■ ${c} · sin mirar todavía (está en la cola de las próximas noches)`); continue; }
+        const f = m.ts ? new Date(Number(m.ts) - 3 * 3600e3).toISOString().slice(0, 10) : '?';
+        console.log(m.cat ? `■ ${c} · ✅ encontrado en ML (${m.cat}${m.ap ? ', el más parecido' : ''}) · "${String(m.mn || '').slice(0, 90)}" · mirado ${f}` : `■ ${c} · ❌ ${m.no || 'no entra'}${m.mt ? ' · el más parecido: "' + String(m.mt).slice(0, 90) + '"' : ''} · mirado ${f}`); }
+      return;
+    }
     if (/^tienda:id=/.test(String(process.env.BILLING_PROBE || ''))) {
       const pedidos = String(process.env.BILLING_PROBE).replace(/^tienda:id=/, '').split(/[;,\s]+/).map((x) => x.replace(/[[\]]/g, '').trim().toUpperCase()).filter((x) => /^[0-9A-Z]{4,8}$/.test(x));
       if (!pedidos.length) { console.log('❌ Usá tienda:id=<código> (el que sale entre corchetes en cada renglón del pedido; varios con coma).'); return; }
