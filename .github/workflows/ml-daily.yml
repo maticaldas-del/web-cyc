@@ -520,8 +520,10 @@ jobs:
             mkdir -p "$DIR/tienda" && cp "$ARCHIVO" "$DIR/tienda/productos.json"
             # 📋 detalles de ML (31/10/2026): 64 archivos chicos; si la corrida no los dejó, quedan los de antes.
             if [ -d "$(dirname "$ARCHIVO")/detalles" ]; then rm -rf "$DIR/tienda/detalles"; cp -r "$(dirname "$ARCHIVO")/detalles" "$DIR/tienda/detalles"; fi
+            # 🌸 ABEL (01/11/2026): el catálogo de perfumes de las Perfumerías Abel.
+            if [ -s "$(dirname "$ARCHIVO")/abel/productos.json" ]; then mkdir -p "$DIR/tienda/abel"; cp "$(dirname "$ARCHIVO")/abel/productos.json" "$DIR/tienda/abel/productos.json"; fi
             cd "$DIR"
-            git add tienda/productos.json; [ -d tienda/detalles ] && git add tienda/detalles
+            git add tienda/productos.json; [ -d tienda/detalles ] && git add tienda/detalles; [ -d tienda/abel ] && git add tienda/abel
             if git diff --cached --quiet; then echo "La tienda quedó igual que ayer: no hay nada para subir."; exit 0; fi
             git commit -q -m "Tienda: lista de productos $(TZ=America/Argentina/Buenos_Aires date '+%d-%m-%Y')"
             git push origin "HEAD:$RAMA_WEB" && { echo "✓ tienda subida a $RAMA_WEB"; exit 0; }
