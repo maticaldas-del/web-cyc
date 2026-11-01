@@ -31137,6 +31137,10 @@ async function main() {
         if (!x.fotos || !x.fotos.length) { no('sin foto de ML'); continue; }
         if (prohibido(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
         if (x.nuevo && tiendaGrande(n)) { no('grande o pesado (por el nombre de ML)'); continue; }
+        // 01/11/2026 (un cliente: "tenés bug el precio de esta"): Nissei "Jogo EA FC 27 para Switch 2" (sólo el juego, US$65) entró con el
+        // catálogo de ML "Nintendo Switch 2 + EA FC 27" (la consola CON el juego) → foto y nombre de la consola a precio de juego. Si ML es un
+        // COMBO ("algo + algo") y el proveedor no lo es, es otro producto: afuera.
+        if (x.nn && /\S\s*\+\s*\S/.test(n) && !/\+|\b(kit|combo|pack|bundle|com|con|e)\b/i.test(x.nn)) { no('ML es un combo y el proveedor no (otro producto)'); continue; }
         if (/dolce\s*(&|y|and)?\s*gabbana|\bd\s*&\s*g\b/i.test(n + ' ' + (x.nn || ''))) { no('marca prohibida (Dolce & Gabbana)'); continue; }   // 01/11/2026: la marca que no se compra tampoco se ofrece
         let p = precioDe(x.usd);
         // 🧐 FRENO DE PRECIO CONTRA ML (30/10/2026, revisión de la tienda): el precio de la tienda tiene que estar entre la mitad y 1,6 veces el
