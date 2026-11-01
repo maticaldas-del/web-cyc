@@ -30995,7 +30995,7 @@ async function main() {
       // el mismo), y por catálogo de candidatos y fichas `C_<catálogo>` = {mn, f, mp, ts} (nombre, fotos y precio de ML: no se piden todas las
       // noches). Se guarda de a TM_GUARDAR_CADA, así un corte a mitad no pierde lo buscado.
       // 30/10/2026: `v` = la versión del match con que se decidió; lo "no es el mismo" de una versión vieja se vuelve a buscar (después de lo nuevo).
-      const TM_VER = 4;   // 4 (31/10): los "no es el mismo" que quedaron por falta de cupo se vuelven a buscar   // 31/10/2026: 3 = sin "no es el mismo" (entra el más parecido de ML): lo decidido con la 2 se vuelve a buscar
+      const TM_VER = 5;   // 5 (01/11): segunda búsqueda corta (marca + modelo) para lo que no encontró nada
       const tmCache = tmObj || {}, tmUpd = {}; let tmPend = 0, tmGuardados = 0, tmGuardarFallo = 0;
       const TM_GUARDAR_CADA = 100;
       const guardarMemoria = async (final) => {
@@ -31141,7 +31141,19 @@ async function main() {
         const qPerf = () => { const t = String(e.n || '').toLowerCase(); const c = /\bextrait\b/.test(t) ? 'extrait' : /\b(edp|eau de parfum)\b/.test(t) ? 'edp' : /\b(edt|eau de toilette)\b/.test(t) ? 'edt' : /\bparfum\b/.test(t) ? 'parfum' : ''; const m = t.match(/(\d{2,3})\s*ml\b/); return ['perfume', ...perfPalabras(e.n), c, m ? m[1] + 'ml' : ''].filter(Boolean).join(' ').slice(0, 80); };
         const q = esPerf ? qPerf() : traducirPyNombre(e.n).replace(/[^\p{L}\p{N} .]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
         const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
-        const res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
+        let res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
+        // 01/11/2026 (él, con el A57: "están en ML"): con el nombre entero ("Samsung Galaxy A57 SM A576B 5G Dual 256 GB Awesome Grey") ML trae
+        // A54/A56/Fold y ningún A57; con "Samsung Galaxy A57" trae los A57. Si la primera búsqueda no trae ninguno que pase el match, una segunda
+        // CORTA: la marca y las dos palabras que siguen (o las 3 primeras), sin códigos de parte.
+        if (!esPerf && !res.some((x) => !tiendaMismoProducto(e.n, x.name)) && hayCupo()) {
+          const tk = q.split(' ').filter((w) => w && !/^(sm|ref|mod|modelo|cod)$/i.test(w) && !(/\d/.test(w) && /[a-z]/i.test(w) && w.length >= 6));
+          const im = tk.findIndex((w) => new RegExp('^(' + _TM_MARCAS.source.replace(/^\\b\(|\)\\b$/g, '') + ')$', 'i').test(w.toLowerCase()));
+          const q2 = (im >= 0 ? tk.slice(im, im + 3) : tk.slice(0, 3)).join(' ');
+          if (q2 && q2.toLowerCase() !== q.toLowerCase() && q2.split(' ').length >= 2) {
+            try { const b2 = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q2)}&limit=20`); const vistos = new Set(res.map((x) => x.id));
+              res = res.concat(((b2 && b2.results) || []).filter((x) => x && x.id && !vistos.has(x.id) && (!x.status || x.status === 'active'))); nv.busqueda2 = (nv.busqueda2 || 0) + 1; } catch { /* queda la primera */ }
+          }
+        }
         const buenos = [];
         for (const x of res) { const m = esPerf ? (okPerf(x.name) ? '' : 'otro perfume (marca, línea, tipo o tamaño)') : tiendaMismoProducto(e.n, x.name); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
         buenos.sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name) || String(a.name || '').length - String(b.name || '').length);   // empatados: el nombre más limpio
