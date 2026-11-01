@@ -17310,6 +17310,18 @@ async function main() {
     // "bajé" o "activé". `//` en el texto = salto de línea (el campo del workflow es de una línea).
     // BILLING_PROBE=resumen:<texto> (10/10/2026, pedido suyo: "cada vez que se activa cerebro me mandás un
     // pequeño resumen de lo que descubrió/modificó") → mismo canal, con el título del resumen del cerebro.
+    // BILLING_PROBE=tgfotos:<url>|<texto>;;<url>|<texto>;;… (01/11/2026, él: "¿me podés pasar 5 opciones por Telegram y elijo una?"):
+    // manda hasta 10 imágenes (direcciones https públicas) en UN álbum al canal privado de Mati, cada una con su texto. Lo usan los
+    // estados de la Tienda (las imágenes viven en la Tienda, carpeta estados/). Sólo imágenes de la Tienda: nada de datos de nadie.
+    if (/^tgfotos:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const items = String(process.env.BILLING_PROBE).slice('tgfotos:'.length).split(';;').map((x) => { const [u, ...c] = x.split('|'); return { u: String(u || '').trim(), c: c.join('|').replace(/(?<!:)\/\//g, '\n').trim() }; })
+        .filter((x) => /^https:\/\/tiendacyc\.github\.io\//.test(x.u)).slice(0, 10);
+      if (!items.length) { console.log('❌ Sin imágenes válidas (tienen que ser de https://tiendacyc.github.io/…).'); process.exitCode = 1; return; }
+      if (!TG_TOKEN || !TG_ALERTAS) { console.log('❌ Telegram sin configurar (token o canal privado).'); process.exitCode = 1; return; }
+      const r = await tgApi('sendMediaGroup', { chat_id: TG_ALERTAS, media: items.map((x) => ({ type: 'photo', media: x.u, caption: x.c.slice(0, 1000) })) });
+      if (r && r.ok) console.log(`✓ ${items.length} imágenes mandadas al canal privado`); else { console.log('❌ No salieron: ' + String((r && r.description) || 'sin respuesta').slice(0, 160)); process.exitCode = 1; }
+      return;
+    }
     if (/^(recordar|pregunto|resumen):/.test(String(process.env.BILLING_PROBE || ''))) {
       const esPreg = /^pregunto:/.test(String(process.env.BILLING_PROBE));
       const esRes = /^resumen:/.test(String(process.env.BILLING_PROBE));
