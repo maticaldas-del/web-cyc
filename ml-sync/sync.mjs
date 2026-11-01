@@ -12990,15 +12990,18 @@ function tiendaPerfumeDistinto(nn, n) {
 // Además de `tiendaPerfumeDistinto`, las palabras que identifican al perfume (marca y línea, sin "perfume/edp/feminino/ml"…) tienen que
 // estar en los dos nombres: al menos 80% de las del proveedor en el de ML y 60% de las de ML en el del proveedor. Si no, no se muestra.
 const RE_TIENDA_PERF = /\b(perfum\w*|edp|edt|eau de|parfum|colonia|col[oô]nia|fragancia|fragrance)\b/i;
-const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura'.split(' '));
+const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura spray vaporizador volumen unidad nino nina chico chica senor senora dulce floral frutal amaderado oriental citrico aromatico'.split(' '));
 function perfPalabras(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && w.length > 1 && !PERF_VACIAS.has(w) && !/^\d+(ml)?$/.test(w)); }
 function tiendaPerfumeSeguro(nn, n) {
   if (tiendaPerfumeDistinto(nn, n)) return false;
+  // 01/11/2026: lo de ML que no es UN perfume original (set/kit/piezas/combo, "esotérico"/"inspirado"/"alternativa" = imitación, decant, tester,
+  // miniatura) no sirve, salvo que lo del proveedor también sea un kit/set.
+  if (/\b(set|kit|pzas|piezas|estuche|combo|cofre|coffret|decant|tester|miniatura|mini)\b|\+|esoter|inspirad|similar|alternativ|replica|r[eé]plica|arabe inspir/i.test(n) && !/\b(kit|set|coffret|estojo|mini)\b|\+/i.test(nn)) return false;
   const A = [...new Set(perfPalabras(nn))], B = new Set(perfPalabras(n)), Bl = [...B], As = new Set(A);
   if (!A.length || !Bl.length) return false;
   const enB = A.filter((w) => B.has(w) || Bl.some((b) => b.length > 4 && (b.startsWith(w) || w.startsWith(b)))).length / A.length;
   const enA = Bl.filter((w) => As.has(w) || A.some((a) => a.length > 4 && (a.startsWith(w) || w.startsWith(a)))).length / Bl.length;
-  return enB >= 0.66 && enA >= 0.6;
+  return enB >= 0.66 && enA >= 0.5;
 }
 function tiendaParecido(nNissei, nML) {
   const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
@@ -31060,7 +31063,7 @@ async function main() {
         // (999 de 3.000 consultas por corrida) y la cola no avanzaba.
         if (mismoN && c0.cat) est = (c0.ap || !tiendaMismoProducto(e.n, c0.mn || '')) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
         // 01/11/2026: un PERFUME buscado antes del control estricto (`pv`) se vuelve a buscar, ahora exigiendo `tiendaPerfumeSeguro`.
-        if (mismoN && RE_TIENDA_PERF.test(e.n) && !c0.pv) est = 'nuevo';
+        if (mismoN && RE_TIENDA_PERF.test(e.n) && !(Number(c0.pv) >= 2)) est = 'nuevo';
         else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
         cola3.push({ cod, e, usd, est, c0, marca: TIENDA_MARCAS.test(e.n) ? 0 : 1 });
       }
@@ -31079,7 +31082,7 @@ async function main() {
       // Busca SU catálogo en ML. Devuelve lo que se guarda, o tira error si ML no contestó.
       const buscar = async (cod, e, prev) => {
         const esPerf = RE_TIENDA_PERF.test(e.n), okPerf = (nom) => !esPerf || tiendaPerfumeSeguro(e.n, nom);
-        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 1 } : {}) };
+        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 2 } : {}) };
         const aceptar = async (p, nombre) => {
           let fotos = fotosDe(p.pictures), mp = precioBB(p);
           if ((!fotos.length || !mp) && !p._leido && hayCupo()) { let p2 = null; try { p2 = await mlGetT('/products/' + p.id); } catch { p2 = null; } if (p2) { if (!fotos.length) fotos = fotosDe(p2.pictures); mp = mp || precioBB(p2); } }
@@ -31101,7 +31104,9 @@ async function main() {
         }
         // c) si no, una búsqueda con el nombre traducido: de los que pasan el match, el MÁS PARECIDO (no el primero)
         if (!hayCupo()) return 'sincupo';
-        const q = traducirPyNombre(e.n).replace(/[^\p{L}\p{N} .]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+        // Para un perfume se busca limpio: "perfume <marca y línea> <edp/edt…> <ml>ml" (sin "Feminino", guiones ni palabras de relleno).
+        const qPerf = () => { const t = String(e.n || '').toLowerCase(); const c = /\bextrait\b/.test(t) ? 'extrait' : /\b(edp|eau de parfum)\b/.test(t) ? 'edp' : /\b(edt|eau de toilette)\b/.test(t) ? 'edt' : /\bparfum\b/.test(t) ? 'parfum' : ''; const m = t.match(/(\d{2,3})\s*ml\b/); return ['perfume', ...perfPalabras(e.n), c, m ? m[1] + 'ml' : ''].filter(Boolean).join(' ').slice(0, 80); };
+        const q = esPerf ? qPerf() : traducirPyNombre(e.n).replace(/[^\p{L}\p{N} .]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
         const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
         const res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
         const buenos = [];
