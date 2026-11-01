@@ -12820,7 +12820,7 @@ function tiendaRubro(n) {
 const _TM_EQ = {
   preto: 'negro', preta: 'negro', black: 'negro', negra: 'negro', noir: 'negro', branco: 'blanco', branca: 'blanco', white: 'blanco', blanca: 'blanco',
   cinza: 'gris', gray: 'gris', grey: 'gris', vermelho: 'rojo', vermelha: 'rojo', red: 'rojo', blue: 'azul', green: 'verde', pink: 'rosa', rosado: 'rosa',
-  amarelo: 'amarillo', yellow: 'amarillo', roxo: 'violeta', roxa: 'violeta', purple: 'violeta', lilas: 'violeta', lila: 'violeta', lavanda: 'violeta', lavender: 'violeta',
+  amarelo: 'amarillo', yellow: 'amarillo', roxo: 'violeta', roxa: 'violeta', purple: 'violeta', purpura: 'violeta', purpure: 'violeta', lilas: 'violeta', lila: 'violeta', lavanda: 'violeta', lavender: 'violeta',
   laranja: 'naranja', orange: 'naranja', marrom: 'marron', brown: 'marron', prata: 'plateado', silver: 'plateado', plata: 'plateado',
   dourado: 'dorado', dourada: 'dorado', gold: 'dorado', ouro: 'dorado', grafite: 'grafito', graphite: 'grafito', midnight: 'medianoche',
   starlight: 'estelar', titanium: 'titanio', bege: 'beige', escuro: 'oscuro', escura: 'oscuro', dark: 'oscuro', claro: 'claro', light: 'claro',
@@ -12903,7 +12903,7 @@ function _tmCaps(s, unidad, ram) {   // las capacidades (GB/TB de almacenamiento
   return out;
 }
 // null = es el mismo producto; si no, el motivo (corto, para contar los de afuera).
-function tiendaMismoProducto(nNissei, nML) {
+function tiendaMismoProducto(nNissei, nML, blando = false) {
   const A = _tmTexto(nNissei, true), B = _tmTexto(nML, false);
   if (!A || !B) return 'sin nombre';
   const tA = _tmTokens(A), tB = _tmTokens(B), SA = new Set(tA), SB = new Set(tB);
@@ -12917,21 +12917,25 @@ function tiendaMismoProducto(nNissei, nML) {
   const cabeza = (s) => s.split(/\b(con|com|para|sin|sem|c|p|incluye|with|for)\b/)[0];
   const tipos = (s) => new Set(_TM_TIPO.filter(([, re]) => re.test(cabeza(s))).map(([t]) => t));
   const TA = tipos(A), TB = tipos(B);
+  // `blando`: el CÓDIGO de modelo entero del proveedor (letras y números, 6+, ej. LTP-V005GL-1B2UDF, MQ-24DA-1ADF) en ML = mismo producto
+  // (el código ya dice el color y la versión); sólo se mira la capacidad.
+  const codigoIgual = blando && tA.some((w) => w.length >= 6 && /[a-z]/.test(w) && /\d/.test(w) && tiene(SB, w));
   if (TA.size && TB.size && ![...TA].some((t) => TB.has(t))) return 'otro tipo de producto';
   if (TB.size > TA.size && TA.size && [...TB].some((t) => !TA.has(t))) return 'ML es un combo';
   if (TA.has('consola') && !TB.has('consola') && !_tmCaps(B, 'gb').size && !_tmCaps(B, 'tb').size) return 'Nissei es consola y ML no';   // un juego no dice GB
   // 1) Todo lo que dice ML (marca, modelo, números, color, versión) lo tiene que decir Nissei; se saltean las palabras que describen y el género.
-  for (const w of tB) {
+  if (!codigoIgual) for (const w of tB) {
     if (_TM_GENERO.has(w)) continue;
     if (_TM_DESCR.has(w) && !_TM_VARIANTE.has(w)) continue;
     // 30/10/2026: una sigla de 2 letras de ML es MODELO ("Canon Eos Rp" contra la R8 de Nissei) salvo las palabritas comunes.
     if (/^[a-z]{1,2}$/.test(w) && !_TM_VARIANTE.has(w) && (w.length === 1 || /^(de|la|el|en|al|lo|un|da|do|em|com|of|by|to|in|on|or|cm|mm|kg|gr|ml|gb|tb|hz|uv|tv|hd|sd|pc|mp|xl|xs)$/.test(w))) continue;
-    if (!tiene(SA, w)) return /^\d/.test(w) ? 'otro número o capacidad' : _TM_COLOR.has(w) ? 'otro color' : _TM_VARIANTE.has(w) ? 'otra versión' : 'ML dice algo que Nissei no';
+    // `blando` (el "más parecido", control del 01/11): una palabra suelta de más en ML se perdona; números, colores y versiones, no.
+    if (!tiene(SA, w)) { if (blando && !/\d/.test(w) && !_TM_COLOR.has(w) && !_TM_VARIANTE.has(w)) continue; return /^\d/.test(w) ? 'otro número o capacidad' : _TM_COLOR.has(w) ? 'otro color' : _TM_VARIANTE.has(w) ? 'otra versión' : 'ML dice algo que Nissei no'; }
   }
   // El género sólo choca si dicen lo contrario (uno "hombre" y el otro "mujer").
   if ((SA.has('hombre') && SB.has('mujer')) || (SA.has('mujer') && SB.has('hombre'))) return 'otro género';
   // 2) Lo que delata otra versión, del lado de Nissei, lo tiene que decir ML.
-  for (const w of SA) if (_TM_VARIANTE.has(w) && !_TM_GENERO.has(w) && !SB.has(w)) return 'otra versión';
+  if (!codigoIgual) for (const w of SA) if (_TM_VARIANTE.has(w) && !_TM_GENERO.has(w) && !SB.has(w)) return 'otra versión';
   // Un 4K de Nissei en un TV Stick, Apple TV o Chromecast es otra versión (el "4K" que ML agrega a una consola o una cámara, no).
   if (/\b(tv|stick|streamer|chromecast)\b/.test(A) && ['4k', '8k'].some((w) => SA.has(w) && !SB.has(w))) return 'otra versión';
   // Los AirPods 4 vienen con y sin cancelación de ruido: los dos tienen que decir lo mismo.
@@ -12946,7 +12950,7 @@ function tiendaMismoProducto(nNissei, nML) {
   // 2c) Perfumes: TODA palabra del nombre de Nissei tiene que estar en ML (Very Good Girl, 1 Million Lucky, Khamrah Qahwa…).
   if (_TM_PERF.test(A) || _TM_PERF.test(B)) for (const w of tA) { if (_TM_DESCR.has(w) || _TM_PERF_RELLENO.has(w) || _TM_GENERO.has(w) || _TM_COLOR.has(w) || /^\d/.test(w) || w.length <= 2) continue; if (!tiene(SB, w)) return 'perfume: Nissei dice "' + w + '" y ML no'; }
   // 3) El color: si Nissei lo dice, ML tiene que decir ese mismo.
-  for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
+  if (!codigoIgual) for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
   // 4) La capacidad: los GB/TB/ml de Nissei tienen que estar en ML (la RAM no cuenta, pero si los dos la dicen tiene que ser la misma).
   //    Una consola puede no decirla en ML.
   const ramA = _tmRam(A), ramB = _tmRam(B);
@@ -12974,6 +12978,9 @@ function tiendaMismoProducto(nNissei, nML) {
   const modelo = tB.filter((w) => (!_TM_DESCR.has(w) && !_TM_COLOR.has(w) && !_TM_GENERO.has(w) && !/^[a-z]{1,2}$/.test(w) && !marcasA.includes(w)
     && !_TM_TIPO.some(([, re]) => re.test(w)) && !_TM_UNIDAD.has(w) && !/^\d+$/.test(w)) || /[a-z]\d|\d[a-z]/.test(w) || (/^\d+$/.test(w) && !_TM_UNIDAD.has(tB[tB.indexOf(w) + 1] || '')));
   if (!modelo.length) return 'ML dice muy poco (sin modelo)';
+  // `blando` (control del 01/11: Mouse Pad Pulsar → "Polispuma", Crema Elizavecca → "Monoi", Teclado FGG → "Womier", Superlight 2SE → 2):
+  // la marca y el modelo del proveedor (las palabras que no describen ni son tipo) tienen que estar TODAS en ML.
+  if (blando) for (const w of tA) { if (_TM_DESCR.has(w) || _TM_COLOR.has(w) || /^(speaker|caixa|som|fone|ouvido|relogio|microfone|teclado|mouse)$/.test(w) || _TM_GENERO.has(w) || _TM_UNIDAD.has(w) || _TM_TIPO.some(([, re]) => re.test(w)) || /^[a-z]{1,3}$/.test(w) || /^\d+(\.\d+)?$/.test(w)) continue; if (!tiene(SB, w)) return 'ML no dice "' + w + '"'; }
   return null;
 }
 // Entre varios de ML que pasan el chequeo, el MÁS PARECIDO (no el primero que trae la búsqueda): palabras en común sobre las de los dos.
@@ -12997,7 +13004,7 @@ function tiendaPerfumeDistinto(nn, n) {
 // Además de `tiendaPerfumeDistinto`, las palabras que identifican al perfume (marca y línea, sin "perfume/edp/feminino/ml"…) tienen que
 // estar en los dos nombres: al menos 80% de las del proveedor en el de ML y 60% de las de ML en el del proveedor. Si no, no se muestra.
 const RE_TIENDA_PERF = /\b(perfum\w*|edp|edt|eau de|parfum|colonia|col[oô]nia|fragancia|fragrance)\b/i;
-const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura spray vaporizador volumen unidad nino nina chico chica senor senora dulce floral frutal amaderado oriental citrico aromatico fougere almizcle almizclado violeta vainilla miel especiado fresco fresca acuatico gourmand chipre cuero ambarado notas fl mi paco perfumes eau 100'.split(' '));
+const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura spray vaporizador volumen unidad nino nina chico chica senor senora dulce floral frutal amaderado oriental citrico aromatico fougere almizcle almizclado violeta vainilla miel especiado fresco fresca acuatico gourmand chipre cuero ambarado notas fl mi paco perfumes eau 100'.split(' '));
 function perfPalabras(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && w.length > 1 && !PERF_VACIAS.has(w) && !/^\d+(ml)?$/.test(w)); }
 function tiendaPerfumeSeguro(nn, n) {
   if (tiendaPerfumeDistinto(nn, n)) return false;
@@ -13006,6 +13013,11 @@ function tiendaPerfumeSeguro(nn, n) {
   if (/\b(set|kit|pzas|piezas|estuche|combo|cofre|coffret|decant|tester|miniatura|mini)\b|\+|esoter|inspirad|similar|alternativ|replica|r[eé]plica|arabe inspir/i.test(n) && !/\b(kit|set|coffret|estojo|mini)\b|\+/i.test(nn)) return false;
   const A = [...new Set(perfPalabras(nn))], B = new Set(perfPalabras(n)), Bl = [...B], As = new Set(A);
   if (!A.length || !Bl.length) return false;
+  // Control del 01/11: sin los ml en el proveedor no se puede saber el tamaño (Ferragamo Intense Leather: ML 30 ml a precio de 100 ml).
+  if (!/\d{2,3}\s*ml\b/i.test(nn)) return false;
+  // "Eau Sauvage" no es "Sauvage" (Dior): un "eau <nombre>" (que no sea "eau de…") en uno solo de los dos es otro perfume.
+  { const eau = (t) => new Set((String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/\beau\s+(?!de\b|du\b|d\b|parfum|toilette|cologne|fraiche)[a-z]+/g) || []));
+    const ea = eau(nn), eb = eau(n); if ([...ea].some((x) => !eb.has(x)) || [...eb].some((x) => !ea.has(x))) return false; }
   const enB = A.filter((w) => B.has(w) || Bl.some((b) => b.length > 4 && (b.startsWith(w) || w.startsWith(b)))).length / A.length;
   const enA = Bl.filter((w) => As.has(w) || A.some((a) => a.length > 4 && (a.startsWith(w) || w.startsWith(a)))).length / Bl.length;
   return enB >= 1 && enA >= 0.75;   // 01/11: TODAS las palabras del proveedor y casi nada de más en ML (muestra de 25: Mawwal Janah/Athar, Mirada Verato Amber, NR For Her Forever)
@@ -31068,7 +31080,7 @@ async function main() {
         let est = 'nuevo';
         // 31/10/2026: lo que entró con el más parecido (`ap`) no pasa el match exacto a propósito: sin esto se volvía a buscar en CADA corrida
         // (999 de 3.000 consultas por corrida) y la cola no avanzaba.
-        if (mismoN && c0.cat) est = (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap || !tiendaMismoProducto(e.n, c0.mn || ''))) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
+        if (mismoN && c0.cat) est = (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap ? !tiendaMismoProducto(e.n, c0.mn || '', true) : !tiendaMismoProducto(e.n, c0.mn || ''))) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
         // 01/11/2026: un PERFUME buscado antes del control estricto (`pv`) se vuelve a buscar, ahora exigiendo `tiendaPerfumeSeguro`.
         if (mismoN && RE_TIENDA_PERF.test(e.n) && !(Number(c0.pv) >= 4)) est = 'nuevo';
         else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
@@ -31125,7 +31137,9 @@ async function main() {
         // Para un perfume NO hay "el más parecido": o es el mismo o no entra.
         const resto = esPerf ? [] : res.filter((x) => !buenos.includes(x)).sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name));
         // 31/10/2026: sin cupo para leer las fotos NO es "no es el mismo" (quedaba guardado 90 días: 3.881 afuera); se reintenta la próxima corrida.
-        for (const x of resto.slice(0, 3)) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) { r.ap = 1; return r; } }
+        // Control del 01/11/2026 (8 de 15 al azar eran otro producto): el más parecido tiene que pasar el chequeo `blando` (misma marca, modelo,
+        // números, color y versión; sólo se perdonan palabras de más en ML).
+        for (const x of resto.filter((x) => !tiendaMismoProducto(e.n, x.name, true)).slice(0, 3)) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) { r.ap = 1; return r; } }
         if (!res.length && !motivo) motivo = 'ML no trajo nada';
         Object.assign(r, { no: motivo ? (/^ML no trajo|^el catálogo/.test(motivo) ? motivo : 'el más parecido de ML no es el mismo (' + motivo + ')') : 'sin catálogo en ML', ...(parecido ? { mt: parecido, mc: parecidoCat } : {}) });
         return r;
@@ -31135,7 +31149,7 @@ async function main() {
         let r = null;
         // Sin cupo o con ML fallando, lo guardado que pasa el match de hoy sigue aunque haya vencido (que no se caiga una noche); lo
         // "no es el mismo" queda como estaba.
-        const deMemoria = () => { if (est === 'vencido' && c0.cat && (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap || !tiendaMismoProducto(e.n, c0.mn || '')))) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
+        const deMemoria = () => { if (est === 'vencido' && c0.cat && (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap ? !tiendaMismoProducto(e.n, c0.mn || '', true) : !tiendaMismoProducto(e.n, c0.mn || '')))) { nv.vencida++; return c0; } if (est === 'noviejo') { nv.cache++; return c0; } return null; };
         if (est === 'ok' || est === 'no') {
           r = c0; nv.cache++;
           // Lo encontrado antes del freno de precio no tiene el precio de ML: se pide una vez (una llamada) para poder compararlo.
@@ -31282,6 +31296,8 @@ async function main() {
       const ABEL_MULT = 1.65;
       const outAbel = []; const abelNo = {}; const abelCuenta = { sinML: 0, abajo: 0, hasta10: 0 };
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
+      // Control del 01/11: "Aqua Kiss Shimmer Victoria's Secret 250 ml" (en el proveedor "Colônia") es una bruma, no un perfume.
+      const ABEL_MIST = /\bshimmer\b|col[oô]nia\s+(victoria|bath)|(victoria.?s\s+secret|bath\s*(&|and)?\s*body)[^]{0,80}\b2(36|50)\s*ml/i;
       const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
       for (const { x, n, p, om } of finales) {
         { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); continue; } }
@@ -31298,7 +31314,7 @@ async function main() {
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlVer = !cp && !om && !x.ap && x.mpRef > 0 && p <= x.mpRef * 0.95 && p >= x.mpRef * 0.5 ? Math.round(x.mpRef) : 0;
-        if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && x.usd > 0) {
+        if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (x.nn || '')) && x.usd > 0) {
           const costoR = x.usd * RECT * tc, pA = lindo(costoR * ABEL_MULT), mlA = x.mpRef > 0 ? Math.round(x.mpRef) : 0;
           if (!mlA) abelCuenta.sinML++; else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
           if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
