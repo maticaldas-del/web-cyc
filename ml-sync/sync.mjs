@@ -4620,7 +4620,9 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1, cajaU = 0) {
     let pl = pN || 0; if (Number(x.u) > 0 && Number(x.tot) > 0 && pAnt && pN && pAnt !== pN) { const pu = Number(x.uOwn) > 0 && Number(x.totOwn) > 0 ? Number(x.totOwn) / Number(x.uOwn) : Number(x.tot) / Number(x.u); if (Math.abs(pu - pAnt) < Math.abs(pu - pN)) pl = pAnt; }
     pAnt = pN;
     // Para los 30 días sin vender alcanza 1 u. en Full (con 1-2 u. también se podía comprar).
-    if (k >= kDesde && !fuera.has(k) && !(x.est && x.est !== 'active') && Number(x.p) > 0 && pl > 0 && (Number(x.st) >= 1 || Number(x.u) > 0)) { const b1 = Math.round(pl / 10) * 10; const g1 = (G1[b1] = G1[b1] || { p: b1, dias: 0, u: 0, desde: k, hasta: k }); g1.dias++; g1.u += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); if (k < g1.desde) g1.desde = k; if (k > g1.hasta) g1.hasta = k; }
+    // Revisión etapa 5, 01/11/2026: un día de fecha especial CON venta sí entra (la venta corta la racha); antes se sacaba con la venta y daba
+    // "44 días sin vender" a un precio que vendió en el Día de la Madre (F7 dejaba bajar y techo95 decía "techo sí o sí"). Sin venta sigue afuera.
+    if (k >= kDesde && (!fuera.has(k) || (Number(x.u) || 0) - (Number(x.uR) || 0) > 0) && !(x.est && x.est !== 'active') && Number(x.p) > 0 && pl > 0 && (Number(x.st) >= 1 || Number(x.u) > 0)) { const b1 = Math.round(pl / 10) * 10; const g1 = (G1[b1] = G1[b1] || { p: b1, dias: 0, u: 0, desde: k, hasta: k }); g1.dias++; g1.u += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); if (k < g1.desde) g1.desde = k; if (k > g1.hasta) g1.hasta = k; }
     // Revisión etapa 8, 28/10/2026: "días con 3+ u. en Full y CON VISITAS" (CEREBRO §6): un día con 0 visitas no mide el precio (nadie la vio);
     // antes alcanzaba con que el dato existiera (`vis != null`) y 14 días sin visitas daban un 🔴 al 90%. (La web `_rayas` tiene que ir igual.)
     if (!(x.st != null && Number(x.st) >= 3 && Number(x.vis) > 0)) continue;

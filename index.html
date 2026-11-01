@@ -3249,7 +3249,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.57';
+const APP_VERSION='28.58';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3262,6 +3262,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.58',f:'01/11',h:'06:10',c:[{n:3,t:'🔴 "30 días sin vender" ya no se saltea lo vendido en una fecha especial (Día de la Madre, CyberMonday): antes podía marcar techo un precio que sí vendió y dejar bajarlo.'}]},
   {v:'28.57',f:'01/11',h:'05:30',c:[{n:1,t:'🔍 Revisión de Datos, historial y cerebro: 6 arreglos del robot y 12 decisiones que te esperan para "resolvamos".'}]},
   {v:'28.56',f:'01/11/2026',h:'14:00',c:[{n:2,t:'💸 Gastos del mes: el retiro de cada socio es un renglón más (❌ falta cobrar / ✅ Ya lo cobró) y entra en el total del mes. El día 1 el robot lo carga solo según el cierre del mes anterior y avisa.'}]},
   {v:'28.55',f:'01/11',h:'01:10',c:[{n:1,t:'📥 Ver deudas: cada deuda tiene su barra de llenado (verde = lo que ya pagó, gris = lo que falta) y el % pagado.'}]},
@@ -5449,7 +5450,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {etapa:5,t:'01/11 · 12 decisiones de Datos y cerebro',que:'las rayas no ven los descuentos · 🔴 sin 💰 · liquidación antes de 90 días · gemelas al mismo % · cajas después de una suba · gemelas y descuentos · cupón de ML · ritmo normal y liquidaciones · 💰 lento · juicios y descuentos · ventas por la gemela · historia sin límite',pedi:'resolvamos'},
+  {etapa:5,t:'01/11 · 16 decisiones de Datos y cerebro',que:'las rayas no ven los descuentos · 🔴 sin 💰 · liquidación antes de 90 días · gemelas al mismo % · cajas después de una suba · gemelas y descuentos · cupón de ML · ritmo normal y liquidaciones · 💰 lento · juicios y descuentos · ventas por la gemela · historia sin límite · día de la suba · rayas con una sola activa · línea de anteayer · plata por día de hoy',pedi:'resolvamos'},
   {etapa:7,t:'31/10 · 13 decisiones de Diseño',que:'lo que se corta o se corre · el 🧠 igual que la línea · Ventas de hoy fija · dólar y Tienda · tarjetas de Inicio · ventas nuevas · pedido en dos pisos · Armar caja en grilla · Cerrar la caja que se llena · perfumería y deudas · colores · línea en el teléfono · repetidos',pedi:'resolvamos'},
   {etapa:4,t:'30/10 · 4 decisiones de Choques y fallas',que:'octubre congelado con ventas provisorias · nombres de personas en el registro público · ¿Cierra el mes? con cierre antes de fin de mes · la Oficina Local al pasar a contada',pedi:'resolvamos'},
   {etapa:9,t:'30/10 · 8 decisiones del Local (7, 9, 11 y 12 resueltas)',que:'perfumes del local en el pedido de Paraguay (cobro de octubre) · Oficina Local a mano · pedidos de la perfumería en papelera · lo que viaja · qué es Oficina Local · nombres ya públicos · devolvió de más · % de las perfumerías',pedi:'resolvamos las del Local'},
@@ -5487,7 +5488,7 @@ const REV_HIST={
   5:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'},
      {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'},
      {f:'2026-10-21',t:'4 revisores en máximo (ficha, línea de tiempo, robot de datos, web): 44 arreglos (v25.62: ficha y techo95 sin borrar historia, remate con historia, canceladas tarde, línea por color y sin stock inventado). 2 decisiones suyas.'},
-     {f:'2026-11-01',t:'4 revisores en máximo (línea de tiempo, ficha y techo95, historia de decisiones, cerebro contra código): 6 arreglos (🔥 por la gemela con !cruza, remates por la gemela, +50% en bajasviejas, VENTAS.md al día); 12 decisiones para él.'}],
+     {f:'2026-11-01',t:'4 revisores en máximo (línea de tiempo, ficha y techo95, historia de decisiones, cerebro contra código): 7 arreglos (🔥 por la gemela con !cruza, remates por la gemela, el 🔴 de 30 días ya no se saltea lo vendido en fechas especiales, +50% en bajasviejas, VENTAS.md al día); 16 decisiones para él.'}],
   6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
      {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'},
      {f:'2026-10-21',t:'4 revisores en máximo (datos de ML sin usar, plata, trabajo a mano, gusto): 24 ideas para elegir (el cupo de Ayelen repartido por plata, publicar lo nuevo desde el chat, la venta que dice qué significa, Pedidos con lo que cambió).'}],
@@ -12999,7 +13000,7 @@ function lineaPintar(prodId){
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,rN:g.dF>0?g.u/g.dF:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     // 🔴 POR 30 DÍAS SIN VENDER (24/10/2026, él: "a los 30 días de no vender sí o sí se marca como techo"): el precio más bajo que, con sus
     // días y los de todos los más caros (activa, 1+ u. en Full), lleva 30+ días sin una venta. Misma cuenta que `rayasPrecioLinea`.
-    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d||k<_kDesdeR||_fueraR.has(k))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];/* revisión etapa 5 (01/11): un día de fecha especial con venta SÍ cuenta (cortaba la racha: vendió y decía "30 días sin vender"); sin venta sigue afuera, igual que `rayasPrecioLinea` */if(!d||k<_kDesdeR||(_fueraR.has(k)&&!((d.u||0)-(d.uR||0)>0)))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G1[b]=G1[b]||{p:b,dias:0,u:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));});
       let D=0,t=null;for(const g of Object.values(G1).sort((a,b)=>b.p-a.p)){if(g.u>0)break;D+=g.dias;if(D>=TECHO_DIAS_SIN_VENTA_W)t={p:g.p,dias:D,u:0,por30:true};}return t;})();
     // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).
