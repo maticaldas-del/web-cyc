@@ -41846,7 +41846,11 @@ async function main() {
           // lo mismo que `cobrocorr`): + si lo contado da más (no se cobra como ganancia), − si da menos (no se descuenta como pérdida). En pesos, al
           // dólar de hoy. Si ese mes ya tenía una corrección, se le suma (no se pisa).
           if (cfgO) console.log('  (ya estaba contada por unidades: no hay salto que anotar)');
-          const tcL = tcO, saltoU = total(OC) - vf, saltoA = Math.round(saltoU * tcL), ymL = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
+          const tcL = tcO, saltoU = total(OC) - vf, saltoA = Math.round(saltoU * tcL); let ymL = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
+          // 01/11/2026 (él: "¿no era 1,6M cada uno?"): el salto entra al crecimiento del PRÓXIMO cierre, no del mes calendario. El de octubre se hizo
+          // el 29/10 y el recuento fue después: la corrección cayó en el cobro de octubre (que no tenía el salto) y lo subió de 1,6M a 1,9M.
+          // Si el mes de hoy ya tiene su cierre, va al mes siguiente.
+          try { const snH = await db.get('cyc/snapshots/' + ymL); if (snH && snH.total != null) { const [yy, mm] = ymL.split('_').map(Number); ymL = (mm === 12 ? yy + 1 : yy) + '_' + String(mm === 12 ? 1 : mm + 1).padStart(2, '0'); } } catch { console.log('❌ no pude leer el cierre de este mes: no guardo nada'); return; }
           let ccL = null; try { ccL = (await db.get('cyc/cobro_corr/' + ymL)) || null; } catch { ccL = undefined; }
           const conSalto = !cfgO && Math.abs(saltoA) >= 1;
           if (conSalto && !(tcL > 0)) { console.log('❌ sin dólar cargado no puedo pasar el salto a pesos para el cobro: no guardo nada (cargá el tipo de cambio).'); return; }
