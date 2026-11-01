@@ -17318,10 +17318,10 @@ async function main() {
         .filter((x) => /^https:\/\/tiendacyc\.github\.io\//.test(x.u)).slice(0, 10);
       if (!items.length) { console.log('❌ Sin imágenes válidas (tienen que ser de https://tiendacyc.github.io/…).'); process.exitCode = 1; return; }
       if (!TG_TOKEN || !TG_ALERTAS) { console.log('❌ Telegram sin configurar (token o canal privado).'); process.exitCode = 1; return; }
-      const r = await tgApi('sendMediaGroup', { chat_id: TG_ALERTAS, media: items.map((x) => ({ type: 'photo', media: x.u, caption: x.c.slice(0, 1000) })) });
+      const r = await tgApi('sendMediaGroup', { chat_id: TG_ALERTAS, media: items.map((x) => ({ type: items.every((y) => /\.pdf$/i.test(y.u)) ? 'document' : 'photo', media: x.u, caption: x.c.slice(0, 1000) }))   /* 01/11: si son todos PDF, van como archivos (para imprimir) */ });
       // 01/11/2026 (él: "que lleguen las fotos y UN mensaje que sirva para todos los productos, invitando a ingresar a la tienda, que hay
       // más productos"): después del álbum, un solo texto para pegar en el comentario de cualquier estado (cambia cada día, siempre con el link).
-      if (r && r.ok) {
+      if (r && r.ok && !items.every((y) => /\.pdf$/i.test(y.u))) {
         const TXT = [
           '🛍️ Esto y miles de productos más en CYC, más baratos que en Mercado Libre. Entrá, mirá y armá tu pedido 👉 https://tiendacyc.github.io/?v=3',
           '🔥 ¿Viste el precio? Hay muchísimo más: tecnología, perfumes, hogar, belleza y más. Entrá a CYC 👉 https://tiendacyc.github.io/?v=3',
