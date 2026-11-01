@@ -4403,3 +4403,8 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   memória/colônia/acessórios/creme/cartão/maquiagem/batom); clave `PY_<código>`, sin precio de ML (no hay "más barato que ML"). Si queda una palabra
   en portugués (`TIENDA_PORTUGUES`) o no tiene foto, afuera con su motivo. Qué chequear: cuántos entran así, que las fotos de Nissei se vean en la
   página y que el control diario no encuentre nombres en portugués.
+
+- **(01/11) Etapa 3 · Tienda — segunda búsqueda corta en ML** (él, con el A57: *"están en ML"*). Con el nombre entero de Nissei ML traía A54/A56/Fold
+  y ningún A57; con "Samsung Galaxy A57" sí. Si la primera búsqueda no trae ninguno que pase el match, se busca con la marca y las dos palabras que
+  siguen (sin códigos de parte), hasta 20 resultados. `TM_VER` 5: todo lo que quedó como "no está en ML" se vuelve a buscar (~3 noches, 3.000 por
+  noche); mientras tanto se ve con la foto de Nissei. Qué chequear: `tienda:cod=155425` encontrado en ML y cuántos pasaron de foto de Nissei a ML.
