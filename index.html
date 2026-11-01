@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.63';
+const APP_VERSION='28.64';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.64',f:'01/11/2026',h:'20:07',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el 🔗 Nissei pasó adentro del detalle de cada renglón (ya no en la línea de abajo del nombre).'}]},
   {v:'28.63',f:'01/11/2026',h:'20:07',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el 🔗 Nissei sale en todos los renglones con código (también Uso personal): si no estaba guardado, lo busca en el catálogo copiado de Nissei.'}]},
   {v:'28.62',f:'01/11/2026',h:'20:00',c:[{n:1,t:'🇵🇾 Nuevos: arriba, ⏳ Para volver a mirar en Nissei, con los códigos de lo que da y se miró hace 2+ días (probados y nuevos). El chat de Chrome los busca cada día en la rutina.'}]},
   {v:'28.61',f:'01/11/2026',h:'19:58',c:[{n:2,t:'🇵🇾 Paraguay: Productos nuevos y probados muestran sólo lo mirado en Nissei hace menos de 2 días. Lo demás queda oculto (nuevos) o en "Falta revisar" (probados) hasta que se vuelva a mirar, y tampoco entra al pedido.'}]},
@@ -19269,9 +19270,9 @@ function pedidoMomentoHTML(g){
       <details style="flex:1;min-width:0"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px">
         ${foto?`<img src="${foto}" loading="lazy" onerror="this.style.visibility='hidden'" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:7px;flex-shrink:0">`:`<div style="width:40px;height:40px;border:1px dashed var(--border);border-radius:7px;flex-shrink:0"></div>`}
         <div style="min-width:0;flex:1"><div style="font-size:.84rem;font-weight:600;line-height:1.3">${nom}</div>
-          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'}${_lnk(url,cod)}${vend||''} · detalle ▾</div></div>
+          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'}${vend||''} · detalle ▾</div></div>
         ${pct!=null?`<b style="font-size:1.05rem;color:${pctCol}">${pct}</b>`:''}
-      </summary><div style="padding:6px 0 4px 49px;font-size:.72rem;color:var(--muted);line-height:1.6">${extra||''}${det||''}</div></details>
+      </summary><div style="padding:6px 0 4px 49px;font-size:.72rem;color:var(--muted);line-height:1.6">${_lnk(url,cod)?`<div>${_lnk(url,cod).replace(/^ · /,'')}</div>`:''}${extra||''}${det||''}</div></details>
       <div style="display:flex;align-items:center;gap:6px;white-space:nowrap">${inp(u,on)}<span style="font-size:.7rem">u.</span>
         <div style="font-size:.76rem;min-width:64px;text-align:right">${usd>0?u2(usd*u):'—'}</div>
         <button class="btn" onclick="${quitar}" title="Sacarlo del pedido" style="font-size:.75rem;padding:3px 9px;color:var(--red);border-color:rgba(239,68,68,.35)">✕</button></div>
