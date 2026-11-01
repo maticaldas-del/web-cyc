@@ -4408,3 +4408,10 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   y ningún A57; con "Samsung Galaxy A57" sí. Si la primera búsqueda no trae ninguno que pase el match, se busca con la marca y las dos palabras que
   siguen (sin códigos de parte), hasta 20 resultados. `TM_VER` 5: todo lo que quedó como "no está en ML" se vuelve a buscar (~3 noches, 3.000 por
   noche); mientras tanto se ve con la foto de Nissei. Qué chequear: `tienda:cod=155425` encontrado en ML y cuántos pasaron de foto de Nissei a ML.
+
+- **(01/11) Etapa 3 · Tienda — hasta 10% más que ML, contando las cuotas** (él: *"se puede hasta un 10% más que en ML, nunca más… tener en cuenta
+  que tenemos 3 cuotas sin interés, si el producto de ML no tiene cuotas tener en cuenta o si tiene 3 o 6"*). ML ya no manda el ganador del catálogo
+  (`buy_box_winner` vacío, medido con `bbw:` el 01/11): se leen las publicaciones (`/products/<cat>/items`), sin las internacionales (`cbt_*`), y la
+  referencia es la más barata con Clásica ×1,08 y Premium ×1 (`Q_<cat>` en la memoria, 14 días). Arriba de 1,10 × esa referencia se baja a 1,10 ×
+  si deja 10%+; si no, afuera. "En ML $X" muestra el precio que se ve en ML. ABEL compara contra el precio que se ve (sin cuotas). Qué chequear: el
+  A57 gris (ML $895.967 Clásica → referencia $967.644 → tope $1.064.408): nuestro $960.990 queda; que no haya nada a más de 1,10 × ML.
