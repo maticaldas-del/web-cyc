@@ -95,7 +95,7 @@ if (process.env.BILLING_PROBE) {
 const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -37740,6 +37740,26 @@ async function main() {
     // `cyc/cobro_corr/<mes>` ({ars, nota}) en el 💸 cobro de ese cierre ("− lo viejo cargado tarde"), pero no había cómo cargarlo. Pesos que NO
     // son crecimiento de ese mes (mercadería vieja que se contó tarde, algo contado dos veces). `=0` lo saca. Sin `;go` sólo muestra. Si el retiro
     // del mes siguiente ya empezó, queda congelado (9a) y la corrección va al retiro del otro mes.
+    // BILLING_PROBE=finsuma:<campo>=<+pesos|-pesos>|<nota>[;go] · SUMAR O RESTAR PESOS A UNA DEUDA DE CYC CON LOS SOCIOS (01/11/2026, él: "cobré mis
+    // 1.6m, sacar los 1m que debía y poner los 600.000 en dólares mati"). Sólo `dolares_mati`, `dolares_tito`, `deuda_cyc` (lo que CYC les debe; en el
+    // Arqueo están en DÓLARES): los pesos se pasan al dólar de hoy (`finanzas/tipo_cambio`). + = CYC les debe más. El total no se imprime (registro
+    // público): sólo cuánto se sumó y si se releyó. Sin ;go sólo muestra.
+    if (/^finsuma(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('finsuma'.length).replace(/^:/, ''); const GOf = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
+      const mF = body.match(/^(dolares_mati|dolares_tito|deuda_cyc)=([+-])([\d.,]+)\|(.+)$/);
+      if (!mF) { console.log('❌ Usá: finsuma:<dolares_mati|dolares_tito|deuda_cyc>=<+pesos|-pesos>|<nota>;go'); return; }
+      const tcF = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tcF > 0)) { console.log('❌ sin dólar cargado: no escribo'); return; }
+      const ars = Math.round(pesosArg(mF[3])) * (mF[2] === '-' ? -1 : 1); if (!Number.isFinite(ars) || !ars) { console.log('❌ monto inválido'); return; }
+      const usd = Math.round(ars / tcF * 100) / 100, cur = parseFloat(await db.get('cyc/finanzas/' + mF[1])) || 0, neg = cur < 0;
+      const nuevo = Math.round((Math.abs(cur) + usd) * 100) / 100; if (nuevo < 0) { console.log('❌ quedaría en negativo: no escribo'); return; }
+      const guardar = neg ? -nuevo : nuevo;
+      console.log(`=== ${mF[1]} ${GOf ? '· APLICANDO' : '· PRUEBA'} === ${money(ars)} al dólar ${tcF} = ${usd >= 0 ? '+' : '−'}US$ ${Math.abs(usd).toFixed(2)} · ${String(mF[4]).slice(0, 80)}`);
+      if (!GOf) { console.log('No se guardó nada (falta ;go).'); return; }
+      await db.set('cyc/finanzas/' + mF[1], guardar);
+      const hist = { campo: mF[1], ars, usd, tc: tcF, nota: String(mF[4]).slice(0, 120), ts: Date.now() }; await db.set('cyc/finsuma/' + Date.now(), hist);
+      const rF = parseFloat(await db.get('cyc/finanzas/' + mF[1])); console.log(Math.abs(rF - guardar) < 0.01 ? '  ✓ guardado y releído (en el Arqueo se ve al abrirlo)' : '  ⚠️ no lo pude releer');
+      return;
+    }
     if (/^cobrocorr(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).slice('cobrocorr'.length).replace(/^:/, ''); const GOc = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
       const all = (await db.get('cyc/cobro_corr')) || {};
