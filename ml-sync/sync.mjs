@@ -17319,9 +17319,19 @@ async function main() {
       if (!items.length) { console.log('❌ Sin imágenes válidas (tienen que ser de https://tiendacyc.github.io/…).'); process.exitCode = 1; return; }
       if (!TG_TOKEN || !TG_ALERTAS) { console.log('❌ Telegram sin configurar (token o canal privado).'); process.exitCode = 1; return; }
       const r = await tgApi('sendMediaGroup', { chat_id: TG_ALERTAS, media: items.map((x) => ({ type: 'photo', media: x.u, caption: x.c.slice(0, 1000) })) });
-      // 01/11/2026 (él: "mandame eso abajo de las fotos así pongo la foto y en comentarios pongo ese copiado"): después del álbum, cada
-      // texto en un mensaje SUELTO (se copia con mantener apretado), sin el "Opción N · para pegar…" del principio.
-      if (r && r.ok) for (const [i, x] of items.entries()) { const t = x.c.replace(/^Opci[oó]n\s*\d+[^\n]*\n/i, '').trim(); if (t) await tgApi('sendMessage', { chat_id: TG_ALERTAS, text: t, disable_web_page_preview: true }); }
+      // 01/11/2026 (él: "que lleguen las fotos y UN mensaje que sirva para todos los productos, invitando a ingresar a la tienda, que hay
+      // más productos"): después del álbum, un solo texto para pegar en el comentario de cualquier estado (cambia cada día, siempre con el link).
+      if (r && r.ok) {
+        const TXT = [
+          '🛍️ Esto y miles de productos más en CYC, más baratos que en Mercado Libre. Entrá, mirá y armá tu pedido 👉 https://tiendacyc.github.io',
+          '🔥 ¿Viste el precio? Hay muchísimo más: tecnología, perfumes, hogar, belleza y más. Entrá a CYC 👉 https://tiendacyc.github.io',
+          '💸 Más barato que en Mercado Libre y te lo traemos. Mirá todo lo que hay en CYC 👉 https://tiendacyc.github.io',
+          '📦 Miles de productos para elegir. Armás el pedido en la página y lo mandás por WhatsApp 👉 https://tiendacyc.github.io',
+          '✨ Lo que buscás seguro está en CYC, y más barato que en Mercado Libre. Pasá a mirar 👉 https://tiendacyc.github.io',
+        ];
+        const dia = Math.floor((Date.now() - 3 * 36e5) / 864e5);
+        await tgApi('sendMessage', { chat_id: TG_ALERTAS, text: TXT[dia % TXT.length], disable_web_page_preview: true });
+      }
       if (r && r.ok) console.log(`✓ ${items.length} imágenes mandadas al canal privado`); else { console.log('❌ No salieron: ' + String((r && r.description) || 'sin respuesta').slice(0, 160)); process.exitCode = 1; }
       return;
     }
