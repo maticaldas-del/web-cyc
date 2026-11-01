@@ -31236,6 +31236,27 @@ async function main() {
         }));
       }
       await guardarMemoria(true);
+      // 💳 EL PRECIO DE ML CON LAS CUOTAS (01/11/2026, él: "se puede hasta un 10% más que en ML, nunca más… tener en cuenta que tenemos 3 cuotas
+      // sin interés, si el producto de ML no tiene cuotas tener en cuenta, o si tiene 3 o 6"). ML ya no manda el ganador del catálogo
+      // (`buy_box_winner` viene vacío): se leen las publicaciones del catálogo (`/products/<cat>/items`) y se toma la MÁS BARATA de las de acá
+      // (las internacionales, `cbt_item`, no: sin garantía y con demora). Una Clásica no tiene cuotas sin interés (salvo promos de tarjeta): para
+      // compararla con nuestras 3 cuotas vale ×1,08 (lo que cuesta dar 3 cuotas); una Premium ya las da: ×1. Memoria `Q_<cat>` = {eq, raw, t, ts}
+      // por TM_DIAS días. `eq` es contra lo que se compara la tienda; `raw`, el precio que se muestra como "En ML".
+      const CUOTAS_CLASICA = 1.08; let qLeidos = 0, qSin = 0;
+      const catsQ = [...new Set([...grupos.values()].flat().filter((x) => x.cat && /^MLA\d+$/i.test(String(x.cat)) && !x.ficha).map((x) => String(x.cat).toUpperCase()))];
+      const qLeer = catsQ.filter((c) => { const q = tmCache['Q_' + c]; return !(q && hoy - Number(q.ts || 0) < dispersa('Q_' + c, TM_DIAS)); });
+      for (let i = 0; i < qLeer.length && hayCupo(); i += 5) {
+        await Promise.all(qLeer.slice(i, i + 5).map(async (c) => {
+          try { const it = await leer404('/products/' + c + '/items?limit=30'); const xs = ((it && it.results) || []).filter((y) => y && Number(y.price) > 0 && !(y.tags || []).some((t) => /^cbt_/.test(t)));
+            if (!xs.length) { qSin++; await anotar('Q_' + c, { ts: hoy, no: 1 }); return; }
+            let best = null; for (const y of xs) { const eq = Number(y.price) * (y.listing_type_id === 'gold_pro' ? 1 : CUOTAS_CLASICA); if (!best || eq < best.eq) best = { eq: Math.round(eq), raw: Math.round(Number(y.price)), t: y.listing_type_id === 'gold_pro' ? 'p' : 'c' }; }
+            qLeidos++; await anotar('Q_' + c, { ...best, ts: hoy });
+          } catch { /* queda lo guardado */ }
+        }));
+      }
+      await guardarMemoria(true);
+      for (const x of [...grupos.values()].flat()) { if (!x.cat || x.ficha) continue; const q = tmCache['Q_' + String(x.cat).toUpperCase()]; if (q && q.eq > 0) { x.mpRef = q.eq; x.mlRaw = q.raw; x.mlTipo = q.t; } else if (q && q.no) { x.mpRef = null; } }
+      nv.cuotasML = { leidos: qLeidos, sinVendedores: qSin };
       for (const [c, xs] of porCat) { const m = tmCache['C_' + c];
         for (const x of xs) { if (m && m.mn) { x.nombre = m.mn; x.fotos = m.f || []; if (!x.mpRef && Number(m.mp) > 0) x.mpRef = Number(m.mp); } else { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; } } }
       // DUPLICADOS (30/10/2026, revisión de la tienda): un mismo catálogo o el mismo nombre de ML = un solo producto. Dos códigos del proveedor
@@ -31298,9 +31319,11 @@ async function main() {
           const k = p / x.mpRef;
           if (k > 1.6) { no('más de 1,6 veces el precio de ML (casi seguro otro producto)'); continue; }
           if (k < (x.ficha ? 0.3 : 0.5)) { if (x.ap) { no('el más parecido con un precio muy lejos del de ML (otro producto)'); continue; } nv.noCuadra = (nv.noCuadra || 0) + 1; }
-          else if (k > 1.05) {
-            const costo = x.usd * RECT * tc, m = x.mpRef, pML = m >= 10000 ? Math.floor((m + 10) / 1000) * 1000 - 10 : Math.floor((m + 10) / 100) * 100 - 10;
-            if (!(pML > 0) || pML / costo - 1 < 0.10) { no('más caro que ML y a su precio deja menos del 10%'); continue; }
+          // 01/11/2026 (él: "se puede hasta un 10% más que en ML, nunca más que eso"): hasta 1,10 × ML (con las cuotas, ver arriba) queda como
+          // está; más caro se baja a 1,10 × ML si ahí deja 10%+ sobre el costo; si no, afuera.
+          else if (k > 1.10) {
+            const costo = x.usd * RECT * tc, m = x.mpRef * 1.10, pML = m >= 10000 ? Math.floor((m + 10) / 1000) * 1000 - 10 : Math.floor((m + 10) / 100) * 100 - 10;
+            if (!(pML > 0) || pML / costo - 1 < 0.10) { no('más de 10% arriba de ML y a ese precio deja menos del 10%'); continue; }
             p = pML; nv.aML = (nv.aML || 0) + 1;
           }
         } else sinRef++;
@@ -31365,9 +31388,9 @@ async function main() {
         const cp = TIENDA_APPLE.test(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
-        const mlVer = !cp && !om && !x.ap && x.mpRef > 0 && p <= x.mpRef * 0.95 && p >= x.mpRef * 0.5 ? Math.round(x.mpRef) : 0;
+        const mlR = x.mlRaw > 0 ? x.mlRaw : x.mpRef; const mlVer = !cp && !om && !x.ap && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
         if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (x.nn || '')) && x.usd > 0) {
-          const costoR = x.usd * RECT * tc, pA = lindo(costoR * ABEL_MULT), mlA = x.mpRef > 0 ? Math.round(x.mpRef) : 0;
+          const costoR = x.usd * RECT * tc, pA = lindo(costoR * ABEL_MULT), mlA = x.mlRaw > 0 ? Math.round(x.mlRaw) : (x.mpRef > 0 ? Math.round(x.mpRef) : 0);   // ABEL no da cuotas: contra el precio que se ve en ML
           if (!mlA) abelCuenta.sinML++; else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
           if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
           else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), c: 'Perfumes' });
@@ -31415,7 +31438,7 @@ async function main() {
         // Con ;go, sólo cantidades: los motivos juntos y en palabras neutras (los de "no es el mismo" ya vienen sin el detalle).
         const todo = {}; for (const o of [fuera, nv.fuera]) for (const [m, k] of Object.entries(o)) { const t = /^grande o pesado/.test(m) ? 'grande o pesado' : m; todo[t] = (todo[t] || 0) + k; }
         console.log('afuera: ' + (Object.entries(todo).sort((a, b) => b[1] - a[1]).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
-        console.log(`catálogo completo: entran ${nvOut} (${nv.aprox || 0} con el más parecido de ML · ${nv.noCuadra || 0} con el precio lejos del de ML · ${nv.aML || 0} bajados al precio de ML · ${nv.apple || 0} Apple sin precio) · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
+        console.log(`catálogo completo: entran ${nvOut} (${nv.aprox || 0} con el más parecido de ML · ${nv.noCuadra || 0} con el precio lejos del de ML · ${nv.aML || 0} bajados a 1,10 × ML · ${nv.cuotasML ? nv.cuotasML.leidos + ' catálogos con las cuotas leídas hoy' : ''} · ${nv.apple || 0} Apple sin precio) · ${nv.cache} de la memoria · ${nv.vencida} con la memoria vencida (sin cupo o ML fallando) · ${tmLlamadas} búsquedas en ML hoy (tope ${TM_MAX}) · quedan ${nv.quedan} para las próximas noches${mlCortado ? ` · ⚠️ ML falló ${TM_FALLAS_SEGUIDAS} veces seguidas: se cortó` : ''}`);
       } else {
         console.log('afuera: ' + (Object.entries(fuera).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'));
         console.log(`\n── TODO NISSEI MENOS LO GRANDE (camino nuevo, 30/10) ──`);
