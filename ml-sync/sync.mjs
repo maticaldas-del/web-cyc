@@ -17321,7 +17321,7 @@ async function main() {
       const r = await tgApi('sendMediaGroup', { chat_id: TG_ALERTAS, media: items.map((x) => ({ type: 'photo', media: x.u, caption: x.c.slice(0, 1000) })) });
       // 01/11/2026 (él: "mandame eso abajo de las fotos así pongo la foto y en comentarios pongo ese copiado"): después del álbum, cada
       // texto en un mensaje SUELTO (se copia con mantener apretado), sin el "Opción N · para pegar…" del principio.
-      if (r && r.ok) for (const [i, x] of items.entries()) { const t = x.c.replace(/^Opci[oó]n\s*\d+[^\n]*\n/i, '').trim(); if (t) await tgApi('sendMessage', { chat_id: TG_ALERTAS, text: `${i + 1}) ` + t, disable_web_page_preview: true }); }
+      if (r && r.ok) for (const [i, x] of items.entries()) { const t = x.c.replace(/^Opci[oó]n\s*\d+[^\n]*\n/i, '').trim(); if (t) await tgApi('sendMessage', { chat_id: TG_ALERTAS, text: t, disable_web_page_preview: true }); }
       if (r && r.ok) console.log(`✓ ${items.length} imágenes mandadas al canal privado`); else { console.log('❌ No salieron: ' + String((r && r.description) || 'sin respuesta').slice(0, 160)); process.exitCode = 1; }
       return;
     }
