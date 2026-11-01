@@ -225,6 +225,21 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: nombreml:go
         run: exec node ml-sync/sync.mjs
+      # EL RETIRO DEL MES SE CARGA SOLO EL DÍA 1 (01/11/2026, él): si el mes no tiene su retiro congelado, lo calcula con el cierre del mes
+      # anterior, lo congela y avisa. Ya congelado no hace nada (corre todas las mañanas por si el cierre se hizo tarde).
+      - name: Retiro del mes
+        id: retiroauto
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BILLING_PROBE: retiroauto;go
+        run: exec node ml-sync/sync.mjs
       # LOS TEXTOS PARA EL CHAT DE CHROME EN CYC (29/10/2026, él): cada PROMPT_*.md a cyc/prompts (Mi oficina → 🤖).
       - name: Textos para el chat de Chrome
         id: prompts
