@@ -12970,6 +12970,22 @@ function tiendaMismoProducto(nNissei, nML) {
   return null;
 }
 // Entre varios de ML que pasan el chequeo, el MÁS PARECIDO (no el primero que trae la búsqueda): palabras en común sobre las de los dos.
+// 🌸 ¿ES EL MISMO PERFUME? (01/11/2026, él: "corroborar todos los precios para que estén bien matcheados… lo más importante la perfumería").
+// Compara el nombre del proveedor (portugués/inglés) con el de ML: concentración (EDP/EDT/parfum/extrait/colonia), variante ("intense",
+// "elixir", "sport"…), género y los ml. Devuelve el motivo si NO es el mismo, o '' si no encontró diferencias.
+function tiendaPerfumeDistinto(nn, n) {
+  const A = ' ' + String(nn || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') + ' ', B = ' ' + String(n || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') + ' ';
+  const conc = (t) => /\bextrait\b/.test(t) ? 'extrait' : /\b(edp|eau de parfum)\b/.test(t) ? 'edp' : /\b(edt|eau de toilette)\b/.test(t) ? 'edt' : /\b(edc|eau de cologne|colonia)\b/.test(t) ? 'edc' : /\bparfum\b/.test(t) && !/eau de parfum/.test(t) ? 'parfum' : '';
+  const ca = conc(A), cb = conc(B);
+  if (ca && cb && ca !== cb && !((ca === 'parfum' && cb === 'edp') || (ca === 'edp' && cb === 'parfum'))) return `concentración distinta (${ca} / ${cb})`;
+  const VAR = ['intense', 'intensa', 'elixir', 'absolu', 'absolute', 'extreme', 'sport', 'night', 'noir', 'black', 'gold', 'blue', 'bleu', 'rouge', 'red', 'rose', 'pink', 'oud', 'vanilla', 'royal', 'prive', 'privee', 'platinum', 'silver', 'cherry', 'candy', 'leather', 'tobacco', 'aqua', 'fresh', 'fraiche', 'sensual', 'secret', 'legend', 'collector', 'limited', 'reborn', 'flame', 'energy', 'iconic', 'sillage', 'imperial', 'supreme', 'eclat', 'ultra', 'max', 'parfum'];
+  for (const v of VAR) { const ra = new RegExp('\\b' + v + '\\b').test(A), rb = new RegExp('\\b' + v + '\\b').test(B); if (ra !== rb && !(v === 'parfum' && (cb === 'edp' || ca === 'edp' || /eau de parfum/.test(A + B)))) return `variante distinta ("${v}" sólo en ${ra ? 'el proveedor' : 'ML'})`; }
+  const gen = (t) => /\b(feminino|feminina|mujer|women|woman|femme|her|dama|female)\b/.test(t) ? 'f' : /\b(masculino|hombre|men|man|homme|him|caballero|male)\b/.test(t) ? 'm' : '';
+  const ga = gen(A), gb = gen(B); if (ga && gb && ga !== gb) return 'género distinto';
+  const ml = (t) => { const m = t.match(/(\d{2,3})\s*ml\b/); return m ? Number(m[1]) : 0; };
+  const ma = ml(A), mb = ml(B); if (ma && mb && ma !== mb) return `tamaño distinto (${ma} / ${mb} ml)`;
+  return '';
+}
 function tiendaParecido(nNissei, nML) {
   const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
   const a = sig(_tmTexto(nNissei, true)), b = sig(_tmTexto(nML, false)); let k = 0; for (const w of b) if (a.has(w)) k++;
@@ -30815,6 +30831,16 @@ async function main() {
     // BILLING_PROBE=tienda:id=<ID>[,<ID>…] → ¿QUÉ PRODUCTO ES? (30/10/2026, revisión de la tienda). SOLO LEE. Cuando llega un pedido de la
     // tienda, cada renglón trae el código entre corchetes ([K7M3P2X]); esto dice cuál es: el código del proveedor, su nombre, lo que sale hoy en
     // US$ y el precio de la tienda. Sale del mapa fijo `mlapi/tiendaids` (lo arma `tienda;go`: el código de cada producto no cambia nunca).
+    // BILLING_PROBE=tiendarevisa[:todo] → SÓLO LEE (01/11/2026). Revisa los perfumes de la tienda (o todo con :todo) contra su nombre del
+    // proveedor con `tiendaPerfumeDistinto` y cuenta/lista los que no parecen el mismo.
+    if (/^tiendarevisa(:todo)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mapa = (await db.get('mlapi/tiendaids')) || {}; const malos = {}; let n = 0, mal = 0; const ej = [];
+      for (const e of Object.values(mapa)) { if (!e || !e.nn || !e.n) continue; if (!/perfum|edp|edt|eau de|parfum|colonia|fragancia/i.test(e.n + ' ' + e.nn)) continue; n++;
+        const m = tiendaPerfumeDistinto(e.nn, e.n); if (m) { mal++; const k = m.replace(/\(.*/, '').trim(); malos[k] = (malos[k] || 0) + 1; if (ej.length < 60) ej.push(`${m} · ML: ${String(e.n).slice(0, 60)} · prov: ${String(e.nn).slice(0, 60)}`); } }
+      console.log(`=== PERFUMES: ${n} revisados · ${mal} no parecen el mismo ===`); console.log(Object.entries(malos).map(([k, v]) => `${k} ${v}`).join(' · '));
+      for (const t of ej) console.log('  ' + t);
+      return;
+    }
     if (/^tienda:id=/.test(String(process.env.BILLING_PROBE || ''))) {
       const pedidos = String(process.env.BILLING_PROBE).replace(/^tienda:id=/, '').split(/[;,\s]+/).map((x) => x.replace(/[[\]]/g, '').trim().toUpperCase()).filter((x) => /^[0-9A-Z]{4,8}$/.test(x));
       if (!pedidos.length) { console.log('❌ Usá tienda:id=<código> (el que sale entre corchetes en cada renglón del pedido; varios con coma).'); return; }
