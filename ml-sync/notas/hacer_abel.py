@@ -1,5 +1,7 @@
 # ABEL (01/11/2026): arma tienda/abel/index.html a partir de tienda/index.html (la misma página, en modo CATÁLOGO):
-# nombre ABEL, colores negro y dorado, sin carrito, sin cuotas, sin WhatsApp; los detalles los toma de la tienda (../detalles/).
+# nombre ABEL, colores negro y dorado, sin carrito, sin cuotas; los detalles los toma de la tienda (../detalles/).
+# 01/11/2026 (él: "quiero que esté el botón para que me mande al wsp, con el nombre y el código… hoy no tienen forma de comunicarse"):
+# cada perfume (tarjeta y ventana) lleva "Consultar por WhatsApp" con el nombre y el código (`k` de abel/productos.json).
 # Correr cada vez que se toca tienda/index.html: python3 ml-sync/notas/hacer_abel.py
 import re, pathlib
 R = pathlib.Path(__file__).resolve().parents[2] / 'tienda'
@@ -31,5 +33,18 @@ rep('</style>', '''
 .sub-abel { color: var(--ink2); font-size: 13px; margin: 6px 0 0; }
 </style>''')
 rep('<main class="wrap">', '<main class="wrap">\n  <p class="sub-abel">Perfumes importados por encargo · consultá en tu perfumería ABEL</p>')
+# 💬 WhatsApp por perfume (01/11/2026).
+rep("<div class=\"slot\">' + cantHtml(p.id) + '</div></div></article>'", "<div class=\"slot\">' + cantHtml(p.id) + '</div>' + waBtn(p) + '</div></article>'")
+rep('<div id="verCant"></div>', '<div id="verCant"></div><div id="verWa"></div>')
+rep('$("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);', '$("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id); $("verWa").innerHTML = waBtn(p);')
+rep('  var DET = {};', '''  function waBtn(p) {
+    if (!WA || WA.length < 8) return "";
+    var t = "Hola! Quiero consultar por este perfume:\\n" + p.n + (p.k ? "\\nCódigo: " + p.k : "") + (p.p > 0 ? "\\nPrecio en la página: " + pesos(p.p) : "");
+    return '<a class="wa-abel" target="_blank" rel="noopener" href="https://wa.me/' + WA + '?text=' + encodeURIComponent(t) + '">Consultar por WhatsApp</a>';
+  }
+  var DET = {};''')
+rep('</style>', '''.wa-abel { display: block; text-align: center; margin-top: 8px; padding: 9px 8px; border-radius: 10px; background: #25d366; color: #06290f; font-weight: 700; font-size: 13.5px; text-decoration: none; }
+#verWa .wa-abel { margin: 12px 0 4px; padding: 12px; font-size: 15px; }
+</style>''')
 (R / 'abel' / 'index.html').write_text(s)
 print('ok', len(s))
