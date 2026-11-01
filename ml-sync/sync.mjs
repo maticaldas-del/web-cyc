@@ -11576,7 +11576,7 @@ async function ofertaVista(svp, nombre, get) {
 // sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
 // chat de compras SÓLO de lo que pasó todos los otros filtros (`faltaventas`). Misma regla en index.html (`CAND_MIN_VENTAS`).
 const CAND_MIN_VENTAS = 100;
-const PY_VIEJO_DIAS = 7; // 26/10/2026: mirado en Paraguay hace 7+ días = en rojo (la web no deja mandar el mensaje ni "Ya lo pedí"; cargarlo sí se puede)
+const PY_VIEJO_DIAS = 4; // 4 o más = más de 3. 01/11/2026 (él): mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
 // La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
 function candVistoTsBot(c) { let t = Math.max(Number(c && c.visto) || 0, Number(c && c.ts) || 0); if (c && Number(c.renovTs) > 0 && Math.abs(t - Number(c.renovTs)) < 5000) t = Number(c.renovDe) || 0; return t; }
 const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND_MIN_VENTAS && (Number(nv) || 0) >= CAND_MIN_VENDEDORES ? CAND_VARA_VENDE : CAND_VARA_COMPRA);
