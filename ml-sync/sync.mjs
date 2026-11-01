@@ -31137,6 +31137,7 @@ async function main() {
         if (!x.fotos || !x.fotos.length) { no('sin foto de ML'); continue; }
         if (prohibido(n) || x.fotos.some((u) => PROHIBIDO.test(u))) { no('nombre con una palabra que no puede salir'); continue; }
         if (x.nuevo && tiendaGrande(n)) { no('grande o pesado (por el nombre de ML)'); continue; }
+        if (/dolce\s*(&|y|and)?\s*gabbana|\bd\s*&\s*g\b/i.test(n + ' ' + (x.nn || ''))) { no('marca prohibida (Dolce & Gabbana)'); continue; }   // 01/11/2026: la marca que no se compra tampoco se ofrece
         let p = precioDe(x.usd);
         // 🧐 FRENO DE PRECIO CONTRA ML (30/10/2026, revisión de la tienda): el precio de la tienda tiene que estar entre la mitad y 1,6 veces el
         // de ML para ese catálogo; si no, casi seguro el catálogo es otro producto (la Xbox Series S al precio de la X, un juego al precio de la
@@ -31209,7 +31210,7 @@ async function main() {
       // CYC) × 1,30; con precio de ML: si pasa 1,10 × ML queda afuera. Mismo código y mismas fotos/detalles que la tienda.
       const outAbel = []; const abelNo = {};
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
-      const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b/i;
+      const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
       for (const { x, n, p, om } of finales) {
         { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); continue; } }
         const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
