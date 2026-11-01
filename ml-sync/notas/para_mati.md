@@ -251,3 +251,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 14. **Rayas de la web con una sola publicación activa:** mezclan los colores y cuentas pausados (dice 💰 $15.000 de un color que esa publicación nunca tuvo), y el 🧠 dice otra cosa. (a) sugerida: medir sólo esa publicación y sus gemelas, como el robot · (b) dejar.
 15. **La completa de las 03:00 mide con la línea de anteayer** (la de ayer se escribe recién a las 6-7): techo, 30 días sin vender y la línea de las rayas llegan un día tarde. (a) sugerida: que la completa escriba la línea de ayer antes de medir (cambia la tarea de las 03:00) · (b) dejar.
 16. **"Plata por día" del mes cuenta hoy a medias** (el 1º de cada mes parece que cae fuerte). (a) sugerida: sacar el día de hoy del promedio · (b) dejar.
+- **01/11 · Rutina del chat de Chrome:**
+  - El cupo de Full de Luciana vino como "16265 chicos" (los otros: Adriana 487, Ayelen 0, Matías 9). Parece mal leído, así que no lo cargué. Que el chat lo vuelva a mirar mañana.
+  - ML finalizó el Paulvic Infinite Fame de Adriana (MLA1682456369) por no subir la factura que comprueba que es original. (a) sugerida: subir la factura del pedido de Paulvic desde la cuenta de Adriana y pedir que la habiliten · (b) dejarla cerrada.
+  - En Nissei no aparecen más el Pen Drive SanDisk Z530 (146208) ni los Redmi Buds 8 Pro (152527).
