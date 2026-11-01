@@ -27532,6 +27532,21 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=bbw:<catálogo>[;…] → QUÉ DICE ML DEL QUE GANA LA CAJA (01/11/2026, para comparar las cuotas de la tienda). SOLO LEE: precio,
+    // tipo de publicación (Clásica/Premium) y los campos del ganador (nombres, no el vendedor).
+    if (/^bbw:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const label = labels.find((l) => accounts[l]?.refresh_token); if (!label) { console.log('Sin token.'); return; }
+      let tok; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; } catch (e) { console.log('token: ' + e.message); return; }
+      for (const c of String(process.env.BILLING_PROBE).slice(4).split(/[;,]/).map((x) => x.trim()).filter(Boolean)) {
+        try { const p = await mlGet('/products/' + c, tok); const b = p.buy_box_winner || {};
+          console.log(`■ ${c} · ${p.name} · gana: $${b.price} · tipo ${b.listing_type_id} · campos: ${Object.keys(b).join(', ')}`);
+          if (b.sale_terms) console.log('   sale_terms: ' + JSON.stringify(b.sale_terms).slice(0, 400));
+          if (b.installments) console.log('   installments: ' + JSON.stringify(b.installments).slice(0, 300));
+          try { const it = await mlGet('/products/' + c + '/items?limit=5', tok); for (const x of (it.results || []).slice(0, 5)) console.log(`   · $${x.price} · ${x.listing_type_id} · ${Object.keys(x).filter((k) => /install|sale_terms|tags/.test(k)).map((k) => k + '=' + JSON.stringify(x[k]).slice(0, 120)).join(' ')}`); } catch (e) { console.log('   items: ' + e.message); }
+        } catch (e) { console.log(`■ ${c} · ${e.message}`); }
+      }
+      return;
+    }
     if (/^catbusca:/.test(String(process.env.BILLING_PROBE || ''))) {
       const label = labels.find((l) => accounts[l]?.refresh_token); if (!label) { console.log('Sin token.'); return; }
       let tok; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; } catch { console.log('No pude renovar el token.'); return; }
