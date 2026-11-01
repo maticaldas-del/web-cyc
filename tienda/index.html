@@ -221,7 +221,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
       <div class="fila"><span>Total</span><b id="pedTot">$0</b></div>
       <div class="cuotas" id="pedCuo" style="text-align:right;margin:2px 0 6px;height:auto"></div>
       <div class="nota">Código del pedido: <span class="codigo" id="pedCod">—</span></div>
-      <div class="nota">💳 Pagás por transferencia o con tarjeta (link de pago). Te pasamos los datos por WhatsApp cuando confirmamos tu pedido.</div>
+      <div class="nota">💳 Pagás <b>la mitad al pedir</b> y <b>el resto cuando lo recibís</b>. Por transferencia o con tarjeta (link de pago). Te pasamos los datos por WhatsApp cuando confirmamos tu pedido.</div>
       <div class="nota" id="pedNota" hidden></div>
       <div class="botones" id="botones">
         <button class="btn wa" id="wa" type="button" hidden>Mandar por WhatsApp</button>
@@ -387,6 +387,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     ls.forEach(function (l) { r.push("• " + (l.q > 1 ? l.q + " × " : "") + l.p.n + " · cód. " + l.p.id + " · " + (VIEJO || l.p.cp ? "consultar precio" : pesos(l.p.p * l.q))); });
     r.push("");
     r.push(VIEJO ? "Total: a confirmar" : "Total: " + pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + lo que hay que consultar" : ""));
+    // 01/11/2026 (él eligió 4a: "que paguen una parte antes y el resto después… lo importante es vender"): seña de la mitad y el resto al recibir.
+    if (!VIEJO && total(ls) > 0) r.push("Seña al pedir: " + pesos(Math.ceil(total(ls) / 2)) + " · al recibir: " + pesos(total(ls) - Math.ceil(total(ls) / 2)));
     r.push("Llegaría aprox. el " + llegaAprox() + " (7 días hábiles)");
     return r.join("\n");
   }
