@@ -12990,7 +12990,7 @@ function tiendaPerfumeDistinto(nn, n) {
 // Además de `tiendaPerfumeDistinto`, las palabras que identifican al perfume (marca y línea, sin "perfume/edp/feminino/ml"…) tienen que
 // estar en los dos nombres: al menos 80% de las del proveedor en el de ML y 60% de las de ML en el del proveedor. Si no, no se muestra.
 const RE_TIENDA_PERF = /\b(perfum\w*|edp|edt|eau de|parfum|colonia|col[oô]nia|fragancia|fragrance)\b/i;
-const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura spray vaporizador volumen unidad nino nina chico chica senor senora dulce floral frutal amaderado oriental citrico aromatico'.split(' '));
+const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura spray vaporizador volumen unidad nino nina chico chica senor senora dulce floral frutal amaderado oriental citrico aromatico fougere almizcle almizclado violeta vainilla miel especiado fresco fresca acuatico gourmand chipre cuero ambarado notas fl mi paco perfumes eau 100'.split(' '));
 function perfPalabras(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && w.length > 1 && !PERF_VACIAS.has(w) && !/^\d+(ml)?$/.test(w)); }
 function tiendaPerfumeSeguro(nn, n) {
   if (tiendaPerfumeDistinto(nn, n)) return false;
@@ -13001,7 +13001,7 @@ function tiendaPerfumeSeguro(nn, n) {
   if (!A.length || !Bl.length) return false;
   const enB = A.filter((w) => B.has(w) || Bl.some((b) => b.length > 4 && (b.startsWith(w) || w.startsWith(b)))).length / A.length;
   const enA = Bl.filter((w) => As.has(w) || A.some((a) => a.length > 4 && (a.startsWith(w) || w.startsWith(a)))).length / Bl.length;
-  return enB >= 0.66 && enA >= 0.5;
+  return enB >= 1 && enA >= 0.75;   // 01/11: TODAS las palabras del proveedor y casi nada de más en ML (muestra de 25: Mawwal Janah/Athar, Mirada Verato Amber, NR For Her Forever)
 }
 function tiendaParecido(nNissei, nML) {
   const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
@@ -31063,7 +31063,7 @@ async function main() {
         // (999 de 3.000 consultas por corrida) y la cola no avanzaba.
         if (mismoN && c0.cat) est = (RE_TIENDA_PERF.test(e.n) ? tiendaPerfumeSeguro(e.n, c0.mn || '') : (c0.ap || !tiendaMismoProducto(e.n, c0.mn || ''))) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
         // 01/11/2026: un PERFUME buscado antes del control estricto (`pv`) se vuelve a buscar, ahora exigiendo `tiendaPerfumeSeguro`.
-        if (mismoN && RE_TIENDA_PERF.test(e.n) && !(Number(c0.pv) >= 3)) est = 'nuevo';
+        if (mismoN && RE_TIENDA_PERF.test(e.n) && !(Number(c0.pv) >= 4)) est = 'nuevo';
         else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
         cola3.push({ cod, e, usd, est, c0, marca: TIENDA_MARCAS.test(e.n) ? 0 : 1 });
       }
@@ -31082,7 +31082,7 @@ async function main() {
       // Busca SU catálogo en ML. Devuelve lo que se guarda, o tira error si ML no contestó.
       const buscar = async (cod, e, prev) => {
         const esPerf = RE_TIENDA_PERF.test(e.n), okPerf = (nom) => !esPerf || tiendaPerfumeSeguro(e.n, nom);
-        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 3 } : {}) };
+        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 4 } : {}) };
         const aceptar = async (p, nombre) => {
           let fotos = fotosDe(p.pictures), mp = precioBB(p);
           if ((!fotos.length || !mp) && !p._leido && hayCupo()) { let p2 = null; try { p2 = await mlGetT('/products/' + p.id); } catch { p2 = null; } if (p2) { if (!fotos.length) fotos = fotosDe(p2.pictures); mp = mp || precioBB(p2); } }
