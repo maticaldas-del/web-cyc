@@ -1092,6 +1092,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
     <!-- 30/10/2026, él: "me gustaría que el botón de tienda esté abajo de todo al lado del precio del dólar": abre la Tienda en otra pestaña. -->
     <a href="https://tiendacyc.github.io/" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(232,89,12,.1);border:1px solid rgba(232,89,12,.35);color:#e8590c;font-weight:800;text-decoration:none;font-size:1.05rem">🛍️ Tienda</a>
+    <!-- 01/11/2026, él: "agregar tienda perfumería en la web de cyc al lado del dólar también": abre el catálogo ABEL. -->
+    <a href="https://tiendacyc.github.io/abel/" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(212,178,94,.1);border:1px solid rgba(212,178,94,.45);color:#b8932f;font-weight:800;text-decoration:none;font-size:1.05rem">🌸 Perfumería ABEL</a>
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
   <div id="home-hoy" style="width:100%"></div>
@@ -3246,7 +3248,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.53';
+const APP_VERSION='28.54';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3259,6 +3261,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.54',f:'31/10',h:'23:40',c:[{n:1,t:'🌸 Inicio: al lado del dólar y de 🛍️ Tienda, nuevo botón 🌸 Perfumería ABEL que abre el catálogo de perfumes de las perfumerías ABEL.'}]},
   {v:'28.53',f:'31/10',h:'05:40',c:[{n:1,t:'🔍 Revisión de Diseño: dibujé cada pantalla en el teléfono y la PC; las propuestas (con fotos) te esperan para decidir. Ajustes: la revisión de la Tienda del 30/10 ya figura como hecha.'}]},
   {v:'28.52',f:'31/10',h:'00:55',c:[{n:2,t:'🇵🇾 Pedido del momento: el máximo es US$ 600 y los botones de Llenar nunca lo pasan. Cuentan todo lo cargado (también lo de uso personal) y los probados también entran sólo hasta ese tope.'}]},
   {v:'28.51',f:'30/10',h:'19:57',c:[{n:1,t:'📬 Mi oficina → Mensaje para Claude: nueva línea "🤖 Última vez del chat de Chrome" con cuántos días hace que hizo cada tarea (rutina, cajas, Nissei, listas, Once, Imega, tienda). El chat la mira al prenderse y hace lo que toca.'}]},
