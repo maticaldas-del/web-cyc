@@ -17323,11 +17323,11 @@ async function main() {
       // más productos"): después del álbum, un solo texto para pegar en el comentario de cualquier estado (cambia cada día, siempre con el link).
       if (r && r.ok) {
         const TXT = [
-          '🛍️ Esto y miles de productos más en CYC, más baratos que en Mercado Libre. Entrá, mirá y armá tu pedido 👉 https://tiendacyc.github.io',
-          '🔥 ¿Viste el precio? Hay muchísimo más: tecnología, perfumes, hogar, belleza y más. Entrá a CYC 👉 https://tiendacyc.github.io',
-          '💸 Más barato que en Mercado Libre y te lo traemos. Mirá todo lo que hay en CYC 👉 https://tiendacyc.github.io',
-          '📦 Miles de productos para elegir. Armás el pedido en la página y lo mandás por WhatsApp 👉 https://tiendacyc.github.io',
-          '✨ Lo que buscás seguro está en CYC, y más barato que en Mercado Libre. Pasá a mirar 👉 https://tiendacyc.github.io',
+          '🛍️ Esto y miles de productos más en CYC, más baratos que en Mercado Libre. Entrá, mirá y armá tu pedido 👉 https://tiendacyc.github.io/?v=3',
+          '🔥 ¿Viste el precio? Hay muchísimo más: tecnología, perfumes, hogar, belleza y más. Entrá a CYC 👉 https://tiendacyc.github.io/?v=3',
+          '💸 Más barato que en Mercado Libre y te lo traemos. Mirá todo lo que hay en CYC 👉 https://tiendacyc.github.io/?v=3',
+          '📦 Miles de productos para elegir. Armás el pedido en la página y lo mandás por WhatsApp 👉 https://tiendacyc.github.io/?v=3',
+          '✨ Lo que buscás seguro está en CYC, y más barato que en Mercado Libre. Pasá a mirar 👉 https://tiendacyc.github.io/?v=3',
         ];
         const dia = Math.floor((Date.now() - 3 * 36e5) / 864e5);
         await tgApi('sendMessage', { chat_id: TG_ALERTAS, text: TXT[dia % TXT.length], disable_web_page_preview: true });
