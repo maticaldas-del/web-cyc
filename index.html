@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.62';
+const APP_VERSION='28.63';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.63',f:'01/11/2026',h:'20:07',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el 🔗 Nissei sale en todos los renglones con código (también Uso personal): si no estaba guardado, lo busca en el catálogo copiado de Nissei.'}]},
   {v:'28.62',f:'01/11/2026',h:'20:00',c:[{n:1,t:'🇵🇾 Nuevos: arriba, ⏳ Para volver a mirar en Nissei, con los códigos de lo que da y se miró hace 2+ días (probados y nuevos). El chat de Chrome los busca cada día en la rutina.'}]},
   {v:'28.61',f:'01/11/2026',h:'19:58',c:[{n:2,t:'🇵🇾 Paraguay: Productos nuevos y probados muestran sólo lo mirado en Nissei hace menos de 2 días. Lo demás queda oculto (nuevos) o en "Falta revisar" (probados) hasta que se vuelva a mirar, y tampoco entra al pedido.'}]},
   {v:'28.60',f:'01/11/2026',h:'19:49',c:[{n:2,t:'🇵🇾 Pedido de Paraguay: lo mirado en Nissei hace más de 3 días ya no entra (ni con la casilla ni con los botones de llenar) hasta que se vuelva a mirar. Cada renglón tiene 🔗 Nissei para abrirlo.'}]},
@@ -17738,6 +17739,18 @@ function candViejoPy(c){return c?_pyViejoDe(candVistoTs(c)):null;}
 function pyProbViejo(pr){return pr?_pyViejoDe(pr.nisseiTs):null;}
 // ⏳ PARA VOLVER A MIRAR EN NISSEI (01/11/2026, él: "que el chat de chrome mire nissei todos los días"): lo que da y quedó oculto por
 // viejo (probados que pide Pedidos con ✅ y nuevos que llegan al piso). La rutina diaria del chat abre esta lista y deja `visto:` en el buzón.
+// 🔗 EL LINK DE NISSEI (01/11/2026, él: "que tenga el url de nissei también" y, con el uso personal, "sigue sin ver"): el guardado
+// (candidato `link` / ficha `pyLink`) o, si no hay, el del catálogo copiado (`mlapi/pycat/<código>/l`), que se baja de a uno y se guarda.
+window._pyLinkC=window._pyLinkC||{};
+function pyLinkDe(u,cod){
+  const ok=x=>/^https:\/\/(www\.)?comprasparaguay\.com\.ar\//.test(String(x||''));
+  if(ok(u))return String(u);
+  const k=String(cod||'').trim();if(!/^[A-Za-z0-9_-]{2,40}$/.test(k))return '';
+  const c=window._pyLinkC[k];if(c!==undefined)return c||'';
+  window._pyLinkC[k]=null;
+  db.ref('mlapi/pycat/'+k+'/l').once('value').then(sn=>{const v=sn.val();window._pyLinkC[k]=ok(v)?String(v):'';if(window._pyLinkC[k]){clearTimeout(window._pyLinkT);window._pyLinkT=setTimeout(()=>{try{renderPedidos();}catch(e){}},400);}}).catch(()=>{window._pyLinkC[k]='';});
+  return '';
+}
 function pyParaMirar(){
   const out=[],vistos=new Set();
   for(const ped of (state.pedidos_py||[])){
@@ -17758,7 +17771,7 @@ function pyParaMirarHTML(){
   const L=pyParaMirar();if(!L.length)return'';
   return `<details style="margin:8px 0;background:var(--surface);border:1px solid rgba(245,158,11,.45);border-radius:var(--r);padding:8px 12px"><summary style="cursor:pointer;font-size:.74rem;font-weight:700;color:var(--amber)">⏳ Para volver a mirar en ${pyProvNom()} (${L.length}): dan, pero se miraron hace ${PY_VIEJO_DIAS} días o más ▾</summary>
     <div style="font-size:.64rem;color:var(--muted);margin:6px 0">No se muestran ni entran al pedido hasta volver a mirarlos. El chat de Chrome los busca en la rutina de cada día (renglón <code>visto:</code> del buzón).</div>
-    ${L.map(x=>`<div style="font-size:.68rem;padding:2px 0">${x.cod?'🔖 '+x.cod:'<span style="color:var(--amber)">sin código</span>'} · ${x.nom} <span style="color:var(--muted)">· ${x.t} · ${x.d==null?'sin fecha':'hace '+x.d+' d'}</span>${/^https:\/\/(www\.)?comprasparaguay\.com\.ar\//.test(x.url)?` · <a href="${String(x.url).replace(/"/g,'%22')}" target="_blank" rel="noopener" style="color:var(--accent2)">🔗 Nissei</a>`:''}</div>`).join('')}</details>`;
+    ${L.map(x=>`<div style="font-size:.68rem;padding:2px 0">${x.cod?'🔖 '+x.cod:'<span style="color:var(--amber)">sin código</span>'} · ${x.nom} <span style="color:var(--muted)">· ${x.t} · ${x.d==null?'sin fecha':'hace '+x.d+' d'}</span>${pyLinkDe(x.url,x.cod)?` · <a href="${String(pyLinkDe(x.url,x.cod)).replace(/"/g,'%22')}" target="_blank" rel="noopener" style="color:var(--accent2)">🔗 Nissei</a>`:''}</div>`).join('')}</details>`;
 }
 function candPuedePedir(c,o){
   if(!c)return{ok:false,motivo:'no existe'};
@@ -19251,12 +19264,12 @@ function pedidoMomentoHTML(g){
   // MINIMALISTA (03/10/2026, él: "como en los otros lados, con las cosas básicas y si quiero data clickear en el
   // producto"): a la vista foto, nombre, %, unidades y subtotal; el detalle se abre tocando el producto.
   // Las unidades y la ✕ van AFUERA del <details> para que tocarlas no lo abra.
-  const _lnk=u=>/^https:\/\/(www\.)?comprasparaguay\.com\.ar\//.test(String(u||''))?` · <a href="${String(u).replace(/"/g,'%22')}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent2)">🔗 Nissei</a>`:'';
+  const _lnk=(u,cod)=>{u=pyLinkDe(u,cod);return u?` · <a href="${String(u).replace(/"/g,'%22')}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent2)">🔗 Nissei</a>`:'';};
   const fila=(nom,cod,u,usd,on,quitar,extra,foto,pct,pctCol,det,vend,url)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border)">
       <details style="flex:1;min-width:0"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px">
         ${foto?`<img src="${foto}" loading="lazy" onerror="this.style.visibility='hidden'" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:7px;flex-shrink:0">`:`<div style="width:40px;height:40px;border:1px dashed var(--border);border-radius:7px;flex-shrink:0"></div>`}
         <div style="min-width:0;flex:1"><div style="font-size:.84rem;font-weight:600;line-height:1.3">${nom}</div>
-          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'}${_lnk(url)}${vend||''} · detalle ▾</div></div>
+          <div style="font-size:.66rem;color:var(--muted)">${cod?'🔖 '+cod:'<span style="color:var(--amber)">🔖 sin código</span>'} · ${usd>0?u2(usd)+' c/u':'<span style="color:var(--red)">sin precio</span>'}${_lnk(url,cod)}${vend||''} · detalle ▾</div></div>
         ${pct!=null?`<b style="font-size:1.05rem;color:${pctCol}">${pct}</b>`:''}
       </summary><div style="padding:6px 0 4px 49px;font-size:.72rem;color:var(--muted);line-height:1.6">${extra||''}${det||''}</div></details>
       <div style="display:flex;align-items:center;gap:6px;white-space:nowrap">${inp(u,on)}<span style="font-size:.7rem">u.</span>
