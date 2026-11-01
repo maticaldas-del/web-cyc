@@ -235,3 +235,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 7. **Reclamos por el producto:** Batidor Blanco (4 de 19 ventas: "le faltan partes"), Batidor negro (4 de 52), Funda colchón (3 de 4). (a) sugerida: revisar qué trae la caja y la descripción antes de reponer · (b) dejarlo.
 8. **Codera talle Único (MLA2230551189):** pasarla de $33.090 a $20.290 cuando entre la caja, como elegiste, necesita tu "autorizo" (es una baja sin techo medido).
 9. **Ya hecho, sacar de la lista del 31/10:** el punto 3 (Dalí L'Ocelot) ya está en descuento a $153.990 desde el 31/10 con tu autorización.
+- **01/11 · Rutina del chat de Chrome:**
+  - El cupo de Full de Luciana vino como "16265 chicos" (los otros: Adriana 487, Ayelen 0, Matías 9). Parece mal leído, así que no lo cargué. Que el chat lo vuelva a mirar mañana.
+  - ML finalizó el Paulvic Infinite Fame de Adriana (MLA1682456369) por no subir la factura que comprueba que es original. (a) sugerida: subir la factura del pedido de Paulvic desde la cuenta de Adriana y pedir que la habiliten · (b) dejarla cerrada.
+  - En Nissei no aparecen más el Pen Drive SanDisk Z530 (146208) ni los Redmi Buds 8 Pro (152527).
