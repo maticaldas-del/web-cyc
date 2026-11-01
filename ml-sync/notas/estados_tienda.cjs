@@ -37,7 +37,15 @@ const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
       </body></html>`, { waitUntil: 'load' });
     await pg.waitForTimeout(800);
     const arch = path.join(OUT, `estado_${hoy}_${i + 1}.png`); await pg.screenshot({ path: arch });
-    lineas.push(`${arch}\t${p.n}\t${pesos(p.p)} (ML ${pesos(p.ml)}, ${ah}% menos)\thttps://tiendacyc.github.io/#p=${p.id}`);
+    // Página chiquita por producto (01/11, él: "que esté el producto y al clickear los lleve a la web"): al pegar ESTE link en WhatsApp sale la
+    // vista previa con la imagen del producto, y al tocarla abre la Tienda en ese producto. Va en la carpeta estados/ de la Tienda junto al PNG.
+    const png = path.basename(arch), pag = p.id + '.html';
+    fs.writeFileSync(path.join(OUT, pag), `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(p.n)} · CYC</title><meta property="og:title" content="${esc(p.n)} a ${pesos(p.p)}"><meta property="og:description" content="En Mercado Libre ${pesos(p.ml)} · ${ah}% menos en CYC. Tocá para verlo.">
+<meta property="og:image" content="https://tiendacyc.github.io/estados/${png}"><meta property="og:url" content="https://tiendacyc.github.io/estados/${pag}"><meta property="og:type" content="product">
+<meta http-equiv="refresh" content="0;url=https://tiendacyc.github.io/#p=${p.id}"><script>location.replace("https://tiendacyc.github.io/#p=${p.id}")</script></head>
+<body style="font-family:Arial;background:#d9480f;color:#fff;text-align:center;padding:40px"><a style="color:#fff" href="https://tiendacyc.github.io/#p=${p.id}">Abrir en la Tienda CYC</a></body></html>\n`);
+    lineas.push(`${arch}\t${p.n}\t${pesos(p.p)} (ML ${pesos(p.ml)}, ${ah}% menos)\thttps://tiendacyc.github.io/estados/${pag}`);
     usados[p.id] = hoy;
   }
   await b.close();
