@@ -12986,6 +12986,19 @@ function tiendaPerfumeDistinto(nn, n) {
   const ma = ml(A), mb = ml(B); if (ma && mb && ma !== mb) return `tamaño distinto (${ma} / ${mb} ml)`;
   return '';
 }
+// 🌸 ¿SEGURO que es el mismo perfume? (01/11/2026, él: "no puede haber errores así… más que nada en la perfumería… ¿cómo estar seguro?").
+// Además de `tiendaPerfumeDistinto`, las palabras que identifican al perfume (marca y línea, sin "perfume/edp/feminino/ml"…) tienen que
+// estar en los dos nombres: al menos 80% de las del proveedor en el de ML y 60% de las de ML en el del proveedor. Si no, no se muestra.
+const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura'.split(' '));
+function perfPalabras(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && w.length > 1 && !PERF_VACIAS.has(w) && !/^\d+(ml)?$/.test(w)); }
+function tiendaPerfumeSeguro(nn, n) {
+  if (tiendaPerfumeDistinto(nn, n)) return false;
+  const A = [...new Set(perfPalabras(nn))], B = new Set(perfPalabras(n)), Bl = [...B], As = new Set(A);
+  if (!A.length || !Bl.length) return false;
+  const enB = A.filter((w) => B.has(w) || Bl.some((b) => b.length > 4 && (b.startsWith(w) || w.startsWith(b)))).length / A.length;
+  const enA = Bl.filter((w) => As.has(w) || A.some((a) => a.length > 4 && (a.startsWith(w) || w.startsWith(a)))).length / Bl.length;
+  return enB >= 0.66 && enA >= 0.6;
+}
 function tiendaParecido(nNissei, nML) {
   const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
   const a = sig(_tmTexto(nNissei, true)), b = sig(_tmTexto(nML, false)); let k = 0; for (const w of b) if (a.has(w)) k++;
@@ -30836,7 +30849,7 @@ async function main() {
     if (/^tiendarevisa(:todo)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const mapa = (await db.get('mlapi/tiendaids')) || {}; const malos = {}; let n = 0, mal = 0; const ej = [];
       for (const e of Object.values(mapa)) { if (!e || !e.nn || !e.n) continue; if (!/perfum|edp|edt|eau de|parfum|colonia|fragancia/i.test(e.n + ' ' + e.nn)) continue; n++;
-        const m = tiendaPerfumeDistinto(e.nn, e.n); if (m) { mal++; const k = m.replace(/\(.*/, '').trim(); malos[k] = (malos[k] || 0) + 1; if (ej.length < 60) ej.push(`${m} · ML: ${String(e.n).slice(0, 60)} · prov: ${String(e.nn).slice(0, 60)}`); } }
+        const m = tiendaPerfumeDistinto(e.nn, e.n) || (tiendaPerfumeSeguro(e.nn, e.n) ? '' : 'palabras distintas (marca o línea)'); if (m) { mal++; const k = m.replace(/\(.*/, '').trim(); malos[k] = (malos[k] || 0) + 1; if (ej.length < 60) ej.push(`${m} · ML: ${String(e.n).slice(0, 60)} · prov: ${String(e.nn).slice(0, 60)}`); } }
       console.log(`=== PERFUMES: ${n} revisados · ${mal} no parecen el mismo ===`); console.log(Object.entries(malos).map(([k, v]) => `${k} ${v}`).join(' · '));
       for (const t of ej) console.log('  ' + t);
       return;
