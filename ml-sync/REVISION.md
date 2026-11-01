@@ -4356,3 +4356,9 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **01/11 · Perfumes: búsqueda limpia y control afinado** (etapa 9): para perfumes la búsqueda en ML es "perfume <marca y línea> <edp/edt> <ml>"; `tiendaPerfumeSeguro` descarta sets/kits/piezas/combos, esotéricos/inspirados/réplicas, decants, testers y minis (salvo que lo del proveedor también sea kit); toda la memoria de perfumes se vuelve a buscar (`pv:2`).
 - **01/11 · Control diario de ABEL y la Tienda** (tarea 7:41): muestra al azar de 20 perfumes y 15 productos contra su nombre del proveedor con `tienda:id`; lo mal emparejado sale con `tienda:fuera` y si es patrón se arregla la regla. Muestra del 01/11 con la regla final: 30 de 30 bien. Carteles: "Cientos de perfumes" (ABEL quedó en ~377 tras el control estricto).
 - **01/11 · Ver deudas: barra de llenado en todas** (etapa 2/9, él: "que las barras de llenado se vean también en todos, según lo que pagó y falta"): `_barraPago` (verde = cuotas pagadas + lo devuelto, gris = lo que falta) con "% pagado" en cada renglón.
+
+- **(01/11) Etapa 2 · Plata — el salto de la Oficina Local va al PRÓXIMO cierre** (él: *"¿no era 1,6M cada uno?"*). El cierre de octubre se hizo el
+  29/10 00:06 y el recuento (`oficyc:listo;go`) fue después; la corrección (−$976.680) se guardó en `cyc/cobro_corr/2026_10` (mes calendario) y
+  subió el cobro de octubre de $1.600.000 a $1.900.000 cuando ese cierre no tenía el salto. Arreglo: `oficyc:listo` mira si el mes de hoy ya tiene
+  cierre y entonces la anota en el mes siguiente. Datos: movida a `2026_11`. Qué chequear: el cobro de noviembre (cierre de fin de mes) tiene que
+  mostrar "− lo viejo cargado tarde −$976.680" y el de octubre ya no.
