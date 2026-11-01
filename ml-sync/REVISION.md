@@ -4362,3 +4362,8 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   subió el cobro de octubre de $1.600.000 a $1.900.000 cuando ese cierre no tenía el salto. Arreglo: `oficyc:listo` mira si el mes de hoy ya tiene
   cierre y entonces la anota en el mes siguiente. Datos: movida a `2026_11`. Qué chequear: el cobro de noviembre (cierre de fin de mes) tiene que
   mostrar "− lo viejo cargado tarde −$976.680" y el de octubre ya no.
+
+- **(01/11) Etapa 2 · Plata — `finsuma:<dolares_mati|dolares_tito|deuda_cyc>=<+pesos|-pesos>|<nota>;go`** (ml-sync; él: *"cobré mis 1.6m, sacar
+  los 1m que debía y poner los 600.000 en dólares mati"*). Suma pesos (al dólar de hoy) a lo que CYC le debe a un socio, guarda el movimiento en
+  `cyc/finsuma/<ts>` y relee; no imprime el total. Primer uso: +$600.000 a Dólares Mati del cobro de noviembre; los $1.000.000 restantes pagaron
+  su deuda en Ver deudas (`debenmov`). Qué chequear: Dólares Mati en el Arqueo subió US$ ~385 y la deuda de $1.000.000 quedó en ✅ Pagadas.
