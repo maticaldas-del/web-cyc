@@ -12989,6 +12989,7 @@ function tiendaPerfumeDistinto(nn, n) {
 // 🌸 ¿SEGURO que es el mismo perfume? (01/11/2026, él: "no puede haber errores así… más que nada en la perfumería… ¿cómo estar seguro?").
 // Además de `tiendaPerfumeDistinto`, las palabras que identifican al perfume (marca y línea, sin "perfume/edp/feminino/ml"…) tienen que
 // estar en los dos nombres: al menos 80% de las del proveedor en el de ML y 60% de las de ML en el del proveedor. Si no, no se muestra.
+const RE_TIENDA_PERF = /\b(perfum\w*|edp|edt|eau de|parfum|colonia|col[oô]nia|fragancia|fragrance)\b/i;
 const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los the of for and y e et para pour con com edp edt edc parfum parfums extrait colonia colonia cologne toilette spray vapo natural feminino feminina masculino masculina unissex unisex mujer hombre women men man woman her him homme femme dama caballero ml oz original originales importado importada nuevo nueva x kit set travel edition fragancia fragrance mini miniatura'.split(' '));
 function perfPalabras(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && w.length > 1 && !PERF_VACIAS.has(w) && !/^\d+(ml)?$/.test(w)); }
 function tiendaPerfumeSeguro(nn, n) {
@@ -31053,6 +31054,8 @@ async function main() {
         // 31/10/2026: lo que entró con el más parecido (`ap`) no pasa el match exacto a propósito: sin esto se volvía a buscar en CADA corrida
         // (999 de 3.000 consultas por corrida) y la cola no avanzaba.
         if (mismoN && c0.cat) est = (c0.ap || !tiendaMismoProducto(e.n, c0.mn || '')) && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS) ? 'ok' : 'vencido';
+        // 01/11/2026: un PERFUME buscado antes del control estricto (`pv`) se vuelve a buscar, ahora exigiendo `tiendaPerfumeSeguro`.
+        if (mismoN && RE_TIENDA_PERF.test(e.n) && !c0.pv) est = 'nuevo';
         else if (mismoN && c0.no) est = Number(c0.v || 0) >= TM_VER && hoy - Number(c0.ts || 0) < dispersa(cod, TM_DIAS_NO) ? 'no' : 'noviejo';
         cola3.push({ cod, e, usd, est, c0, marca: TIENDA_MARCAS.test(e.n) ? 0 : 1 });
       }
@@ -31070,7 +31073,8 @@ async function main() {
       const precioBB = (p) => Math.round(Number(p && p.buy_box_winner && p.buy_box_winner.price) || 0) || null;
       // Busca SU catálogo en ML. Devuelve lo que se guarda, o tira error si ML no contestó.
       const buscar = async (cod, e, prev) => {
-        const r = { n: e.n, ts: hoy, v: TM_VER };
+        const esPerf = RE_TIENDA_PERF.test(e.n), okPerf = (nom) => !esPerf || tiendaPerfumeSeguro(e.n, nom);
+        const r = { n: e.n, ts: hoy, v: TM_VER, ...(esPerf ? { pv: 1 } : {}) };
         const aceptar = async (p, nombre) => {
           let fotos = fotosDe(p.pictures), mp = precioBB(p);
           if ((!fotos.length || !mp) && !p._leido && hayCupo()) { let p2 = null; try { p2 = await mlGetT('/products/' + p.id); } catch { p2 = null; } if (p2) { if (!fotos.length) fotos = fotosDe(p2.pictures); mp = mp || precioBB(p2); } }
@@ -31082,13 +31086,13 @@ async function main() {
         // a) lo encontrado que venció: se relee ESE catálogo (una llamada) y, si sigue activo y pasa el match, se renueva
         if (prev && prev.cat && hayCupo()) {
           const p = await leer404('/products/' + prev.cat);   // un catálogo que ML borró se busca de nuevo
-          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name)) { p._leido = 1; if (!(await aceptar(p, p.name))) { nv.renovados++; return r; } }
+          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name) && okPerf(p.name)) { p._leido = 1; if (!(await aceptar(p, p.name))) { nv.renovados++; return r; } }
         }
         let motivo = null, parecido = '', parecidoCat = '';
         // b) el catálogo que ya eligió la medición de cada noche, si pasa el match (con el nombre que da ML hoy)
         if (e.mi && e.mt && !tiendaMismoProducto(e.n, e.mt) && hayCupo()) {
           const p = await leer404('/products/' + e.mi);
-          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name)) { p._leido = 1; const m = await aceptar(p, p.name); if (!m) return r; motivo = m; }
+          if (p && p.id && (!p.status || p.status === 'active') && !tiendaMismoProducto(e.n, p.name) && okPerf(p.name)) { p._leido = 1; const m = await aceptar(p, p.name); if (!m) return r; motivo = m; }
         }
         // c) si no, una búsqueda con el nombre traducido: de los que pasan el match, el MÁS PARECIDO (no el primero)
         if (!hayCupo()) return 'sincupo';
@@ -31096,12 +31100,13 @@ async function main() {
         const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
         const res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
         const buenos = [];
-        for (const x of res) { const m = tiendaMismoProducto(e.n, x.name); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
+        for (const x of res) { const m = tiendaMismoProducto(e.n, x.name) || (okPerf(x.name) ? '' : 'otro perfume (marca, línea, tipo o tamaño)'); if (m) { if (!motivo) { motivo = m; parecido = String(x.name || '').slice(0, 120); parecidoCat = String(x.id).toUpperCase(); } continue; } buenos.push(x); }
         buenos.sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name) || String(a.name || '').length - String(b.name || '').length);   // empatados: el nombre más limpio
         for (const x of buenos) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) return r; motivo = motivo || m; }
         // 31/10/2026 (él: "nunca nada de Nissei; si tiene catálogo carga eso, si no comparalo con MercadoLibre y poné siempre foto y nombre de
         // ML"): si ninguno pasa el match exacto, entra el MÁS PARECIDO de lo que trajo ML (con su nombre y sus fotos), marcado `ap` (aproximado).
-        const resto = res.filter((x) => !buenos.includes(x)).sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name));
+        // Para un perfume NO hay "el más parecido": o es el mismo o no entra.
+        const resto = esPerf ? [] : res.filter((x) => !buenos.includes(x)).sort((a, b) => tiendaParecido(e.n, b.name) - tiendaParecido(e.n, a.name));
         // 31/10/2026: sin cupo para leer las fotos NO es "no es el mismo" (quedaba guardado 90 días: 3.881 afuera); se reintenta la próxima corrida.
         for (const x of resto.slice(0, 3)) { if (!hayCupo()) return 'sincupo'; const m = await aceptar(x, x.name); if (!m) { r.ap = 1; return r; } }
         if (!res.length && !motivo) motivo = 'ML no trajo nada';
