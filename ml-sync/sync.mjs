@@ -31204,6 +31204,12 @@ async function main() {
       // 🚫 SACADOS A MANO (31/10/2026, él: "que no haya cosas ridículas"): `cyc/mlconfig/tiendaFuera/<ID>` = motivo (lo carga `tienda:fuera=`).
       let fueraMano = {}; try { fueraMano = (await db.get('cyc/mlconfig/tiendaFuera')) || {}; } catch { fueraMano = {}; }
       const out = [];
+      // 🌸 ABEL (01/11/2026, él: "nunca menos del 30% y nunca arriba de ML… si para llegar al 30% queda arriba de ML, máximo un 10%, si no
+      // no se muestra… que diga ABEL"): el catálogo de las Perfumerías Abel = SÓLO perfumes, precio = costo REAL estimado (sin ganancia de
+      // CYC) × 1,30; con precio de ML: si pasa 1,10 × ML queda afuera. Mismo código y mismas fotos/detalles que la tienda.
+      const outAbel = []; const abelNo = {};
+      const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
+      const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b/i;
       for (const { x, n, p, om } of finales) {
         { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); continue; } }
         const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
@@ -31219,6 +31225,11 @@ async function main() {
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlVer = !cp && !om && !x.ap && x.mpRef > 0 && p <= x.mpRef * 0.95 && p >= x.mpRef * 0.5 ? Math.round(x.mpRef) : 0;
+        if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && x.usd > 0) {
+          const costoR = x.usd * RECT * tc, pA = lindo(costoR * 1.30), mlA = x.mpRef > 0 ? Math.round(x.mpRef) : 0;
+          if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML con el 30%'] = (abelNo['más de 10% arriba de ML con el 30%'] || 0) + 1;
+          else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), c: 'Perfumes' });
+        }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
       }
       // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
@@ -31296,6 +31307,13 @@ async function main() {
         for (const [id, d] of Object.entries(detPorId)) { baldes[tiendaBalde(id)][id] = d; nd++; }
         let malo = 0; baldes.forEach((b, i) => { const t = JSON.stringify(b); if (prohibido(t.replace(/https:\/\/[^"]+/g, ''))) { malo++; writeFileSync(dir + '/d' + i + '.json', '{}\n'); } else writeFileSync(dir + '/d' + i + '.json', t + '\n'); });
         console.log(`📋 detalles: ${nd} de ${out.length} productos con detalles de ML · ${detLeidos} leídos hoy · faltan ${detQuedan}${malo ? ` · ⚠️ ${malo} archivo(s) vaciados por una palabra que no puede salir` : ''}`); }
+      { // 🌸 ABEL: su propio archivo (abel/productos.json), ordenado por nombre; sin WhatsApp (es sólo catálogo).
+        outAbel.sort((a, b) => a.n.localeCompare(b.n, 'es'));
+        const jA = JSON.stringify({ act: diaAR, productos: outAbel });
+        if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
+        else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
+        else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
+        console.log(`🌸 ABEL: ${outAbel.length} perfumes · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
     }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
