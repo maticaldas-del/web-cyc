@@ -31196,6 +31196,10 @@ async function main() {
         // 31/10/2026 (él: "¿no se resuelve poniendo el título de Nissei? que no esté en portugués"): si el proveedor y ML dicen la misma
         // unidad con otro número (pack de 3 kg contra el rollo de 1 kg de ML, perfume de 50 contra el de 100), va con el NOMBRE DEL PROVEEDOR
         // traducido (y la foto de ML); el precio de ML no sirve para comparar (es de otro tamaño). Si la traducción deja algo en portugués, afuera.
+        // 🌸 PERFUMES SIN DUDAS (01/11/2026, él: "no puede haber errores así… los clientes lo ven… más que nada en la perfumería"): un perfume
+        // entra sólo si el nombre del proveedor y el de ML dicen la MISMA marca, línea, concentración, variante, género y tamaño
+        // (`tiendaPerfumeSeguro`); con cualquier duda, afuera (vale para la tienda y para ABEL).
+        if (x.nn && /\b(perfum\w*|edp|edt|eau de|parfum|colonia|col[oô]nia|fragancia)\b/i.test(n + ' ' + x.nn) && !tiendaPerfumeSeguro(x.nn, n)) { no('perfume que no es seguro que sea el mismo'); continue; }
         let otraMedida = false;
         if (x.nn && tiendaMedidaDistinta(x.nn, n)) {
           const nt = tiendaNombreProv(x.nn);
