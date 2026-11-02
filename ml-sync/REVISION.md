@@ -2267,6 +2267,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+- **Sin "Anotar un envío a mano" (02/11/2026, v28.76)** · qué es: el desplegable de la solapa En camino quedó oculto (él: *"sacar eso"*); lo que falta en un envío salido lo corrijo con `cajaitems` · qué chequear: que la solapa En camino se vea igual sin ese bloque.
+
 - **✅ Pagadas desplegable (02/11/2026, v28.69)** · qué es: en Ver deudas la lista de pagadas queda cerrada y se abre tocando el título (él: *"pagadas que sea un desplegable"*) · dónde vive: `renderCuotas` en `index.html` (`window._pagAbiertas`) · qué chequear: que abra/cierre, que una pagada abierta mantenga abierta la lista y que las páginas sigan andando.
 ### 🔍 Revisión de la etapa 7 (31/10/2026, 4 revisores en máximo · sólo propuestas)
 - **Qué se hizo:** Inicio/Ventas, Plata (Arqueo, Ver deudas, Métricas), Mercadería (Pedidos, Armar caja, Oficina) y Productos/Rotación/🧠/Ajustes dibujados con el CSS real a 360/390/1200 px y medidos con código. ~40 problemas (lo que se corta, botones que se corren, toques chicos, contraste, letra mezclada) y 20 propuestas con maqueta; 13 decisiones en `notas/para_mati.md`.

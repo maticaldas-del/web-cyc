@@ -1706,7 +1706,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
          Va plegado porque el camino normal es "Armar caja": ahí la caja se crea sola y con el
          contenido cargado, que es lo que después le permite al robot marcarla cuando llega.
          Esto es para el otro caso: la caja ya salió y solo tenés el comprobante del correo. -->
-    <details style="margin-bottom:12px">
+    <!-- 02/11/2026 (él: "sacar eso"): oculto. Queda en el código porque otras funciones leen sus casillas (env-fecha, env-cuenta…). -->
+    <details style="display:none;margin-bottom:12px">
       <summary style="cursor:pointer;font-size:.7rem;color:var(--muted);padding:8px 0">➕ Anotar un envío a mano (ya despachado, sin pasar por "Armar caja")</summary>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-top:6px">
         <div class="pedidos-add" style="margin-bottom:10px">
@@ -3251,7 +3252,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.75';
+const APP_VERSION='28.76';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3265,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.76',f:'02/11',h:'19:00',c:[{n:1,t:'📦 Envíos en camino: se sacó "Anotar un envío a mano" (todo se arma desde Armar caja; lo que falte en un envío ya salido lo corrige Claude)'}]},
   {v:'28.75',f:'02/11',h:'17:45',c:[{n:2,t:'📦 Armar caja: lo que va a Full por primera vez (0 en Full, nunca a la venta) ya no dice "podés esperar": mientras no llega no se vende nada, así que cuenta como que se corta hoy'}]},
   {v:'28.74',f:'02/11',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos que llegaron: cuando le pasás a Claude las fotos de lo que llegó, la tarjeta se pone en verde y dice ✅ llegó todo bien (fotos)'}]},
   {v:'28.73',f:'02/11',h:'16:10',c:[{n:1,t:'💲 Se pueden crear publicaciones hasta $600.000 (antes $550.000). El techo de cualquier precio sigue en $650.000: el monotributo deja vender hasta $716.841 por unidad'}]},
