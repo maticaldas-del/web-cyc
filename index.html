@@ -3252,7 +3252,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.76';
+const APP_VERSION='28.77';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3265,6 +3265,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.77',f:'02/11',h:'20:30',c:[{n:2,t:'🧾 Gastos del mes: cada gasto que falta tiene su casilla de monto y 💾 Cargar, se carga ahí mismo sin ir al formulario.'}]},
   {v:'28.76',f:'02/11',h:'19:00',c:[{n:1,t:'📦 Envíos en camino: se sacó "Anotar un envío a mano" (todo se arma desde Armar caja; lo que falte en un envío ya salido lo corrige Claude)'}]},
   {v:'28.75',f:'02/11',h:'17:45',c:[{n:2,t:'📦 Armar caja: lo que va a Full por primera vez (0 en Full, nunca a la venta) ya no dice "podés esperar": mientras no llega no se vende nada, así que cuenta como que se corta hoy'}]},
   {v:'28.74',f:'02/11',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos que llegaron: cuando le pasás a Claude las fotos de lo que llegó, la tarjeta se pone en verde y dice ✅ llegó todo bien (fotos)'}]},
@@ -27608,6 +27609,23 @@ const GASTOS_DEL_MES=[
 // (cyc/gastos_nova/<AAAA_MM>/<n>), así que el mes que viene vuelve a pedirlo solo: marcar un gasto
 // como que no va nunca más sería el cementerio de marcas viejas.
 const _gnvKey=n=>String(n).toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
+// CARGAR UN GASTO DESDE LA LISTA (02/11/2026, él: "quiero que haya un cuadradito así cargo los gastos de ahí. o sea no tener que ir y
+// cargar manual"): cada renglón que falta tiene su casilla de monto; se guarda como un gasto más (cyc/compras) con la categoría y el
+// nombre del renglón en la descripción, así la lista lo reconoce sola. Mes de hoy → hoy; un mes pasado → el último día de ese mes.
+async function gastoRapido(ym,i){
+  const g=GASTOS_DEL_MES[i];if(!g)return;
+  const el=document.getElementById('gr_'+_gnvKey(g.n));const monto=parseMoney(el&&el.value);
+  if(!monto){if(el)el.focus();return;}
+  const hoyK=todayStr().replace(/-/g,'_');
+  let dayKey=hoyK;if(hoyK.slice(0,7)!==ym){const [y,m]=ym.split('_').map(Number);const ult=new Date(y,m,0).getDate();dayKey=ym+'_'+String(ult).padStart(2,'0');}
+  if(!confirm(`¿Cargar ${g.n.split(' — ')[0]} por ${fmt(monto)} en ${ym.replace('_','/')}?`))return;
+  const id='c'+Date.now();
+  const obj={id,monto,cat:g.cat||'Otros gastos operativos',tipo:'gasto',desc:g.n.split(' — ')[0]+(g.pal&&!g.pal.some(w=>g.n.toLowerCase().includes(w))?' · '+g.pal[0]:''),ts:Date.now(),dayKey};
+  try{await fbSet('compras/'+id,obj);}catch(e){alert('No se pudo guardar: '+(e&&e.message||e));return;}
+  state.compras[id]=obj;await log('Gasto '+obj.cat+' '+fmt(monto)+' (desde la lista)');
+  try{renderComprasChecklist();renderComprasList();renderComprasCats();renderComprasHist();updateComprasTotals();}catch(_){}
+  toast('Gasto registrado');
+}
 async function setGastoNoVa(ym,n,val){
   state.gastosNoVa=state.gastosNoVa||{};
   const k=_gnvKey(n);state.gastosNoVa[ym]=state.gastosNoVa[ym]||{};
@@ -27707,6 +27725,7 @@ function renderComprasChecklist(){
              :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
                :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
       ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>`}
+      ${(f.hay||f.noVa)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}" style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn" style="font-size:.66rem;padding:3px 10px" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
     </div>`).join('')}
     ${filasRet.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':'❌'}</span>
