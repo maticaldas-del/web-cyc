@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.65';
+const APP_VERSION='28.66';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.66',f:'02/11/2026',h:'22:31',c:[{n:2,t:'📊 Métricas → ⛶ Pantalla completa en iPhone: el gráfico de costado salía chiquito y aplastado. Ahora ocupa toda la pantalla.'}]},
   {v:'28.65',f:'01/11/2026',h:'20:24',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: en el detalle se ve la dirección entera de Nissei (se puede tocar o copiar).'}]},
   {v:'28.64',f:'01/11/2026',h:'20:07',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el 🔗 Nissei pasó adentro del detalle de cada renglón (ya no en la línea de abajo del nombre).'}]},
   {v:'28.63',f:'01/11/2026',h:'20:07',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el 🔗 Nissei sale en todos los renglones con código (también Uso personal): si no estaba guardado, lo busca en el catálogo copiado de Nissei.'}]},
@@ -27801,8 +27802,9 @@ function abrirGraficoFS(canvasId){
   // De costado: en Android se traba la pantalla acostada (sólo anda en pantalla completa); en iPhone, que no deja, se gira el gráfico.
   if(fs.requestFullscreen){fs.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock?screen.orientation.lock('landscape'):null).catch(()=>{}).then(()=>setTimeout(_fsRotar,150));}
   else _fsRotar();
-  setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},80);
-  setTimeout(()=>{if(_fsChart){try{_fsChart.resize();}catch(e){}}},400);
+  // 02/11/2026 (él, con la foto del iPhone: el gráfico salía chiquito y aplastado): estos dos se medían solos y, con el gráfico girado,
+  // le daban el ancho y el alto al revés. Ahora pasan por `_fsResize`, que mide bien en los dos casos.
+  setTimeout(_fsResize,80);setTimeout(_fsResize,400);setTimeout(_fsResize,900);
 }
 function _fsRotar(){
   const fs=document.getElementById('chart-fs');if(!fs||!fs.classList.contains('open'))return;
