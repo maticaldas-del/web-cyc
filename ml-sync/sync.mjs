@@ -5660,6 +5660,14 @@ async function puntoSinTecho(db, mla, links, prods, cache = new Map()) {
   if (info.diasSt < TECHO_RITMO_MIN_DIAS_ST || rs < TECHO_RITMO_MIN_SEMANA) return null;
   return `vende ${rs.toFixed(1)} por semana (${info.diasSt} días con stock de los últimos 60) y no tiene techo en rojo (🔴 de la línea ni 🏔️ de techo95): primero se busca techo (📈 #techo) y recién con el 🔴 al 95% pasa a 💰 (él, 27/10)`;
 }
+// 🧪 1a del 02/11/2026 (él: "encontrar el precio que más ganancia da entre 35% y 500%… lo más rápido posible"): lo que vende menos de 1 por
+// semana (4a) puede probar UNA suba de +50% si no subió en los últimos 30 días y no tiene 🔴 techo medido. Si no vende en 10 días, el punto
+// medio la vuelve de una al precio de antes (`vueltaDeSuba`, 10 días sin vender). Una prueba por mes como mucho.
+const PRUEBA_LENTO_DIAS = 30;
+function pruebaLentoOk(cc, mla, ray, ahora = Date.now()) {
+  if (ray && Number(ray.techo) > 0) return false;
+  return !Object.values(cc || {}).some((c) => c && String(c.mla) === String(mla) && Number(c.ts) > ahora - PRUEBA_LENTO_DIAS * 864e5 && Number(c.a) > Number(c.de) * 1.02);
+}
 const TECHO_RITMO_MIN_DIAS_ST = 14;   // Revisión etapa 1 (24/10): con menos días con stock que esto el ritmo no alcanza para frenar (4a)
 async function pruebasTechoEnCurso(db, ahora = Date.now()) {
   const DIA = 864e5;
@@ -5976,6 +5984,26 @@ async function detectarErrores(db, o = {}) {
       : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lzC.lento || 0} 📈 que venden menos de 1 por semana (4a: quedan 💰) · ${lanza.length} para subir)`);
+  // ── 🧪 VENDEN MENOS DE 1 POR SEMANA Y NUNCA PROBARON MÁS CARO (1a del 02/11/2026, él: "encontrar el precio que más ganancia da… lo más
+  // rápido posible"): 💰 #punto activa, con 14+ días con stock en 60 y menos de 1 por semana, sin 🔴 techo medido y sin suba en 30 días →
+  // una prueba de +50% (decido lo deja con `pruebaLentoOk`). Si no vende en 10 días, vuelve de una (📉). Tiene que quedar vacía.
+  const lentos = []; { let rayL = {}; try { rayL = (await db.get('cyc/rayas')) || {}; } catch { rayL = null; }
+    if (rayL) for (const [m, h] of Object.entries(est)) {
+      const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || '')) || ML_REVISION_NO_MIRAR.has(m)) continue;
+      let ult = ''; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; }
+      if (ult !== 'punto' && ult !== 'techo') continue;   // 📈 lento que vendió en su prueba: otra prueba a los 30 días
+      if (nbDet[m] && nbDet[m].congelado) continue;
+      if (!pruebaLentoOk(cc, m, rayL[m] || {}, ahora)) continue;
+      const P = Number((np[m] || {}).precio) || 0; if (!(P > 0) || P >= TECHO_DURO || tope500(m, P) || cercaAntiguo(e)) continue;
+      const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs == null || infR.diasSt < TECHO_RITMO_MIN_DIAS_ST || !(rs < TECHO_RITMO_MIN_SEMANA)) continue;
+      let obj = Math.min(objTerm(P * TECHO_SUBA) || TECHO_DURO, TECHO_DURO); if (P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;
+      if (!(obj > P * 1.02)) continue;
+      lentos.push({ mla: m, e, P, obj, rs, dSt: infR.diasSt });
+    } }
+  bloque('🧪 VENDEN MENOS DE 1 POR SEMANA Y NUNCA PROBARON MÁS CARO · una prueba de +50% (1a del 02/11; si no vende en 10 días vuelve de una) EN ESTA VUELTA', lentos, (x) => {
+    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · hoy ${$(x.P)} · vende ${x.rs.toFixed(1)} por semana (${x.dSt} días con stock de 60) · sin 🔴 techo ni suba en ${PRUEBA_LENTO_DIAS} días`);
+    console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|QUÉ HICE de ${x.P} a ${x.obj}. POR QUÉ 1a del 02/11: vende ${x.rs.toFixed(1)} por semana y nunca probó más caro, una prueba de +50% para encontrar el precio que más ganancia deja. SI NO VENDE en 10 días vuelve de una a ${x.P};go`);
+  });
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
   // subir el precio para buscar el techo lo más rápido posible… el objetivo es que todas estén en buscando el mejor precio lo más rápido
   // posible y a partir de ahí afinar"). Toda Clásica activa que vendió (ella, gemela o hermana) en las últimas 48 h, que NO está en 📈/🆕
@@ -50644,6 +50672,7 @@ async function main() {
               // por los días CON stock; con menos de TECHO_RITMO_MIN_DIAS_ST no alcanza para decir que vende poco (no frena).
               if (rs == null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO 4a: no pude leer las ventas (o la línea de tiempo) de los últimos 60 días: sin saber si vende menos de 1 por semana no subo a buscar techo. Se vuelve a mirar en la próxima vuelta.'; }
               else if (infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA && ['escasez', 'sinrepo'].includes(tg) && Number(d.st) >= 0 && d.st != null && (rs > 0 ? Number(d.st) / (rs / 7) : (Number(d.st) > 0 ? 9999 : 0)) < 100) { /* 🔥/⏳ con el stock que no llega a 100 días: subir es estirar, no buscar techo */ }
+              else if (infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA && tg === 'techo' && await (async () => { if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } } if (!globalThis._ccCache4a) return false; let ry = null; try { ry = (await db.get('cyc/rayas/' + d.mla)) || {}; } catch { return false; } return pruebaLentoOk(globalThis._ccCache4a, d.mla, ry); })()) { d.pruebaLento = true; /* 🧪 1a del 02/11: una prueba de +50% por mes */ }
               else if (infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 4a: vende ${rs.toFixed(1)} por semana (en los ${infR.diasSt} días con stock de los últimos 60, con gemelas): a lo que vende menos de 1 por semana no se le busca techo subiendo (él, 23/10). Queda en su precio como 💰 (#punto) o, si sobra, baja en escalera.`; }
             }
           }
