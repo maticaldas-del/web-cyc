@@ -53780,6 +53780,24 @@ async function main() {
         // SIEMPRE A ETIQUETAR (25/10/2026, él: "al cargar unidades a mi oficina, que siempre salgan como a etiquetar"): todo lo
         // que SUBE la oficina se suma también a `cyc/sinetiq` (la tarjeta "🏷️ Sin terminar / sin etiqueta" de Contar lo que hay).
         // `!ok` al final = ya viene etiquetado (ej. lo que vuelve de una caja); `!se` (23/10) se sigue aceptando, ya no hace falta.
+        // 🧴 SIN AROMA (02/11/2026, él con los 15 Paulvic de las perfumerías: "no voy a pasar aromas, se cuentan como paulvic gral"):
+        // `ofi:<palabra>=-N!gral` resta N del producto sacándolas de a una de los aromas/colores con MÁS unidades en la oficina (así el total
+        // y la suma de los aromas siguen iguales). Sólo para restar.
+        if (/!gral$/i.test(x)) {
+          const mg = x.replace(/!gral$/i, '').match(/^(.+?)=-(\d+)$/);
+          if (!mg) { problemas.push(`"${x}" → !gral sólo resta: <palabra>=-N!gral`); continue; }
+          const qg = nrm(mg[1].trim()); const hg = prods.filter((pp) => nrm(pp.name).includes(qg));
+          if (hg.length !== 1) { problemas.push(`"${mg[1]}" → ${hg.length ? `agarra ${hg.length}: ${hg.slice(0, 8).map((pp) => pp.name).join(' | ')}` : 'ninguna ficha'}`); continue; }
+          const pg = hg[0], vsg = pg.variantes || [];
+          if (!vsg.length) { problemas.push(`"${mg[1]}" no tiene aromas/colores: usá ${mg[1]}=-${mg[2]} sin !gral`); continue; }
+          const kv = (v) => pg.id + '__' + sid('Oficina Mati') + '__v__' + sid(v);
+          const cnt = Object.fromEntries(vsg.map((v) => [v, parseInt(inv[kv(v)]) || 0]));
+          let resta = parseInt(mg[2], 10); const saca = {};
+          while (resta > 0) { const v = vsg.slice().sort((a1, b1) => cnt[b1] - cnt[a1])[0]; if (!(cnt[v] > 0)) break; cnt[v]--; saca[v] = (saca[v] || 0) + 1; resta--; }
+          if (resta > 0) { problemas.push(`${pg.name}: en la oficina no alcanzan (faltan ${resta} u. para restar ${mg[2]})`); continue; }
+          for (const [v, n] of Object.entries(saca)) ops.push({ p: pg, va: v, se: false, delta: -n, fijo: null });
+          continue;
+        }
         const ok = /!ok$/i.test(x), se = !ok;
         if (ok && !DIJO_O) { problemas.push(`"${x}" → !ok (ya viene etiquetado) sólo si él lo dijo: agregá ;dijo=<lo que dijo> (regla del 26/10: todo entra sin etiqueta)`); continue; }
         const m = x.replace(/!(se|ok)$/i, '').match(/^(.+?)(?:@(.+?))?=([+-]?)(\d+)$/);
