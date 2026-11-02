@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.74';
+const APP_VERSION='28.75';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.75',f:'02/11',h:'17:45',c:[{n:2,t:'📦 Armar caja: lo que va a Full por primera vez (0 en Full, nunca a la venta) ya no dice "podés esperar": mientras no llega no se vende nada, así que cuenta como que se corta hoy'}]},
   {v:'28.74',f:'02/11',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos que llegaron: cuando le pasás a Claude las fotos de lo que llegó, la tarjeta se pone en verde y dice ✅ llegó todo bien (fotos)'}]},
   {v:'28.73',f:'02/11',h:'16:10',c:[{n:1,t:'💲 Se pueden crear publicaciones hasta $600.000 (antes $550.000). El techo de cualquier precio sigue en $650.000: el monotributo deja vender hasta $716.841 por unidad'}]},
   {v:'28.72',f:'02/11',h:'15:45',c:[{n:1,t:'🛒 Pedidos: cada tarjeta dice debajo de las unidades cuánto cuesta el pedido (💵 unidades × lo que costó cada una la última vez)'}]},
@@ -10345,6 +10346,12 @@ function convieneCaja(filas,cuenta){
         const uPerd=Math.min(u,diasMas*vD);
         const pe=uPerd*gu;
         if(pe>0){perdida+=pe;cortan.push({p:f.p,variante:f.variante,corte:Math.floor(corte),u:uPerd,pe});}
+      }else if(!((s.stock||0)>0)){
+        // PRIMERA VEZ EN FULL (02/11/2026, él: "literalmente todo lo cargado no hay ni uno en stock en Full, porque es la primera vez que
+        // mandaríamos"): lo nuevo no tiene ritmo medido (nunca estuvo a la venta), pero mientras no llega no se puede vender nada. Se
+        // cuenta como que vendería lo que va en ~30 días: esperar 7 días le saca 7/30 de esa ganancia (y ya está en cero en Full).
+        const pe=gu*u*Math.min(1,D/30);
+        if(pe>0){perdida+=pe;cortan.push({p:f.p,variante:f.variante,corte:0,u:Math.min(u,u*D/30),pe,nuevo:1});}
       }
     }
   }
