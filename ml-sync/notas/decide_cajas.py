@@ -149,6 +149,8 @@ BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}   # Paulvic
 # el Watch 5 Lite volvió a 2). Lo que él decidió para un producto (y color) en una cuenta va acá y NINGUNA vuelta lo cambia:
 # (id, color o '', cuenta) → (unidades, motivo). Las unidades nunca pasan lo que hay en la oficina. Se saca de acá cuando él lo cambia.
 FIJO={
+  ('p1793417351891','','Luciana'):(4,'Él 02/11: Ayelen no tiene lugar en Full y este nunca se mandó ni vendió: se pasó a Luciana (MLA2255755299). Nuevo sin ventas: van 4 de las 9'),
+  ('p1793417351891','','Ayelen'):(0,'Él 02/11: pasó a Luciana (la publicación de Ayelen se cerró)'),
   ('p1779912655490','Persea','Luciana'):(3,'Él 25/10: el Persea queda en Luciana y es el único perfume que vende ahí. Van las 3 de la oficina (etiquetadas JVUG50085)'),
   ('p17833581096733','','Matias'):(0,'Él eligió la 1a del 25/10: no va a Full porque deja ~10% (su única venta fue a $113.250). Se vende por otro lado'),
   ('p1779912656220','blanco','Ayelen'):(0,'En Ayelen no hay publicación de P47 blanco (sólo P47m Rosa), 25/10. Sin publicación de ese color no va'),
@@ -222,6 +224,8 @@ for p in P:
     _apT=f" y {p['perfR']} apartadas para la perfumería" if p.get('perfR') else ''   # revisión etapa 9, 30/10/2026
     if pv: cta='Adriana'
     elif len(ctas)==1: cta=ctas[0]
+    # 02/11/2026: si él fijó a qué cuenta va (FIJO con unidades), manda sobre las cuentas que "pueden" (una publicación recién cerrada sigue en el log)
+    elif any(a==p['id'] and q>0 and c in ctas for (a,_v,c),(q,_m) in FIJO.items()): cta=next(c for (a,_v,c),(q,_m) in FIJO.items() if a==p['id'] and q>0 and c in ctas)
     elif not ctas: sin.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): ninguna cuenta lo puede recibir (no publica o está en nomandar)"); continue
     else: amano.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): puede ir a {', '.join(ctas)} — decidir a mano"); continue
     if p['vars'] and any(x['casa']>0 for x in p['vars']):
