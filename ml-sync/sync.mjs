@@ -938,6 +938,9 @@ const TECHO_DURO = 650000;   // 03/10/2026: subido de $650.000 a $650.000 (regla
 // pasamos de todas las franjas y ahí empezamos a bajar buscando el mejor precio"): +50% cada vez que vende (antes +30%). Lo usan el freno
 // de la suba chica de `decido` y las sugerencias del detector `errores`.
 const TECHO_SUBA = 1.5;
+// 🛑 TOPE DE 500% (02/11/2026, él: "y para, pongamos que tome 500% de ganancia. Sino no para de subir"): ninguna suba deja más de 500% de
+// ganancia en el peor caso. Ahí termina la búsqueda de techo aunque siga vendiendo (`decido` frena la suba; el detector no la pide).
+const TOPE_GANANCIA_PCT = 500;
 const PUBLICAR_MIN_PCT = 35;   // 23/10/2026 (él): "siempre publicar todo arriba del 35% o en 35%" (peor caso); se baja cerca de pagar stock antiguo
 const TOPE_CREAR = 550000;   // 23/10/2026 (él): nunca se crea una publicación (Clásica o gemela) más cara que esto
 function frenosSuba(from, to, o) {
@@ -5845,6 +5848,9 @@ async function detectarErrores(db, o = {}) {
   // suba mía después de esa venta. La lista tiene que quedar vacía al terminar la vuelta (se sube con el comando que trae).
   // Cerca de pagar stock antiguo (20 días o menos, o ya pagando): ahí no se sube a buscar techo, se vende (o lo decidió él, 27/10: "esperar como están").
   const cercaAntiguo = (e) => { try { const ed = edadViejaFull(e, null, lotes || {}, {}); if (ed == null) return null; const pr = prods && e.prodId ? prods[e.prodId] : null; const cb = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0]; return ed >= cb - 20 ? `la unidad más vieja lleva ${ed} d en Full y el stock antiguo se cobra desde los ${cb}` : null; } catch { return null; } };
+  // 🛑 tope de 500% (02/11): el último cambio mío a este precio (±2%) anotó cuánto deja en el peor caso; con 500%+ no se pide subir.
+  let _cc500 = {}; try { _cc500 = (await db.get('cyc/claudecambios')) || {}; } catch { _cc500 = {}; }
+  const tope500 = (m, P) => { const r = Object.values(_cc500).filter((c) => c && String(c.mla) === String(m) && Number(c.a) > 0 && Math.abs(Number(c.a) - P) <= P * 0.02 && c.mgPA != null).sort((x, y) => Number(y.ts) - Number(x.ts))[0]; return !!(r && Number(r.mgPA) >= TOPE_GANANCIA_PCT); };
   const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0, convenir: 0, antiguo: 0 }; const rsC = new Map();
   let nbDet = {}; try { nbDet = (await db.get('cyc/nobajar')) || {}; } catch { nbDet = {}; }
   let t95Det = {}; try { t95Det = (await db.get('cyc/techo95pct')) || {}; } catch { t95Det = {}; }
@@ -5905,6 +5911,7 @@ async function detectarErrores(db, o = {}) {
           escCorto = st != null && dd >= 5 && uu > 0 && st / (uu / dd) < 100; } }
       { const t9 = t95Det[m]; if (!escCorto && t9 && P > 0 && Number(t9.p) > 0 && Math.abs(Number(t9.p) - P) <= P * 0.02 && Number(t9.seg) >= (Number(t9.umb) || 0.95)) { lzC.convenir++; continue; } }
       if (P > 0 && P >= TECHO_DURO) { lzC.convenir++; continue; }
+      if (tope500(m, P)) { lzC.convenir++; continue; }   // 🛑 ya deja 500%+ (él, 02/11): ahí termina la búsqueda
       if (cercaAntiguo(e)) { lzC.antiguo++; continue; }
       // 1a del 28/10: una 🔥/⏳ con una suba que "NO rindió" vigente en la ficha (⛔, 30 días) YA tiene techo medido arriba: no se sube a ciegas
       // (el Pendrive 8gb ⏳ a $23.990: subir a $26.990 no rindió). Sin poder leer la ficha, tampoco.
@@ -5981,6 +5988,7 @@ async function detectarErrores(db, o = {}) {
       const rT = ray == null ? null : Number((ray[m] || {}).techo) || 0;
       const t95 = Object.entries(h).some(([k, x]) => techookDeTecho95(x) && Number(k) > ahora - 60 * 864e5);
       if (rT == null) { vendio48.push({ mla: m, e, u, P, ult, no: '❓ no pude leer sus rayas' }); continue; }
+      if (tope500(m, P)) { v48C.explica++; vendio48.push({ mla: m, e, u, P, ult, no: `ya deja ${TOPE_GANANCIA_PCT}%+ de ganancia (tope suyo, 02/11)` }); continue; }
       if (rT > 0 || t95) { v48C.conTecho++; vendio48.push({ mla: m, e, u, P, ult, no: `ya tiene techo medido (${rT > 0 ? '🔴/🟠 ' + $(rT) : '🏔️ techo95'}): se afina desde ahí` }); continue; }
       let obj = P > 0 ? Math.min(objTerm(P * TECHO_SUBA) || TECHO_DURO, TECHO_DURO) : 0;
       if (P > 0 && P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;
@@ -50561,6 +50569,8 @@ async function main() {
           }
           if (d.accion === 'sube' && tg === 'techo' && a < p0 * TECHO_SUBA && !exc('chico') && !(fz.pctObj > 0 || fz.pctMult > 0) && !(p0 < UMBRAL_ENVIO_GRATIS && a >= 32900 && a < UMBRAL_ENVIO_GRATIS) && !(a >= 640000)) {
             d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO: buscar techo es un salto grande (+50% o más), nunca de a poco: ${money(p0)} → ${money(a)} es +${Math.round((a / p0 - 1) * 100)}%. El salto llega a ${money(Math.ceil(p0 * TECHO_SUBA / 100) * 100 - 10)} o más. Si es menos a propósito (un techo ya visto, la barrera): !chico y "EXCEPCIÓN: …"`; continue; }
+          if (d.accion === 'sube' && d.mgPA != null && Number(d.mgPA) > TOPE_GANANCIA_PCT && !(d.mgP0 != null && Number(d.mgP0) < PISO_DURO)) {
+            d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 500%: a ${money(a)} deja ${Math.round(Number(d.mgPA))}% de ganancia en el peor caso y el tope es ${TOPE_GANANCIA_PCT}% (él, 02/11). Subir menos, hasta ${TOPE_GANANCIA_PCT}%, o dejarlo donde está.`; continue; }
           // 🔒 4a (23/10/2026, él): a lo que vende menos de 1 por semana (60 días, con gemelas y hermanas) no se le busca techo subiendo.
           // No frena un 🆕 lanzamiento que vendió (su ritmo todavía no dice nada) ni !chico con "EXCEPCIÓN: …". Queda en 💰 #punto.
           // 37a (24/10/2026, él): decide el DATO, no la etiqueta — vale para TODA suba, salvo la que se explica con datos: subir al 25% del
