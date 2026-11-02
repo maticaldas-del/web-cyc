@@ -4082,7 +4082,7 @@ sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia
 
 ## 9 · LOCAL (cada 7 días, nació el 29/10/2026)
 
-- **ABEL: sólo con el mismo exacto en ML (02/11/2026)** · qué es: un perfume sin el mismo exacto en ML (ni más parecido, ni otra medida) no entra a la página ABEL (él: *"si tenés duda… que no estén"*) · dónde vive: armado de ABEL en `tienda` de `sync.mjs` · qué chequear: cuántos quedan (antes 999, ~90 con ML) y que ninguno quede más de 10% arriba de ML.
+- **ABEL: precio sólo con el mismo exacto en ML (02/11/2026)** · qué es: entran todos los perfumes; el que no tiene el mismo exacto en ML (o queda más de 10% arriba) va SIN precio, "Consultar precio" (él: *"que estén TODOS… sólo que tengan precio los que estamos seguros"*); antes (el mismo día) quedaban afuera (él: *"si tenés duda… que no estén"*) · dónde vive: armado de ABEL en `tienda` de `sync.mjs` · qué chequear: cuántos quedan (antes 999, ~90 con ML) y que ninguno quede más de 10% arriba de ML.
 Él (29/10): *"TODO ESTO es un cambio muy grande. vamos a tener que revisarlo y tiene que quedar en una etapa. mirá que no es sólo lo que hicimos,
 vamos a ir haciendo cambios grandes todo el mes sobre local"*. **Qué es el local:** las 3 perfumerías del pueblo (CEBALLOS, SOARES, SARMIENTO)
 son OTRO negocio: CYC les vende al costo + 25% y queda como deuda (Arqueo → Ver deudas, "Mercaderia Perfumeria"); sus ventas, cobros y gastos no
