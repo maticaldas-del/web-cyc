@@ -4829,7 +4829,9 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // la vuelta no se saltea el piso: abajo del 35% del peor caso (o sin poder medirlo) va por las reglas de siempre (F0/F12/F13)
       { const mgV = d.mgPA != null && Number.isFinite(Number(d.mgPA)) ? Number(d.mgPA) : (d.mgA != null && Number.isFinite(Number(d.mgA)) ? Number(d.mgA) : null);
         if (mgV == null || mgV < BAJAR_MIN_PCT_JOVEN - 0.05) { frenar(`!vuelve: a ${$(a)} queda en ${mgV == null ? '¿?' : mgV + '%'} en el peor caso: la vuelta de una es sólo a un precio de 35%+; abajo va por las reglas de siempre (F13, perfumes F12)`, { regla: 'punto medio' }); continue; } }
-      d.vuelveTxt = V.txt; continue;
+      d.vuelveTxt = V.txt; d.frenosOk = { aut: [], tag: fz.tag || 'volviendo', escalera: false, vuelve: true };
+      if (!opts.seco && !opts.promo && !opts.puerta) _FRENOS_OK.set(String(d.mla), { a, ts: Date.now() });   // la puerta de setPriceTo la deja pasar
+      continue;
     }
     const ph = await leerC('cyc/promohist/' + d.mla, {});
     // Revisión etapa 1 (24/10): sin la historia de mis descuentos no se sabe el escalón anterior (F3): no se da por vacía.
