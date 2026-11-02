@@ -6799,7 +6799,8 @@ async function calcCerebro(db, o) {
           // "nunca abajo de 0%", sólo cuando ÉL pide rematar algo a cualquier precio. Nunca la usa una regla automática.
           if (!sube && gF.mg < 0 && !fz.bajocero) { nada(`${motF} · a ${money(P)} queda en ${gF.mg.toFixed(1)}%: abajo de cero no se baja nunca`); continue; }
           // El piso se mide en el PEOR CASO, igual que la planilla (13/10/2026, revisión 9).
-          if (!sube && gF.mgP < PISO && !fz.piso) { nada(`${motF} · a ${money(P)} queda en normal ${gF.mg.toFixed(1)}% · peor caso ${gF.mgP.toFixed(1)}%, abajo del piso del ${PISO}%: para bajar igual va con !piso`); continue; }
+          if (!sube && gF.mgP < PISO && !fz.piso) { if (fz.vuelve && !DRY && !CONSULTA_SOLO_LEE && db) { try { await db.set('cyc/vueltano/' + mla, { a: P, mg: Math.round(gF.mgP * 10) / 10, ts: Date.now() }); } catch {} }   // punto medio: `errores` no la vuelve a pedir por 7 días
+            nada(`${motF} · a ${money(P)} queda en normal ${gF.mg.toFixed(1)}% · peor caso ${gF.mgP.toFixed(1)}%, abajo del piso del ${PISO}%: para bajar igual va con !piso`); continue; }
           Object.assign(D, { accion: sube ? 'sube' : 'baja', a: P, motivo: motF, cruza, mgA: r1(gF.mg), mgPA: r1(gF.mgP), pisoAut: !sube && gF.mgP < PISO,
             gPorU: { antes: Math.round(g0.g), despues: Math.round(gF.g) } });
           dec(D); continue;
