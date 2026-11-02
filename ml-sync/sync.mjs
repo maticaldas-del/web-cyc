@@ -31550,8 +31550,8 @@ async function main() {
       // CYC) × 1,30; con precio de ML: si pasa 1,10 × ML queda afuera. Mismo código y mismas fotos/detalles que la tienda.
       // 01/11/2026 (él, con lo que calculó el chat de la perfumería): costo × 1,65 — la perfumería paga IVA (~28.600 cada 165.000) e Ingresos
       // Brutos (~5.800): en efectivo le queda ~30%, con tarjeta ~26%. Antes 1,30 (sin contar esos impuestos).
-      const ABEL_MULT = 1.65;
-      const ABEL_INFLA = 1.20;   // 01/11/2026: hasta +20% cuando ML está mucho más caro (sin pasar el 90% de ML)
+      const ABEL_MULT = 1.65;   // ya no se usa (02/11/2026: efectivo/tarjeta)
+      const ABEL_ENVIO = 1.23, ABEL_EFECTIVO = 1.30, ABEL_TARJETA = 1.67, ABEL_DIAS = 2;   // 02/11/2026 (él)
       const outAbel = []; const abelNo = {}; const abelCuenta = { sinML: 0, abajo: 0, hasta10: 0 };
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
       // Control del 01/11: "Aqua Kiss Shimmer Victoria's Secret 250 ml" (en el proveedor "Colônia") es una bruma, no un perfume.
@@ -31572,22 +31572,18 @@ async function main() {
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlR = x.mlRaw > 0 ? x.mlRaw : x.mpRef; const mlVer = !cp && !om && !x.ap && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
+        // 🌸 ABEL (02/11/2026, él: "que aparezcan todos los perfumes que tienen stock en Nissei y que tengan 2 días máximo de última mirada…
+        // sumando el 23% de envío + el 30% de ganancia que diga EN EFECTIVO y con tarjeta al 67%… con el 30% ganamos seguro a los
+        // competidores"): sin comparar con ML. Efectivo = precio de Nissei × dólar × 1,23 × 1,30 · tarjeta = × 1,23 × 1,67.
         if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (x.nn || '')) && x.usd > 0) {
-          const costoR = x.usd * RECT * tc, mlA = x.mlRaw > 0 ? Math.round(x.mlRaw) : (x.mpRef > 0 ? Math.round(x.mpRef) : 0);   // ABEL no da cuotas: contra el precio que se ve en ML
-          // 01/11/2026 (él: "hay perfumes como el ck one que hay mucha diferencia con ml. cuando es así sí se puede inflar un poco el precio
-          // para intentar ganar más. máximo un 20%"): si el precio base queda más de 10% abajo de ML, sube hasta +20% sin pasar el 90% de ML
-          // (que siga viéndose más barato que en ML).
-          let pA = lindo(costoR * ABEL_MULT);
-          if (mlA && pA < mlA * 0.90) { const abajoL = (v) => (v >= 10000 ? Math.floor((v + 10) / 1000) * 1000 - 10 : Math.floor((v + 10) / 100) * 100 - 10);
-            const pI = Math.min(lindo(costoR * ABEL_MULT * ABEL_INFLA), abajoL(mlA * 0.90)); if (pI > pA) { pA = pI; abelCuenta.inflado = (abelCuenta.inflado || 0) + 1; } }
-          // 02/11/2026 (él con el J'Adore EDT a $376.990 sin nada contra qué comparar: "que estén TODOS los perfumes. Sólo que tengan precio
-          // los que estamos seguros de todo"): con el MISMO exacto en ML y sin pasar el 10% arriba de ML, va con precio; con duda (sin el
-          // mismo exacto, el más parecido, otra medida) o más de 10% arriba de ML, va igual pero SIN precio ("Consultar precio" + WhatsApp).
-          const seguroA = mlA > 0 && !om && !x.ap && pA <= mlA * 1.10;
-          if (!mlA || om || x.ap) { abelCuenta.sinML++; abelNo['sin precio: sin el mismo exacto en ML'] = (abelNo['sin precio: sin el mismo exacto en ML'] || 0) + 1; }
-          else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
-          else abelNo['sin precio: más de 10% arriba de ML'] = (abelNo['sin precio: más de 10% arriba de ML'] || 0) + 1;
-          outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: seguroA ? pA : 0, ...(seguroA ? {} : { cp: 1 }), ...(seguroA && pA < mlA * 0.97 ? { ml: mlA } : {}), ...(x.cod ? { k: String(x.cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (01/11, él: el botón de WhatsApp lo manda)
+          const tsA = Number(x.ts) || 0;
+          if (!(tsA > 0) || hoy - tsA > ABEL_DIAS * 864e5) { abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] = (abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] || 0) + 1; }
+          else {
+            const base = x.usd * tc * ABEL_ENVIO;
+            const pE = lindo(base * ABEL_EFECTIVO), pT = lindo(base * ABEL_TARJETA);
+            abelCuenta.abajo++;
+            outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pE, pt: pT, ...(x.cod ? { k: String(x.cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (el botón de WhatsApp lo manda)
+          }
         }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
       }
@@ -31672,7 +31668,7 @@ async function main() {
         if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
         else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
         else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
-        console.log(`🌸 ABEL (costo × ${ABEL_MULT}): ${outAbel.length} perfumes · ${abelCuenta.abajo} más baratos o igual que ML · ${abelCuenta.hasta10} hasta 10% arriba de ML · ${abelCuenta.sinML} sin precio de ML para comparar · ${abelCuenta.inflado || 0} subidos (hasta +20%, ML mucho más caro) · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
+        console.log(`🌸 ABEL (Nissei × dólar × ${ABEL_ENVIO} × ${ABEL_EFECTIVO} efectivo / × ${ABEL_TARJETA} tarjeta · mirado hace ${ABEL_DIAS} días o menos): ${outAbel.length} perfumes · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
     }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").

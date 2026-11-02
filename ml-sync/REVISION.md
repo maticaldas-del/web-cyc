@@ -4084,6 +4084,7 @@ sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia
 
 ## 9 · LOCAL (cada 7 días, nació el 29/10/2026)
 
+- **ABEL efectivo y tarjeta (02/11/2026, reemplaza lo de abajo)** · qué es: todos los perfumes mirados en Nissei hace 2 días o menos, precio = Nissei × dólar × 1,23 × 1,30 en efectivo y × 1,67 con tarjeta, sin comparar con ML · dónde vive: ABEL en `tienda` de `sync.mjs` (`ABEL_*`) y `hacer_abel.py` (`abelPrecio`) · qué chequear: que la página no quede vacía cuando pasan 2 días sin vuelta de Nissei.
 - **ABEL: precio sólo con el mismo exacto en ML (02/11/2026)** · qué es: entran todos los perfumes; el que no tiene el mismo exacto en ML (o queda más de 10% arriba) va SIN precio, "Consultar precio" (él: *"que estén TODOS… sólo que tengan precio los que estamos seguros"*); antes (el mismo día) quedaban afuera (él: *"si tenés duda… que no estén"*) · dónde vive: armado de ABEL en `tienda` de `sync.mjs` · qué chequear: cuántos quedan (antes 999, ~90 con ML) y que ninguno quede más de 10% arriba de ML.
 Él (29/10): *"TODO ESTO es un cambio muy grande. vamos a tener que revisarlo y tiene que quedar en una etapa. mirá que no es sólo lo que hicimos,
 vamos a ir haciendo cambios grandes todo el mes sobre local"*. **Qué es el local:** las 3 perfumerías del pueblo (CEBALLOS, SOARES, SARMIENTO)

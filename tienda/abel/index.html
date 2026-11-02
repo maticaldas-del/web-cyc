@@ -191,6 +191,12 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 .sub-abel { color: var(--ink2); font-size: 13px; margin: 6px 0 0; }
 .wa-abel { display: block; text-align: center; margin-top: 8px; padding: 9px 8px; border-radius: 10px; background: #25d366; color: #06290f; font-weight: 700; font-size: 13.5px; text-decoration: none; }
 #verWa .wa-abel { margin: 12px 0 4px; padding: 12px; font-size: 15px; }
+.pe-abel { display: block; color: #16a34a; font-weight: 800; font-size: 19px; line-height: 1.15; }
+.pe-abel small { white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; margin-left: 4px; }
+.pt-abel { display: block; color: var(--ink2); font-weight: 500; font-size: 12.5px; margin-top: 2px; }
+#verPrecio .pe-abel { font-size: 26px; } #verPrecio .pt-abel { font-size: 14px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pe-abel { color: #4ade80; } }
+:root[data-theme="dark"] .pe-abel { color: #4ade80; }
 </style>
 </head>
 <body>
@@ -296,7 +302,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var mas = p.f.length > 1 ? '<span class="mas">' + p.f.length + ' fotos</span>' : "";
     return '<article class="card' + (pedido[p.id] ? " en" : "") + '" data-id="' + p.id + '">' +
       '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + (p.ml && p.p > 0 ? '<span class="ahorro">' + Math.round((1 - p.p / p.ml) * 100) + '% menos que en ML</span>' : '') + '</div>' +
-      '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + (p.cp ? "Consultar precio" : pesos(p.p)) + '</div><div class="cuotas">' + (p.cp ? "Te lo pasamos por WhatsApp" : "3 cuotas sin interés de " + pesos(Math.ceil(p.p / 3))) + '</div><div class="slot">' + cantHtml(p.id) + '</div>' + waBtn(p) + '</div></article>';
+      '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + abelPrecio(p) + '</div><div class="cuotas">' + (p.cp ? "Te lo pasamos por WhatsApp" : "3 cuotas sin interés de " + pesos(Math.ceil(p.p / 3))) + '</div><div class="slot">' + cantHtml(p.id) + '</div>' + waBtn(p) + '</div></article>';
   }
 
   function filtrados() {
@@ -451,8 +457,12 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   // El balde se calcula igual que en el robot (`tiendaBalde` de sync.mjs): si se cambia uno, cambiar los dos.
   function waBtn(p) {
     if (!WA || WA.length < 8) return "";
-    var t = "Hola! Quiero consultar por este perfume:\n" + p.n + (p.k ? "\nCódigo: " + p.k : "") + (p.p > 0 ? "\nPrecio en la página: " + pesos(p.p) : "");
+    var t = "Hola! Quiero consultar por este perfume:\n" + p.n + (p.k ? "\nCódigo: " + p.k : "") + (p.p > 0 ? "\nPrecio en efectivo: " + pesos(p.p) + (p.pt > 0 ? "\nCon tarjeta: " + pesos(p.pt) : "") : "");
     return '<a class="wa-abel" target="_blank" rel="noopener" href="https://wa.me/' + WA + '?text=' + encodeURIComponent(t) + '">Consultar por WhatsApp</a>';
+  }
+  function abelPrecio(p) {
+    if (p.cp || !(p.p > 0)) return "Consultar precio";
+    return '<span class="pe-abel">' + esc(pesos(p.p)) + '<small> en efectivo</small></span>' + (p.pt > 0 ? '<span class="pt-abel">con tarjeta ' + esc(pesos(p.pt)) + '</span>' : '');
   }
   var DET = {};
   function balde(id) { var h = 0, t = String(id || ""); for (var i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) >>> 0; return h % 64; }
@@ -475,7 +485,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var p = POR_ID[id]; if (!p) return;
     $("galeria").innerHTML = p.f.map(function (u, i) { return '<img src="' + esc(foto(u, "-F.jpg")) + '"' + respaldo(u) + ' alt="Foto ' + (i + 1) + ' de ' + p.f.length + '" referrerpolicy="no-referrer">'; }).join("");
     $("galeria").scrollLeft = 0; $("gal").classList.toggle("varias", p.f.length > 1); $("galNum").textContent = p.f.length > 1 ? "1/" + p.f.length : ""; $("tVer").textContent = p.n.length > 40 ? p.n.slice(0, 38) + "…" : p.n;
-    $("verNom").textContent = p.n; $("verPrecio").innerHTML = p.cp ? "Consultar precio" : esc(pesos(p.p)) + (p.ml ? '<span class="enml">En Mercado Libre <s>' + esc(pesos(p.ml)) + "</s></span>" : "");
+    $("verNom").textContent = p.n; $("verPrecio").innerHTML = abelPrecio(p);
     $("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id); $("verWa").innerHTML = waBtn(p);
     pintarDetalles(id);
     abrir($("dlgVer"));

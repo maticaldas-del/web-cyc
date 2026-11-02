@@ -39,12 +39,27 @@ rep('<div id="verCant"></div>', '<div id="verCant"></div><div id="verWa"></div>'
 rep('$("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);', '$("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id); $("verWa").innerHTML = waBtn(p);')
 rep('  var DET = {};', '''  function waBtn(p) {
     if (!WA || WA.length < 8) return "";
-    var t = "Hola! Quiero consultar por este perfume:\\n" + p.n + (p.k ? "\\nCódigo: " + p.k : "") + (p.p > 0 ? "\\nPrecio en la página: " + pesos(p.p) : "");
+    var t = "Hola! Quiero consultar por este perfume:\\n" + p.n + (p.k ? "\\nCódigo: " + p.k : "") + (p.p > 0 ? "\\nPrecio en efectivo: " + pesos(p.p) + (p.pt > 0 ? "\\nCon tarjeta: " + pesos(p.pt) : "") : "");
     return '<a class="wa-abel" target="_blank" rel="noopener" href="https://wa.me/' + WA + '?text=' + encodeURIComponent(t) + '">Consultar por WhatsApp</a>';
   }
   var DET = {};''')
 rep('</style>', '''.wa-abel { display: block; text-align: center; margin-top: 8px; padding: 9px 8px; border-radius: 10px; background: #25d366; color: #06290f; font-weight: 700; font-size: 13.5px; text-decoration: none; }
 #verWa .wa-abel { margin: 12px 0 4px; padding: 12px; font-size: 15px; }
 </style>''')
+# 💵 EFECTIVO Y TARJETA (02/11/2026, él: "que aparezca el precio en efectivo grande en verde y el de tarjeta más chico en gris abajo").
+rep("""<div class="precio">' + (p.cp ? "Consultar precio" : pesos(p.p)) + '</div>""", """<div class="precio">' + abelPrecio(p) + '</div>""")
+rep("""$("verPrecio").innerHTML = p.cp ? "Consultar precio" : esc(pesos(p.p)) + (p.ml ? '<span class="enml">En Mercado Libre <s>' + esc(pesos(p.ml)) + "</s></span>" : "");""", """$("verPrecio").innerHTML = abelPrecio(p);""")
+rep('  var DET = {};', """  function abelPrecio(p) {
+    if (p.cp || !(p.p > 0)) return "Consultar precio";
+    return '<span class="pe-abel">' + esc(pesos(p.p)) + '<small> en efectivo</small></span>' + (p.pt > 0 ? '<span class="pt-abel">con tarjeta ' + esc(pesos(p.pt)) + '</span>' : '');
+  }
+  var DET = {};""")
+rep('</style>', """.pe-abel { display: block; color: #16a34a; font-weight: 800; font-size: 19px; line-height: 1.15; }
+.pe-abel small { white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; margin-left: 4px; }
+.pt-abel { display: block; color: var(--ink2); font-weight: 500; font-size: 12.5px; margin-top: 2px; }
+#verPrecio .pe-abel { font-size: 26px; } #verPrecio .pt-abel { font-size: 14px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pe-abel { color: #4ade80; } }
+:root[data-theme="dark"] .pe-abel { color: #4ade80; }
+</style>""")
 (R / 'abel' / 'index.html').write_text(s)
 print('ok', len(s))
