@@ -262,3 +262,9 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 - Recortadora 4 en 1 (MLA1474502515): el freno de la liquidación de 30 días la frenó (ya bajó esta semana; el próximo escalón va a los 7 días). Sigue en $48.990 (41,7%). El 16/11 cumple 90 días y arranca su escalera (ya agendado).
 - Cortadora Sportsman (MLA2113762174): a $11.630 quedaba en 7,7% y su unidad más vieja tiene 75 días (abajo del 35% sólo con 90+). Sigue a $14.790 (39,8%). Para meterla igual hace falta su 🔐 autorizo.
 - Entraron: Paulvic Dream Way a $14.990 (~37%; ML pedía $16.480 o menos y abajo del escalón de comisión deja más) y Reflector solar a $8.720.
+
+### 02/11 · De la completa (para cuando digas "resolvamos")
+1. **Punto medio cuando el precio que vendía queda abajo del 35%** (Cabotine 30 ml vendía a $43.990, Sony EX15AP, Halloween Man): la regla nueva dice volver de una al último precio que vendía, pero ahí deja menos del 35% y la unidad tiene menos de 90 días. (a) sugerida: volver de una al piso del 35% (lo más cerca del precio que vendía que permiten las reglas) · (b) escalera de a 15% como antes · (c) esperar a los 90 días.
+2. **Lanzamientos que venden 1 vez:** la regla del punto medio dice que una venta sola no alcanza para el +50%, pero el robot todavía deja subir un lanzamiento sin precio anterior con 1 venta y 24 h (Agua Oxigenada Doree). Hoy no lo subí. (a) sugerida: también pide 3 ventas (arreglo el robot) · (b) los lanzamientos siguen con 1 venta.
+3. **Mouse pad Redragon y Sacapelusas:** 0 visitas en 9-10 días. Bajar no lo arregla (pierden la caja). (a) sugerida: que mires el título y las fotos en ML · (b) dejarlos.
+4. **Animale For Men Original (MLA4075575108):** 14-20 días sin vender, la vuelta queda en 30% y con 2 unidades el robot no mide techo. (a) sugerida: autorizar desde el 06/11 un primer escalón como descuento a $113.990 · (b) esperar al ~20/11.
