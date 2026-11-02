@@ -54713,7 +54713,10 @@ async function main() {
         const c = compras[id];
         if (!c) { console.log(`No existe el pedido ${id}. Corré \`pyped\` para ver los que están en camino.`); return; }
         if (!SOLOFICHAS && c.estado !== 'camino') { console.log(`El pedido ${id} está "${c.estado}", no en camino: no se toca.`); return; }
-        if (SOLOFICHAS && c.estado !== 'llego') { console.log(`El pedido ${id} está "${c.estado}": fichas sólo rehace las de un pedido que ya llegó.`); return; }
+        // 02/11/2026 (él: "publicalos a cuanto te paso el ticket… si ya me pasaron el ticket es porque lo tienen y está en camino"): con el
+        // ticket y la foto, las fichas se crean también con el pedido EN CAMINO, para publicarlas pausadas antes de que llegue. Al llegar,
+        // `llego` las encuentra (mismo código) y no las duplica.
+        if (SOLOFICHAS && !['llego', 'camino'].includes(c.estado)) { console.log(`El pedido ${id} está "${c.estado}": fichas sólo con un pedido en camino o que ya llegó.`); return; }
         // Sin el ticket real no se cierra (regla suya del 10/10/2026): el costo de cada ficha tiene que salir de lo PAGADO.
         if (!c.ticket) { console.log(`❌ El pedido ${id} no tiene el ticket cargado. Primero va \`compray:${c.fecha}|det=<código>*<unidades>*<precio pagado>;…|go\` con el ticket del mayorista. No escribo nada.`); return; }
         // LA FOTO DEL TICKET TAMBIÉN (25/10/2026, él con el Sony EX15LP: "que sea obligatorio cargar el ticket de cada pedido de paraguay").
