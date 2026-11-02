@@ -31580,8 +31580,12 @@ async function main() {
           let pA = lindo(costoR * ABEL_MULT);
           if (mlA && pA < mlA * 0.90) { const abajoL = (v) => (v >= 10000 ? Math.floor((v + 10) / 1000) * 1000 - 10 : Math.floor((v + 10) / 100) * 100 - 10);
             const pI = Math.min(lindo(costoR * ABEL_MULT * ABEL_INFLA), abajoL(mlA * 0.90)); if (pI > pA) { pA = pI; abelCuenta.inflado = (abelCuenta.inflado || 0) + 1; } }
-          if (!mlA) abelCuenta.sinML++; else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
-          if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
+          // 02/11/2026 (él con el J'Adore EDT a $376.990 sin nada contra qué comparar: "si tenés duda de matchear con ML o algo, que no estén.
+          // Ya que no podemos quedar mal"): en ABEL sólo entra el perfume que tiene el MISMO exacto en ML (no el más parecido ni otra medida).
+          if (!mlA || om || x.ap) { abelCuenta.sinML++; abelNo['sin el mismo exacto en ML (con duda, afuera)'] = (abelNo['sin el mismo exacto en ML (con duda, afuera)'] || 0) + 1; }
+          else if (pA <= mlA) abelCuenta.abajo++; else if (pA <= mlA * 1.10) abelCuenta.hasta10++;
+          if (!mlA || om || x.ap) { /* afuera */ }
+          else if (mlA && pA > mlA * 1.10) abelNo['más de 10% arriba de ML'] = (abelNo['más de 10% arriba de ML'] || 0) + 1;
           else outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pA, ...(mlA && pA < mlA * 0.97 ? { ml: mlA } : {}), ...(x.cod ? { k: String(x.cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (01/11, él: el botón de WhatsApp lo manda con el nombre y el código)
         }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
