@@ -54765,7 +54765,7 @@ async function main() {
             // Etapa 3 (20/10/2026): el proveedor, el link y la foto viajan con el renglón (del candidato si sigue vivo; si no, del
             // pedido). Sin esto la ficha de Elegancia nacía como Nissei y sin las fotos para comparar.
             const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts,
-              prov: (k && k.prov) ? provPyDe(k) : it.prov ? provPyDe(it) : (/^pyel/.test(id) ? 'elegancia' : provPyDe(c)), link: (k && k.link) || it.link || '', foto: (k && k.foto) || it.foto || '' };
+              prov: (k && k.prov) ? provPyDe(k) : it.prov ? provPyDe(it) : (/^pyel/.test(id) ? 'elegancia' : provPyDe(c)), link: (k && k.link) || it.link || '', foto: (k && k.foto) || it.foto || '', tienda: !!it.tienda };
             if (k && k.prodId && prods.some((p) => p.id === k.prodId)) { plan.push({ src, estado: 'ya' }); continue; }
             if (!String(src.nombre).trim()) { plan.push({ src, estado: 'nonombre' }); continue; }
             // D2 (etapa 3, 29/09): sólo frena la MISMA ficha —mismo código de Nissei (también por el
@@ -54828,6 +54828,7 @@ async function main() {
           const p = { id: 'p' + Date.now() + String(i++), name: String(((cands[x.src.id] || {}).mlTit && !((cands[x.src.id] || {}).mlReparos || '').length) ? cands[x.src.id].mlTit : x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
           if (x.src.cod) p.codPy = String(x.src.cod);
           if (usd > 0) { p.nisseiUSD = usd; p.nisseiTs = x.src.ts || Date.now(); }
+          if (x.src.tienda) p.soloLocal = true;   // 🏬 02/11/2026: lo de la Tienda no se publica en ML
           // Etapa 3 (20/10/2026): igual que `candFichaDesde` de la web: la ficha queda del proveedor que la vendió y con el link
           // y la foto de comprasparaguay (sin eso, lo de Elegancia quedaba como Nissei y Probados no mostraba la foto de Paraguay).
           if (x.src.prov && x.src.prov !== 'nissei') p.provPy = x.src.prov;
@@ -54878,6 +54879,7 @@ async function main() {
             // 1a de la revisión del Local (30/10/2026): un renglón `paraLocal` (`pylocal`) ya es del local (cobrado como deuda): no entra a la
             // oficina de CYC (si entrara, estaría en la oficina Y en la deuda). Se le entrega a la perfumería tal cual llegó.
             if (it.paraLocal) { console.log(`  🏪 del local (ya está en Lo que nos deben): ${u} × ${_nomIt(it)} · NO se suma a la oficina`); continue; }
+            if (it.tienda) { console.log(`  🏬 de la Tienda: ${u} × ${_nomIt(it)} · NO se suma a la Oficina ML · falta cargar la venta a la Tienda (debenmov:<quién>=+25%|prod=<ficha>|u=${u};go)`); continue; }
             const pid = _fichaIdDe(it), pf = pid && _prodsAll.find((pp) => pp.id === pid);
             if (!pf) { _aMano.push({ it, u, why: 'sin ficha' }); continue; }
             if (CORTAR) { _aMano.push({ it, u, pf, why: 'cancelaron la corrida' }); continue; }
@@ -54903,7 +54905,7 @@ async function main() {
         // comando `ofi` listo. ARREGLADO: antes salía sin `@color` y en una reposición con colores el comando fallaba ENTERO.
         { const _nomOfi = (it) => (it.id && _fichaDeItem[it.id])
             || (it.prodId && (prods.find((pp) => pp.id === it.prodId) || {}).name) || it.nom;
-          const _pend = NOSUMAR || !_inv ? _itsP.filter((it) => !it.paraLocal).map((it) => ({ it, u: _llegoU(it), pf: [...prods, ...hechas].find((pp) => pp.id === _fichaIdDe(it)) })) : _aMano;   // 1a (30/10/2026): sin lo del local
+          const _pend = NOSUMAR || !_inv ? _itsP.filter((it) => !it.paraLocal && !it.tienda).map((it) => ({ it, u: _llegoU(it), pf: [...prods, ...hechas].find((pp) => pp.id === _fichaIdDe(it)) })) : _aMano;   // 1a (30/10/2026): sin lo del local
           const _ofi = [], _sinCmd = [];
           for (const x of _pend) {
             if (!(x.u > 0)) continue;
@@ -55139,7 +55141,7 @@ async function main() {
           if (!_hist) { console.log('❌ No pude leer lo de uso personal (py_personal_hist): no sé qué renglones del ticket no son de CYC. No guardo NADA.'); return; }
           const _fPed = String((ya && ya.fecha) || fecha), presu = [];
           for (const [ts, g] of Object.entries(_hist)) { if (!(Number(ts) > 0) || new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 10) !== _fPed) continue;
-            for (const v of Object.values(g || {})) if (v && String(v.cod || '').replace(/\D/g, '') && (parseInt(v.u) || 0) > 0) presu.push({ dig: String(v.cod).replace(/\D/g, ''), nom: String(v.nom || v.cod).slice(0, 80), u: parseInt(v.u) || 0, prov: v.prov }); }
+            for (const v of Object.values(g || {})) if (v && String(v.cod || '').replace(/\D/g, '') && (parseInt(v.u) || 0) > 0) presu.push({ dig: String(v.cod).replace(/\D/g, ''), nom: String(v.nom || v.cod).slice(0, 80), u: parseInt(v.u) || 0, prov: v.prov, usd: parseFloat(v.usd) || 0 }); }
           // Etapa 3 (20/10/2026): los candidatos se buscan SÓLO del proveedor de este pedido (`provPyDeBot`), y por el final
           // sólo con 5 dígitos o más del lado corto: `100572` de Elegancia "terminaba igual" que `7100572` de Nissei, y un
           // código corto (`20139`) pegaba con cualquiera que terminara así.
@@ -55164,7 +55166,10 @@ async function main() {
             // Uso personal (ver arriba): lo que pidió CYC en ese renglón va primero; lo que pasa de eso y es de uso personal sale del detalle.
             { const dg = String(cod).replace(/\D/g, ''), pe = presu.find((x) => x.u > 0 && provPyDeBot({ prov: x.prov }) === _provDet && (x.dig === dg || _finIg(x.dig, dg)));
               if (pe) { const libre = Math.max(0, u - (hit && hit.ped ? (parseInt(hit.src.u) || 0) : 0)), q = Math.min(pe.u, libre);
-                if (q > 0) { pe.u -= q; personalDet.push({ cod, nom: pe.nom, u: q, usd: pu }); u -= q; if (!(u > 0)) continue; } } }
+                // 🏬 LO QUE ERA "USO PERSONAL" ES DE LA TIENDA (02/11/2026, él: "no hay más uso personal, va todo a tienda… aunque lo use yo, ya
+                // que se lo pago a CYC con ganancia… quiero poder ver los detalles igual que cualquier otro producto"): es un renglón más del
+                // pedido (entra al recargo y tiene su ficha al llegar) con `tienda:true`; al llegar no va a la Oficina ML y se le vende a la Tienda.
+                if (q > 0) { pe.u -= q; itemsDet.push({ id: 't' + String(cod).replace(/\D/g, ''), nom: String(pe.nom).slice(0, 120), cod, u: q, usd: pu, usdWeb: parseFloat(pe.usd) > 0 ? Math.round(parseFloat(pe.usd) * 100) / 100 : pu, tienda: true, ...(pe.prov ? { prov: pe.prov } : {}) }); u -= q; if (!(u > 0)) continue; } } }
             // Un renglón de reposición (prodId sin id) sigue siendo de reposición: no se le inventa un id,
             // si no "Llegó" lo trataría como nuevo y le crearía otra ficha (05/10/2026, pedido único).
             const _esRepoHit = hit && !hit.src.id && hit.src.prodId;
@@ -55175,7 +55180,7 @@ async function main() {
               // "ya se descontó de lo decidido", y Pedidos lo volvía a restar.
               // `dp` también (revisión etapa 3, 29/10/2026): un renglón con el descuento PENDIENTE que perdía la marca quedaba como "ya
               // descontado" para Pedidos (en los pedidos de la web) y no se restaba nunca.
-              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'dp', 'ts']) if (hit.src[k] != null) o[k] = hit.src[k];
+              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'dp', 'ts', 'tienda']) if (hit.src[k] != null) o[k] = hit.src[k];
               // EL PRECIO DE LA WEB QUEDA AL LADO DEL PAGADO (10/10/2026, él: "los pedidos que cargo en paraguay siempre
               // tienen descuento de lo que aparece en la web (…) quizás hay productos con más descuento que otro, o
               // algunos quizás nada"). El de la web es el que se guardó al hacer el pedido; si el ticket ya se había

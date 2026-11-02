@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.69';
+const APP_VERSION='28.70';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.70',f:'02/11',h:'15:00',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: ya no hay "uso personal", ahora es 🏬 Tienda. Con el ticket, lo de la Tienda queda en el pedido como cualquier producto (con su detalle, su foto y su costo), en su propia parte: ✅ Probados · 🆕 Nuevos · 🏬 Tienda. Al llegar tiene su ficha y se le vende a la Tienda con ganancia'}]},
   {v:'28.69',f:'02/11',h:'14:00',c:[{n:1,t:'📥 Ver deudas: ✅ Pagadas ahora es un desplegable (cerrado; tocá el título para abrirlo)'}]},
   {v:'28.68',f:'02/11',h:'05:30',c:[{n:1,t:'🔍 Revisión de Ideas nuevas: 19 ideas para elegir (Navidad, datos de ML, menos trabajo a mano, comodidad), te esperan para "resolvamos".'}]},
   {v:'28.67',f:'02/11/2026',h:'00:08',c:[{n:3,t:'⚡ Precios, punto medio: "techo: no vende" a los 10 días sin vender (antes 30). En el robot: una suba que sale mal vuelve de una al último precio que vendía, y la próxima suba espera a confirmar.'}]},
@@ -18768,7 +18769,7 @@ function pyGastosChecklistHTML(c){
   const _pers=pyPersonalARS(c);
   // EL DESCUENTO DE NISSEI, APARTE (1a del 30/10/2026): lo que la web pedía menos lo que se pagó. No entra en el recargo.
   {const _w=parseFloat(c.ticket&&c.ticket.usdWeb)||0,_pg=parseFloat(c.ticket&&c.ticket.usdPagado)||0;if(_w>0&&_pg>0&&_w-_pg>0.5)filas+=`<div style="font-size:.66rem;padding:4px 0;border-bottom:1px dashed var(--border);color:var(--green)">🎁 Descuento de Nissei: ${fmtUS2(_w-_pg)} (${((1-_pg/_w)*100).toFixed(1).replace('.',',')}% menos que la web, ${fmtUS2(_w)} → ${fmtUS2(_pg)}) · no entra en el recargo</div>`;}
-  if(_pers>0)filas+=fila(true,'🙋 Uso personal (no es de CYC)',fmtUS2(Number(c.personal&&c.personal.usd)||0),'−'+fmt(Math.round(_pers)),_base>0?'−'+_pct(_pers)+'%':'');
+  if(_pers>0)filas+=fila(true,'🏬 Tienda (pedido viejo, antes "uso personal")',fmtUS2(Number(c.personal&&c.personal.usd)||0),'−'+fmt(Math.round(_pers)),_base>0?'−'+_pct(_pers)+'%':'');
   const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-_pers;
   const recTxt=R.r?((R.r-1)*100).toFixed(1).replace('.',','):null;
   filas+=`<div style="display:flex;justify-content:space-between;gap:10px;font-size:.72rem;padding:5px 0 2px"><b>Total</b><span style="white-space:nowrap"><b>${fmt(Math.round(tot))}</b>${celPc(recTxt?'<b style="color:var(--text)">+'+recTxt+'%</b>':'')}</span></div>`;
@@ -18810,7 +18811,8 @@ function pyPedidoCuenta(c){const its=Array.isArray(c&&c.items)?c.items.filter(Bo
 function pyRecargoChip(c){const R=pyRecargoReal(c);
   if(R.r){const v=(R.r-1)*100;return `<span style="font-size:.7rem;font-weight:700;color:${v>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}" title="Recargo real de este pedido: dólar más caro + cambista + el que retira + correo, sobre el precio de la factura">+${v.toFixed(1).replace('.',',')}% <span style="font-weight:400;font-size:.85em;color:var(--muted)">recargo</span></span>`;}
   return `<span style="font-size:.66rem;color:var(--muted)" title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado · faltan gastos</span>`;}
-function pyPedidoPartes(c){const its=(c&&c.items)||[];return{prob:its.filter(x=>x&&!x.id),nuev:its.filter(x=>x&&x.id)};}
+// 🏬 TIENDA (02/11/2026, él: "dividir, probados, nuevos, tienda. no hay más uso personal, va todo a tienda"): renglones con `tienda:true`.
+function pyPedidoPartes(c){const its=(c&&c.items)||[];return{prob:its.filter(x=>x&&!x.id),nuev:its.filter(x=>x&&x.id&&!x.tienda),tien:its.filter(x=>x&&x.id&&x.tienda)};}
 function pyPedidoEtiqueta(c){const P=pyPedidoPartes(c);
   return P.prob.length&&P.nuev.length?`Pedido (${P.prob.length} probado${P.prob.length===1?'':'s'} + ${P.nuev.length} nuevo${P.nuev.length===1?'':'s'})`:P.prob.length?'Pedido · probados':'Pedido · nuevos';}
 // Links de un producto ya probado: su publicación de ML (primero una activa, después una pausada) y su página de comprasparaguay.
@@ -19050,7 +19052,7 @@ function pyPedidoDetalleHTML(c){
     </div>
     <details style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 11px">
       <summary style="cursor:pointer;font-size:.68rem;font-weight:700;list-style:none">🧾 La mercadería · ${pyPedidoCuenta(c).p} producto${pyPedidoCuenta(c).p===1?'':'s'} · ${pyPedidoCuenta(c).u} u. · ${fmtUS2((c.usdCrudo||0))} <span style="color:var(--muted);font-weight:400">▾ tocá para ver</span></summary>
-    ${(()=>{const P=pyPedidoPartes(c);const grp=[['✅ Probados',P.prob],['🆕 Nuevos',P.nuev]].filter(g=>g[1].length);
+    ${(()=>{const P=pyPedidoPartes(c);const grp=[['✅ Probados',P.prob],['🆕 Nuevos',P.nuev],['🏬 Tienda',P.tien]].filter(g=>g[1].length);
       return grp.map(([t,its])=>`<div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 5px">${grp.length>1?t:'Los productos'} · ${its.length}</div>`+_pyItsHTML(its,pyRecargoFichas(c).r)).join('')+pyNoVinoHTML(c)||'<div style="font-size:.63rem;color:var(--muted)">Sin detalle por producto.</div>';})()}
     </details>
 
@@ -19361,21 +19363,21 @@ function pedidoMomentoHTML(g){
     </summary>
     <div style="padding:0 13px 12px">
     <div style="font-size:.7rem;color:var(--muted)">${u2(puesto)} puesto${tc?' · '+fmt(Math.round(puesto*tc)):''} · en la web ${u2(crudo)}</div>
-    ${crP>0?`<div style="font-size:.66rem;color:#a78bfa;margin-top:2px">🙋 de eso ${u2(crP)} son de uso personal (no son de CYC, no cuentan en el tope)</div>`:''}
+    ${crP>0?`<div style="font-size:.66rem;color:#a78bfa;margin-top:2px">🏬 de eso ${u2(crP)} son para la Tienda</div>`:''}
     <div style="font-size:.66rem;color:${pasa>0?'var(--amber)':'var(--muted)'};margin-top:2px">${pasa>0?`⚠️ te pasás ${u2(pasa)} de tu tope de ${u2(tope)}`:`tope ${u2(tope)} · te quedan ${u2(-pasa)}`}</div>
     ${cfg}${vjBox}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0 0;font-size:.68rem;color:var(--muted)">↕️ Ordenar:
       ${[['orig','como se cargó'],['vendpct','⭐ gana mucho y sale mucho'],['pct','% ganancia'],['gan','$ por unidad'],['costo','más barato'],['sub','subtotal'],['vend','ventas'],['nom','nombre']].map(([k,t])=>`<button class="btn" onclick="_pedOrdenSet('${k}')" style="font-size:.64rem;padding:3px 9px;${_ord===k?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${t}</button>`).join('')}</div>
     ${A.length?tit('✅ Probados (reposición)',A.length,crA)+_perfGrupos(filasA,As.map(f=>f.nom)):''}
     ${N.filas.length?tit('🆕 Nuevos',N.filas.length,N.crudo)+_perfGrupos(filasN,Ns.map(f=>f.c.nombre)):''}
-    ${Pp.length?tit('🙋 Uso personal (no es de CYC)',Pp.length,crP)+Pp.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyPersonalSet('${f.k}',this.value)`,`pyPersonalSet('${f.k}',0)`,'<span style="color:#a78bfa">para vos: va en el mensaje a '+pyProvNom()+' y en el total, pero no entra en CYC (sin margen, sin ficha, sin stock)</span>',f.foto,null,null,'')).join(''):''}
+    ${Pp.length?tit('🏬 Tienda',Pp.length,crP)+Pp.map(f=>fila(f.nom,f.cod,f.u,f.usd,`pyPersonalSet('${f.k}',this.value)`,`pyPersonalSet('${f.k}',0)`,'<span style="color:#a78bfa">🏬 para la Tienda: va en el pedido como cualquier producto; al llegar tiene su ficha y se le vende a la Tienda</span>',f.foto,null,null,'')).join(''):''}
     ${conCod.length?`<div style="margin-top:10px"><div style="font-size:.64rem;color:var(--muted);margin-bottom:4px">Para mandarle a <b>${pyProvNom()}</b> — código y unidades, la perfumería aparte${sinCod?` · <span style="color:var(--amber)">${sinCod} sin código no entran</span>`:''}</div>
       ${VJc.length?`<div style="margin:4px 0;padding:8px 11px;border-radius:8px;border:1px solid rgba(239,68,68,.5);background:rgba(239,68,68,.08);color:var(--red);font-size:.72rem;font-weight:700">⛔ No se puede mandar todavía: ${VJc.length} de lo cargado se ${VJc.length===1?'miró':'miraron'} en ${pyProvNom()} hace ${PY_VIEJO_DIAS}+ días (en rojo arriba). Miralos o sacalos.</div>`:`<button onclick="copiarTexto(this.nextElementSibling)" style="margin:4px 0;padding:8px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:'DM Mono',monospace;font-size:.76rem;cursor:pointer">📋 Copiar mensaje</button><textarea readonly onclick="this.select()" style="width:100%;min-height:${Math.min(260,22+conCod.length*17)}px;background:rgba(0,0,0,.28);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.7rem;padding:7px 9px;resize:vertical">${conCod.join('\n')}</textarea>`}</div>`:''}
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-add" style="font-size:.7rem;padding:6px 14px" onclick="pyMomentoYaLoPedi(${gArg})" title="Cuando ya lo pagaste: los probados pasan a En camino como reposición y los nuevos como pedido de nuevos.">✅ Ya lo pedí (todo)</button>
       ${btnTodo}
       <button class="btn btn-add" style="font-size:.66rem;padding:6px 12px" onclick="pedNuevosLlenar(${gArg})" title="Agrega nuevos${g==='perf'?' de perfumería':g==='resto'?' que no son de perfumería':''} que pasan el ${CAND_PISO_TXT()} y tu vara de ventas, los que más dejan por dólar, hasta el tope (descontando lo de probados). No saca nada.">🪄 Llenar con nuevos hasta el tope</button>
-      <button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyPersonalAgregar()" title="Algo para vos: va en el mensaje al proveedor pero no es de CYC">🙋 + uso personal</button>
+      <button class="btn" style="font-size:.62rem;padding:5px 11px" onclick="pyPersonalAgregar()" title="Algo para la Tienda (aunque sea para vos: se le vende a la Tienda con ganancia). Va en el pedido como cualquier producto">🏬 + Tienda</button>
       <button class="btn" style="font-size:.62rem;padding:5px 11px;color:var(--red);border-color:rgba(239,68,68,.35)" onclick="pedVaciarTodo(${gArg})" title="Saca TODO lo de este pedido: probados, nuevos y uso personal. No borra ningún producto.">🗑️ Vaciar</button>
     </div>
     </div>
@@ -19426,7 +19428,7 @@ async function _pyMomentoYaLoPedi(g){
    if(!confirm(`Marcar el pedido${g==='perf'?' de PERFUMERÍA':g==='resto'?' del RESTO':''} como HECHO (uno solo)\n\n`
      +(A.length?`Probados: ${A.length} producto(s) · ${uA} u. · ${fmtUS2(cA)}\n`:'')
      +(N.filas.length?`Nuevos: ${N.filas.length} producto(s) · ${N.unidades} u. · ${fmtUS2(N.crudo)}\n`:'')
-     +(Pp.length?`Uso personal: ${Pp.length} (sale del pedido, no es de CYC)\n`:'')
+     +(Pp.length?`Tienda: ${Pp.length} producto(s) (con el ticket quedan en el pedido como cualquier otro)\n`:'')
      +`\nPasa a "En camino" como UN pedido. Cuando llegue tocás "Ya llegó": los nuevos se vuelven fichas y los probados se cuentan en la oficina.`))return;}
   if(Pp.length){try{const _pp={};for(const f of Pp)_pp[f.k]=state.pyPersonal[f.k];await db.ref('cyc/py_personal_hist/'+Date.now()).set(_pp);const _up={};for(const f of Pp)_up['py_personal/'+f.k]=null;await fbUpdate(_up);for(const f of Pp)delete state.pyPersonal[f.k];}catch(e){toast('No pude sacar lo de uso personal: sacalo a mano','err',6000);}}
   if(!A.length&&!N.filas.length){renderPedidos();return;}

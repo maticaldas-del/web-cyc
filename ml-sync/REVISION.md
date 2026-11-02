@@ -997,6 +997,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+- **🏬 Uso personal → Tienda en los pedidos de Paraguay (02/11/2026, v28.70)** · qué es: lo de uso personal pasa a ser un renglón del pedido con `tienda:true` (con el ticket), con su parte en el detalle, en el recargo, con ficha `sololocal` al llegar y sin ir a la Oficina ML · dónde vive: `compray det=` y `pyped:llego/fichas` en `sync.mjs`; `pyPedidoPartes`, el detalle y el pedido del momento en `index.html` · qué chequear: que el total del pedido ya no reste nada, que el recargo cierre con todo, que al llegar no se cree una segunda ficha y que se cargue la venta a la Tienda.
 - **Restar sin aroma de la Oficina ML (02/11/2026)** · qué es: `ofi:<palabra>=-N!gral` resta N sacándolas de a una de los aromas con más unidades (él: *"no voy a pasar aromas, se cuentan como paulvic gral"*) · dónde vive: `ofi` en `sync.mjs` · qué chequear: que el total del producto y la suma de sus aromas sigan iguales.
 - **Fichas y publicaciones con el pedido en camino (02/11/2026)** · qué es: con ticket y foto, `pyped:fichas:<id>;go` crea las fichas de lo nuevo aunque el pedido no llegó, para publicarlas pausadas (él: *"publicalos a cuanto te paso el ticket"*) · dónde vive: `pyped` en `sync.mjs` (SOLOFICHAS acepta `camino`) · qué chequear: que al llegar `pyped:llego` no cree una segunda ficha (las engancha por código) y que la oficina sume en la ficha creada.
 ### 🔍 Revisión etapa 3 del 29/10/2026 (4 revisores en máximo · v27.90)
