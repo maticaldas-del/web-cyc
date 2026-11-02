@@ -999,6 +999,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+- **`pyped:camino:<id>;go` (02/11/2026)** · qué es: deshace un "llegó" marcado de más (el 1011 no había llegado): vuelve a en camino, las fichas quedan · qué chequear: que al llegar de verdad sume a la oficina una sola vez y no cree fichas repetidas.
+
 - **Lo que va a Full por primera vez cuenta como cortado (02/11/2026, v28.75)** · qué es: en `convieneCaja`, un renglón sin ritmo y con 0 en Full (nunca estuvo a la venta) suma a lo que se pierde esperando 7/30 de su ganancia (él: *"no hay ni uno en stock en Full, es la primera vez"*) · qué chequear: que una caja de nuevos no diga "Podés esperar" y que una caja de lentos con stock siga diciéndolo.
 
 - **✅ Llegó todo bien (02/11/2026, v28.74)** · qué es: `pyped:ok:<id>;go` marca `llegoOk` cuando él manda las fotos de lo que llegó y la tarjeta del pedido se pone verde · dónde vive: `pyped` en `sync.mjs`, `pyPedidoTarjeta`/`pyPedidoResumenHTML` en `index.html` · qué chequear: que sólo se marque después de mirar las fotos contra el pedido.

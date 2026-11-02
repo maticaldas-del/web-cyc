@@ -54574,6 +54574,18 @@ async function main() {
       // perdió). No toca stock, costos ni plata: si después llega, se suma con `ofi` como siempre.
       // pyped:ok:<id>[=<nota>][;go] (02/11/2026, él: "que se ponga en verde y que está todo bien cuando te paso las fotos de los productos
       // confirmando que llegaron"): con sus fotos de lo que llegó, el pedido queda ✅ "llegó todo bien" (`llegoOk`) en verde en la web.
+      // pyped:camino:<id>[;go] (02/11/2026, él: "al final el pedido 1011 no llegó"): deshace un "llegó" marcado de más: el pedido vuelve a
+      // en camino (las fichas creadas quedan; al llegar de verdad, `llego` las encuentra y no duplica). La oficina se baja aparte con `ofi`.
+      if (sub === 'camino') {
+        const idC = String(arg || '').trim(), cC = compras[idC];
+        if (!cC) { console.log(`No existe el pedido "${idC}".`); return; }
+        console.log(`↩️ ${idC}${Number(cC.num) > 0 ? ' (#' + cC.num + ')' : ''} · estado ${cC.estado} → camino${cC.sumoOfi && cC.sumoOfi.items ? ' · había sumado a la oficina: ' + cC.sumoOfi.items.reduce((a, x) => a + (Number(x.u) || 0), 0) + ' u. (bajalas con ofi)' : ''}`);
+        if (cC.estado === 'camino') { console.log('  ya está en camino: nada que hacer'); return; }
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.patch('cyc/compraspy/' + idC, { estado: 'camino', fechaLlego: null, llegoOk: null, sumoOfi: null, llegando: null });
+        const rC = await db.get('cyc/compraspy/' + idC + '/estado'); console.log(rC === 'camino' ? '✓ vuelto a en camino (releído)' : '⚠️ no lo pude releer');
+        return;
+      }
       if (sub === 'ok') {
         const [idO, ...nO] = arg.split('='); const idK = String(idO || '').trim(); const cO = compras[idK];
         if (!cO) { console.log(`No existe el pedido "${idK}". Usá pyped:ok:<id>[=<nota>];go`); return; }
