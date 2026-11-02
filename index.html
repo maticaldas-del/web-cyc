@@ -1138,7 +1138,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div class="nc-title">Rotación</div>
       <div id="nc-rot-score" class="ht-rot"></div>
       <!-- 02/11/2026, él: "en rotación poner los productos de local también, que haya para clickear en la tarjeta del inicio… dos una ml otra local" -->
-      <div class="ht-ped-grid ht-arq-grid">
+      <div class="ht-ped-grid ht-arq-grid" style="grid-template-columns:repeat(2,1fr);margin-top:4px">
         <button class="ht-ped-b" onclick="event.stopPropagation();homeRotIr('ml')" title="Rotación de lo que está en ML">📦<span> ML</span></button>
         <button class="ht-ped-b" onclick="event.stopPropagation();homeRotIr('local')" title="Rotación de lo que está en la Oficina Local">🏪<span> Local</span></button>
       </div>
@@ -3263,7 +3263,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.78';
+const APP_VERSION='28.79';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3276,6 +3276,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.79',f:'02/11',h:'21:15',c:[{n:1,t:'🔄 Inicio: los botones 📦 ML y 🏪 Local de Rotación van uno al lado del otro (el de Local se cortaba).'}]},
   {v:'28.78',f:'02/11',h:'21:00',c:[{n:2,t:'🔄 Rotación: en Inicio la tarjeta tiene dos botones, 📦 ML y 🏪 Local. Local muestra lo que hay en la Oficina Local, cuánta plata tiene parado cada producto y cuánto salió en 60 días (a las perfumerías o por la Tienda); lo parado primero.'}]},
   {v:'28.77',f:'02/11',h:'20:30',c:[{n:2,t:'🧾 Gastos del mes: cada gasto que falta tiene su casilla de monto y 💾 Cargar, se carga ahí mismo sin ir al formulario.'}]},
   {v:'28.76',f:'02/11',h:'19:00',c:[{n:1,t:'📦 Envíos en camino: se sacó "Anotar un envío a mano" (todo se arma desde Armar caja; lo que falte en un envío ya salido lo corrige Claude)'}]},
