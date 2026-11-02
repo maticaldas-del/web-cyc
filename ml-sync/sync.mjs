@@ -4826,6 +4826,9 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       if (V == null) { frenar('!vuelve: no pude leer su línea o sus ventas para ver si la suba salió mal: no bajo a ciegas', { sinDato: true }); continue; }
       if (!V.ok) { frenar('!vuelve: ' + V.txt, { regla: 'punto medio' }); continue; }
       if (Math.abs(a - V.target) > V.target * 0.02) { frenar(`!vuelve: ${V.txt}; pediste ${$(a)} y el precio al que se vuelve es ${$(V.target)}`, { regla: 'punto medio' }); continue; }
+      // la vuelta no se saltea el piso: abajo del 35% del peor caso (o sin poder medirlo) va por las reglas de siempre (F0/F12/F13)
+      { const mgV = d.mgPA != null && Number.isFinite(Number(d.mgPA)) ? Number(d.mgPA) : (d.mgA != null && Number.isFinite(Number(d.mgA)) ? Number(d.mgA) : null);
+        if (mgV == null || mgV < BAJAR_MIN_PCT_JOVEN - 0.05) { frenar(`!vuelve: a ${$(a)} queda en ${mgV == null ? '¿?' : mgV + '%'} en el peor caso: la vuelta de una es sólo a un precio de 35%+; abajo va por las reglas de siempre (F13, perfumes F12)`, { regla: 'punto medio' }); continue; } }
       d.vuelveTxt = V.txt; continue;
     }
     const ph = await leerC('cyc/promohist/' + d.mla, {});
