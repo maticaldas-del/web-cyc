@@ -5614,6 +5614,14 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   // lo resuelven las reglas del stock antiguo cuando se acerca. `diasHoy` queda sólo para el texto.
   const stHoy = (() => { const ks = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && lin[k] && lin[k].st != null).sort(); return ks.length ? Number(lin[ks[ks.length - 1]].st) || 0 : null; })();
   const diasHoy = stHoy != null && uds > 0 ? stHoy / (uds / (horas / 24)) : null;
+  // 02/11/2026 (él: "10 días como máximo en decidir"): a los 10 días de la última suba se decide por GANANCIA por día (ritmo × ganancia por
+  // unidad): si al precio de hoy deja igual o más, se queda (es el nuevo mejor precio); si deja menos, vuelve de una.
+  if (uds0 != null && h0 >= TECHO_DIAS_SIN_VENTA * 24) {
+    const gU = await ganUnidadModelo(db, mla, links, prods, ahora); const g = gU || ((p) => p);
+    const gHoy = uds0 / (h0 / 24) * g(ch[0].a), gAntes = Rt.r * g(ch[i].de);
+    if (gHoy >= gAntes) return { ok: false, txt: `a los ${Math.round(h0 / 24)} días a ${money(ch[0].a)} deja ~${money(gHoy)} por día contra ~${money(gAntes)} a ${money(ch[i].de)}: rinde igual o más arriba, se queda (10 días como máximo, él 02/11)` };
+    return { ok: true, sinVenta10: uds0 === 0, target: ch[i].de, txt: `a los ${Math.round(h0 / 24)} días a ${money(ch[0].a)} vendió ${uds0} y deja ~${money(gHoy)} por día contra ~${money(gAntes)} a ${money(ch[i].de)} → vuelve a ${money(ch[i].de)} (10 días como máximo en decidir, él 02/11)` };
+  }
   if (mal && uds0 > 0 && facAntes < facHoy * 1.5) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
   if (!mal) return { ok: false, txt: `desde que dejó ${money(ch[i].de)} vendió ${uds} en ${Math.round(horas)} h (se esperaban ~${esp.toFixed(1)}): no salió mal todavía` };
   return { ok: true, sinVenta10: horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)}${noMedido ? ' (vendió ahí pero no se llegó a medir: primero se mide ese escalón)' : ' (el que más ganancia por día dejó de los escalones medidos)'} (punto medio, él 02/11)` };
@@ -5664,6 +5672,7 @@ async function puntoSinTecho(db, mla, links, prods, cache = new Map()) {
 // semana (4a) puede probar UNA suba de +50% si no subió en los últimos 30 días y no tiene 🔴 techo medido. Si no vende en 10 días, el punto
 // medio la vuelve de una al precio de antes (`vueltaDeSuba`, 10 días sin vender). Una prueba por mes como mucho.
 const PRUEBA_LENTO_DIAS = 30;
+const PRUEBA_MES_SUBA = 0.20;   // 🔁 prueba del mes de lo que ya tiene su mejor precio: +20%, sin exagerar (02/11/2026)
 function pruebaLentoOk(cc, mla, ray, ahora = Date.now()) {
   if (ray && Number(ray.techo) > 0) return false;
   return !Object.values(cc || {}).some((c) => c && String(c.mla) === String(mla) && Number(c.ts) > ahora - PRUEBA_LENTO_DIAS * 864e5 && Number(c.a) > Number(c.de) * 1.02);
@@ -5991,18 +6000,22 @@ async function detectarErrores(db, o = {}) {
     if (rayL) for (const [m, h] of Object.entries(est)) {
       const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || '')) || ML_REVISION_NO_MIRAR.has(m)) continue;
       let ult = ''; for (const k of Object.keys(h || {}).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; ult = x.t === 'correccion' ? pasajeDe(ult) : x.t; }
-      if (ult !== 'punto' && ult !== 'techo') continue;   // 📈 lento que vendió en su prueba: otra prueba a los 30 días
+      if (!['punto', 'techook', 'techo'].includes(ult)) continue;
       if (nbDet[m] && nbDet[m].congelado) continue;
-      if (!pruebaLentoOk(cc, m, rayL[m] || {}, ahora)) continue;
+      if (!pruebaLentoOk(cc, m, {}, ahora)) continue;   // ya subió este mes
       const P = Number((np[m] || {}).precio) || 0; if (!(P > 0) || P >= TECHO_DURO || tope500(m, P) || cercaAntiguo(e)) continue;
-      const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs == null || infR.diasSt < TECHO_RITMO_MIN_DIAS_ST || !(rs < TECHO_RITMO_MIN_SEMANA)) continue;
-      let obj = Math.min(objTerm(P * TECHO_SUBA) || TECHO_DURO, TECHO_DURO); if (P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;
+      const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs == null) continue;
+      const lento = infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA, conTecho = Number((rayL[m] || {}).techo) > 0 || ult === 'techook';
+      // 📈 que no es lento va por "si vende, sube"; 💰/🏔️ sin techo que vende 1+ por semana va por 💰 sin 🔴 (+50%) igual que el lento sin techo
+      if (ult === 'techo' && (!lento || conTecho)) continue;
+      const mensual = conTecho;   // con techo medido: prueba del mes de +20% · sin techo: +50% (no se sabe nada más arriba)
+      let obj = Math.min(objTerm(P * (mensual ? 1 + PRUEBA_MES_SUBA : TECHO_SUBA)) || TECHO_DURO, TECHO_DURO); if (P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;
       if (!(obj > P * 1.02)) continue;
-      lentos.push({ mla: m, e, P, obj, rs, dSt: infR.diasSt });
+      lentos.push({ mla: m, e, P, obj, rs, dSt: infR.diasSt, mensual, ult });
     } }
-  bloque('🧪 VENDEN MENOS DE 1 POR SEMANA Y NUNCA PROBARON MÁS CARO · una prueba de +50% (1a del 02/11; si no vende en 10 días vuelve de una) EN ESTA VUELTA', lentos, (x) => {
-    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · hoy ${$(x.P)} · vende ${x.rs.toFixed(1)} por semana (${x.dSt} días con stock de 60) · sin 🔴 techo ni suba en ${PRUEBA_LENTO_DIAS} días`);
-    console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|QUÉ HICE de ${x.P} a ${x.obj}. POR QUÉ 1a del 02/11: vende ${x.rs.toFixed(1)} por semana y nunca probó más caro, una prueba de +50% para encontrar el precio que más ganancia deja. SI NO VENDE en 10 días vuelve de una a ${x.P};go`);
+  bloque('🔁 PRUEBA DEL MES · lo que ya tiene su precio (💰/🏔️) o vende menos de 1 por semana, sin suba en 30 días: probar más caro (con techo +20%, sin techo +50%; a los 10 días decide la plata por día, nunca abajo del 💰) EN ESTA VUELTA', lentos, (x) => {
+    console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult} · hoy ${$(x.P)} · vende ${x.rs.toFixed(1)} por semana (${x.dSt} días con stock de 60) · ${x.mensual ? 'con techo medido' : 'sin 🔴 techo'} · sin suba en ${PRUEBA_LENTO_DIAS} días`);
+    console.log(`   ▶️ decido:${x.mla}=${x.obj}${x.mensual ? '!mensual' : ''}#techo|QUÉ HICE de ${x.P} a ${x.obj}. POR QUÉ prueba del mes (él 02/11): ${x.mensual ? 'ya tenía su mejor precio, cada mes se prueba +20% más caro por si rinde más' : 'nunca probó más caro, +50% para encontrar el precio que más ganancia deja'}. SI A LOS 10 DÍAS deja menos plata por día vuelve de una a ${x.P};go`);
   });
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
   // subir el precio para buscar el techo lo más rápido posible… el objetivo es que todas estén en buscando el mejor precio lo más rápido
@@ -50458,7 +50471,7 @@ async function main() {
         const _pctV = /^%/.test(String(mm[2] || '').trim()) ? String(mm[2]).trim() : '';
         forzar[mm[1].toUpperCase()] = { p: soloAct ? 0 : (_pctV ? -1 : Math.round(pesosArg(mm[2]))), pctObj: _pctV && !/^%x/i.test(_pctV) ? parseFloat(_pctV.slice(1).replace(',', '.')) : 0, pctMult: /^%x/i.test(_pctV) ? parseFloat(_pctV.slice(2).replace(',', '.')) : 0, motivo: mot.join('|').trim(), piso: banderas.includes('!piso'), cruza: banderas.includes('!cruza'),
           activar: soloAct || banderas.includes('!activar'), salto: banderas.includes('!salto'), sinstock: banderas.includes('!sinstock'), sintecho: banderas.includes('!sintecho'),
-          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), nobajar: banderas.includes('!nobajar'), vuelve: banderas.includes('!vuelve'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), vendio: /!vendio(?![a-z])/.test(banderas), vendiocaro: banderas.includes('!vendiocaro'), tag: mm[4] ? mm[4].toLowerCase() : '' };
+          golpe: banderas.includes('!golpe'), sincerteza: banderas.includes('!sincerteza'), bajopiso: banderas.includes('!bajopiso'), nosobra: banderas.includes('!nosobra'), sinlinea: banderas.includes('!sinlinea'), nobajar: banderas.includes('!nobajar'), vuelve: banderas.includes('!vuelve'), chico: banderas.includes('!chico'), lista: banderas.includes('!lista'), escalon: banderas.includes('!escalon'), vendio: /!vendio(?![a-z])/.test(banderas), vendiocaro: banderas.includes('!vendiocaro'), mensual: banderas.includes('!mensual'), tag: mm[4] ? mm[4].toLowerCase() : '' };
         renglonD[mm[1].toUpperCase()] = x;
         // Sin 🎯 base (19/10/2026): un precio nuevo tiene que decir su estrategia (#tag o un motivo que la nombre).
         { const fz = forzar[mm[1].toUpperCase()]; if (!soloAct && !fz.tag && !tagDeMotivo(fz.motivo) && !fz.piso) { delete forzar[mm[1].toUpperCase()]; malos.push(x + ` (falta la estrategia: agregá #techo, #escasez, #sobra… · ${Object.keys(ESTRATEGIAS).filter((k) => !['sindecidir', 'agotado', 'techook'].includes(k)).join(', ')})`); continue; } }
@@ -50634,7 +50647,18 @@ async function main() {
             const fr = await puntoSinTecho(db, d.mla, linksD, globalThis._ritmoCacheD.prods, globalThis._ritmoCacheD.m);
             if (fr) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 💰 sin 🔴: ${fr}. Si sube, va con #techo; si baja, con la estrategia que la explica (sobra, escalera de escasez…). Excepción: !chico y "EXCEPCIÓN: …"`; continue; }
           }
-          if (d.accion === 'sube' && tg === 'techo' && a < p0 * TECHO_SUBA && !exc('chico') && !(fz.pctObj > 0 || fz.pctMult > 0) && !(p0 < UMBRAL_ENVIO_GRATIS && a >= 32900 && a < UMBRAL_ENVIO_GRATIS) && !(a >= 640000)) {
+          // 🔁 PRUEBA DEL MES (02/11/2026, él: "los que ya encontraron el precio que más da que cada un mes se cuestione. que se varíe el precio
+          // sólo para arriba, nunca abajo del precio que más da… 10 días como máximo en decidir"): `!mensual` = una suba de hasta +20% si no
+          // subió en los últimos 30 días. No la frenan el salto grande, la 4a ni el 50%; a los 10 días `vueltaDeSuba` decide por plata por día.
+          let mensualOk = false;
+          if (d.accion === 'sube' && fz.mensual) {
+            if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } }
+            if (!globalThis._ccCache4a) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO !mensual: no pude leer mis cambios para ver si ya subió este mes. Se vuelve a mirar en la próxima vuelta.'; continue; }
+            if (!pruebaLentoOk(globalThis._ccCache4a, d.mla, {})) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !mensual: ya subió en los últimos ${PRUEBA_LENTO_DIAS} días: una prueba por mes.`; continue; }
+            if (a > p0 * (1 + PRUEBA_MES_SUBA) + 100) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !mensual: la prueba del mes es de hasta +${Math.round(PRUEBA_MES_SUBA * 100)}% (sin exagerar): ${money(p0)} → ${money(a)} es +${Math.round((a / p0 - 1) * 100)}%.`; continue; }
+            mensualOk = true;
+          }
+          if (d.accion === 'sube' && tg === 'techo' && a < p0 * TECHO_SUBA && !exc('chico') && !mensualOk && !(fz.pctObj > 0 || fz.pctMult > 0) && !(p0 < UMBRAL_ENVIO_GRATIS && a >= 32900 && a < UMBRAL_ENVIO_GRATIS) && !(a >= 640000)) {
             d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO: buscar techo es un salto grande (+50% o más), nunca de a poco: ${money(p0)} → ${money(a)} es +${Math.round((a / p0 - 1) * 100)}%. El salto llega a ${money(Math.ceil(p0 * TECHO_SUBA / 100) * 100 - 10)} o más. Si es menos a propósito (un techo ya visto, la barrera): !chico y "EXCEPCIÓN: …"`; continue; }
           if (d.accion === 'sube' && d.mgPA != null && Number(d.mgPA) > TOPE_GANANCIA_PCT && !(d.mgP0 != null && Number(d.mgP0) < PISO_DURO)) {
             d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 500%: a ${money(a)} deja ${Math.round(Number(d.mgPA))}% de ganancia en el peor caso y el tope es ${TOPE_GANANCIA_PCT}% (él, 02/11). Subir menos, hasta ${TOPE_GANANCIA_PCT}%, o dejarlo donde está.`; continue; }
@@ -50659,6 +50683,7 @@ async function main() {
             if (!RV || a > RV.p * 1.02) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO !vendiocaro: ${RV ? `lo más caro que vendió en los últimos ${RAYAS_DIAS} días fue ${money(RV.p)} (el ${RV.k.slice(8, 10)}/${RV.k.slice(5, 7)})` : `no vendió en los últimos ${RAYAS_DIAS} días (sin contar escasez, sin reposición ni fechas especiales)`}: ${money(a)} no es volver a un precio que vendió.`; continue; }
             vuelveA = true;
           }
+          if (mensualOk) vuelveA = true;   // 🔁 la prueba del mes no la frenan la 4a ni el 50%
           const al25 = d.mgP0 != null && Number(d.mgP0) < PISO_DURO && d.mgPA != null && Number(d.mgPA) <= PISO_DURO + 2;   // subir al piso del peor caso (35% desde el 24/10)
           if (d.accion === 'sube' && !exc('chico') && !al25 && !vuelveA) {
             if (estT[d.mla] === undefined) { try { estT[d.mla] = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { estT[d.mla] = {}; } }
@@ -50759,7 +50784,7 @@ async function main() {
       if (!GOp || DRY) { console.log('\nPRUEBA: no toqué nada. Para aplicar, el mismo comando con ;go al final.'); return; }
       let apP = null; try { apP = (await db.get('cyc/autoprecio')) || {}; } catch { apP = null; }
       // Lo que se guarda en mis cambios (22/10/2026): banderas, estrategia y autorizaciones suyas usadas (ver `aplicarCerebro`).
-      const BAN_DEC = ['piso', 'cruza', 'activar', 'salto', 'sinstock', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'nobajar', 'chico', 'lista', 'escalon', 'vendio', 'vendiocaro', 'vuelve'];
+      const BAN_DEC = ['piso', 'cruza', 'activar', 'salto', 'sinstock', 'sintecho', 'golpe', 'sincerteza', 'bajopiso', 'nosobra', 'sinlinea', 'nobajar', 'chico', 'lista', 'escalon', 'vendio', 'vendiocaro', 'vuelve', 'mensual'];
       for (const d of cz.dec) if (d.accion !== 'nada' && forzar[d.mla]) { const fz = forzar[d.mla]; d.reg = { ban: BAN_DEC.filter((k) => fz[k]), tag: fz.tag || tagDeMotivo(fz.motivo) || '', aut: (d.frenosOk && d.frenosOk.aut) || [] }; }
       const ac = await aplicarCerebro(db, cz, { tokens: tokP, aplica: true, autoprecio: apP });
       console.log(`\n✓ hechos: ${ac.hechos.length} · no se pudo: ${ac.fallidos.length} · sin anotar: ${ac.sinAnotar.length}`);
