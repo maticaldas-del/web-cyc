@@ -10,7 +10,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ### ✅ Contestó el 02/11 a la noche (1b · cupo Luciana · 4a · 5a)
 - 1b: el Paulvic Infinite Fame de Adriana (MLA1682456369, finalizado por ML por la factura) queda cerrado · el cupo de Luciana de 16.265 / 16.255 es REAL (cargado el de la rutina de hoy, 16.255/91 a las 14:38, con los otros tres) · 4a: Timer a $6.390 sin descuento · 5a: Animale For Men, escalón a $113.990 como descuento desde el 06/11 (autorizado; recordatorio para ese día).
-- Sigue sin contestar: las 4 de Navidad (ideas 1-4 del 02/11) — el primer pedido de Paraguay para Black Friday sería el 9/11.
+- Navidad, idea 1 (él, 02/11): *"paraguay pedimos cuando llega, o sea una por semana aprox. por las dudas"* → sin fechas fijas: cada pedido sale cuando llega el anterior (~1 por semana) y desde ahora lleva el pico de Navidad de cada producto (lo que vendió en la Navidad pasada). Faltan 2, 3 y 4.
 
 ### ✅ Contestó la lista de las 12:30 del 02/11 (1a 2b 3a 5 6)
 - 1a los 7 tenders de Soares eran los Tender (local) de la Oficina Local (al costo, $22.000) · 2b la balanza de cocina no salió de ninguna oficina · 3a los ~90 USDT que sobran en Binance son de CYC para el próximo pedido · 5 los 15 Paulvic sin aroma restados de la Oficina ML como Paulvic general (`ofi:Paulvic=-15!gral`) · 6 Batidora Blanco: resuelto por él.
