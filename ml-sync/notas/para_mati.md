@@ -296,3 +296,8 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 5. **Aer x6 Brisa Marina (Adriana):** se vendió la última a $32.990 (132%). Pedidos se lo pide a Tito desde el 12/10 y no entró ninguno de ese aroma, mientras que Limón y Berry Rush sí llegan. (a) sugerida: si lo consigue, sigue en el pedido (~4) · (b) si no, lo marco 🚫 No lo consigo y queda sin reposición.
 6. **Timer (los dos, Ayelen) a $5.790 con descuento:** el 27/10 elegiste (3a) que siga con el descuento para vaciar la tanda antes del stock antiguo, y lo renové hoy hasta el 16/11. Pero el detector lo marca: a $5.790 deja 19% en el peor caso y la unidad más vieja tiene 75 días (la regla del 27/10 dice que abajo del 35% sólo desde los 90 días, faltan 15). (a) sugerida: autorizo que siga hasta el 16/11 · (b) que vuelva a $6.390 (36%) hasta los 90 días.
 7. **Centímetro Rosa:** el punto 5 del 31/10 se resolvió solo: vendió 2 a $17.490, así que no se baja. Queda en $17.490.
+
+## 🤖 Cómo viene la rutina del chat de Chrome (02/11, para el aviso de las 12:30)
+- Vuelta completa de Nissei hecha el 01/11 (12.132 de 12.135). Último mensaje RUTINA: el del 01/11; el de hoy todavía no llegó.
+- Cupos y saldos de MP del 01/11: cargados en Adriana, Ayelen y Matías. **El cupo de Luciana vino mal leído (16.265, imposible)** y quedó el de hace 14 días: que el chat lo vuelva a mirar. Ayelen tiene 0 de lugar y Matías 9: no entra nada de chicos en esas dos.
+- Los avisos de ML en Publicaciones ya son parte de la rutina (parte 3b).
