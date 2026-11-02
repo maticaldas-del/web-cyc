@@ -42320,6 +42320,9 @@ async function main() {
       console.log(`  total contado: US$ ${total(OC).toFixed(2)} → US$ ${total(N2).toFixed(2)}${cfgO ? ' (el Arqueo usa lo contado)' : ' (el Arqueo sigue con el valor a mano hasta "oficyc:listo;go")'}`);
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
       for (const o of ops) await db.set('cyc/oficyc/' + o.P.id, N2[o.P.id]);
+      // 02/11/2026 (él: "y poné hace cuánto en stock"): el día en que cada producto entró a la Oficina Local (de 0 a algo); vuelve a null en 0.
+      { let OD = {}; try { OD = (await db.get('cyc/oficycdesde')) || {}; } catch { OD = null; }
+        if (OD) for (const o of ops) { const u1 = uDe(N2[o.P.id]); if (u1 > 0 && !OD[o.P.id]) await db.set('cyc/oficycdesde/' + o.P.id, { ts: Date.now() }); else if (!(u1 > 0) && OD[o.P.id]) await db.set('cyc/oficycdesde/' + o.P.id, null); } }
       if (cfgO) await db.set('cyc/finanzas/of_viejo', Math.round(total(N2) * 100) / 100);
       const R3 = (await db.get('cyc/oficyc')) || {}; const okN = ops.filter((o) => uDe(R3[o.P.id]) === uDe(N2[o.P.id])).length;
       console.log(`releído: ${okN} de ${ops.length} ${okN === ops.length ? '✓' : '⚠️ NO CIERRA'}`);

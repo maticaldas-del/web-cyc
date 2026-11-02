@@ -2624,7 +2624,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','oficycdesde','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2751,7 +2751,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
-    state.oficyc=d.oficyc||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
+    state.oficyc=d.oficyc||{};state.oficycdesde=d.oficycdesde||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
     state.pedperf=d.pedperf||{};   // 29/10: 🛍️ lo que pidió la perfumería (se suma en Pedidos de Bs As)
     state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
     state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
@@ -3263,7 +3263,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.79';
+const APP_VERSION='28.80';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3276,6 +3276,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.80',f:'02/11',h:'21:30',c:[{n:1,t:'🔄 Rotación → Local: columna 📅 En stock (hace cuántos días está cada producto en la Oficina Local; lo contado antes del 29/10 dice "desde antes").'}]},
   {v:'28.79',f:'02/11',h:'21:15',c:[{n:1,t:'🔄 Inicio: los botones 📦 ML y 🏪 Local de Rotación van uno al lado del otro (el de Local se cortaba).'}]},
   {v:'28.78',f:'02/11',h:'21:00',c:[{n:2,t:'🔄 Rotación: en Inicio la tarjeta tiene dos botones, 📦 ML y 🏪 Local. Local muestra lo que hay en la Oficina Local, cuánta plata tiene parado cada producto y cuánto salió en 60 días (a las perfumerías o por la Tienda); lo parado primero.'}]},
   {v:'28.77',f:'02/11',h:'20:30',c:[{n:2,t:'🧾 Gastos del mes: cada gasto que falta tiene su casilla de monto y 💾 Cargar, se carga ahí mismo sin ir al formulario.'}]},
@@ -21997,7 +21998,9 @@ function renderRotLocal(){
   for(const [k,x] of Object.entries(state.oficyc||{})){const u=_uO(x);if(!(u>0))continue;const p=prodById(k);const cu=p?(efectivoCostP(p)||0):0;
     const sx=sal[k]||{u60:0,ult:0};const rot=sx.u60/(u+sx.u60);const dSin=sx.ult?Math.floor((hoy-sx.ult)/864e5):null;
     const est=sx.u60===0?'muerto':(rot<0.2?'lento':'sano');
-    rows.push({k,nom:p?p.name:k,u,cu,cap:u*cu,u60:sx.u60,dSin,est,rot});}
+    // hace cuánto está: el día en que entró (`cyc/oficycdesde`, desde el 02/11); lo contado antes no tiene fecha → "antes del 29/10" (cuando se empezó a contar)
+    const dsd=Number(((state.oficycdesde||{})[k]||{}).ts)||0;const dSt=dsd?Math.floor((hoy-dsd)/864e5):Math.floor((hoy-Date.parse('2026-10-29T12:00:00'))/864e5);
+    rows.push({k,nom:p?p.name:k,u,cu,cap:u*cu,u60:sx.u60,dSin,est,rot,dSt,dAprox:!dsd});}
   if(!rows.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem;padding:14px">No hay nada contado en la Oficina Local.</div>';return;}
   const q=(document.getElementById('rot-search')?.value||'').toLowerCase();
   const ORD={muerto:0,lento:1,sano:2};
@@ -22008,9 +22011,9 @@ function renderRotLocal(){
   el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px;font-size:.78rem;line-height:1.6">
       <b>🏪 Oficina Local: ${usd(tot)}</b> <span style="color:var(--muted)">${ars(tot)}</span> en ${rows.length} productos (${rows.reduce((a,r)=>a+r.u,0)} u.) al costo<br>
       <span style="color:var(--red)">🔴 Parado (nada en 60 días): <b>${usd(capM)}</b> · ${tot>0?Math.round(capM/tot*100):0}%</span>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">"Salió" = lo que se le dejó a una perfumería o se vendió por la Tienda (los movimientos de Ver deudas con el producto). Ordenado: lo parado primero, de más plata a menos.</div></div>
-    <div class="tbl-outer"><table><thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Capital</th><th>Salieron 60 d</th><th>⏳ Última salida</th><th>Estado</th></tr></thead><tbody>
-    ${vis.map(r=>{const e=EST[r.est];return `<tr><td style="text-align:left;max-width:220px">${_esc(r.nom)}</td><td>${r.u}</td><td>${usd(r.cap)}<br><span style="font-size:.6rem;color:var(--muted)">${ars(r.cap)}${r.cu>0?'':' · ⚠️ sin costo'}</span></td><td>${r.u60}</td><td>${r.dSin==null?'nunca':'hace '+r.dSin+' d'}</td><td title="${e[2]}">${e[0]} ${e[1]}</td></tr>`;}).join('')}
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Acá no se paga stock antiguo (no es Full): lo que cuesta tenerlo parado es la plata quieta. "Salió" = lo que se le dejó a una perfumería o se vendió por la Tienda (los movimientos de Ver deudas con el producto). Ordenado: lo parado primero, de más plata a menos.</div></div>
+    <div class="tbl-outer"><table><thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Capital</th><th>📅 En stock</th><th>Salieron 60 d</th><th>⏳ Última salida</th><th>Estado</th></tr></thead><tbody>
+    ${vis.map(r=>{const e=EST[r.est];return `<tr><td style="text-align:left;max-width:220px">${_esc(r.nom)}</td><td>${r.u}</td><td>${usd(r.cap)}<br><span style="font-size:.6rem;color:var(--muted)">${ars(r.cap)}${r.cu>0?'':' · ⚠️ sin costo'}</span></td><td title="${r.dAprox?'Se empezó a contar la Oficina Local el 29/10: lo de antes no tiene fecha de entrada, está desde ese día o antes':'Desde el día en que entró a la Oficina Local'}">${r.dAprox?r.dSt+'+ d':r.dSt+' d'}<br><span style="font-size:.6rem;color:var(--muted)">${r.dAprox?'desde antes del 29/10':'sin pagar stock'}</span></td><td>${r.u60}</td><td>${r.dSin==null?'nunca':'hace '+r.dSin+' d'}</td><td title="${e[2]}">${e[0]} ${e[1]}</td></tr>`;}).join('')}
     </tbody></table></div>`;
 }
 function renderRotacionStock(){

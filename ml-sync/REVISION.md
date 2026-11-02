@@ -88,6 +88,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ### 🔄 Rotación del Local (02/11/2026, v28.78, etapa 9 Local; él: *"en rotación poner los productos de local también, que haya para clickear en la tarjeta del inicio dentro de la tarjeta de rotación, dos una ml otra local"*)
 - **Qué es:** la tarjeta de Inicio tiene 📦 ML / 🏪 Local (`homeRotIr`); en la pantalla, el mismo par (`setRotSrc`, `rotSrc`). Local (`renderRotLocal`): lo contado en `cyc/oficyc` × costo US$ (`efectivoCostP`, como el Arqueo), en pesos al dólar del Arqueo, contra lo que salió en 60 días = movimientos de `cyc/debencuotas` con `prod` y `u` (`_rotLocalSalidas`). 🔴 nada en 60 días · 🟠 menos del 20% · 🟢 20%+.
+- **📅 En stock (v28.80, él: *"y poné hace cuánto en stock"*):** `oficyc:` anota el día en que cada producto pasa de 0 a algo en `cyc/oficycdesde/<id>` (y lo borra al volver a 0); lo contado antes no tiene fecha y dice "desde antes del 29/10".
 - **Qué chequear:** que el total sea el mismo que la Oficina Local del Arqueo; que lo que salió de la Oficina ML (no del local) no cuente como salida del local si un día se separa por `de=`; que lo devuelto (`devuelve`) no sume como salida.
 
 ### 🧾 Gastos del mes: cargar desde la lista (02/11/2026, v28.77, etapa 2; él: *"quiero que haya un cuadradito así cargo los gastos de ahí. o sea no tener que ir y cargar manual"*)
