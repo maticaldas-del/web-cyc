@@ -4823,7 +4823,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     // techo de 30 días: la cuenta la hace `vueltaDeSuba` (24 h mínimo, menos de la mitad de lo esperado o 10 días sin vender). Si no cierra, freno.
     if (fz.vuelve) {
       // 🔥/⏳ suben a propósito para que el stock dure (venden menos a propósito): la vuelta del punto medio no es para ellas (F11 sigue).
-      const V = await vueltaDeSuba(db, d.mla, links, prods, camb, p0, ahora);
+      const V = await vueltaDeSuba(db, d.mla, links, prods, camb, p0, ahora, a);
       // 🔥/⏳ suben a propósito para que el stock dure: ahí la vuelta sólo con 10 días sin vender (= 🔴 techo, regla del 02/11).
       if ((ult === 'escasez' || ult === 'sinrepo') && V && V.ok && !V.sinVenta10) { frenar(`!vuelve: está en ${ult === 'escasez' ? '🔥 escasez' : '⏳ sin reposición'}: ahí vender menos es a propósito; la vuelta sólo con ${TECHO_DIAS_SIN_VENTA} días sin vender (F11)`, { regla: 'punto medio' }); continue; }
       if (V == null) { frenar('!vuelve: no pude leer su línea o sus ventas para ver si la suba salió mal: no bajo a ciegas', { sinDato: true }); continue; }
@@ -5556,7 +5556,7 @@ async function subaConfirmada(db, mla, links, prods, desde, viejo, ahora = Date.
 // 1+2 · ¿LA SUBA SALIÓ MAL? → VOLVER AL ÚLTIMO PRECIO QUE VENDÍA BIEN (!vuelve). Salió mal = 24 h+ a este precio y vendió menos de la mitad de
 // lo esperado al ritmo del precio de antes (3+ esperadas), o 10 días sin vender. El destino: de la cadena de subas seguidas, el precio más
 // nuevo que vendía al menos la mitad que el de antes de él. {ok, target, txt} · null = no leí.
-async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now()) {
+async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(), pedido = 0) {
   const ch = []; for (const c of camb.filter((c) => !c.rev && c.ts < ahora).sort((x, y) => y.ts - x.ts)) { if (c.a > c.de * 1.02) ch.push(c); else break; }
   if (!ch.length) return { ok: false, txt: 'el último cambio no fue una suba: no hay a qué volver' };
   if (Math.abs(p0 - ch[0].a) > ch[0].a * 0.03) return { ok: false, txt: `hoy está a ${money(p0)} y la última suba fue a ${money(ch[0].a)}: no es la misma` };
@@ -5564,7 +5564,9 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now())
   const J = await lineaJuntaStock(links, prods || {}, mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } }); lin = J.d;
   const rit = (i) => { const c = ch[i]; const t0 = ch[i + 1] ? ch[i + 1].ts : c.ts - 60 * 864e5; return ritmoAPrecioLin(lin, c.de, t0, c.ts); };
   // el destino: de la cadena de subas seguidas, el precio más nuevo que VENDÍA (algo) y al menos la mitad que el de antes de él
-  let i = -1; for (let k = 0; k < ch.length; k++) { const Rk = rit(k); if (!Rk || !(Rk.r > 0) || Rk.dias < 2) continue; /* 1 solo día (un pico) no alcanza */ const Rp = k + 1 < ch.length ? rit(k + 1) : null; if (!Rp || !(Rp.r > 0) || Rk.r >= Rp.r * 0.5) { i = k; break; } }
+  // Si se pidió un precio (decido / el detector), vale cualquier escalón de la cadena que vendía: volver a uno intermedio es más prudente.
+  let i = -1; if (pedido > 0) { for (let k = 0; k < ch.length; k++) { const Rk = rit(k); if (Math.abs(ch[k].de - pedido) <= ch[k].de * 0.02 && Rk && Rk.r > 0) { i = k; break; } } }
+  if (i < 0) for (let k = 0; k < ch.length; k++) { const Rk = rit(k); if (!Rk || !(Rk.r > 0) || Rk.dias < 2) continue; /* 1 solo día (un pico) no alcanza */ const Rp = k + 1 < ch.length ? rit(k + 1) : null; if (!Rp || !(Rp.r > 0) || Rk.r >= Rp.r * 0.5) { i = k; break; } }
   if (i < 0) return { ok: false, txt: 'ningún precio de antes de estas subas vendía: va por la escalera (punto medio 3)' };
   // ¿salió mal? desde que dejó ESE precio (toda la cadena de subas de arriba), contra lo esperado a su ritmo
   const t0 = ch[i].ts, horas = (ahora - t0) / 36e5;
@@ -5576,13 +5578,15 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now())
   // vendían 0,35 por día y dejaban ~$3.700/día, a $4.390 dejarían ~$700): no alcanza con vender menos unidades, tiene que dejar menos PLATA.
   // Lo facturado por día al precio de hoy contra lo esperado al de antes; como al bajar la ganancia por unidad cae más que el precio, se pide
   // que el de antes facture 1,5 veces lo de hoy (si no, se queda arriba).
-  const facHoy = uds / (horas / 24) * ch[0].a, facAntes = Rt.r * ch[i].de;
+  // lo facturado HOY = las ventas al precio de hoy (desde la última suba), no las de los escalones del medio (Cartas Casino: daba $98.000/día)
+  const uds0 = await ventasGrupoEntre(db, mla, links, prods, ch[0].ts, ahora); const h0 = Math.max(1, (ahora - ch[0].ts) / 36e5);
+  const facHoy = uds0 == null ? 0 : uds0 / (h0 / 24) * ch[0].a, facAntes = Rt.r * ch[i].de;
   // 02/11/2026 (él, después: "si vende más lo suficiente bajalo… o sino dejalo a este precio si venden bien y se le gana más y cuando
   // estemos por llegar a pagar stock, lo pagamos, retiramos o antes lo vendemos más barato"): el stock que dura 120+ días NO hace volver;
   // lo resuelven las reglas del stock antiguo cuando se acerca. `diasHoy` queda sólo para el texto.
   const stHoy = (() => { const ks = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && lin[k] && lin[k].st != null).sort(); return ks.length ? Number(lin[ks[ks.length - 1]].st) || 0 : null; })();
   const diasHoy = stHoy != null && uds > 0 ? stHoy / (uds / (horas / 24)) : null;
-  if (mal && uds > 0 && facAntes < facHoy * 1.5) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
+  if (mal && uds0 > 0 && facAntes < facHoy * 1.5) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
   if (!mal) return { ok: false, txt: `desde que dejó ${money(ch[i].de)} vendió ${uds} en ${Math.round(horas)} h (se esperaban ~${esp.toFixed(1)}): no salió mal todavía` };
   return { ok: true, sinVenta10: horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)} (punto medio, él 02/11)` };
 }
