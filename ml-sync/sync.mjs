@@ -5047,6 +5047,21 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // ⏳ sinrepo abre F5/F7/F8/F9 SÓLO con el stock por cumplir 4 meses en Full (F11, 24/10/2026): escribir el tag ya no alcanza (36 suya).
       const exentoPor = (t) => ((t === 'sobra' || t === 'liquidando') ? (sobraReal() ? t : '') : t === 'sinrepo' ? (antiguoCerca ? t : '') : (t === 'remate' && remOk) ? t : '');
       const exento = exentoPor(tagNuevo) || exentoPor(ult);
+      // ── 📦 SOBRA SÓLO SI DEJA IGUAL O MÁS PLATA (02/11/2026, él eligió 1a: "si vende más lo suficiente bajalo… o sino dejalo a este precio
+      // si venden bien y se le gana más y cuando estemos por llegar a pagar stock, lo pagamos, retiramos o antes lo vendemos más barato").
+      // Una baja por sobra pasa sólo si lo facturado por día esperado al precio nuevo (su ritmo medido a ±3% en 120 días) es 1,3 veces lo de
+      // hoy (al bajar, la ganancia por unidad cae más que el precio), o si hoy no vendió nada en 30 días. Lo de los 15 días antes del stock
+      // antiguo, la liquidación de 30 días y el 🧨 remate siguen como siempre.
+      if ((tagNuevo === 'sobra' || tagNuevo === 'desobra' || (!tagNuevo && ult === 'sobra')) && !antiguo15 && lin) {
+        const k30s = kDia(ahora - 30 * 864e5); let dH = 0, uH = 0;
+        for (const k of ks) { if (k < k30s) continue; const x = lin[k]; if (!diaConStock(x)) continue; const pp = [Number(x.p) || 0, Number(x.pLista) || 0]; if (!pp.some((n) => n > 0 && Math.abs(n - p0) <= p0 * 0.03)) continue; dH++; uH += Number(x.u) || 0; }
+        if (uH > 0) {
+          const Rn = ritmoAPrecioLin(lin, a, ahora - 120 * 864e5, ahora);
+          const facH = uH / dH * p0, facN = Rn && Rn.dias >= 3 ? Rn.r * a : null;
+          if (facN == null) return { regla: 'sobra-plata', txt: `📦 sobra: a ${$(p0)} vende ${(uH / dH).toFixed(2)} por día y a ${$(a)} no hay ritmo medido (3+ días con stock en 120): sin saber si deja más plata, se queda; el stock antiguo lo resuelve cuando se acerque (él, 1a del 02/11)` };
+          if (facN < facH * 1.3) return { regla: 'sobra-plata', txt: `📦 sobra: a ${$(a)} facturaría ~${$(facN)} por día contra ${$(facH)} hoy: no deja más plata, se queda; el stock antiguo lo resuelve cuando se acerque (él, 1a del 02/11)` };
+        }
+      }
       // ── F0 · nunca abajo de 0%
       if (d.mgA != null && Number.isFinite(Number(d.mgA)) && Number(d.mgA) < 0 && !suya('bajocero')) return { regla: 'F0', txt: `a ${$(a)} queda en ${Number(d.mgA)}%: abajo de 0% no se baja nunca, salvo que él pida rematar a cualquier precio (🔐 !bajocero, sólo con su autorización (se la paso en el chat))` };
       // ── F12 · PERFUMES: NUNCA ABAJO DEL 10% (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería. antes de liquidar a 0%
