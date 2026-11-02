@@ -54479,7 +54479,7 @@ async function main() {
         console.log(`=== PEDIDOS A PARAGUAY EN CAMINO (${cam.length}) ===`);
         for (const [id, c] of cam) {
           const _nR = (c.items || []).filter((x) => x && x.prodId && !x.id).length, _nN = (c.items || []).filter((x) => x && x.id).length;
-          console.log(`\n· ${id} · ${_nR && _nN ? `PEDIDO (${_nR} probados + ${_nN} nuevos)` : (c.tipo === 'repo' || _nR) ? 'REPOSICIÓN' : 'NUEVOS'} del ${c.fecha} · ${c.productos || (c.items || []).length} producto(s) · ${c.unidades || 0} u. · US$ ${(parseFloat(c.usdCrudo) || 0).toFixed(2)}`);
+          console.log(`\n· ${Number(c.num) > 0 ? '#' + c.num + ' · ' : ''}${id} · ${_nR && _nN ? `PEDIDO (${_nR} probados + ${_nN} nuevos)` : (c.tipo === 'repo' || _nR) ? 'REPOSICIÓN' : 'NUEVOS'} del ${c.fecha} · ${c.productos || (c.items || []).length} producto(s) · ${c.unidades || 0} u. · US$ ${(parseFloat(c.usdCrudo) || 0).toFixed(2)}`);
           for (const it of (c.items || [])) console.log(`    ${it.u} u. · ${it.nom || it.cod || '?'}`);
         }
         return;
