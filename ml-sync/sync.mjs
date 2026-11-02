@@ -4822,6 +4822,8 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     // 2 del punto medio (02/11/2026, él): una suba que salió mal VUELVE DE UNA al último precio que vendía bien (`!vuelve`), sin escalera ni
     // techo de 30 días: la cuenta la hace `vueltaDeSuba` (24 h mínimo, menos de la mitad de lo esperado o 10 días sin vender). Si no cierra, freno.
     if (fz.vuelve) {
+      // 🔥/⏳ suben a propósito para que el stock dure (venden menos a propósito): la vuelta del punto medio no es para ellas (F11 sigue).
+      if (ult === 'escasez' || ult === 'sinrepo') { frenar(`!vuelve: está en ${ult === 'escasez' ? '🔥 escasez' : '⏳ sin reposición'}: ahí vender menos es a propósito, la vuelta no aplica (F11)`, { regla: 'punto medio' }); continue; }
       const V = await vueltaDeSuba(db, d.mla, links, prods, camb, p0, ahora);
       if (V == null) { frenar('!vuelve: no pude leer su línea o sus ventas para ver si la suba salió mal: no bajo a ciegas', { sinDato: true }); continue; }
       if (!V.ok) { frenar('!vuelve: ' + V.txt, { regla: 'punto medio' }); continue; }
@@ -5912,6 +5914,8 @@ async function detectarErrores(db, o = {}) {
       const ult = camb.filter((c) => !c.rev).sort((x, y) => y.ts - x.ts)[0]; if (!ult || !(ult.a > ult.de * 1.02)) continue;
       if (nbDet[m] && nbDet[m].congelado) continue;
       if (pcl && pcl[m] && Number(pcl[m].precio) > 0) continue;   // en un descuento o promo mía: se decide con su vencimiento
+      { const h = est[m] || {}; let uT = ''; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; uT = x.t === 'correccion' ? pasajeDe(uT) : x.t; }
+        if (uT === 'escasez' || uT === 'sinrepo') continue; }   // 🔥/⏳: vender menos es a propósito
       const P = Number((np[m] || {}).precio) || 0; if (!(P > 0)) continue;
       const V = await vueltaDeSuba(db, m, links, prods, camb, P, ahora); if (!V || !V.ok) continue;
       vuelven.push({ mla: m, e, P, V });
