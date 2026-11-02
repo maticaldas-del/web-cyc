@@ -5560,11 +5560,12 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now())
   // Lo facturado por día al precio de hoy contra lo esperado al de antes; como al bajar la ganancia por unidad cae más que el precio, se pide
   // que el de antes facture 1,5 veces lo de hoy (si no, se queda arriba).
   const facHoy = uds / (horas / 24) * ch[0].a, facAntes = Rt.r * ch[i].de;
-  // 02/11/2026 (él: "también tené en cuenta los 4 meses que comienzan a pagar stock"): si al ritmo de hoy el stock dura más de 120 días
-  // (empieza a pagar stock antiguo), quedarse arriba no vale aunque facture parecido.
+  // 02/11/2026 (él, después: "si vende más lo suficiente bajalo… o sino dejalo a este precio si venden bien y se le gana más y cuando
+  // estemos por llegar a pagar stock, lo pagamos, retiramos o antes lo vendemos más barato"): el stock que dura 120+ días NO hace volver;
+  // lo resuelven las reglas del stock antiguo cuando se acerca. `diasHoy` queda sólo para el texto.
   const stHoy = (() => { const ks = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && lin[k] && lin[k].st != null).sort(); return ks.length ? Number(lin[ks[ks.length - 1]].st) || 0 : null; })();
   const diasHoy = stHoy != null && uds > 0 ? stHoy / (uds / (horas / 24)) : null;
-  if (mal && uds > 0 && facAntes < facHoy * 1.5 && !(diasHoy != null && diasHoy > 120)) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
+  if (mal && uds > 0 && facAntes < facHoy * 1.5) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
   if (!mal) return { ok: false, txt: `desde que dejó ${money(ch[i].de)} vendió ${uds} en ${Math.round(horas)} h (se esperaban ~${esp.toFixed(1)}): no salió mal todavía` };
   return { ok: true, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)} (punto medio, él 02/11)` };
 }
