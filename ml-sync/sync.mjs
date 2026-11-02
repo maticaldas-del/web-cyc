@@ -942,7 +942,10 @@ const TECHO_SUBA = 1.5;
 // ganancia en el peor caso. Ahí termina la búsqueda de techo aunque siga vendiendo (`decido` frena la suba; el detector no la pide).
 const TOPE_GANANCIA_PCT = 500;
 const PUBLICAR_MIN_PCT = 35;   // 23/10/2026 (él): "siempre publicar todo arriba del 35% o en 35%" (peor caso); se baja cerca de pagar stock antiguo
-const TOPE_CREAR = 550000;   // 23/10/2026 (él): nunca se crea una publicación (Clásica o gemela) más cara que esto
+// 02/11/2026 (él: "el monotributo dice que el monto máximo es algo de 700.000… podemos aumentarlo a máximo 600.000"): el precio unitario
+// máximo de venta de cosas muebles del monotributo es $716.841 (01/08/2026 a 31/01/2027); se crea hasta $600.000 y nada sube de $650.000
+// (`TECHO_DURO`), así siempre queda ~10% de margen. Antes 550.000 (23/10).
+const TOPE_CREAR = 600000;   // nunca se crea una publicación (Clásica o gemela) más cara que esto
 function frenosSuba(from, to, o) {
   from = Number(from) || 0; to = Number(to) || 0;
   if (!(from > 0) || !(to > from)) return { err: 'no-sube' };

@@ -79,6 +79,8 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 
+- **Tope de crear $600.000 (02/11/2026, v28.73)** · qué es: `TOPE_CREAR` 550.000 → 600.000 (él); el monotributo deja hasta $716.841 por unidad (ago-2026 a ene-2027) y `TECHO_DURO` sigue en $650.000 · dónde vive: `sync.mjs` y el precio sugerido de `index.html` · qué chequear: que ninguna gemela Premium pase de $650.000 y actualizar el $716.841 en febrero 2027.
+
 - **🛑 Tope de 500% (02/11/2026)** · qué es: ninguna suba deja más de 500% de ganancia en el peor caso (él: *"sino no para de subir"*) · dónde vive: `TOPE_GANANCIA_PCT` en `sync.mjs`; freno en `decido` (antes del 4a) y `tope500` en las listas 📈🆕 y 🔎 del detector · qué chequear: que una suba a más de 500% salga como "🚫 FRENO 500%"; que el detector no pida subir algo cuyo último cambio anotó 500%+; que lo que sube desde abajo del 35% no lo frene.
 - 30/10 (él con el Aer Jasmín: *"no importa quién venda… todas las formas de pago tienen que seguir el %"*): `errores` (📈🆕🔥⏳ que vendieron) mira si la venta entró por la gemela de ENVÍO GRATIS arriba de $33.000 (`pEnv`): el objetivo es +50% de ESE precio y propone `!vendio!cruza`; haber subido hasta $32.990 no la saca de la lista mientras la Clásica siga abajo de la barrera. `vendioAEstePrecio` devuelve `envMax` (30 días) y `decido` deja pasar `!vendio` con `!cruza` hasta +50% de ese precio (cruzar sigue midiendo que deje más). Chequear: que no se repita una vez que la Clásica cruzó; que una gemela Premium no dispare esto.
 

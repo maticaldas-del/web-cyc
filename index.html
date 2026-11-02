@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.72';
+const APP_VERSION='28.73';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.73',f:'02/11',h:'16:10',c:[{n:1,t:'💲 Se pueden crear publicaciones hasta $600.000 (antes $550.000). El techo de cualquier precio sigue en $650.000: el monotributo deja vender hasta $716.841 por unidad'}]},
   {v:'28.72',f:'02/11',h:'15:45',c:[{n:1,t:'🛒 Pedidos: cada tarjeta dice debajo de las unidades cuánto cuesta el pedido (💵 unidades × lo que costó cada una la última vez)'}]},
   {v:'28.71',f:'02/11',h:'15:20',c:[{n:1,t:'🇵🇾 Pedidos de Paraguay: después de "Ya lo pedí" el pedido dice ⏳ "pedido · esperando el ticket de Nissei" (en violeta). Cuando le pasás el ticket a Claude, carga lo que había, lo que no y los precios reales, y recién ahí dice "llega ~…"'}]},
   {v:'28.70',f:'02/11',h:'15:00',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: ya no hay "uso personal", ahora es 🏬 Tienda. Con el ticket, lo de la Tienda queda en el pedido como cualquier producto (con su detalle, su foto y su costo), en su propia parte: ✅ Probados · 🆕 Nuevos · 🏬 Tienda. Al llegar tiene su ficha y se le vende a la Tienda con ganancia'}]},
@@ -17457,7 +17458,7 @@ async function pycatBuscar(q){
 function pycatPrecio35(costo){const m=0.35,com=0.145,imp=0.10,F=1230;const uno=E=>Math.ceil(((costo+E)*(1+m)+F)/(1-com-imp-m*imp)/10)*10;
   // Revisión etapa 1 (24/10): redondeo PARA ARRIBA (al más cercano podía quedar en 32-34%) y sin pasar el tope de crear ($550.000).
   let P=uno(0);if(P>=UMBRAL_ENVIO_GRATIS)P=uno(SIM_ENVIO_ARRIBA);if(!(P>0&&isFinite(P)))return null;
-  const r=Math.ceil((P+10)/1000)*1000-10;return r>550000?null:r;}
+  const r=Math.ceil((P+10)/1000)*1000-10;return r>600000?null:r;}   // 02/11/2026: tope de crear $600.000 (monotributo: máx. $716.841 por unidad)
 async function pycatQuiero(cod,p35){
   const cat=_pycatCache||{};const e=cat[cod];if(!e){toast('No encontré ese producto en el catálogo','err');return;}
   if(!/^https:\/\//.test(String(e.f||''))){toast('Le falta la foto de Paraguay: sin las dos fotos no se puede comprar. Pedile al chat de Nissei que la copie.','err',6000);return;}
