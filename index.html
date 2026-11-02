@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.66';
+const APP_VERSION='28.67';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.67',f:'02/11/2026',h:'00:08',c:[{n:3,t:'⚡ Precios, punto medio: "techo: no vende" a los 10 días sin vender (antes 30). En el robot: una suba que sale mal vuelve de una al último precio que vendía, y la próxima suba espera a confirmar.'}]},
   {v:'28.66',f:'02/11/2026',h:'22:31',c:[{n:2,t:'📊 Métricas → ⛶ Pantalla completa en iPhone: el gráfico de costado salía chiquito y aplastado. Ahora ocupa toda la pantalla.'}]},
   {v:'28.65',f:'01/11/2026',h:'20:24',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: en el detalle se ve la dirección entera de Nissei (se puede tocar o copiar).'}]},
   {v:'28.64',f:'01/11/2026',h:'20:07',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: el 🔗 Nissei pasó adentro del detalle de cada renglón (ya no en la línea de abajo del nombre).'}]},
@@ -5993,7 +5994,7 @@ function _fechasEspR(y){const nD=(yy,m,n)=>{const d=new Date(Date.UTC(yy,m,1));r
 // 95% hasta el día 30 con stock a ese precio (28/10, antes 7), baja de a poco hasta 70% el día 44. Copia de `umbralTecho` (sync.mjs).
 function umbralTechoW(dias){const d=Number(dias)||0;return d<=30?0.95:d>=44?0.70:0.95-0.25*(d-30)/14;} // 28/10: 95% hasta el día 30, 70% el 44 (él)
 // 30 días sin vender a un precio (o más caro) = 🔴 techo sí o sí (24/10/2026, él). Copia de TECHO_DIAS_SIN_VENTA del robot.
-const TECHO_DIAS_SIN_VENTA_W=30;
+const TECHO_DIAS_SIN_VENTA_W=10;   // 02/11/2026 (él, punto medio: "no quiero esperar más de 10 días sin vender"; antes 30). Igual que el robot.
 const RAYAS_DIAS=60;   // los días que miden el 💰 y el 🔴: la misma constante en sync.mjs
 // 📅 FRANJAS DEL MES Y DEL AÑO EN "PLATA POR DÍA" (24/10/2026, él: "si hay franjas donde más se venden que aparezcan en la línea de tiempo en
 // plata por día, así veo si bajó la plata por día puede ser por la franja del mes" y "también debe haber franjas en el año"). Del mes: lo
