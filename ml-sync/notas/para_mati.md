@@ -255,3 +255,10 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
   - El cupo de Full de Luciana vino como "16265 chicos" (los otros: Adriana 487, Ayelen 0, Matías 9). Parece mal leído, así que no lo cargué. Que el chat lo vuelva a mirar mañana.
   - ML finalizó el Paulvic Infinite Fame de Adriana (MLA1682456369) por no subir la factura que comprueba que es original. (a) sugerida: subir la factura del pedido de Paulvic desde la cuenta de Adriana y pedir que la habiliten · (b) dejarla cerrada.
   - En Nissei no aparecen más el Pen Drive SanDisk Z530 (146208) ni los Redmi Buds 8 Pro (152527).
+
+## CyberMonday (01/11 a la noche) — los que NO entraron al Cyber
+- Sábanas 1½ Beige (MLA3233166504): quedó 1 sola unidad → ya no es sobra; sigue a $18.990 (41%). No entró.
+- Paulvic Silver (MLA3026476116): quedan 2 → ya no es sobra; sigue a $21.990. No entró.
+- Recortadora 4 en 1 (MLA1474502515): el freno de la liquidación de 30 días la frenó (ya bajó esta semana; el próximo escalón va a los 7 días). Sigue en $48.990 (41,7%). El 16/11 cumple 90 días y arranca su escalera (ya agendado).
+- Cortadora Sportsman (MLA2113762174): a $11.630 quedaba en 7,7% y su unidad más vieja tiene 75 días (abajo del 35% sólo con 90+). Sigue a $14.790 (39,8%). Para meterla igual hace falta su 🔐 autorizo.
+- Entraron: Paulvic Dream Way a $14.990 (~37%; ML pedía $16.480 o menos y abajo del escalón de comisión deja más) y Reflector solar a $8.720.
