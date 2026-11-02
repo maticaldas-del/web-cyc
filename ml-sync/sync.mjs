@@ -4726,9 +4726,9 @@ function rayasPrecioLinea(d, cu, imp, hoyK, parte = 1, cajaU = 0) {
 // 3. El pedido pasa a `autorizada` con la firma HMAC del token del bot (lo tiene sólo el robot: un registro escrito a mano en la
 //    base, por la web o por otro comando, no vale) y vence 48 h después de su mensaje.
 // 4. El mismo renglón (misma publicación, misma bandera, mismo precio ±$10) la consume (`usada`). `autoriza` (solo lee) los lista.
-const BANDERAS_SUYAS = ['sinlinea', 'sincerteza', 'sintecho', 'bajocero', 'nobajar'];   // + la estrategia 🧨 #remate
+const BANDERAS_SUYAS = ['sinlinea', 'sincerteza', 'sintecho', 'bajocero', 'nobajar', 'bajopiso'];   // bajopiso: 02/11/2026, nunca abajo del 💰   // + la estrategia 🧨 #remate
 // 28/10/2026 (él, 5a de la revisión del cerebro): prender 🥊 mantener la caja (`ganarcaja`) también pide su "autorizo" (pasa por encima de los frenos).
-const BANDERA_QUE = { ganarcaja: 'prender 🥊 mantener la caja (baja sola cada hora hasta el piso, por encima de los frenos)', sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba, bajar arriba del 💰 sin 95% de certeza o bajar algo que vendió a su precio (F14)', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', nobajar: 'bajar una publicación que pediste no tocar (🔒)', sacanobajar: 'sacarle la marca 🔒 no bajar', remate: '🧨 rematar (estrategia remate)' };
+const BANDERA_QUE = { ganarcaja: 'prender 🥊 mantener la caja (baja sola cada hora hasta el piso, por encima de los frenos)', sinlinea: 'bajar sin línea de techo (🔴/🏔️)', sincerteza: 'deshacer una suba, bajar arriba del 💰 sin 95% de certeza o bajar algo que vendió a su precio (F14)', sintecho: 'bajar algo nuevo sin 🏔️ de techo95', bajocero: 'dejarla abajo de 0% de ganancia', nobajar: 'bajar una publicación que pediste no tocar (🔒)', bajopiso: 'bajar abajo del 💰 (el precio que más ganancia dejó)', sacanobajar: 'sacarle la marca 🔒 no bajar', remate: '🧨 rematar (estrategia remate)' };
 const AUT_VALE_MS = 48 * 3600e3, AUT_LETRAS = 'ACEFHJKMNPRTWXY34679';
 // 24/10/2026 (él): los pedidos ya no van por Telegram; se guardan hasta que él los resuelve en el chat (un año = "hasta que lo resolvemos").
 const AUT_POR_TELEGRAM = false, AUT_PED_GUARDA_MS = 365 * 864e5;
@@ -5215,12 +5215,15 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
         }
       }
       // ── F5 · no abajo del 💰 piso
-      if (lin && cu > 0 && !exento && !exc(fz, 'bajopiso') && !renueva && !ventana15) {   // revisión etapa 8: `ventana15`
+      // 02/11/2026 (él: "nunca bajar precios por debajo de la línea de mejor precio, o sea del precio que da más ganancias"): F5 ya no lo
+      // abren la sobra, el sin reposición ni "nunca se midió uno más bajo" (1a del 24/10, sin efecto). Sólo los 15 días antes del stock
+      // antiguo (`ventana15`), 30 días sin vender (`liq30`), 🧨 remate y !bajopiso, que pasa a ser 🔐 SUYA.
+      if (lin && cu > 0 && !remOk && !suya('bajopiso') && !renueva && !ventana15 && !liq30) {   // revisión etapa 8: `ventana15`
         const R = rayasPrecioLinea(lin, cu, imp, hoyK, 1, xU);
         // 1a (24/10/2026, él: "si le faltó datos para ver si el precio donde más genera es más bajo, no lo dejaría bajar porque está el
         // piso"): el 💰 es "el que más plata dejó DE LOS QUE SE PROBARON". Si nunca se midió uno más bajo, no frena: se puede probar abajo
         // en escalera (los otros frenos y el 35% siguen).
-        if (R.best && a < R.best.p * 0.995 && R.abajoMedido) return { regla: 'F5', txt: `${$(a)} queda abajo del 💰 piso ${$(R.best.p)} (el precio que más plata por día dejó: ${R.best.u} vendidas en ${R.best.dias} días con stock). No se baja del piso salvo sobra de verdad, sin reposición o stock antiguo (con su tag). Si es el redondeo: ${$(ceil90(R.best.p))}. Excepción: !bajopiso y "EXCEPCIÓN: …"` };
+        if (R.best && a < R.best.p * 0.995) return { regla: 'F5', txt: `${$(a)} queda abajo del 💰 ${$(R.best.p)} (el precio que más plata por día dejó: ${R.best.u} vendidas en ${R.best.dias} días con stock). Nunca abajo del 💰 (él, 02/11): sólo 15 días antes del stock antiguo o con 30 días sin vender. Si es el redondeo: ${$(ceil90(R.best.p))}. Salida SÓLO SUYA: 🔐 !bajopiso con su autorización` };
       }
       // ── F6 · 🤔 ¿tiene sentido este descuento?
       const esDesc = opts.promo || ['descuento', 'promo', 'sobra'].includes(tagNuevo);
@@ -5587,6 +5590,12 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
     else if (best) i = best.k;
   }
   if (i < 0) return { ok: false, txt: 'ningún precio de antes de estas subas vendía: va por la escalera (punto medio 3)' };
+  // 02/11/2026 (él: "nunca bajar precios por debajo de la línea de mejor precio, o sea del precio que da más ganancias"): la vuelta no baja
+  // del 💰 de la línea (`cyc/rayas/<MLA>.piso`, el de la noche). Si el escalón elegido queda abajo, va al más bajo de la cadena que no lo pasa.
+  { let ray = null; try { ray = (await db.get('cyc/rayas/' + mla)) || {}; } catch { return null; } const piso = Number(ray.piso) || 0;
+    if (piso > 0 && ch[i].de < piso * 0.995) { let j = -1; for (let k = i - 1; k >= 0; k--) if (ch[k].de >= piso * 0.995) { j = k; break; }
+      if (j < 0) return { ok: false, txt: `el precio al que volvería (${money(ch[i].de)}) queda abajo del 💰 ${money(piso)} (el que más ganancia dejó): nunca abajo del 💰 (él, 02/11), se queda` };
+      i = j; noMedido = false; rMal = null; } }
   // ¿salió mal? desde que dejó ESE precio (toda la cadena de subas de arriba), contra lo esperado a su ritmo
   const t0 = ch[i].ts, horas = (ahora - t0) / 36e5;
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `dejó ${money(ch[i].de)} hace ${Math.round(horas)} h: se juzga con 24 h como mínimo (él, 02/11)` };
