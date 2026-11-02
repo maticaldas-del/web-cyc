@@ -5536,18 +5536,20 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now())
   const ch = []; for (const c of camb.filter((c) => !c.rev && c.ts < ahora).sort((x, y) => y.ts - x.ts)) { if (c.a > c.de * 1.02) ch.push(c); else break; }
   if (!ch.length) return { ok: false, txt: 'el último cambio no fue una suba: no hay a qué volver' };
   if (Math.abs(p0 - ch[0].a) > ch[0].a * 0.03) return { ok: false, txt: `hoy está a ${money(p0)} y la última suba fue a ${money(ch[0].a)}: no es la misma` };
-  const horas = (ahora - ch[0].ts) / 36e5;
-  if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `la suba a ${money(ch[0].a)} lleva ${Math.round(horas)} h: se juzga con 24 h como mínimo (él, 02/11)` };
   let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; } catch { return null; }
   const J = await lineaJuntaStock(links, prods || {}, mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } }); lin = J.d;
-  const uds = await ventasGrupoEntre(db, mla, links, prods, ch[0].ts, ahora); if (uds == null) return null;
   const rit = (i) => { const c = ch[i]; const t0 = ch[i + 1] ? ch[i + 1].ts : c.ts - 60 * 864e5; return ritmoAPrecioLin(lin, c.de, t0, c.ts); };
-  const R0 = rit(0); const esp = R0 && R0.r > 0 ? R0.r * horas / 24 : null;
-  const mal = (esp != null && esp >= PUNTO_MEDIO_ESPERADAS && uds < esp * 0.5) || (horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0);
-  if (!mal) return { ok: false, txt: `a ${money(ch[0].a)} vendió ${uds} en ${Math.round(horas)} h${esp != null ? ` (se esperaban ~${esp.toFixed(1)} al ritmo de ${money(ch[0].de)})` : ''}: no salió mal todavía` };
-  let i = 0; for (; i < ch.length - 1; i++) { const Ri = rit(i), Rp = rit(i + 1); if (!Ri || !Rp || !(Rp.r > 0) || Ri.r >= Rp.r * 0.5) break; }
-  const Rt = rit(i);
-  return { ok: true, target: ch[i].de, txt: `la suba a ${money(ch[0].a)} salió mal: vendió ${uds} en ${Math.round(horas)} h${esp != null ? `, se esperaban ~${esp.toFixed(1)}` : ''} → vuelve a ${money(ch[i].de)}${Rt ? `, donde vendía ${Rt.r.toFixed(2)} por día` : ''} (punto medio, él 02/11)` };
+  // el destino: de la cadena de subas seguidas, el precio más nuevo que VENDÍA (algo) y al menos la mitad que el de antes de él
+  let i = -1; for (let k = 0; k < ch.length; k++) { const Rk = rit(k); if (!Rk || !(Rk.r > 0)) continue; const Rp = k + 1 < ch.length ? rit(k + 1) : null; if (!Rp || !(Rp.r > 0) || Rk.r >= Rp.r * 0.5) { i = k; break; } }
+  if (i < 0) return { ok: false, txt: 'ningún precio de antes de estas subas vendía: va por la escalera (punto medio 3)' };
+  // ¿salió mal? desde que dejó ESE precio (toda la cadena de subas de arriba), contra lo esperado a su ritmo
+  const t0 = ch[i].ts, horas = (ahora - t0) / 36e5;
+  if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `dejó ${money(ch[i].de)} hace ${Math.round(horas)} h: se juzga con 24 h como mínimo (él, 02/11)` };
+  const uds = await ventasGrupoEntre(db, mla, links, prods, t0, ahora); if (uds == null) return null;
+  const Rt = rit(i), esp = Rt.r * horas / 24;
+  const mal = (esp >= PUNTO_MEDIO_ESPERADAS && uds < esp * 0.5) || (horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0);
+  if (!mal) return { ok: false, txt: `desde que dejó ${money(ch[i].de)} vendió ${uds} en ${Math.round(horas)} h (se esperaban ~${esp.toFixed(1)}): no salió mal todavía` };
+  return { ok: true, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)} (punto medio, él 02/11)` };
 }
 async function vendioAEstePrecio(db, mla, links, prods) {
   let cc = null; try { cc = (await db.get('cyc/claudecambios')) || {}; } catch { return null; }
@@ -5904,6 +5906,7 @@ async function detectarErrores(db, o = {}) {
       const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || '')) || ML_REVISION_NO_MIRAR.has(m)) continue;
       const ult = camb.filter((c) => !c.rev).sort((x, y) => y.ts - x.ts)[0]; if (!ult || !(ult.a > ult.de * 1.02)) continue;
       if (nbDet[m] && nbDet[m].congelado) continue;
+      if (pcl && pcl[m] && Number(pcl[m].precio) > 0) continue;   // en un descuento o promo mía: se decide con su vencimiento
       const P = Number((np[m] || {}).precio) || 0; if (!(P > 0)) continue;
       const V = await vueltaDeSuba(db, m, links, prods, camb, P, ahora); if (!V || !V.ok) continue;
       vuelven.push({ mla: m, e, P, V });
