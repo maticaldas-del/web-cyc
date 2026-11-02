@@ -19568,6 +19568,46 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=corte[:<AAAA_MM_DD corte>[:<días antes>]] → ¿POR QUÉ DEJÓ DE VENDER? (02/11/2026, él: "mirá los últimos 5 días las ventas. ¿qué
+    // pasó?", eligió 1a). De la línea de tiempo de cada publicación: unidades por día ANTES del corte (N días) contra DESDE el corte, y a
+    // las que vendían 3+ y cayeron a menos de la mitad las separa por la causa: ⏸️ sin stock · 📈 subió el precio · 🥊 perdió la caja ·
+    // ❓ nada cambió. Suma lo que se dejó de vender en cada grupo. SOLO LEE.
+    if (/^corte(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ar = String(process.env.BILLING_PROBE).split(':');
+      const hoyK = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      const corte = /^\d{4}_\d{2}_\d{2}$/.test(ar[1] || '') ? ar[1] : '2026_10_29', nAntes = Math.max(3, Math.min(60, parseInt(ar[2], 10) || 11));
+      const kd = (k) => Date.parse(k.replace(/_/g, '-') + 'T12:00:00Z');
+      const desdeA = new Date(kd(corte) - nAntes * 864e5).toISOString().slice(0, 10).replace(/-/g, '_');
+      const links = (await db.get('cyc/mllinks')) || {};
+      const mlas = Object.keys(links).filter((m) => /^MLA\d+$/.test(m) && links[m] && !links[m].ignored);
+      const filas = []; let leidas = 0;
+      for (let i = 0; i < mlas.length; i += 25) {
+        await Promise.all(mlas.slice(i, i + 25).map(async (m) => {
+          let d = null; try { d = (await db.get('mlapi/linea/' + m)) || null; } catch { d = null; } if (!d) return; leidas++;
+          const A = [], B = [];
+          for (const [k, x] of Object.entries(d)) { if (!x || typeof x !== 'object') continue; if (k >= desdeA && k < corte) A.push(x); else if (k >= corte && k < hoyK) B.push(x); }
+          if (!A.length || !B.length) return;
+          const uA = A.reduce((t, x) => t + (Number(x.u) || 0), 0), uB = B.reduce((t, x) => t + (Number(x.u) || 0), 0);
+          const rA = uA / A.length, rB = uB / B.length; if (uA < 3 || rB >= rA * 0.5) return;
+          const prom = (L, f) => { const v = L.map((x) => Number(x[f])).filter((n) => n > 0); return v.length ? v.reduce((t, n) => t + n, 0) / v.length : 0; };
+          const pA = prom(A, 'p'), pB = prom(B, 'p');
+          const sinSt = B.filter((x) => Number(x.st) === 0).length >= Math.ceil(B.length / 2);
+          const gA = A.filter((x) => x.caja === 'g').length / A.length, gB = B.filter((x) => x.caja === 'g').length / B.length;
+          const causa = sinSt ? 'sinstock' : (pA > 0 && pB > pA * 1.05) ? 'subio' : (gA >= 0.5 && gB < 0.5) ? 'caja' : 'nada';
+          const lk = links[m] || {};
+          filas.push({ m, causa, t: String(lk.title || '').slice(0, 46), c: lk.cuenta || '', uA, uB, rA, rB, pA, pB, gA, gB, perd: (rA - rB) * (pB || pA) });
+        }));
+      }
+      const G = { sinstock: '⏸️ SIN STOCK', subio: '📈 SUBIÓ EL PRECIO', caja: '🥊 PERDIÓ LA CAJA', nada: '❓ NADA CAMBIÓ (ni stock, ni precio, ni caja)' };
+      console.log(`=== ¿POR QUÉ DEJÓ DE VENDER? · ${nAntes} días antes del ${corte.replace(/_/g, '/')} contra desde ese día hasta ayer · ${leidas} publicaciones con línea · ${filas.length} cayeron a menos de la mitad (vendían 3+) · SOLO LEE ===`);
+      for (const g of Object.keys(G)) {
+        const L = filas.filter((f) => f.causa === g).sort((x, y) => y.perd - x.perd); if (!L.length) continue;
+        console.log(`\n${G[g]} · ${L.length} publicación(es) · dejaron de facturar ~${money(Math.round(L.reduce((t, f) => t + f.perd, 0)))} por día`);
+        for (const f of L.slice(0, 25)) console.log(`  ${f.m} · ${f.c} · ${f.t} · ${f.rA.toFixed(2)}→${f.rB.toFixed(2)} u/día · precio ${money(Math.round(f.pA))}→${money(Math.round(f.pB))} · caja ganando ${Math.round(f.gA * 100)}%→${Math.round(f.gB * 100)}%`);
+        if (L.length > 25) console.log(`  …y ${L.length - 25} más`);
+      }
+      return;
+    }
     if (/^lineaver:/.test(String(process.env.BILLING_PROBE || ''))) {
       const mla = String(process.env.BILLING_PROBE).slice('lineaver:'.length).trim().toUpperCase();
       const d = (await db.get('mlapi/linea/' + mla)) || {};
