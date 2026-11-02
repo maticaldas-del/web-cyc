@@ -2063,6 +2063,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
 
 ## 6 · IDEAS NUEVAS (sábado)
+### 🔍 Revisión de la etapa 6 (02/11/2026, 4 revisores en máximo · sólo propuestas)
+- **Qué se hizo:** 4 frentes (datos de ML sin usar · lo que se hace a mano · plata de noviembre-diciembre · comodidad con maqueta). 19 ideas en `notas/para_mati.md` ("Ideas nuevas del 02/11"), ninguna repetida de `ideas.md`, del 21/10 ni de Diseño del 31/10. Maquetas en el scratchpad de la sesión (`d6/laminas/`).
+- **Para la etapa 10 (Tienda):** fotos servidas desde `…/fotos/produtos/…` (portugués) y 7 carteles de ABEL de más de 50% "menos que en ML" poco creíbles (adidas Dynamic Pulse 83%).
+- **Qué chequear:** cuando él elija, cada idea elegida se anota en su etapa.
+
 ### 🛍️ Tienda pública por encargo (30/10/2026, él eligió 1a 2a 3a 4a 5a; 4a en mayúsculas: *"NADIE SABE QUE LO TRAEMOS DE PARAGUAY… QUE SÓLO DIGA CYC Y LISTO"*)
 - **Qué es:** página aparte (`/tienda/`) para sus conocidos: buscador, rubros, foto y nombre de ML, precio en pesos, +/−, y "📋 Copiar pedido" (`Pedido CYC <código>: …`). Sin login, sin Firebase, sin pago. Botón WhatsApp apagado hasta que haya número en `cyc/mlconfig/tiendaWa`. Entra: candidatos de Para probar con el catálogo confirmado + fichas de origen Paraguay, de Nissei, con el precio mirado en 30 días, sin "no había" ni marca prohibida. Precio = US$ × `RECARGO_PAR` × dólar del panel × 1,25, para arriba a 90/990.
 - **Dónde vive:** `tienda/index.html` (la página) · `tienda/productos.json` (lo genera el robot, NO se edita a mano) · `sync.mjs` (`tienda[;go]`, `TIENDA_ARCHIVO`) · `ml-daily.yml` (pasos "Tienda pública" y "Subir la tienda a la web", a `claude/add-folder-78ysyb`) · `.assetsignore` (`!tienda/productos.json`) · `sw.js` (no toca `/tienda/`).
