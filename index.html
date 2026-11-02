@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.71';
+const APP_VERSION='28.72';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.72',f:'02/11',h:'15:45',c:[{n:1,t:'🛒 Pedidos: cada tarjeta dice debajo de las unidades cuánto cuesta el pedido (💵 unidades × lo que costó cada una la última vez)'}]},
   {v:'28.71',f:'02/11',h:'15:20',c:[{n:1,t:'🇵🇾 Pedidos de Paraguay: después de "Ya lo pedí" el pedido dice ⏳ "pedido · esperando el ticket de Nissei" (en violeta). Cuando le pasás el ticket a Claude, carga lo que había, lo que no y los precios reales, y recién ahí dice "llega ~…"'}]},
   {v:'28.70',f:'02/11',h:'15:00',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: ya no hay "uso personal", ahora es 🏬 Tienda. Con el ticket, lo de la Tienda queda en el pedido como cualquier producto (con su detalle, su foto y su costo), en su propia parte: ✅ Probados · 🆕 Nuevos · 🏬 Tienda. Al llegar tiene su ficha y se le vende a la Tienda con ganancia'}]},
   {v:'28.69',f:'02/11',h:'14:00',c:[{n:1,t:'📥 Ver deudas: ✅ Pagadas ahora es un desplegable (cerrado; tocá el título para abrirlo)'}]},
@@ -22970,7 +22971,9 @@ function _pedidoItemHtml(p,opts){
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}${pedCambioChip(p)}${_prod?pedPerfChip(_prod.id):''}</span>
       ${_prod?maxCompraChip(_prod):''}
-      <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${p._pediste?`<i style="color:var(--green)" title="Ya cargaste ${p._pediste} u. en el 🧾 Pedido: arriba queda lo que falta para llegar a lo recomendado.">🧾 pediste ${p._pediste}</i>`:''}${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
+      <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${(()=>{/* 💵 lo que cuesta el pedido (02/11/2026, él: "poner costo del pedido, respectivamente las unidades pedidas"): unidades × lo que costó la última vez */
+        const q=Number(_cantShow)||0;if(!(q>0)||!_prod)return'';const tcC=curTC();const cu=_prod.costoPesos&&Number(_prod.cost)>0?Number(_prod.cost):(costUSDof(_prod)||0)*tcC;
+        return cu>0?`<i style="color:var(--text)" title="${fmtN(q)} u. × ${fmt(Math.round(cu))} (lo que costó cada una la última vez)">💵 ${fmt(Math.round(q*cu))} el pedido</i>`:'';})()}${p._pediste?`<i style="color:var(--green)" title="Ya cargaste ${p._pediste} u. en el 🧾 Pedido: arriba queda lo que falta para llegar a lo recomendado.">🧾 pediste ${p._pediste}</i>`:''}${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
       <span class="ped-caret">▼</span>
     </summary>
     <div class="ped-body">
