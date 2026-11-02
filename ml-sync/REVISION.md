@@ -2253,6 +2253,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+
+- **✅ Pagadas desplegable (02/11/2026, v28.69)** · qué es: en Ver deudas la lista de pagadas queda cerrada y se abre tocando el título (él: *"pagadas que sea un desplegable"*) · dónde vive: `renderCuotas` en `index.html` (`window._pagAbiertas`) · qué chequear: que abra/cierre, que una pagada abierta mantenga abierta la lista y que las páginas sigan andando.
 ### 🔍 Revisión de la etapa 7 (31/10/2026, 4 revisores en máximo · sólo propuestas)
 - **Qué se hizo:** Inicio/Ventas, Plata (Arqueo, Ver deudas, Métricas), Mercadería (Pedidos, Armar caja, Oficina) y Productos/Rotación/🧠/Ajustes dibujados con el CSS real a 360/390/1200 px y medidos con código. ~40 problemas (lo que se corta, botones que se corren, toques chicos, contraste, letra mezclada) y 20 propuestas con maqueta; 13 decisiones en `notas/para_mati.md`.
 - **Para la próxima:** los armados para dibujar quedaron en el scratchpad de la sesión (`d7_inicio`, `d7_plata`, `d7_merc` con Firebase falso que guarda lo escrito, `d7_prod`). Ojo: la foto de página entera de Playwright (`fullPage`) apaga el modo táctil: medir con una pantalla alta.

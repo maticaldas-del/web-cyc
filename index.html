@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.68';
+const APP_VERSION='28.69';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.69',f:'02/11',h:'14:00',c:[{n:1,t:'📥 Ver deudas: ✅ Pagadas ahora es un desplegable (cerrado; tocá el título para abrirlo)'}]},
   {v:'28.68',f:'02/11',h:'05:30',c:[{n:1,t:'🔍 Revisión de Ideas nuevas: 19 ideas para elegir (Navidad, datos de ML, menos trabajo a mano, comodidad), te esperan para "resolvamos".'}]},
   {v:'28.67',f:'02/11/2026',h:'00:08',c:[{n:3,t:'⚡ Precios, punto medio: "techo: no vende" a los 10 días sin vender (antes 30). En el robot: una suba que sale mal vuelve de una al último precio que vendía, y la próxima suba espera a confirmar.'}]},
   {v:'28.66',f:'02/11/2026',h:'22:31',c:[{n:2,t:'📊 Métricas → ⛶ Pantalla completa en iPhone: el gráfico de costado salía chiquito y aplastado. Ahora ocupa toda la pantalla.'}]},
@@ -7481,8 +7482,10 @@ function renderCuotas(){
     _filas.push(_grp('pre',_sec('💵 Préstamos',_sumR(_pre)+(_pD?Number(_pD.resta)||0:0),'<span style="color:var(--muted);font-size:.64rem;font-weight:400">sin ganancia</span>'),r));}
   el.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+_filas.join('')+'</div>'
     +`<div style="font-size:.7rem;color:var(--muted);margin-top:8px">Falta cobrar: <b style="color:var(--text)">${_pesos(cuotasRestaPesos())}</b>${cuotasDebemosPesos()>0.5?` <span style="color:var(--red)">(ya restado: le debemos ${_pesos(cuotasDebemosPesos())} a quien devolvió de más)</span>`:''}</div>`
-    +(pag.length?`<div style="font-size:.74rem;font-weight:700;color:var(--green);margin:16px 0 6px">✅ Pagadas (${pag.length})${pp>1?` <span style="font-weight:400;color:var(--muted);font-size:.66rem">· página ${pg} de ${pp}</span>`:''}</div>
-      <div style="display:flex;flex-direction:column;gap:6px">${pag.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(fila).join('')}</div>${navP}`:'');
+    // ✅ Pagadas como desplegable (02/11/2026, él: "pagadas que sea un desplegable"): cerrado salvo que se abra o haya una pagada abierta.
+    +(pag.length?(()=>{const abP=!!window._pagAbiertas||pag.some(d=>d&&d.id===window._cuotaAbierta);
+      return `<div onclick="window._pagAbiertas=!${abP};renderCuotas()" style="cursor:pointer;user-select:none;font-size:.74rem;font-weight:700;color:var(--green);margin:16px 0 6px">${abP?'▾':'▸'} ✅ Pagadas (${pag.length})${abP&&pp>1?` <span style="font-weight:400;color:var(--muted);font-size:.66rem">· página ${pg} de ${pp}</span>`:''}</div>`
+      +(abP?`<div style="display:flex;flex-direction:column;gap:6px">${pag.slice((pg-1)*CUOTA_POR_PAG,pg*CUOTA_POR_PAG).map(fila).join('')}</div>${navP}`:'');})():'');
 }
 // EL DESPLEGABLE DE CADA DEUDA (28/10/2026, él: "al clickear cualquier tarjeta quiero que se abra un desplegable con el detalle de la deuda e
 // historia de todo… cada vez que se sume deuda aparezca en verde y cuando se resta rojo… máximo 6, el resto por página 1, 2, 3").
