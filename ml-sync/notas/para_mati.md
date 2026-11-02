@@ -8,6 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó el 02/11 a la noche (1b · cupo Luciana · 4a · 5a)
+- 1b: el Paulvic Infinite Fame de Adriana (MLA1682456369, finalizado por ML por la factura) queda cerrado · el cupo de Luciana de 16.265 / 16.255 es REAL (cargado el de la rutina de hoy, 16.255/91 a las 14:38, con los otros tres) · 4a: Timer a $6.390 sin descuento · 5a: Animale For Men, escalón a $113.990 como descuento desde el 06/11 (autorizado; recordatorio para ese día).
+- Sigue sin contestar: las 4 de Navidad (ideas 1-4 del 02/11) — el primer pedido de Paraguay para Black Friday sería el 9/11.
+
 ### ✅ Contestó la lista de las 12:30 del 02/11 (1a 2b 3a 5 6)
 - 1a los 7 tenders de Soares eran los Tender (local) de la Oficina Local (al costo, $22.000) · 2b la balanza de cocina no salió de ninguna oficina · 3a los ~90 USDT que sobran en Binance son de CYC para el próximo pedido · 5 los 15 Paulvic sin aroma restados de la Oficina ML como Paulvic general (`ofi:Paulvic=-15!gral`) · 6 Batidora Blanco: resuelto por él.
 
@@ -252,7 +256,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 15. **La completa de las 03:00 mide con la línea de anteayer** (la de ayer se escribe recién a las 6-7): techo, 30 días sin vender y la línea de las rayas llegan un día tarde. (a) sugerida: que la completa escriba la línea de ayer antes de medir (cambia la tarea de las 03:00) · (b) dejar.
 16. **"Plata por día" del mes cuenta hoy a medias** (el 1º de cada mes parece que cae fuerte). (a) sugerida: sacar el día de hoy del promedio · (b) dejar.
 - **01/11 · Rutina del chat de Chrome:**
-  - El cupo de Full de Luciana vino como "16265 chicos" (los otros: Adriana 487, Ayelen 0, Matías 9). Parece mal leído, así que no lo cargué. Que el chat lo vuelva a mirar mañana.
+  - ~~El cupo de Luciana 16.265~~ → es real (él, 02/11): cargado.
   - ML finalizó el Paulvic Infinite Fame de Adriana (MLA1682456369) por no subir la factura que comprueba que es original. (a) sugerida: subir la factura del pedido de Paulvic desde la cuenta de Adriana y pedir que la habiliten · (b) dejarla cerrada.
   - En Nissei no aparecen más el Pen Drive SanDisk Z530 (146208) ni los Redmi Buds 8 Pro (152527).
 
