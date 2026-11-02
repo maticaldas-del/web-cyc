@@ -43,6 +43,13 @@ No copies la lista de movimientos: trae nombres de otras personas.
    pedir porque se miraron hace 2 días o más. Buscá cada código (🔖) igual que arriba (el 🔗 Nissei abre la página directo).
    Todo lo de los pasos 5 y 6 va al buzón aunque esté igual: un renglón "visto: <código>=<US$ de hoy>" o "visto: <código>=AGOTADO"
    o "visto: <código>=NO LO ENCONTRÉ" por cada uno.
+7. TODOS LOS DÍAS · LOS PERFUMES DE NISSEI (02/11, Matías: la página de perfumes ABEL sólo muestra lo mirado hace 2 días o menos):
+   en comprasparaguay.com.ar (sin "www") entrá a la categoría PERFUMES y quedate sólo con los de NISSEI (~1.100 productos, ~50 páginas).
+   Copialos TODOS con el mismo comando y las mismas reglas de siempre (las de la pasada de Nissei): código completo, nombre tal cual,
+   US$ crudo, link y foto, un comando cada 5 páginas, por ml-consulta:
+     pycat:#<página>@perfumes;<código>|<nombre>|<US$>|<link>|<foto>;…;#<página siguiente>;…;go
+   SIN ";fin=" al final (no es la vuelta completa). Lo que diga "no disponible" no se copia (va a candprecio:<código>=nohay;…;go).
+   En el buzón: un renglón "perfumes: <cuántos copiaste> en <cuántas páginas>".
 Si aparece un "no soy un robot", avisale a Matías y seguí con lo demás.
 
 == PARTE 3b · LO QUE ML FRENA O AVISA EN PUBLICACIONES (4a del 26/10) ==

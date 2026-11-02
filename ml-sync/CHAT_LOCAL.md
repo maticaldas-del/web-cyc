@@ -66,3 +66,5 @@ LA TIENDA DE CYC (para saber, 30/10/2026)
   palabras en la tienda, avisalo en el buzón en el momento.
 - Cuanto más completo copies el catálogo de Nissei en la pasada de los sábados, más productos tiene la tienda.
 ```
+
+- **Perfumes de Nissei TODOS LOS DÍAS (02/11, Matías eligió 1a):** dentro de la RUTINA (PROMPT_RUTINA_LOCAL, parte 3, paso 7) se copia la categoría PERFUMES de Nissei entera con `pycat`, sin `fin=`. La página ABEL muestra sólo lo mirado hace 2 días o menos: si un día no se hace, al tercero se vacía.
