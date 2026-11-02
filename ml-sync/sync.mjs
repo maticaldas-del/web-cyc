@@ -6004,7 +6004,7 @@ async function detectarErrores(db, o = {}) {
       if (nbDet[m] && nbDet[m].congelado) continue;
       if (!pruebaLentoOk(cc, m, {}, ahora)) continue;   // ya subió este mes
       const P = Number((np[m] || {}).precio) || 0; if (!(P > 0) || P >= TECHO_DURO || tope500(m, P) || cercaAntiguo(e)) continue;
-      const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs == null) continue;
+      const infR = {}; const rs = await ritmoSemanalGrupo(db, m, links, prods, 60, rsC, ahora, infR); if (rs == null || !(rs > 0)) continue;   // sin ventas en 60 días no se prueba más caro (eso es sobra/liquidación)
       const lento = infR.diasSt >= TECHO_RITMO_MIN_DIAS_ST && rs < TECHO_RITMO_MIN_SEMANA, conTecho = Number((rayL[m] || {}).techo) > 0 || ult === 'techook';
       // 📈 que no es lento va por "si vende, sube"; 💰/🏔️ sin techo que vende 1+ por semana va por 💰 sin 🔴 (+50%) igual que el lento sin techo
       if (ult === 'techo' && (!lento || conTecho)) continue;
