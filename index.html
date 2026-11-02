@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.70';
+const APP_VERSION='28.71';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.71',f:'02/11',h:'15:20',c:[{n:1,t:'🇵🇾 Pedidos de Paraguay: después de "Ya lo pedí" el pedido dice ⏳ "pedido · esperando el ticket de Nissei" (en violeta). Cuando le pasás el ticket a Claude, carga lo que había, lo que no y los precios reales, y recién ahí dice "llega ~…"'}]},
   {v:'28.70',f:'02/11',h:'15:00',c:[{n:2,t:'🇵🇾 Pedidos de Paraguay: ya no hay "uso personal", ahora es 🏬 Tienda. Con el ticket, lo de la Tienda queda en el pedido como cualquier producto (con su detalle, su foto y su costo), en su propia parte: ✅ Probados · 🆕 Nuevos · 🏬 Tienda. Al llegar tiene su ficha y se le vende a la Tienda con ganancia'}]},
   {v:'28.69',f:'02/11',h:'14:00',c:[{n:1,t:'📥 Ver deudas: ✅ Pagadas ahora es un desplegable (cerrado; tocá el título para abrirlo)'}]},
   {v:'28.68',f:'02/11',h:'05:30',c:[{n:1,t:'🔍 Revisión de Ideas nuevas: 19 ideas para elegir (Navidad, datos de ML, menos trabajo a mano, comodidad), te esperan para "resolvamos".'}]},
@@ -18888,8 +18889,12 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   // Sin íconos: a la izquierda la fecha y en qué está; a la derecha la plata y, chico abajo, el recargo.
   const dm=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(f||'—');};
   const _ll=enCamino?pyLlegadaAprox(c):null,_llT=_ll?(Date.now()>_ll.d.getTime()+86400e3):false;
-  const est=enCamino?`llega ~${dm(_ll.d.toISOString().slice(0,10))}${_llT?' · atrasado':''}`:c.estado==='llego'?`llegó ${c.fechaLlego?dm(c.fechaLlego):''}`:'historial';
-  const col=enCamino?(_llT?'var(--amber)':'#38bdf8'):'var(--green)';
+  // 02/11/2026 (él: "armo el pedido, se lo paso a mi viejo, ahí yo pongo lo pedí, mi viejo al otro día lo manda a Nissei, ahí le pasan el
+  // ticket… puede que falten cosas o varíen los precios"): hasta que llega el ticket el pedido está PEDIDO, esperando a Nissei; con el ticket
+  // (lo carga Claude: lo que había, lo que no y los precios reales) recién está en camino.
+  const _espTk=enCamino&&!c.ticket;
+  const est=_espTk?'⏳ pedido · esperando el ticket de Nissei':enCamino?`llega ~${dm(_ll.d.toISOString().slice(0,10))}${_llT?' · atrasado':''}`:c.estado==='llego'?`llegó ${c.fechaLlego?dm(c.fechaLlego):''}`:'historial';
+  const col=_espTk?'#a78bfa':enCamino?(_llT?'var(--amber)':'#38bdf8'):'var(--green)';
   const R=pyRecargoReal(c);
   const rec=R.r?`<span style="color:${(R.r-1)*100>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}">+${((R.r-1)*100).toFixed(1).replace('.',',')}%</span> recargo`:`<span title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado</span>`;
   const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(pyTicketEstado(c).faltaReng?' · <b style="color:var(--red)">falta ticket</b>':'');
@@ -19429,7 +19434,7 @@ async function _pyMomentoYaLoPedi(g){
      +(A.length?`Probados: ${A.length} producto(s) · ${uA} u. · ${fmtUS2(cA)}\n`:'')
      +(N.filas.length?`Nuevos: ${N.filas.length} producto(s) · ${N.unidades} u. · ${fmtUS2(N.crudo)}\n`:'')
      +(Pp.length?`Tienda: ${Pp.length} producto(s) (con el ticket quedan en el pedido como cualquier otro)\n`:'')
-     +`\nPasa a "En camino" como UN pedido. Cuando llegue tocás "Ya llegó": los nuevos se vuelven fichas y los probados se cuentan en la oficina.`))return;}
+     +`\nQueda PEDIDO, esperando a Nissei. Cuando Nissei mande el ticket, pasáselo a Claude: carga lo que había, lo que no y los precios reales, y ahí queda en camino.`))return;}
   if(Pp.length){try{const _pp={};for(const f of Pp)_pp[f.k]=state.pyPersonal[f.k];await db.ref('cyc/py_personal_hist/'+Date.now()).set(_pp);const _up={};for(const f of Pp)_up['py_personal/'+f.k]=null;await fbUpdate(_up);for(const f of Pp)delete state.pyPersonal[f.k];}catch(e){toast('No pude sacar lo de uso personal: sacalo a mano','err',6000);}}
   if(!A.length&&!N.filas.length){renderPedidos();return;}
   if(A.length){
