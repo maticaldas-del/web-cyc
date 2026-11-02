@@ -32,7 +32,7 @@ rep('</style>', '''
 .slot, .cuotas, .barra, #verCant, .nota { display: none !important; }
 .sub-abel { color: var(--ink2); font-size: 13px; margin: 6px 0 0; }
 </style>''')
-rep('<main class="wrap">', '<main class="wrap">\n  <p class="sub-abel">Perfumes importados por encargo · consultá en tu perfumería ABEL</p>')
+rep('<main class="wrap">', '<main class="wrap">\n  <p class="sub-abel">Perfumes importados por encargo · llega en 7 días hábiles · consultá en tu perfumería ABEL</p>')
 # 💬 WhatsApp por perfume (01/11/2026).
 rep("<div class=\"slot\">' + cantHtml(p.id) + '</div></div></article>'", "<div class=\"slot\">' + cantHtml(p.id) + '</div>' + waBtn(p) + '</div></article>'")
 rep('<div id="verCant"></div>', '<div id="verCant"></div><div id="verWa"></div>')
