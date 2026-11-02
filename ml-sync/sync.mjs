@@ -5572,13 +5572,26 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   // el destino: de la cadena de subas seguidas, el precio más nuevo que VENDÍA (algo) y al menos la mitad que el de antes de él
   // Si se pidió un precio (decido / el detector), vale cualquier escalón de la cadena que vendía: volver a uno intermedio es más prudente.
   let i = -1; if (pedido > 0) { for (let k = 0; k < ch.length; k++) { const Rk = rit(k); if (Math.abs(ch[k].de - pedido) <= ch[k].de * 0.02 && Rk && Rk.r > 0) { i = k; break; } } }
-  if (i < 0) for (let k = 0; k < ch.length; k++) { const Rk = rit(k); if (!Rk || !(Rk.r > 0) || Rk.dias < 2) continue; /* 1 solo día (un pico) no alcanza */ const Rp = k + 1 < ch.length ? rit(k + 1) : null; if (!Rp || !(Rp.r > 0) || Rk.r >= Rp.r * 0.5) { i = k; break; } }
+  // 02/11/2026 (él, con la Lupa Monóculo: $4.690 → $7.090 → $10.690 y volvió DE UNA a $4.690 sin medir $7.090, donde había vendido):
+  // "sí se puede bajar así si sabemos que es el mejor precio… ya que conoce todos los escalones" y "buscar el precio que más ganancia deja".
+  // De los escalones MEDIDOS (2+ días con stock a ese precio y alguna venta) se elige el que más ganancia deja POR DÍA (ritmo × ganancia por
+  // unidad). Si arriba de ése hay un escalón que vendió pero no se llegó a medir (menos de 2 días), se vuelve primero a ése para medirlo.
+  let noMedido = false, rMal = null;
+  if (i < 0) {
+    const gU = await ganUnidadModelo(db, mla, links, prods, ahora);
+    const esc = ch.map((c, k) => ({ k, p: c.de, R: rit(k) }));
+    const med = esc.filter((x) => x.R && x.R.r > 0 && x.R.dias >= 2).map((x) => ({ ...x, gd: x.R.r * (gU ? gU(x.p) : x.p) }));
+    const best = med.reduce((b, x) => (!b || x.gd > b.gd ? x : b), null);
+    const sinMed = esc.filter((x) => x.R && x.R.r > 0 && x.R.dias < 2 && (!best || x.p > best.p * 1.02));
+    if (sinMed.length) { i = sinMed[0].k; noMedido = true; if (best) rMal = Math.min(sinMed[0].R.r, best.R.r); }
+    else if (best) i = best.k;
+  }
   if (i < 0) return { ok: false, txt: 'ningún precio de antes de estas subas vendía: va por la escalera (punto medio 3)' };
   // ¿salió mal? desde que dejó ESE precio (toda la cadena de subas de arriba), contra lo esperado a su ritmo
   const t0 = ch[i].ts, horas = (ahora - t0) / 36e5;
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `dejó ${money(ch[i].de)} hace ${Math.round(horas)} h: se juzga con 24 h como mínimo (él, 02/11)` };
   const uds = await ventasGrupoEntre(db, mla, links, prods, t0, ahora); if (uds == null) return null;
-  const Rt = rit(i), esp = Rt.r * horas / 24;
+  const Rt0 = rit(i), Rt = rMal != null ? { ...Rt0, r: rMal } : Rt0, esp = Rt.r * horas / 24;
   const mal = (esp >= PUNTO_MEDIO_ESPERADAS && uds < esp * 0.5) || (horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0);
   // 02/11/2026 (él: "¿estás seguro de que esos precios generan más ganancia que el precio que tenían?"; las Almohadillas Metatarso a $19.690
   // vendían 0,35 por día y dejaban ~$3.700/día, a $4.390 dejarían ~$700): no alcanza con vender menos unidades, tiene que dejar menos PLATA.
@@ -5594,7 +5607,20 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   const diasHoy = stHoy != null && uds > 0 ? stHoy / (uds / (horas / 24)) : null;
   if (mal && uds0 > 0 && facAntes < facHoy * 1.5) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
   if (!mal) return { ok: false, txt: `desde que dejó ${money(ch[i].de)} vendió ${uds} en ${Math.round(horas)} h (se esperaban ~${esp.toFixed(1)}): no salió mal todavía` };
-  return { ok: true, sinVenta10: horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)} (punto medio, él 02/11)` };
+  return { ok: true, sinVenta10: horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)}${noMedido ? ' (vendió ahí pero no se llegó a medir: primero se mide ese escalón)' : ' (el que más ganancia por día dejó de los escalones medidos)'} (punto medio, él 02/11)` };
+}
+// Ganancia por unidad a un precio P, con las ventas del grupo de los últimos 90 días: neto/precio y costo de mercadería medianos, menos
+// impuestos de la cuenta y el trabajo por unidad (como la plata por día). Sólo sirve para comparar escalones entre sí. null sin ventas con costo.
+async function ganUnidadModelo(db, mla, links, prods, ahora = Date.now()) {
+  const grupo = [mla, ...hermanasStockDe(links, prods, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)];
+  let mono = 0; try { mono = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0; } catch {}
+  const fr = [], co = []; let cuenta = (links[mla] || {}).cuenta || '';
+  for (let t = ahora - 90 * 864e5, n = 0; n < 92 && t <= ahora + 864e5; t += 864e5, n++) { let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const q = Number(v.qty) || 1, to = Number(v.total) || 0; if (!(to > 0) || !(Number(v.costo) > 0)) continue;
+      fr.push((Number(v.neto) || 0) / to); co.push(Number(v.costo) / q); } }
+  if (!fr.length) return null; const med = (a) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+  const fN = med(fr), cU = med(co), imp = (mlExtraPct(cuenta) + mono) / 100;
+  return (P) => P * fN - cU - P * imp - PD_TRABAJO_U;
 }
 async function vendioAEstePrecio(db, mla, links, prods) {
   let cc = null; try { cc = (await db.get('cyc/claudecambios')) || {}; } catch { return null; }
