@@ -3251,7 +3251,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.73';
+const APP_VERSION='28.74';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3264,6 +3264,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.74',f:'02/11',h:'17:20',c:[{n:1,t:'🇵🇾 Pedidos que llegaron: cuando le pasás a Claude las fotos de lo que llegó, la tarjeta se pone en verde y dice ✅ llegó todo bien (fotos)'}]},
   {v:'28.73',f:'02/11',h:'16:10',c:[{n:1,t:'💲 Se pueden crear publicaciones hasta $600.000 (antes $550.000). El techo de cualquier precio sigue en $650.000: el monotributo deja vender hasta $716.841 por unidad'}]},
   {v:'28.72',f:'02/11',h:'15:45',c:[{n:1,t:'🛒 Pedidos: cada tarjeta dice debajo de las unidades cuánto cuesta el pedido (💵 unidades × lo que costó cada una la última vez)'}]},
   {v:'28.71',f:'02/11',h:'15:20',c:[{n:1,t:'🇵🇾 Pedidos de Paraguay: después de "Ya lo pedí" el pedido dice ⏳ "pedido · esperando el ticket de Nissei" (en violeta). Cuando le pasás el ticket a Claude, carga lo que había, lo que no y los precios reales, y recién ahí dice "llega ~…"'}]},
@@ -18906,7 +18907,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
       <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
       ${/* 21/10/2026, él: "quiero que en la tarjeta de pedidos marque si están todos los gastos cargados o faltan" */''}
-      <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>
+      <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>${c.llegoOk?`<div style="font-size:.64rem;font-weight:800;margin-top:2px;color:var(--green)" title="Me pasaste las fotos de lo que llegó (${new Date(Number(c.llegoOk.ts)).toLocaleDateString('es-AR')}): está todo bien.${c.llegoOk.nota?' '+String(c.llegoOk.nota).replace(/"/g,'&quot;'):''}">✅ llegó todo bien (fotos)</div>`:''}
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
@@ -19011,7 +19012,8 @@ async function pyTicketVer(id){
 function pyPedidoTarjeta(c,enCamino){
   const _ll=enCamino?pyLlegadaAprox(c):null,tarde=_ll?(Date.now()>_ll.d.getTime()+86400e3):false;
   const col=enCamino?(tarde?'var(--amber)':'#38bdf8'):'var(--green)';
-  return `<details style="margin-bottom:8px;background:var(--surface2);border:1px solid var(--border2);border-left:4px solid ${col};border-radius:9px">
+  // ✅ llegó todo bien (02/11/2026): con sus fotos el pedido queda entero en verde
+  return `<details style="margin-bottom:8px;background:${c.llegoOk?'rgba(34,197,94,.08)':'var(--surface2)'};border:1px solid ${c.llegoOk?'rgba(34,197,94,.55)':'var(--border2)'};border-left:4px solid ${col};border-radius:9px">
       <summary style="cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:12px;list-style:none">${pyPedidoResumenHTML(c,enCamino,0,tarde)}</summary>
       ${pyPedidoDetalleHTML(c)}
     </details>`;

@@ -54571,6 +54571,19 @@ async function main() {
       // pyped:reclamo[:<id>=<qué pasó>][;go] (decisión 7 del 30/10/2026, él: "si se pagó y no llegó avisar y se reclama"): sin id lista lo
       // pagado que no llegó (reclamo abierto); con id y `go` lo marca resuelto con lo que pasó (vino en otro envío, lo devolvieron, se
       // perdió). No toca stock, costos ni plata: si después llega, se suma con `ofi` como siempre.
+      // pyped:ok:<id>[=<nota>][;go] (02/11/2026, él: "que se ponga en verde y que está todo bien cuando te paso las fotos de los productos
+      // confirmando que llegaron"): con sus fotos de lo que llegó, el pedido queda ✅ "llegó todo bien" (`llegoOk`) en verde en la web.
+      if (sub === 'ok') {
+        const [idO, ...nO] = arg.split('='); const idK = String(idO || '').trim(); const cO = compras[idK];
+        if (!cO) { console.log(`No existe el pedido "${idK}". Usá pyped:ok:<id>[=<nota>];go`); return; }
+        const val = { ts: Date.now(), por: 'fotos', ...(nO.join('=').trim() ? { nota: nO.join('=').trim().slice(0, 200) } : {}) };
+        console.log(`✅ ${idK}${Number(cO.num) > 0 ? ' (#' + cO.num + ')' : ''} · estado ${cO.estado} · queda "llegó todo bien"${val.nota ? ' · ' + val.nota : ''}`);
+        if (cO.estado !== 'llego') console.log('  ⚠️ todavía no está marcado como llegado: primero pyped:llego');
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        await db.set('cyc/compraspy/' + idK + '/llegoOk', val);
+        const rO = await db.get('cyc/compraspy/' + idK + '/llegoOk'); console.log(rO && rO.ts === val.ts ? '✓ guardado y releído' : '⚠️ no lo pude releer');
+        return;
+      }
       if (sub === 'reclamo') {
         const ab = pyReclamosAbiertos(compras);
         if (!arg.trim()) {

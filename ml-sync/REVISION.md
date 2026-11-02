@@ -999,6 +999,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+- **✅ Llegó todo bien (02/11/2026, v28.74)** · qué es: `pyped:ok:<id>;go` marca `llegoOk` cuando él manda las fotos de lo que llegó y la tarjeta del pedido se pone verde · dónde vive: `pyped` en `sync.mjs`, `pyPedidoTarjeta`/`pyPedidoResumenHTML` en `index.html` · qué chequear: que sólo se marque después de mirar las fotos contra el pedido.
+
 - **La cuenta fijada a mano manda en `decide_cajas.py` (02/11/2026)** · qué es: si FIJO dice a qué cuenta va un producto con unidades, ya no queda en "decidir a mano" aunque otra cuenta todavía figure (el destapa cañerías pasado de Ayelen a Luciana) · qué chequear: que un producto con dos cuentas de verdad siga yendo a "decidir a mano".
 
 - **💵 Costo del pedido en cada tarjeta de Pedidos (02/11/2026, v28.72)** · qué es: debajo de "u. a comprar" sale unidades × costo de la ficha (en pesos fijos si `costoPesos`, si no dólares × dólar de hoy) · dónde vive: cabecera de la tarjeta en `index.html` (`ped-buy`) · qué chequear: que con color sume bien y que no se corra el botón en celular.
