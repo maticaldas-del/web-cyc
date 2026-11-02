@@ -1133,11 +1133,15 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       <div id="nc-ofi-sub" class="ht-pc" style="font-size:.66rem;color:var(--muted);margin-top:4px"></div>
       <span class="nc-arrow">→</span>
     </div>
-    <div class="nav-card nc3 ht" onclick="goPage('rotacion')" title="Capital inmovilizado · ventas 60 días · estado por producto.">
+    <div class="nav-card nc3 ht ht-ped" onclick="homeRotIr('ml')" title="Capital inmovilizado · ventas 60 días · estado por producto. ML o Local.">
       <span class="nc-icon">🔄</span>
       <div class="nc-title">Rotación</div>
       <div id="nc-rot-score" class="ht-rot"></div>
-      <span class="nc-arrow">→</span>
+      <!-- 02/11/2026, él: "en rotación poner los productos de local también, que haya para clickear en la tarjeta del inicio… dos una ml otra local" -->
+      <div class="ht-ped-grid ht-arq-grid">
+        <button class="ht-ped-b" onclick="event.stopPropagation();homeRotIr('ml')" title="Rotación de lo que está en ML">📦<span> ML</span></button>
+        <button class="ht-ped-b" onclick="event.stopPropagation();homeRotIr('local')" title="Rotación de lo que está en la Oficina Local">🏪<span> Local</span></button>
+      </div>
     </div>
     <!-- LAS PUERTAS DEL ARQUEO EN INICIO (28/10/2026, él: "acá que estén tres pestañas dentro…"; después "sacar finanzas ya que al clickear arqueo se abre sola"),
          como las de Pedidos: cada botón entra directo a su solapa. -->
@@ -1769,6 +1773,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     </div>
   </div>
 
+  <div class="view-toggle" id="rot-src" style="margin-bottom:12px">
+    <button class="vbtn active" id="rotsrc-ml" onclick="setRotSrc('ml')">📦 ML</button>
+    <button class="vbtn" id="rotsrc-local" onclick="setRotSrc('local')">🏪 Local</button>
+  </div>
+  <div id="rot-local" style="display:none"></div>
+  <div id="rot-ml-wrap">
   <div id="rot-score"></div>
   <div id="rot-periodo-banner" style="font-size:.67rem;color:var(--muted);margin-bottom:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
 
@@ -1801,6 +1811,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
       </tr></thead>
       <tbody id="rot-body"></tbody>
     </table>
+  </div>
   </div>
 
   <footer>CYC · Rotación de Stock</footer>
@@ -3252,7 +3263,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.77';
+const APP_VERSION='28.78';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3265,6 +3276,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.78',f:'02/11',h:'21:00',c:[{n:2,t:'🔄 Rotación: en Inicio la tarjeta tiene dos botones, 📦 ML y 🏪 Local. Local muestra lo que hay en la Oficina Local, cuánta plata tiene parado cada producto y cuánto salió en 60 días (a las perfumerías o por la Tienda); lo parado primero.'}]},
   {v:'28.77',f:'02/11',h:'20:30',c:[{n:2,t:'🧾 Gastos del mes: cada gasto que falta tiene su casilla de monto y 💾 Cargar, se carga ahí mismo sin ir al formulario.'}]},
   {v:'28.76',f:'02/11',h:'19:00',c:[{n:1,t:'📦 Envíos en camino: se sacó "Anotar un envío a mano" (todo se arma desde Armar caja; lo que falte en un envío ya salido lo corrige Claude)'}]},
   {v:'28.75',f:'02/11',h:'17:45',c:[{n:2,t:'📦 Armar caja: lo que va a Full por primera vez (0 en Full, nunca a la venta) ya no dice "podés esperar": mientras no llega no se vende nada, así que cuenta como que se corta hoy'}]},
@@ -21962,7 +21974,48 @@ function renderFacturas(){
   renderFacturasBody();
 }
 
+// 🏪 ROTACIÓN DEL LOCAL (02/11/2026, él: "en rotación poner los productos de local también… dos una ml otra local"; antes: "hay mucha plata
+// parada" en la Oficina Local). Lo contado en la Oficina Local (`cyc/oficyc`, unidades × costo US$ como el Arqueo) contra lo que salió en
+// 60 días: cada producto dejado a una perfumería o vendido por la Tienda (movimientos `debenmov …|prod=|u=` de las deudas, con su día).
+let rotSrc='ml';
+function homeRotIr(src){rotSrc=src==='local'?'local':'ml';goPage('rotacion');}
+function setRotSrc(src){rotSrc=src==='local'?'local':'ml';renderRotacionStock();}
+function _rotLocalSalidas(dias){
+  const desde=Date.now()-dias*864e5,out={};
+  for(const d of Object.values(state.debencuotas||{})){if(!d||!d.movs)continue;
+    for(const x of Object.values(d.movs)){if(!x||!x.prod||!(Number(x.m)>0))continue;const u=parseInt(x.u)||1;
+      const t=Date.parse(String(x.f||'').slice(0,10)+'T12:00:00')||0;const o=out[x.prod]=out[x.prod]||{u60:0,ult:0};
+      if(t>=desde)o.u60+=u;if(t>o.ult)o.ult=t;}}
+  return out;
+}
+function renderRotLocal(){
+  const el=document.getElementById('rot-local');if(!el)return;
+  const _uO=x=>x&&typeof x==='object'?Object.values(x.v||{}).reduce((a,b)=>a+(parseInt(b)||0),0)+(parseInt(x.t)||0):(parseInt(x)||0);
+  const sal=_rotLocalSalidas(60),tc=curTC()||0,hoy=Date.now();
+  const rows=[];
+  for(const [k,x] of Object.entries(state.oficyc||{})){const u=_uO(x);if(!(u>0))continue;const p=prodById(k);const cu=p?(efectivoCostP(p)||0):0;
+    const sx=sal[k]||{u60:0,ult:0};const rot=sx.u60/(u+sx.u60);const dSin=sx.ult?Math.floor((hoy-sx.ult)/864e5):null;
+    const est=sx.u60===0?'muerto':(rot<0.2?'lento':'sano');
+    rows.push({k,nom:p?p.name:k,u,cu,cap:u*cu,u60:sx.u60,dSin,est,rot});}
+  if(!rows.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem;padding:14px">No hay nada contado en la Oficina Local.</div>';return;}
+  const q=(document.getElementById('rot-search')?.value||'').toLowerCase();
+  const ORD={muerto:0,lento:1,sano:2};
+  const vis=rows.filter(r=>!q||String(r.nom).toLowerCase().includes(q)).sort((a,b)=>ORD[a.est]-ORD[b.est]||b.cap-a.cap);
+  const tot=rows.reduce((a,r)=>a+r.cap,0),capM=rows.filter(r=>r.est==='muerto').reduce((a,r)=>a+r.cap,0);
+  const usd=v=>'US$ '+Math.round(v).toLocaleString('es-AR'),ars=v=>tc?fmt(Math.round(v*tc)):'';
+  const EST={muerto:['🔴','Parado','no salió nada en 60 días'],lento:['🟠','Lento','salió menos del 20% en 60 días'],sano:['🟢','Se mueve','salió 20%+ en 60 días']};
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px;font-size:.78rem;line-height:1.6">
+      <b>🏪 Oficina Local: ${usd(tot)}</b> <span style="color:var(--muted)">${ars(tot)}</span> en ${rows.length} productos (${rows.reduce((a,r)=>a+r.u,0)} u.) al costo<br>
+      <span style="color:var(--red)">🔴 Parado (nada en 60 días): <b>${usd(capM)}</b> · ${tot>0?Math.round(capM/tot*100):0}%</span>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">"Salió" = lo que se le dejó a una perfumería o se vendió por la Tienda (los movimientos de Ver deudas con el producto). Ordenado: lo parado primero, de más plata a menos.</div></div>
+    <div class="tbl-outer"><table><thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Capital</th><th>Salieron 60 d</th><th>⏳ Última salida</th><th>Estado</th></tr></thead><tbody>
+    ${vis.map(r=>{const e=EST[r.est];return `<tr><td style="text-align:left;max-width:220px">${_esc(r.nom)}</td><td>${r.u}</td><td>${usd(r.cap)}<br><span style="font-size:.6rem;color:var(--muted)">${ars(r.cap)}${r.cu>0?'':' · ⚠️ sin costo'}</span></td><td>${r.u60}</td><td>${r.dSin==null?'nunca':'hace '+r.dSin+' d'}</td><td title="${e[2]}">${e[0]} ${e[1]}</td></tr>`;}).join('')}
+    </tbody></table></div>`;
+}
 function renderRotacionStock(){
+  {const loc=rotSrc==='local';const a=document.getElementById('rot-local'),b=document.getElementById('rot-ml-wrap');if(a)a.style.display=loc?'':'none';if(b)b.style.display=loc?'none':'';
+    const bm=document.getElementById('rotsrc-ml'),bl=document.getElementById('rotsrc-local');if(bm)bm.classList.toggle('active',!loc);if(bl)bl.classList.toggle('active',loc);
+    if(loc){try{renderRotLocal();}catch(e){console.warn(e);}return;}}
   const tbody=document.getElementById('rot-body');if(!tbody)return;
   const prods=(state.products||[]).filter(p=>p&&p.name);
   if(!prods.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:18px">Sin productos.</td></tr>';return;}
