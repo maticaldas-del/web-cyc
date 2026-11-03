@@ -92,7 +92,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/no escribo nada|DATOS INCOMPLETOS|^❌ Usá/i.test(t)) _seNego++; } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -25952,6 +25952,39 @@ async function main() {
     // ({n, p = pesos por unidad, ts}) y el proveedor en `cyc/mlconfig/listasProv/<prov>` ({nombre, rec, n, ts}), que es lo que
     // la web lee para mostrar la pestaña 📋 Listas. Sin código, el código sale del nombre. `rec` = % de gastos para traerlo
     // (flete, etc.), opcional. Las mide `listamedir` a pedido (NO cada 3 h: decisión suya, primero se evalúa la lista entera y si no da se descarta el proveedor). Sin `;go` sólo muestra. `lista` solo: las guardadas.
+    // BILLING_PROBE=listawoo:<proveedor>|url=<https://la-tienda>[|fecha=AAAA-MM-DD][;go] (03/11/2026, él con las fotos de 2 mayoristas del Once que
+    // visita Tito, AnD de Mitre y AVL 112: "hay que evaluar productos e investigar como siempre"). Las dos páginas son WooCommerce y muestran
+    // TODO el catálogo con precio por su vía pública de productos: el robot la baja entera (sin pedir nada, sin registrarse) y la carga como
+    // una lista más con `lista:` (código = el SKU, foto = la de la página), sacando lo que ya se saca en el Once: MARCAS REALES (imitación,
+    // regla del 29/10), ropa/calzado, perfumes, comida y lo grande; lo sin stock o sin precio también. Sin `;go` sólo dice cuántos cargaría.
+    // Después: `lista:<prov>|bsas;go` y `listamedir:<prov>:go`. Se puede repetir cada semana: la fecha de hoy pisa la lista anterior.
+    if (/^listawoo:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('listawoo:'.length); const GOw = /;go\s*$/.test(raw);
+      const [provW, ...opW] = raw.replace(/;go\s*$/, '').split('|').map((x) => x.trim());
+      const urlW = ((opW.find((o) => /^url=/.test(o)) || '').slice(4)).replace(/\/+$/, ''); const fechaW = (opW.find((o) => /^fecha=\d{4}-\d{2}-\d{2}$/.test(o)) || '').slice(6) || new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+      if (!provW || !/^https:\/\//.test(urlW)) { console.log('❌ Va así: listawoo:<proveedor>|url=https://…[;go]'); return; }
+      const MARCAS = /samsung|jbl|apple|iphone|ipad|airpods?|sony|xiaomi|redmi|lattafa|l.?or[eé]al|philips|motorola|\blg\b|huawei|logitech|nike|adidas|puma|disney|marvel|stanley|havaianas|gillette|braun|remington|maybelline|revlon|nivea|\bdove\b|colgate|oral.?b|\bbic\b|hello kitty|barbie|hot wheels|pok[eé]mon|minecraft|spider.?man|frozen|mickey|minnie|peppa|nintendo|playstation|\bps[2345]\b|xbox|gopro|canon|nikon|kodak|casio|rolex|ray.?ban|tommy|calvin|victoria.?s|chanel|dior|carolina herrera|paco rabanne|versace|armani|hugo boss|lacoste|kingston|sandisk|lexar|tp.?link|mercusys|anker|baseus|ugreen|bluey|stitch|sanrio|kuromi|harry potter|batman|superman|star wars|avengers|paw patrol|sonic|mario bros|labubu|real madrid|boca|river plate|barcelona|messi|coca.?cola|pepsi|ferrari|mercedes|bmw|audi|jeep|harley|tesla|beats|bose|marshall|garmin|fitbit|amazfit|honor|oppo|realme|tcl|nokia|lenovo|\bhp\b|dell|asus|acer|msi|corsair|razer|redragon|hyperx|steelseries|genius|noga|gadnic|atma|liliana|oster|peabody|moulinex|black.?decker|bosch|dewalt|makita|truper|tramontina|mawj|armaf|afnan|al haramain|alhambra|rasasi|fragrance world/i;
+      const FUERA = /\bmedias?\b|remera|zapatill|ojota|pantal|\bbuzo\b|campera|calz[oó]n|boxer|corpiño|bombacha|vestido|pollera|\bedp\b|\bedt\b|perfum|parfum|colonia|fragancia|body splash|alimento|golosina|chocolate|caramelo|galletit|bebida|yerba|estanter[ií]a|colch[oó]n|sill[oó]n|\bmesa\b|\bsilla\b|heladera|lavarropa|monopat|bicicleta/i;
+      const todo = []; let pg = 1, malas = 0;
+      while (pg < 200) { let d = null; try { const r = await fetch(`${urlW}/wp-json/wc/store/v1/products?per_page=100&page=${pg}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
+        if (d == null) { if (++malas > 4) { console.log(`❌ la página no contestó (página ${pg}); cargado hasta ahí: ${todo.length}`); break; } await new Promise((r) => setTimeout(r, 3000)); continue; }
+        if (!Array.isArray(d) || !d.length) break; todo.push(...d); pg++; }
+      const des = (t) => String(t || '').replace(/<[^>]+>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/&nbsp;/g, ' ');
+      const items = []; const fuera = { marca: 0, rubro: 0, sinstock: 0, sinprecio: 0 };
+      for (const x of todo) {
+        const n = des(x.name).replace(/^FINAL-\s*/i, '').replace(/[;|=@]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+        if (!x.is_in_stock) { fuera.sinstock++; continue; }
+        const pr0 = x.prices || {}; const mu = Number(pr0.currency_minor_unit) || 0; let pr = Number(pr0.price) / 10 ** mu;
+        if (x.type === 'variable' && pr0.price_range) pr = Number(pr0.price_range.min_amount) / 10 ** mu;
+        if (!(pr > 0)) { fuera.sinprecio++; continue; }
+        if (MARCAS.test(n)) { fuera.marca++; continue; } if (FUERA.test(n)) { fuera.rubro++; continue; }
+        const cod = (String(x.sku || '').replace(/[;|=@\s]/g, '').slice(0, 30)) || 'w' + x.id; let foto = ((x.images || [])[0] || {}).src || ''; if (/[;|@]/.test(foto)) foto = '';
+        items.push(`${n}=${Math.round(pr)}@${cod}${foto ? '@' + foto : ''}`);
+      }
+      console.log(`=== listawoo · ${provW} · ${urlW} · ${todo.length} productos en la página · cargo ${items.length} · afuera: ${fuera.marca} marca real · ${fuera.rubro} ropa/perfume/comida/grande · ${fuera.sinstock} sin stock · ${fuera.sinprecio} sin precio ${GOw ? '' : '(PRUEBA)'} ===`);
+      if (!GOw || !items.length) { items.slice(0, 8).forEach((i) => console.log('  · ' + i.replace(/@https?:\/\/\S+$/, ''))); return; }
+      process.env.BILLING_PROBE = `lista:${provW}|fecha=${fechaW};${items.join(';')};go`;
+    }
     if (/^lista(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ls = String(process.env.BILLING_PROBE).slice('lista'.length).replace(/^:/, '');
       const APLICAR = /(^|;)go\s*$/.test(_ls);
