@@ -17609,6 +17609,17 @@ async function main() {
       if (r && r.ok) console.log(`✓ ${items.length} imágenes mandadas al canal privado`); else { console.log('❌ No salieron: ' + String((r && r.description) || 'sin respuesta').slice(0, 160)); process.exitCode = 1; }
       return;
     }
+    // BILLING_PROBE=tgsocios:<texto>;go (03/11/2026, él: "quiero que mandes al telegram con mi viejo lo que resta de la perfumería"): manda ESE
+    // texto al grupo de los resúmenes (él y Tito). Sólo cuando él lo pide para ese mensaje; `//` = salto de línea. Nada de datos de terceros.
+    if (/^tgsocios:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('tgsocios:'.length).replace(/;go\s*$/i, '').trim();
+      if (!raw) { console.log('Falta el texto: tgsocios:<texto>;go'); process.exitCode = 1; return; }
+      const cuerpo = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').split(/(?<!:)\/\//).map((x) => x.trim()).join('\n').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      if (!/;go\s*$/i.test(String(process.env.BILLING_PROBE))) { console.log('PRUEBA (falta ;go). Saldría al grupo de los socios:\n' + cuerpo); return; }
+      let ok = false; try { ok = await sendTelegram(cuerpo, 'resumen'); } catch (e) { console.log('✗ sendTelegram tiró: ' + e.message); }
+      console.log(ok ? '✓ mandado al grupo de los socios (él y Tito)' : '❌ NO salió'); if (!ok) process.exitCode = 1;
+      return;
+    }
     if (/^(recordar|pregunto|resumen):/.test(String(process.env.BILLING_PROBE || ''))) {
       const esPreg = /^pregunto:/.test(String(process.env.BILLING_PROBE));
       const esRes = /^resumen:/.test(String(process.env.BILLING_PROBE));
