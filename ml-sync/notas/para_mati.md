@@ -13,7 +13,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
   - **P47:** azul 34 + blanco 24 = 58 (~$210.000). En 2025 pasó de 19 a 59, 80 y 103 por quincena; este año vende un tercio que entonces (6 por quincena), así que hasta fin de año van ~82 entre todos los colores (hay 24). Rojo y negro no se piden (no dejan 35% contra la competencia).
   - **Filtro agua:** 280 (~$275.000). En 2025 pasó de 18 a 43 y 88 por quincena; este año vende el doble que entonces pero a precio más alto: cuento un 30% menos de ese pico.
   - **Sábanas 2½:** con los 60 días ya pide 27 y eso cubre el pico (hasta fin de año van ~78 y hay 54): no hizo falta agregar.
-- ⚠️ **El cupo de Full no alcanza para que entre antes del Black Friday (24/11):** P47 va sólo en Ayelen (0 de lugar para chicos) y el Filtro está en Matías (12 de lugar). (a) sugerida: que el chat de Chrome mire mañana si se liberó y, si no, mandar el Filtro a Luciana (16.255 de lugar) como publicación nueva · (b) esperar a que se libere.
+- ⚠️ **El cupo de Full no alcanza para que entre antes del Black Friday (24/11):** P47 va sólo en Ayelen (0 de lugar para chicos) y el Filtro está en Matías (12 de lugar). (a) sugerida: mandar a medida que se libere lugar (el chat de Chrome lo mira cada día) y lo que no entre queda en la oficina para ir reponiendo en diciembre · (b) retirar de Full de Ayelen y Matías lo que vende lento para hacerle lugar (un retiro sólo con tu OK).
 - ⚠️ **La completa de las 03:00 del 03/11 armó los pedidos con las reglas viejas** (30 días, Limón 59, sin el ritmo más bajo): los volví a cargar con las nuevas a las ~08:40 (736 de 736). Revisar que la de mañana use las reglas nuevas.
 
 
