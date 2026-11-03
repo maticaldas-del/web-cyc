@@ -3267,7 +3267,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.85';
+const APP_VERSION='28.86';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3280,7 +3280,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.85',f:'03/11',h:'13:50',c:[{n:2,t:'📈 Línea de tiempo: el 💰 y el 🔴 miden con el precio que vio el comprador (con tu descuento), y con una sola publicación activa miden sólo ésa (no mezclan colores ni cuentas pausadas).'},{n:1,t:'🔬 Ventas: la ✓ que se cerró sin abrir la ficha dice esfuerzo "normal" (antes decía máximo).'}]},
+  {v:'28.86',f:'03/11',h:'13:50',c:[{n:2,t:'📈 Línea de tiempo: el 💰 y el 🔴 miden con el precio que vio el comprador (con tu descuento), y con una sola publicación activa miden sólo ésa (no mezclan colores ni cuentas pausadas).'},{n:1,t:'🔬 Ventas: la ✓ que se cerró sin abrir la ficha dice esfuerzo "normal" (antes decía máximo).'}]},
+  {v:'28.85',f:'03/11',h:'13:40',c:[{n:1,t:'Pedidos → Bs As: 📋 Dai Nippon tiene su botón al lado de 🏬 De siempre, para encontrarlo rápido. Las otras listas de Bs As quedan en 📋 Listas de Tito.'}]},
   {v:'28.84',f:'03/11',h:'13:30',c:[{n:1,t:'🔴 Línea de tiempo: los 10 días sin vender no cuentan los días con 0 visitas (nadie la vio; regla del 03/11).'}]},
   {v:'28.83',f:'03/11',h:'06:30',c:[{n:1,t:'La raya 🔴 de la línea de tiempo dice "10+ días: techo por regla" (regla del 02/11; antes decía 30).'}]},
   {v:'28.82',f:'03/11',h:'02:30',c:[{n:2,t:'📳 Ventas: la tarjeta que tiembla ya no se corta contra el borde de la lista (tiene aire alrededor y tiembla sin girar).'}]},
@@ -24294,7 +24295,13 @@ function _renderPedidosIn(){
     const st=document.getElementById('bsas-subtabs');
     if(st){const nomL=bp.length===1?(pv[bp[0]].nombre||bp[0]):'Listas de Tito';
       const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
-      st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
+      // 📋 DAI NIPPON AL LADO DE "DE SIEMPRE" (03/11/2026, él: "pone dai nippon al lado de lo de siempre, así lo encuentra rápido mi
+      // viejo"): con otras listas de Bs As (las del Once), Dai Nippon tiene su propio botón y "Listas de Tito" queda para las demás.
+      const DN=bp.find(x=>/dai.?nippon/i.test(x+' '+((pv[x]||{}).nombre||'')));
+      if(DN&&bp.length>1){const otras=bp.filter(x=>x!==DN);const enDN=_bsasVista==='listas'&&_listaSel===DN;
+        const bb=(on,t,js)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${on?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="${js}">${t}</button>`;
+        st.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${bb(enDN,'📋 '+escHtml((pv[DN]||{}).nombre||'Dai Nippon'),`_listaSel='${DN}';_listaSelB='${DN}';_listaQ='';bsasSetVista('listas')`)}${bb(_bsasVista==='listas'&&!enDN,'📋 '+(otras.length===1?escHtml((pv[otras[0]]||{}).nombre||otras[0]):'Listas de Tito'),`if(_listaSel==='${DN}'||!_listaSel){_listaSel='${otras[0]}';_listaSelB=_listaSel;}_listaQ='';bsasSetVista('listas')`)}</div>`;}
+      else st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
     const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
     if(_bsasVista==='listas'){renderListas();return;}
     {const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';}
