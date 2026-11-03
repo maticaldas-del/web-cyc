@@ -6,7 +6,7 @@ ped:p1779912655660#Rosa=u|0|Hola Tito! Centímetro Rosa: en la oficina hay 150 R
 ped:p1779912655660=venta|26290|precio de la venta mas cara de 365 dias (deja 607%) para el maximo de compra
 ped:p1779912655660#Blanco=venta|26290|precio de la venta mas cara de 365 dias de ese color (deja 607%) para el maximo de compra
 ped:p1779912655660#Rosa=venta|17490|precio de la venta mas cara de 365 dias de ese color (deja 516%) para el maximo de compra
-ped:p1779912656320=u|69|Hola Tito! Te pido 69: se venden unos 63 por mes y entre Full, la oficina y lo que viene en camino hay 57. Con 69 más cubrimos un mes. Cuento 562 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656320=u|280|Hola Tito! Te pido 280: quiero tener 337 y ya hay 57. (Filtro agua, pedido de Navidad adelantado (03/11): en 2025 pasó de 18 a 43 y 88 por quincena (casi 5 veces en diciembre) · este año vende el doble que entonces pero a precio más alto, así que cuento un 30% menos de ese pico: ~280 hasta fin de año. Tener 337 (hay 57))|cub=0
 ped:p1779912656320=venta|5000|precio de la venta mas cara de 365 dias (deja 109%) para el maximo de compra
 ped:p1779912656340=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 118, alcanza para unos 307 días. Cuento 239 que se vendieron baratas porque salían al toque.|cub=17
 ped:p1779912656340=venta|6890|precio de la venta mas cara de 365 dias (deja 101%) para el maximo de compra
@@ -140,8 +140,8 @@ ped:p1780106889876=u|0|Hola Tito! Este no hace falta: se venden unos 8 por mes y
 ped:p1780106889876=venta|19990|precio de la venta mas cara de 365 dias (deja 60%) para el maximo de compra
 ped:p1779912656060=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 68, alcanza para unos 340 días. No cuento 1 que se remataron porque estaban parados. Cuento 27 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656060=venta|7200|precio de la venta mas cara de 365 dias (deja 52%) para el maximo de compra
-ped:p1779912656220#azul=u|0|Hola Tito! El azul no hace falta: se venden unos 2 por mes y ya hay 6, alcanza para unos 84 días.
-ped:p1779912656220#blanco=u|9|Hola Tito! Te pido 9 del blanco: se venden unos 6 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 9 más cubrimos un mes.
+ped:p1779912656220#azul=u|34|Hola Tito! Te pido 34: quiero tener 40 y ya hay 6. (P47 azul, pedido de Navidad adelantado (03/11, la 14a del 25/10): en 2025 el P47 pasó de 19 a 59, 80 y 103 por quincena · este año vende un tercio que entonces (6 por quincena contra 19), así que hasta fin de año van ~82 entre todos los colores. Tener 40 azul (hay 6))
+ped:p1779912656220#blanco=u|24|Hola Tito! Te pido 24: quiero tener 28 y ya hay 4. (P47 blanco, pedido de Navidad adelantado (03/11): mismo pico que el azul, en proporción a lo que vende cada color. Tener 28 blanco (hay 4))
 ped:p1779912656220#negro=u|0|Hola Tito! El negro no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $10290, lo vuelvo a pedir.
 ped:p1779912656220#rojo=u|0|Hola Tito! El rojo no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 22%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $8890, lo vuelvo a pedir.
 ped:p1779912656220=venta|10990|precio de la venta mas cara de 365 dias (deja 70%) para el maximo de compra
