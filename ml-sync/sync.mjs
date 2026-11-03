@@ -25938,6 +25938,36 @@ async function main() {
     }
     // BILLING_PROBE=listaver:<proveedor> → SOLO LEE (19/10/2026). La lista guardada ENTERA de un proveedor, para compararla contra
     // otra (ej. el catálogo web de Iscos): una línea por producto, cód|nombre|pesos|fecha de carga. Nada de compradores: es la lista del proveedor.
+    // BILLING_PROBE=listaprov:<prov>[;<ficha id>=<cód de la lista>;…][;go] (03/11/2026, él con las Aguas Doree: "me aparecen como
+    // nuevas en nippon. esas no las vendemos ya? y se venden re bien"). Una ficha comprada a una lista pero creada a mano (sin `listaProv`
+    // ni `codLista`) se ofrece en 🆕 Nuevos como si no la vendiéramos y no aparece en ✅ Probados. Sin pares: lista los renglones de la
+    // lista cuyo catálogo medido (`mi`) es el de una publicación nuestra con ficha sin esa lista (las candidatas). Con pares y `go`:
+    // le pone a la ficha `listaProv` y `codLista` (pasa a la solapa de esa lista y a ✅ Probados). Solo lee sin `go`.
+    if (/^listaprov:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('listaprov:'.length); const APLICAR = /(^|;)go\s*$/.test(raw);
+      const partes = raw.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      const kk = String(partes.shift() || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      if (!provs[kk]) { console.log(`❌ proveedor desconocido "${kk}". Hay: ${Object.keys(provs).join(', ')}`); return; }
+      const cat = (await db.get('mlapi/listas/' + kk)) || {}; const prods = (await db.get('cyc/products')) || {}; const links = (await db.get('cyc/mllinks')) || {};
+      if (!partes.length) {
+        const porCat = {}; for (const [mla, l] of Object.entries(links)) if (l && l.catalogo && l.prodId && prods[l.prodId]) (porCat[l.catalogo] = porCat[l.catalogo] || new Set()).add(l.prodId);
+        let n = 0; console.log(`=== listaprov · ${provs[kk].nombre || kk} · renglones que ya son fichas nuestras sin esta lista (por el catálogo de ML) ===`);
+        for (const [cod, e] of Object.entries(cat)) { if (!e || !e.mi || !porCat[e.mi]) continue;
+          for (const pid of porCat[e.mi]) { const p = prods[pid]; if (p.listaProv === kk && String(p.codLista || '') === String(cod)) continue;
+            n++; console.log(`· ${cod} · ${String(e.n || '').slice(0, 45)} · $${Math.round(Number(e.p) || 0)} ↔ ficha ${pid} "${String(p.name || '').slice(0, 50)}" · costo $${Math.round(Number(p.cost) || 0)}${p.listaProv ? ' · hoy es de ' + p.listaProv : ''}`); } }
+        console.log(n ? `(${n}) Para unirlas: listaprov:${kk};<ficha>=<cód>;…;go` : 'ninguna'); return;
+      }
+      const upd = {}; const malos = [];
+      for (const x of partes) { const i = x.indexOf('='); const pid = x.slice(0, i).trim(), cod = x.slice(i + 1).trim();
+        if (i < 1 || !prods[pid]) { malos.push(x + ' (ficha desconocida)'); continue; } if (!cat[cod]) { malos.push(x + ' (código que no está en la lista)'); continue; }
+        upd[pid] = cod; console.log(`· ficha ${pid} "${String(prods[pid].name || '').slice(0, 50)}" ← ${kk} ${cod} "${String(cat[cod].n || '').slice(0, 45)}"`); }
+      if (malos.length) { console.log('❌ no escribo nada: ' + malos.join(' | ')); return; }
+      if (!APLICAR) { console.log('(prueba: con ;go se escribe)'); return; }
+      for (const [pid, cod] of Object.entries(upd)) await db.patch('cyc/products/' + pid, { listaProv: kk, codLista: String(cod) });
+      const re = (await db.get('cyc/products')) || {}; const ok = Object.entries(upd).filter(([pid, cod]) => re[pid] && re[pid].listaProv === kk && String(re[pid].codLista) === String(cod)).length;
+      console.log(`✓ ${ok} de ${Object.keys(upd).length} fichas unidas a ${kk} (releído)`); return;
+    }
     if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {
       const k = String(process.env.BILLING_PROBE).split(':')[1].trim().toLowerCase(); const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {};
       const cat = (await db.get('mlapi/listas/' + k)) || {}; console.log(`${pv.nombre || k} · fecha ${pv.fecha || '?'} · ${Object.keys(cat).length} productos`); console.log('@@LISTA');
