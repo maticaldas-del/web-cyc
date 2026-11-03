@@ -2620,7 +2620,7 @@ function _copiaCartel(ts,suave){try{let b=document.getElementById('cyc-copia-car
   const f=new Date(ts);
   // 03/11 (él: "que abra primero, después que empiece a cargar"): los primeros 12 s es sólo un renglón chico "actualizando"; si pasado eso
   // sigue sin llegar lo de la base, el cartel naranja de sin conexión.
-  if(suave){b.style.cssText='position:fixed;top:calc(4px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,.72);color:#fff;padding:3px 10px;border-radius:999px;font-size:.68rem;pointer-events:none';b.textContent='🔄 Actualizando… (ves lo del '+String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0')+')';return;}
+  if(suave){b.style.cssText='position:fixed;top:calc(4px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,.72);color:#fff;padding:3px 10px;border-radius:999px;font-size:.68rem;pointer-events:none';const _tot=window._copiaTot||0,_hech=Math.max(0,_tot-_cycDeCopia.size);b.textContent='🔄 Actualizando'+(_tot?' '+Math.round(_hech/_tot*100)+'%':'…')+' (ves lo del '+String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0')+')';return;}
   b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999;background:#b45309;color:#fff;padding:calc(8px + env(safe-area-inset-top,0px)) 14px 8px;font-size:.76rem;text-align:center;cursor:pointer';
   b.textContent='📴 Sin conexión con la base: ves lo guardado en este teléfono del '+String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0')+'. Puede estar viejo; se actualiza solo cuando vuelve. Tocá para reintentar.';}catch(_){}}
 // 🔒 MIENTRAS SE VE LA COPIA NO SE ESCRIBE NADA EN LA BASE (03/11/2026): lo que se calcula solo al abrir (en camino, numerar pedidos,
@@ -2906,7 +2906,7 @@ function startApp(){
     b.textContent='⚠️ Se cortó la lectura de la base ('+((err&&(err.code||err.message))||'error')+'). Lo que ves puede estar VIEJO y lo que cargues puede no guardarse. Tocá acá para volver a entrar.';
     const l=document.getElementById('loading');if(l)l.style.display='none';
   };
-  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(_cycDeCopia.delete(k)&&!_cycDeCopia.size)_copiaCartelSacar();_cycSched();},_cycErr);
+  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(_cycDeCopia.delete(k)){if(!_cycDeCopia.size)_copiaCartelSacar();else if(window._copiaTsVisto&&document.getElementById('cyc-copia-cartel')&&!window._sinSesion)_copiaCartel(window._copiaTsVisto,true);}_cycSched();},_cycErr);
   _alEntrar(()=>CYC_KEYS.forEach(_cycOir));
   // 📴 a los 12 s (o enseguida si arrancó sin sesión), lo que falta sale de la copia del teléfono.
   const _cycDeLaCopia=async()=>{if(!_cycFalta.size)return;const c=await _copiaLeer();if(!c||!c.d||!_cycFalta.size)return;
@@ -2916,8 +2916,13 @@ function startApp(){
     for(const k of Object.keys(CYC_LAZY))if(!(k in _cycD)&&(k in c.d))_cycD[k]=c.d[k];
     if(c.d.__claudeexp&&!window._cerReal&&window._cerAplicar)window._cerAplicar(c.d.__claudeexp);
     if(c.d.__oficycdesde&&!window._ofdReal)state.oficycdesde=c.d.__oficycdesde;
-    _copiaCartel(c.ts,!window._sinSesion);window._copiaTsVisto=c.ts;_cycSched();
-    setTimeout(()=>{if(_cycDeCopia.size)_copiaCartel(c.ts,false);},12000);};
+    window._copiaTot=_cycDeCopia.size;_copiaCartel(c.ts,!window._sinSesion);window._copiaTsVisto=c.ts;_cycSched();
+    // 03/11 (él: "dice que estoy viendo lo de hace 10 min y tengo internet, ¿no se actualiza?"): el renglón dice cuánto va (%) y se va
+    // solo al terminar. El cartel naranja de "sin conexión" sale sólo si de verdad no llega nada (el teléfono sin internet o 20 s sin
+    // que entre ninguna parte); si va llegando, aunque sea lento, sigue el renglón chico con el %.
+    let _ult=_cycDeCopia.size,_quieto=0;const _vig=setInterval(()=>{if(!_cycDeCopia.size){clearInterval(_vig);return;}
+      if(_cycDeCopia.size<_ult){_ult=_cycDeCopia.size;_quieto=0;}else _quieto+=4;
+      if(navigator.onLine===false||_quieto>=20)_copiaCartel(c.ts,false);else _copiaCartel(c.ts,true);},4000);};
   // 03/11 (él: "que entre lo más rápido posible… que abra aunque no haya descargado toda la info nueva"): SIEMPRE se abre primero con la
   // copia del teléfono (si hay) y lo de la base la va reemplazando a medida que llega.
   setTimeout(_cycDeLaCopia,0);
@@ -3359,7 +3364,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.99';
+const APP_VERSION='28.100';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3372,6 +3377,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.100',f:'03/11',h:'19:00',c:[{n:2,t:'🔄 El renglón de arriba dice cuánto va de la actualización (%) y se va solo al terminar. El cartel naranja de "sin conexión" sale sólo si de verdad no llega nada.'}]},
   {v:'28.99',f:'03/11',h:'18:40',c:[{n:3,t:'📶 Con señal floja la app instalada ya no se queda en la pantalla del ícono: si la red no contesta en 2,5 segundos abre lo guardado en el teléfono y baja lo nuevo atrás.'}]},
   {v:'28.98',f:'03/11',h:'18:10',c:[{n:3,t:'⚡ Abre al instante: con la copia del teléfono el panel aparece sin esperar a que el navegador recupere la sesión; lo nuevo entra atrás. (La primera vez después de esta versión tiene que cargar una vez con internet para guardar la copia.)'}]},
   {v:'28.97',f:'03/11',h:'17:55',c:[{n:2,t:'🧾 Tarjeta de venta: el total, la ganancia y el % quedan siempre en el mismo lugar, a la derecha y completos. Lo del medio (Premium, 1ª venta, analizada…) y la fecha se achican con "…" si no entra; en el teléfono los números van siempre en el segundo renglón.'}]},
