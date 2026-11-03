@@ -513,6 +513,10 @@ input.qty:focus{border-color:var(--accent2)}
 .at-label{font-family:'Syne',sans-serif;font-size:.86rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text)}
 .at-val{font-family:'Syne',sans-serif;font-size:2.3rem;font-weight:800;line-height:1}
 @media(max-width:640px){.at-val{font-size:clamp(1.5rem,8.5vw,2.3rem);white-space:nowrap}}
+/* 03/11/2026 (él con la captura del iPhone: "US$ 7.57…" cortado): en el teléfono el total va solo en su renglón, entero, y la pastilla del
+   cambio (▼ 16.8%) abajo; nunca se corta el número. */
+@media(max-width:640px){.arqueo-total>div:last-child{flex-direction:column-reverse;align-items:flex-start;gap:6px;width:100%;min-width:0}
+  .arqueo-total .at-val{font-size:clamp(1.4rem,11vw,2.3rem);max-width:100%}}
 .at-val.pos{color:var(--green)}.at-val.neg{color:var(--red)}
 .cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
 #met-cal-bar{transition:transform .25s ease}
@@ -3375,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.104';
+const APP_VERSION='28.105';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3388,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.105',f:'03/11',h:'21:00',c:[{n:1,t:'Arqueo en el teléfono: el Patrimonio total ya no se corta (va solo en su renglón, entero, y el ▼% abajo).'}]},
   {v:'28.104',f:'03/11',h:'20:20',c:[{n:1,t:'🧮 Inicio: "La mezcla" también en Mes y Año (la del período que elegís arriba), no sólo la del día.'}]},
   {v:'28.103',f:'03/11',h:'19:50',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB (los mayoristas AnD y AVL 112).'}]},
   {v:'28.102',f:'03/11',h:'19:40',c:[{n:2,t:'🪜 Pedidos: debajo del máximo de compra, la escalera "según lo que lo pagues": por cada precio al que se vendió, hasta cuánto pagar para que deje 35% y cuántas traer con lo que se vende a ESE precio. ⭐ = el precio al que lo pensamos vender. Lo de pocos días a un precio va en gris.'}]},
