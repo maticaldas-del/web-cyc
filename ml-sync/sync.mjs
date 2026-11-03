@@ -92,7 +92,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/no escribo nada|DATOS INCOMPLETOS|^❌ Usá/i.test(t)) _seNego++; } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['listagz', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -25958,6 +25958,15 @@ async function main() {
     // una lista más con `lista:` (código = el SKU, foto = la de la página), sacando lo que ya se saca en el Once: MARCAS REALES (imitación,
     // regla del 29/10), ropa/calzado, perfumes, comida y lo grande; lo sin stock o sin precio también. Sin `;go` sólo dice cuántos cargaría.
     // Después: `lista:<prov>|bsas;go` y `listamedir:<prov>:go`. Se puede repetir cada semana: la fecha de hoy pisa la lista anterior.
+    // BILLING_PROBE=listagz:<texto comprimido> (03/11/2026, él con la lista en PDF de Distribuidora Pirineo, 66 páginas): una lista grande
+    // pasada por Claude entera, comprimida (gzip + base64) para que entre en el campo de GitHub y SIN pasar por el repo (los precios de un
+    // proveedor no van al repo público). Adentro va un `lista:<prov>|fecha=…;<producto>=<pesos>@<cód>;…;go` normal y corre igual que ése.
+    if (/^listagz:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const zlib = await import('zlib'); let txt = '';
+      try { txt = zlib.gunzipSync(Buffer.from(String(process.env.BILLING_PROBE).slice('listagz:'.length).replace(/\s+/g, ''), 'base64')).toString('utf8'); } catch (e) { console.log('❌ no pude abrir el texto comprimido: ' + e.message); return; }
+      if (!/^lista:/.test(txt)) { console.log('❌ adentro no hay un comando lista:'); return; }
+      console.log(`📦 listagz: ${txt.length} letras · ${txt.split(';').length - 2} renglones`); process.env.BILLING_PROBE = txt;
+    }
     if (/^listawoo:/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).slice('listawoo:'.length); const GOw = /;go\s*$/.test(raw);
       const [provW, ...opW] = raw.replace(/;go\s*$/, '').split('|').map((x) => x.trim());
