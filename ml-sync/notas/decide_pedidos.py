@@ -55,10 +55,14 @@ def esc_txt(filas,enUSD):
     if len(med)<2: return ''
     pl=(lambda v:f"US$ {v/tc:.2f}".replace('.',',')) if enUSD else _pesos
     st=[f for f in med if f['s']][0]; med=sorted(med,key=lambda f:f['c'])
+    # Sólo si dice algo que sirve (03/11): con 0 en el ⭐ el renglón ya dice "no lo compres" o "no hace falta" por otro lado y la frase lo
+    # contradecía ("Te pido 74… conviene traer 0"); un escalón más barato sólo si deja traer MÁS, uno más caro sólo si pide MENOS.
+    if not (st['n']>0): return ''
     x=f"Según lo que lo pagues: vendiéndolo a {_pesos(st['p'])} (el precio al que lo pensamos vender) conviene pagarlo hasta {pl(st['c'])} y traer {st['n']}."
-    baratos=[f for f in med if f['c']<st['c']]; caros=[f for f in med if f['c']>st['c']]
+    baratos=[f for f in med if f['c']<st['c'] and f['n']>st['n']]; caros=[f for f in med if f['c']>st['c'] and f['n']<st['n']]
     if baratos: x+=f" Si lo conseguís a menos de {pl(baratos[0]['c'])}, podés traer hasta {baratos[0]['n']}."
-    if caros: x+=f" Si cuesta más de {pl(st['c'])}, como mucho {caros[0]['n']} y si pasa de {pl(med[-1]['c'])}, no lo compres."
+    tope=max(f['c'] for f in med)
+    if caros and caros[0]['n']>0: x+=f" Si cuesta más de {pl(st['c'])}, como mucho {caros[0]['n']} y si pasa de {pl(tope)}, no lo compres."
     else: x+=f" Si cuesta más de {pl(st['c'])}, no lo compres."
     return x
 def esc_linea(key,filas):
@@ -592,7 +596,7 @@ for p,q,d,rent in res:
                 if (p['id'],v['v']) in BAJA_ML or v.get('nunca'): avisos.append(f"{p['n']} #{v['v']}: la perfumería pide {p['perf'][0]} pero no viene más: no lo pido (avisale a Matías)")
                 else: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
             _ef=esc_armar(v.get('esc'),t,T_de(p,r,obj))
-            if _ef and qq>0 and not jv: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
+            if _ef and qq>0 and not jv and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
             if _ef: ESCN.append(esc_linea(f"{pid}#{v['v']}",_ef))
         if not filas:
@@ -639,7 +643,7 @@ for p,q,d,rent in res:
         # lo guarda aparte y la web resta de lo decidido sólo lo que ENTRÓ después; antes volvía a restar la oficina y el camino (Te pido 15
         # con 10 en la oficina y 5 en camino → la web lo dejaba en 0 y el renglón desaparecía de Pedidos).
         _ef=esc_armar(p.get('esc'),t,T_de(p,r,obj))
-        if _ef and q>0 and not juDe(pid): _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
+        if _ef and q>0 and not juDe(pid) and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
         if _ef: ESCN.append(esc_linea(pid,_ef))
         if p.get('perf') and p['perf'][0]>0: q,mot=q+p['perf'][0],perf_mot(q,p['perf'][0],mot)
         # Revisión etapa 9, 30/10/2026: `cub` también lleva lo apartado para la perfumería en la oficina (`perfOfi`). La web resta (oficina +
