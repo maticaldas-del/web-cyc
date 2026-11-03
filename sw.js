@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1175";
+const CACHE = "cyc-v1176";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -22,6 +22,13 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
+  // 📴 (03/11/2026, él: "que se pueda entrar sin internet"): los programas de Firebase y Chart.js (jsdelivr, con versión fija) se guardan
+  // también: primero la red y, si no hay, lo guardado. Las LECTURAS de la base (googleapis/firebaseio) siguen yendo siempre a la red.
+  if (url.hostname === "cdn.jsdelivr.net" && /\/npm\/(firebase@|chart\.js@)/.test(url.pathname)) {
+    e.respondWith(fetch(e.request).then((resp) => { if (resp && (resp.ok || resp.type === "opaque")) { const copia = resp.clone(); caches.open(CACHE).then((c) => c.put(e.request, copia)); } return resp; })
+      .catch(() => caches.match(e.request)));
+    return;
+  }
   if (url.origin !== location.origin) return; // externo → red directa
   // La tienda pública (/tienda/, 30/10/2026) es otra página: este service worker no la cachea ni le contesta con el panel.
   if (/\/tienda(\/|$)/.test(url.pathname)) return;
