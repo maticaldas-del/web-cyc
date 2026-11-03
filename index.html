@@ -160,13 +160,14 @@ html{font-size:118%}
    y el dólar de Inicio y la casilla de unidades de cada color no se achican a 16px por la regla de arriba. */
 @media(pointer:coarse){button[onclick^="cerebroAbrir"],button[onclick^="lineaAbrir"]{min-width:40px;min-height:34px;font-size:.8rem!important}.pi-var-toggle,.pi-prov{min-height:32px;padding:5px 10px}button[onclick^="homeHoyEsc"]{min-height:32px}button[onclick^="removeVariante"]{min-width:32px;min-height:32px}#home-dolar-val{font-size:2rem!important}.ped-var-u input{font-size:1.3rem!important}}
 /* Ventas en la PC (09/10/2026, él: "sacá esa barra de abajo, que me deje un lugar para poner el mouse y scrolear la web"): sin barra horizontal y un margen a la derecha, afuera de la lista, donde la rueda mueve la página. */
-@media(min-width:641px){#vp-day-list{margin-right:56px;padding:4px 26px}}   /* las ventas un poco adentro: el fuego sale por los costados sin cortarse (09/10/2026) */
+#vp-day-list{padding:8px 8px}   /* 03/11/2026 (él, con un video: la tarjeta que tiembla se cortaba contra el borde de la lista): aire para que se mueva sin cortarse */
+@media(min-width:641px){#vp-day-list{margin-right:56px;padding:8px 26px}}   /* las ventas un poco adentro: el fuego sale por los costados sin cortarse (09/10/2026) */
 /* Las tarjetas de una lista con alto máximo no se achican: con overflow:hidden (v25.00) el celu las aplastaba (20/10/2026). */
 #vp-day-list>*,.ingreso-list>*{flex-shrink:0}
 /* Ventas en la PC (26/10/2026): ventas a la izquierda, pegadas al borde; los cuadros de números apilados a la derecha (también es el lugar
    para apoyar el mouse y mover la página). */
 @media(min-width:1100px){#vp-top{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
-  #vp-top>#vp-day-list{grid-column:1;grid-row:1;margin:0!important;max-width:none;padding:0 4px 4px 0}
+  #vp-top>#vp-day-list{grid-column:1;grid-row:1;margin:0!important;max-width:none;padding:8px}
   #vp-top>#vp-kpis{grid-column:2;grid-row:1;grid-template-columns:1fr;gap:6px;margin:0;position:sticky;top:12px}}
 @media(max-width:640px){#vp-day-list,.ingreso-list{max-height:68vh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:4px}}
 #tt-toque{position:fixed;z-index:99990;max-width:min(320px,calc(100vw - 32px));background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:.78rem;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.35);white-space:pre-line}
@@ -968,7 +969,7 @@ footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--border);font-
 @keyframes vivaGlow{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes vivaFlota{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 /* --tz: cuánto tiembla (1 = lo de siempre) · lo pone cada venta según su neto y su % (09/10/2026) */
-@keyframes vivaTiembla{0%{transform:translate(0,0) rotate(0)}20%{transform:translate(calc(var(--tz,1)*-1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.25deg))}40%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*-1px)) rotate(calc(var(--tz,1)*.25deg))}60%{transform:translate(calc(var(--tz,1)*-1px),0) rotate(calc(var(--tz,1)*.15deg))}80%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*1px)) rotate(calc(var(--tz,1)*-.15deg))}100%{transform:translate(0,0) rotate(0)}}
+@keyframes vivaTiembla{0%{transform:translate(0,0)}20%{transform:translate(calc(var(--tz,1)*-1px),calc(var(--tz,1)*1px))}40%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*-1px))}60%{transform:translate(calc(var(--tz,1)*-1px),0)}80%{transform:translate(calc(var(--tz,1)*1px),calc(var(--tz,1)*1px))}100%{transform:translate(0,0)}}
 @media (prefers-reduced-motion: reduce){.vw,.vw>.viva{animation:none!important}}
 /* MODO DISCRETO (16/10/2026, él: "uso la web en el trabajo y la gente puede mirar, queda feo con tantos colores y movimiento
    (...) que tengan un detalle para que me dé cuenta que fue una venta especial o rara"). Sin movimiento, sin figuras, sin
@@ -3266,7 +3267,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.81';
+const APP_VERSION='28.82';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3279,6 +3280,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.82',f:'03/11',h:'02:30',c:[{n:2,t:'📳 Ventas: la tarjeta que tiembla ya no se corta contra el borde de la lista (tiene aire alrededor y tiembla sin girar).'}]},
   {v:'28.81',f:'03/11',h:'00:10',c:[{n:3,t:'🔧 El panel no terminaba de cargar: un dato nuevo de Rotación → Local (la fecha de entrada) frenaba la carga. Ahora se lee aparte y no frena nada.'}]},
   {v:'28.80',f:'02/11',h:'21:30',c:[{n:1,t:'🔄 Rotación → Local: columna 📅 En stock (hace cuántos días está cada producto en la Oficina Local; lo contado antes del 29/10 dice "desde antes").'}]},
   {v:'28.79',f:'02/11',h:'21:15',c:[{n:1,t:'🔄 Inicio: los botones 📦 ML y 🏪 Local de Rotación van uno al lado del otro (el de Local se cortaba).'}]},

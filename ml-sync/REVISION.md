@@ -86,6 +86,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 - 30/10 (DESHECHO el mismo día, él: *"me gusta la subida que tenemos ahora… sólo dije lo del % por el tema de las premium y clásicas"*: `errores` volvió a proponer +50% del precio; `decido` conserva `=%N`/`=%xK` por si hace falta) (él eligió 1b: *"% de ganancia"*): la suba de "si vende, no es techo" es +50% del % de GANANCIA. `decido` acepta `=%<N>` (el precio que deja N% normal) y `=%x<k>` (k veces el % de hoy): busca el precio con `gan()` (comisión de ML), primero abajo de $33.000 y, con `!cruza`, arriba; termina en 90/990; con % no frena "más del doble" (lo calculó decido) y liquidando lo frena igual. `errores` propone `%x1.5`. Chequear: que no se use `%x` en algo que ya subió después de vender (compone); Aer y Lupa se hicieron con el % de la venta (100% → 150%, 290% → 436%).
 
+### 📳 La venta que tiembla no se corta (03/11/2026, v28.82, etapa 7; él con un video: "armalo bien")
+- **Qué es:** `#vp-day-list` tiene 8px de aire en el teléfono y en la PC ancha (antes 0: la tarjeta que tiembla se cortaba contra el borde de la lista, que tiene scroll y recorta), y `vivaTiembla` ya no gira (sólo se corre unos px; el giro hacía asomar las esquinas).
+- **Qué chequear:** dibujar Ventas a 390 px con una venta que tiembla: bordes y esquinas enteros.
+
 ### 🏬 Pedidos de Bs As para 60 días (03/11/2026, etapa 3; él: *"Paulvic hay siempre. Nissei también y Bs As la mitad de las veces"*, eligió 60)
 - **Qué es:** `Tde` en `ml-sync/notas/decide_pedidos.py`: todo lo de Bs As con ritmo pide para 60 días (antes 30, o 45 si se cortaba). Paraguay 30, Paulvic 45. Las cajas a Full siguen en 37 días: lo demás espera en la oficina (no paga stock antiguo).
 - **1a del 03/11:** en `ritmo()` (rama NOR), con el precio cambiado hace 2-6 días con stock, manda el más bajo entre el ritmo normal y el del precio nuevo (17 renglones el 03/11; Bs As $3,29M → $3,28M).
