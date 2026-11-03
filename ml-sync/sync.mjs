@@ -14524,7 +14524,7 @@ const BARRERA_CADA_H = 6;
 // cola como `cupo:…;go` (sólo las cuentas con números claros y no más de 3 veces lo de antes) y `ancla:buzon=<ts>;go` (los saldos de MP, que
 // no se imprimen nunca). Lo raro (un "?", un cupo 3 veces más grande, los `visto:` y lo que no sé leer) queda anotado en
 // `mlapi/rutinaauto/<ts>` para que lo mire Claude en la vuelta (el `buzon` lo muestra).
-const COLA_OK = new Set(['pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla', 'cajasmirar']);
+const COLA_OK = new Set(['listawoo', 'pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla', 'cajasmirar']);
 const COLA_DIR = '/tmp/cyc-cola';
 const RUTINA_AUTO_DESDE = Date.parse('2026-11-03T18:00:00Z');   // las RUTINA de antes las cargó Claude a mano
 async function colaParaRobot(db, labels) {

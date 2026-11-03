@@ -3375,7 +3375,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.102';
+const APP_VERSION='28.103';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3388,6 +3388,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.103',f:'03/11',h:'19:50',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB (los mayoristas AnD y AVL 112).'}]},
   {v:'28.102',f:'03/11',h:'19:40',c:[{n:2,t:'🪜 Pedidos: debajo del máximo de compra, la escalera "según lo que lo pagues": por cada precio al que se vendió, hasta cuánto pagar para que deje 35% y cuántas traer con lo que se vende a ESE precio. ⭐ = el precio al que lo pensamos vender. Lo de pocos días a un precio va en gris.'}]},
   {v:'28.101',f:'03/11',h:'19:20',c:[{n:1,t:'🩺 Cada teléfono anota en cuánto abrió y en cuánto terminó de actualizar (y qué faltaba), para que Claude lo vea sin pedir fotos.'}]},
   {v:'28.100',f:'03/11',h:'19:00',c:[{n:2,t:'🔄 El renglón de arriba dice cuánto va de la actualización (%) y se va solo al terminar. El cartel naranja de "sin conexión" sale sólo si de verdad no llega nada.'}]},
@@ -9171,8 +9172,10 @@ function renderBuzonCard(){
     <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
     ${(()=>{   // 🤖 CUÁNDO SE HIZO CADA TAREA DEL CHAT DE CHROME (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo"): el chat
       // mira esta línea al arrancar y hace lo que toca. Sale de TODOS los mensajes del buzón (leídos o no) que empiezan con el nombre de la tarea.
-      const T=['RUTINA','CAJAS','GUAY','LISTAS','ONCE','IMEGA','TIENDA'],ult={};
-      Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();T.forEach(k=>{if(m.startsWith(k)&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});});
+      // 03/11/2026: + CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB; cada mensaje cuenta para la tarea de nombre MÁS LARGO que coincide
+      // (un "CAJAS LLEGADAS …" no es la tarea CAJAS).
+      const T=['RUTINA','CAJAS','CAJAS LLEGADAS','GUAY','LISTAS','ONCE','IMEGA','MAYORISTAS WEB','MÁS VENDIDOS','TIENDA'],ult={};
+      Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T.filter(t=>m.startsWith(t)).sort((a,b)=>b.length-a.length)[0];if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
       const dd=ts=>Math.floor((Date.now()-ts)/864e5);
       return `<div style="font-size:.66rem;margin:6px 0;line-height:1.6">🤖 <b>Última vez del chat de Chrome:</b> ${T.map(k=>`${k} ${ult[k]?(dd(ult[k])===0?'<b style="color:var(--green)">hoy</b>':`hace ${dd(ult[k])} día${dd(ult[k])===1?'':'s'}`):'<span style="color:var(--amber)">nunca</span>'}`).join(' · ')}</div>`;})()}
     ${sin.map(x=>`<div style="font-size:.7rem;padding:4px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">${new Date(x.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> · ${_esc(x.t)}</div>`).join('')}

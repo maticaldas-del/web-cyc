@@ -43,13 +43,14 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    d) LISTAS → si hace 7 días o más.
    e) ONCE → si hace 7 días o más (1 o 2 mayoristas nuevos, una hora como mucho).
    f) IMEGA → si hace 14 días o más.
+   f3) MAYORISTAS WEB (AnD Mitre y AVL 112, los que visita Tito) → si hace 7 días o más (03/11/2026). El catálogo lo baja el robot (`listawoo`): vos lo actualizás, revisás que lo que da 35% sea el mismo producto en ML y anotás lo que la página no dice (IVA, mínimo, packs). Texto: PROMPT_MAYORISTAS_WEB.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
    f2) MÁS VENDIDOS → si hace 7 días o más (ver abajo).
    g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
    fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …",
-   "CAJAS LLEGADAS …", "MÁS VENDIDOS …".
+   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
 
 CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026, él: "el chat de Chrome carga por el panel, no por GitHub")
