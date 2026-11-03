@@ -3268,7 +3268,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.90';
+const APP_VERSION='28.91';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3281,6 +3281,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.91',f:'03/11',h:'15:45',c:[{n:1,t:'📊 Línea de tiempo de Todos: el % de ganancia también es el de los últimos 7 días juntos (como en cada producto).'}]},
   {v:'28.90',f:'03/11',h:'15:30',c:[{n:2,t:'📊 Línea de tiempo, % de ganancia: la línea ahora es el % de todas las ventas de los últimos 7 días juntas (todos los colores y formas de venta, pesado por la plata), en todos los productos. Ya no salta con una venta suelta; al pasar el dedo dice el % de ese día y el de 7 días.'}]},
   {v:'28.89',f:'03/11',h:'15:00',c:[{n:1,t:'🧮 La Mezcla (Métricas y Ventas de hoy) con los 7 colores de la app: 🔴 Bajo, 🟠 Justo, 🟢 Bien, 💠 Bueno, 🔵 Excelente, 🟣 Estrella y 💎 JOYA.'}]},
   {v:'28.88',f:'03/11',h:'14:30',c:[{n:1,t:'🧮 La mezcla de hoy (Ventas de hoy): se sacó la lista de abajo del 35% y debajo de la barra están los 4 colores con su parte de lo facturado.'}]},
@@ -13631,14 +13632,19 @@ function lineaTodoPintar(){
   const vd={};_ksAll.forEach(k=>{const ents=Object.values(pv[k]||{}).filter(v=>v&&!v.cancelada);if(!ents.length)return;
     // 💳 PREMIUM Y 📦 ENVÍO GRATIS APARTE (24/10/2026, él: "¿se puede saber cuánto fue Premium? así veo cuánto más vendemos por esa idea").
     // Misma regla que la línea de un producto: remate primero, después gemela de envío, después Premium (tipoPub gold_pro o gemela Premium).
-    let u=0,uR=0,uP=0,uG=0,gP=0,gG=0,gan=0,costo=0,gest=0,tot=0;ents.forEach(v0=>{const v={...v0,_dateKey:k};const q=Number(v.qty)||0;u+=q;const c=efectivoCostoVP(v),gv=(v.neto||0)-c;gan+=gv;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;
+    let u=0,uR=0,uP=0,uG=0,gP=0,gG=0,gan=0,costo=0,gest=0,tot=0,gPc=0,cPc=0,gePc=0;ents.forEach(v0=>{const v={...v0,_dateKey:k};const q=Number(v.qty)||0;u+=q;const c=efectivoCostoVP(v),gv=(v.neto||0)-c;gan+=gv;costo+=c;gest+=gestDivVP(v);tot+=Number(v.total)||0;
+      // el % sólo con las ventas CON costo (03/11/2026): una venta sin costo cargado cuenta todo como ganancia y el % del día volaba a 172%.
+      if(c>0&&!ventaSinCostoVP(v)){gPc+=gv;cPc+=c;gePc+=gestDivVP(v);}
       const _lv=(state.mllinks||{})[v.mla]||{};if(ventaEnRemate(v,k))uR+=q;else if(_lv.gemelaTipo==='envio'){uG+=q;gG+=gv;}else if(v.tipoPub==='gold_pro'||(_lv.gemelaDe&&_lv.gemelaDe!==v.mla)){uP+=q;gP+=gv;}});
     // Ventas = COMPRAS (un carrito es una venta), como el KPI de Ventas (`vpGrupoKey`) · 21/10/2026 · etapa 5.
-    vd[k]={u,uR,uP,uG,gP,gG,gan,costo,gest,tot,n:new Set(ents.map(vpGrupoKey)).size};});
+    vd[k]={u,uR,uP,uG,gP,gG,gan,costo,gest,tot,gPc,cPc,gePc,n:new Set(ents.map(vpGrupoKey)).size};});
   const uDe=k=>vd[k]?vd[k].u:(k<pv0&&R[k]&&R[k].u!=null?R[k].u:(k>=pv0?0:null));
   const uRDe=k=>vd[k]?vd[k].uR:(k<pv0&&R[k]?R[k].uR||0:0);
   const g7=_lnPromMes(_ksAll,ks,k=>(vd[k]||{}).gan||0,k=>k>=pv0);   // sólo días con ventas guardadas (etapa 5); por mes calendario (26/10)
-  const pd={};ks.forEach(k=>{const v=vd[k];if(v&&v.costo>0){const q=pctGananciaVP(v.gan,v.costo,v.gest);if(q!=null&&isFinite(q))pd[k]=q;}});
+  const pd={};ks.forEach(k=>{const v=vd[k];if(v&&v.cPc>0){const q=pctGananciaVP(v.gPc,v.cPc,v.gePc);if(q!=null&&isFinite(q))pd[k]=q;}});
+  // 7 DÍAS JUNTOS TAMBIÉN EN "TODOS" (03/11/2026, él con la captura de Todos: los mismos picos que en un producto). La línea es la ganancia ÷
+  // el costo de todas las ventas de ese día y los 6 anteriores; el globito dice el día y los 7 días.
+  const pdDia=pd,pd7={};ks.forEach((k,i)=>{if(pd[k]==null)return;let g=0,c=0,ge=0;for(let j=Math.max(0,i-6);j<=i;j++){const v=vd[ks[j]];if(!v||!(v.cPc>0))continue;g+=Number(v.gPc)||0;c+=Number(v.cPc)||0;ge+=Number(v.gePc)||0;}const q=pctGananciaVP(g,c,ge);if(q!=null&&isFinite(q))pd7[k]=q;});
   // Stock: sólo los días en que lo informa casi todo el catálogo (el relleno para atrás quedó a medias: un día con
   // la mitad de las publicaciones daría la mitad del stock).
   const stNmax=Math.max(0,...ks.filter(k=>k!==hk).map(k=>(R[k]&&R[k].stN)||0));
@@ -13651,7 +13657,7 @@ function lineaTodoPintar(){
   const maxU=Math.max(1,...ks.map(k=>uDe(k)||0)),maxV=Math.max(1,...ks.map(k=>(R[k]&&R[k].vis)||0));
   const maxC=Math.max(1,...ks.map(k=>Math.max(cS(k).length,cB(k).length,(R[k]&&R[k].sb)||0,(R[k]&&R[k].bj)||0)));
   const maxRem=Math.max(1,...ks.map(k=>{const r=RD(k);return r?(r.rem||0)+(r.esc||0):0;}));
-  const suv=Object.values(stU),g7v=Object.values(g7),pvs=Object.values(pd),ivs=Object.values(idx);
+  const suv=Object.values(stU),g7v=Object.values(g7),pvs=Object.values(pd7),ivs=Object.values(idx);
   const hayVis=ks.some(k=>R[k]&&R[k].vis>0),hayCaja=ks.some(k=>{const r=RD(k);return r&&((r.g||0)+(r.c||0)+(r.p||0))>0;}),hayRem=ks.some(k=>{const r=RD(k);return r&&((r.rem||0)+(r.esc||0))>0;});
   const L={};let _y=0,_lSc=0,_lFx=0;const _lane=(n,h0,si)=>{if(!si)return;const big=h0>=30,h0p=Math.round(h0*1.45),h=_lnAlto(n,h0p,big);if(big)_lSc+=h0p;else _lFx+=h0p;_lFx+=8+LN_TG;_y+=LN_TG;L[n]=[_y,h];_y+=h+8;};
   _lane('vent',64,true);_lane('st',46,suv.length>0);_lane('gan',52,g7v.length>0);_lane('pct',40,pvs.length>0);_lane('pr',40,ivs.length>0);_lane('cam',44,true);_lane('rem',16,hayRem);_lane('caja',22,hayCaja);
@@ -13690,7 +13696,7 @@ function lineaTodoPintar(){
     svg+=`<text x="${W-2}" y="${lane[0]+9}" font-size="10" text-anchor="end"${_fw} fill="${_lc(Math.max(...v))}">${fmtT(Math.max(...v))}</text><text x="${W-2}" y="${lane[0]+lane[1]}" font-size="10" text-anchor="end"${_fw} fill="${_lc(Math.min(...v))}">${fmtT(Math.min(...v))}</text>`;};
   if(L.st)linea(L.st,stU,'#eab308',q=>Math.round(q)+' u.');
   if(L.gan){svg+=_franjasSvg(L.gan,ks,X,bw);linea(L.gan,g7,ganColor,q=>fmt(Math.round(q))+'/día');}
-  if(L.pct)linea(L.pct,pd,q=>pctColor(q),q=>Math.round(q)+'%');
+  if(L.pct)linea(L.pct,pd7,q=>pctColor(q),q=>Math.round(q)+'%');
   if(L.pr)linea(L.pr,idx,'var(--text)',q=>q.toFixed(1));
   svg+=`<text x="${W-2}" y="${L.cam[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">▲ ${maxC}</text><text x="${W-2}" y="${L.cam[0]+L.cam[1]}" font-size="10" text-anchor="end" fill="var(--muted)">▼ ${maxC}</text>`;
   svg+=`<text x="${W-2}" y="${L.vent[0]+9}" font-size="10" text-anchor="end" fill="var(--muted)">${maxU} u.</text>`+(hayVis?`<text x="${W-2}" y="${L.vent[0]+20}" font-size="10" text-anchor="end" fill="#60a5fa">${maxV} visitas</text>`:'');
@@ -13712,7 +13718,7 @@ function lineaTodoPintar(){
       vent:[..._vent,r&&r.vis!=null?`👀 ${r.vis} visitas`:''],
       st:[stU[k]!=null?`📦 ${Math.round(stU[k])} u. en Full${k===hk?' (ahora)':''}`:(r&&r.st!=null?`📦 stock: sólo ${r.stN} publicaciones lo informan ese día (no se dibuja)`:'📦 stock: sin dato')],
       gan:[v?`💰 ganancia del día ${fmt(Math.round(v.gan))}`:'',g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (lo que va del mes)':''}: ${fmt(Math.round(g7[k]))} por día`:'',_semK[k]||'',..._franjaTxt(k)],
-      pct:[pd[k]!=null?`📊 ${pd[k].toFixed(0)}% de ganancia`:'📊 sin ventas con costo ese día'],
+      pct:[pdDia[k]!=null?`📊 ${pdDia[k].toFixed(0)}% de ganancia ese día${pd7[k]!=null?` · ${pd7[k].toFixed(0)}% los últimos 7 días`:''}`:'📊 sin ventas con costo ese día'],
       pr:[idx[k]!=null?`💲 índice de precio ${idx[k].toFixed(1)} (${idx[k]>=100?'+':''}${(idx[k]-100).toFixed(1)}% contra el primer día)`:''],
       cam:s.length||b.length||(r&&(r.sb||r.bj))?[`✏️ ▲ ${s.length} subas · ▼ ${b.length} bajadas`,...lst(s,'▲'),...lst(b,'▼'),r&&(r.sb||r.bj)?`🔎 en el precio guardado: ▲ ${r.sb||0} · ▼ ${r.bj||0}`:'']:['✏️ sin cambios de precio'],
       rem:[rr&&(rr.rem||rr.esc)?`📦 ${rr.rem||0} sacando stock${rr.esc?` · 🪜 ${rr.esc} en la escalera`:''}`:'📦 nada sacando stock'],
@@ -13720,8 +13726,8 @@ function lineaTodoPintar(){
     for(const [n,arr] of Object.entries(por)){if(!L[n])continue;const t=[_h,...arr].filter(Boolean).join('\n');
       svg+=`<rect x="${X(i)}" y="${Math.max(0,L[n][0]-4)}" width="${Math.max(bw,1)}" height="${L[n][1]+8}" fill="transparent"><title>${t.replace(/</g,'‹')}</title></rect>`;}});
   // resumen
-  let uT=0,gT=0,cT=0,eT=0,vT=0,uPT=0,uGT=0,gPT=0,gGT=0;ks.forEach(k=>{uT+=uDe(k)||0;const v=vd[k];if(v){gT+=v.gan;cT+=v.costo;eT+=v.gest;uPT+=v.uP||0;uGT+=v.uG||0;gPT+=v.gP||0;gGT+=v.gG||0;}if(R[k]&&R[k].vis)vT+=R[k].vis;});
-  const gPct=cT>0?pctGananciaVP(gT,cT,eT):null;
+  let uT=0,gT=0,cT=0,eT=0,vT=0,uPT=0,uGT=0,gPT=0,gGT=0,gTc=0,cTc=0,eTc=0;ks.forEach(k=>{uT+=uDe(k)||0;const v=vd[k];if(v){gT+=v.gan;cT+=v.costo;eT+=v.gest;gTc+=v.gPc||0;cTc+=v.cPc||0;eTc+=v.gePc||0;uPT+=v.uP||0;uGT+=v.uG||0;gPT+=v.gP||0;gGT+=v.gG||0;}if(R[k]&&R[k].vis)vT+=R[k].vis;});
+  const gPct=cTc>0?pctGananciaVP(gTc,cTc,eTc):null;   // sólo ventas con costo (03/11)
   const camR=cambios.filter(c=>c.k>=ks[0]);const sT=camR.filter(c=>c.a>c.de).length,bT=camR.length-sT;
   const iIni=ivs.length?ivs[0]:null,iFin=ivs.length?ivs[ivs.length-1]:null;
   const porMot={};camR.forEach(c=>{const x=porMot[c.mot]=porMot[c.mot]||[0,0];x[c.a>c.de?0:1]++;});
