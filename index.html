@@ -2605,8 +2605,22 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&window._cy
 function _copiaAbrir(){return new Promise((ok,no)=>{try{const r=indexedDB.open('cyc-copia',1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('s');}catch(_){}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);setTimeout(()=>no(new Error('tarda')),4000);}catch(e){no(e);}});}
 async function _copiaGuardar(d){try{const b=await _copiaAbrir();b.transaction('s','readwrite').objectStore('s').put({ts:Date.now(),d},'cyc');}catch(_){}}
 async function _copiaLeer(){try{const b=await _copiaAbrir();return await new Promise(ok=>{try{const g=b.transaction('s').objectStore('s').get('cyc');g.onsuccess=()=>ok(g.result||null);g.onerror=()=>ok(null);}catch(_){ok(null);}setTimeout(()=>ok(null),4000);});}catch(_){return null;}}
-function _copiaCartel(ts){try{let b=document.getElementById('cyc-copia-cartel');if(!b){b=document.createElement('div');b.id='cyc-copia-cartel';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999;background:#b45309;color:#fff;padding:calc(8px + env(safe-area-inset-top,0px)) 14px 8px;font-size:.76rem;text-align:center;cursor:pointer';b.onclick=()=>location.reload();document.body.appendChild(b);}
-  const f=new Date(ts);b.textContent='📴 Sin conexión con la base: ves lo guardado en este teléfono del '+String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0')+'. Puede estar viejo; se actualiza solo cuando vuelve. Tocá para reintentar.';}catch(_){}}
+function _copiaCartel(ts,suave){try{let b=document.getElementById('cyc-copia-cartel');if(!b){b=document.createElement('div');b.id='cyc-copia-cartel';b.onclick=()=>location.reload();document.body.appendChild(b);}
+  const f=new Date(ts);
+  // 03/11 (él: "que abra primero, después que empiece a cargar"): los primeros 12 s es sólo un renglón chico "actualizando"; si pasado eso
+  // sigue sin llegar lo de la base, el cartel naranja de sin conexión.
+  if(suave){b.style.cssText='position:fixed;top:calc(4px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:999;background:rgba(0,0,0,.72);color:#fff;padding:3px 10px;border-radius:999px;font-size:.68rem;pointer-events:none';b.textContent='🔄 Actualizando… (ves lo del '+String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0')+')';return;}
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999;background:#b45309;color:#fff;padding:calc(8px + env(safe-area-inset-top,0px)) 14px 8px;font-size:.76rem;text-align:center;cursor:pointer';
+  b.textContent='📴 Sin conexión con la base: ves lo guardado en este teléfono del '+String(f.getDate()).padStart(2,'0')+'/'+String(f.getMonth()+1).padStart(2,'0')+' '+String(f.getHours()).padStart(2,'0')+':'+String(f.getMinutes()).padStart(2,'0')+'. Puede estar viejo; se actualiza solo cuando vuelve. Tocá para reintentar.';}catch(_){}}
+// 🔒 MIENTRAS SE VE LA COPIA NO SE ESCRIBE NADA EN LA BASE (03/11/2026): lo que se calcula solo al abrir (en camino, numerar pedidos,
+// retiro, pedidos automáticos…) con datos viejos podría pisar lo nuevo. Toda escritura se frena hasta que llegó todo de la base; si la
+// hizo una persona, avisa "no se guardó, probá en unos segundos".
+window._deCopia=()=>_cycDeCopia.size>0;
+(function _copiaFrenoEscritura(){try{const R=firebase&&firebase.database&&firebase.database.Reference&&firebase.database.Reference.prototype;if(!R||R._cycFreno)return;R._cycFreno=true;
+  let _ultAviso=0;const aviso=()=>{if(Date.now()-_ultAviso<4000)return;_ultAviso=Date.now();try{toast('⏳ Todavía se está actualizando: no se guardó. Probá de nuevo en unos segundos.','err',4000);}catch(_){}};
+  for(const m of ['set','update','remove','transaction','setWithPriority']){const o=R[m];if(typeof o!=='function')continue;R[m]=function(){if(window._deCopia()){aviso();return Promise.resolve();}return o.apply(this,arguments);};}
+  const op=R.push;if(typeof op==='function')R.push=function(v){if(window._deCopia()&&arguments.length&&v!==undefined){aviso();return op.call(this);}return op.apply(this,arguments);};
+}catch(_){}})();
 function _copiaCartelSacar(){try{const b=document.getElementById('cyc-copia-cartel');if(b)b.remove();}catch(_){}}
 
 /* ═══════════ STITLE SCROLL ═══════════ */
@@ -2887,8 +2901,11 @@ function startApp(){
     for(const k of Object.keys(CYC_LAZY))if(!(k in _cycD)&&(k in c.d))_cycD[k]=c.d[k];
     if(c.d.__claudeexp&&!window._cerReal&&window._cerAplicar)window._cerAplicar(c.d.__claudeexp);
     if(c.d.__oficycdesde&&!window._ofdReal)state.oficycdesde=c.d.__oficycdesde;
-    _copiaCartel(c.ts);_cycSched();};
-  setTimeout(_cycDeLaCopia,window._sinSesion?0:12000);
+    _copiaCartel(c.ts,!window._sinSesion);window._copiaTsVisto=c.ts;_cycSched();
+    setTimeout(()=>{if(_cycDeCopia.size)_copiaCartel(c.ts,false);},12000);};
+  // 03/11 (él: "que entre lo más rápido posible… que abra aunque no haya descargado toda la info nueva"): SIEMPRE se abre primero con la
+  // copia del teléfono (si hay) y lo de la base la va reemplazando a medida que llega.
+  setTimeout(_cycDeLaCopia,0);
   window._cycReoir=()=>{CYC_KEYS.forEach(k=>{try{db.ref('cyc/'+k).off();}catch(_){}_cycOir(k);});};
   // 03/11/2026: `cyc/oficycdesde` (📅 En stock de Rotación → Local) se lee APARTE y sin frenar la carga: la web espera a que llegue TODA
   // parte de CYC_KEYS, y si una no se puede leer el panel no termina de cargar nunca (le pasó con esta el 03/11).
@@ -3324,7 +3341,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.95';
+const APP_VERSION='28.96';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3337,6 +3354,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.96',f:'03/11',h:'17:40',c:[{n:3,t:'⚡ El panel abre al instante con lo guardado en el teléfono y lo nuevo se va cargando atrás (arriba dice "🔄 Actualizando…"). Mientras se actualiza no se guarda nada nuevo: si tocás algo, te avisa que esperes unos segundos.'}]},
   {v:'28.95',f:'03/11',h:'17:20',c:[{n:2,t:'📴 La copia del teléfono se guarda 15 segundos después de cada cambio y al salir de la app (antes, una vez por minuto), y ahora lleva también Pedidos → Paraguay, las notas 🧠 (los "Hola Tito!") y la edad del stock del Local.'}]},
   {v:'28.94',f:'03/11',h:'17:00',c:[{n:3,t:'📴 Entrar sin internet: el panel guarda una copia de los datos en cada teléfono. Si la base no contesta en 12 segundos (sin señal o la sesión trabada), abre con lo guardado y un cartel naranja dice de cuándo es; cuando vuelve la conexión se actualiza solo.'}]},
   {v:'28.93',f:'03/11',h:'16:45',c:[{n:1,t:'Se sacó el botón 🔑 Entrar de nuevo de la pantalla de carga: nunca te saca de la cuenta. Queda sólo 🔄 Reintentar.'}]},
