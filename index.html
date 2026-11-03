@@ -3268,7 +3268,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.88';
+const APP_VERSION='28.89';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3281,6 +3281,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.89',f:'03/11',h:'15:00',c:[{n:1,t:'🧮 La Mezcla (Métricas y Ventas de hoy) con los 7 colores de la app: 🔴 Bajo, 🟠 Justo, 🟢 Bien, 💠 Bueno, 🔵 Excelente, 🟣 Estrella y 💎 JOYA.'}]},
   {v:'28.88',f:'03/11',h:'14:30',c:[{n:1,t:'🧮 La mezcla de hoy (Ventas de hoy): se sacó la lista de abajo del 35% y debajo de la barra están los 4 colores con su parte de lo facturado.'}]},
   {v:'28.87',f:'03/11',h:'14:40',c:[{n:2,t:'📥 Mi oficina: nueva tarjeta "Para el robot". El chat de Chrome pega ahí sus comandos (en vez de GitHub) y en ~2 minutos ve el resultado.'},{n:1,t:'🧮 Ventas de hoy: la mezcla del día (rojo, naranja, verde, azul de lo facturado), cuánto deja cada $100 contra la meta y qué vendió abajo del 35%.'}]},
   {v:'28.86',f:'03/11',h:'13:50',c:[{n:2,t:'📈 Línea de tiempo: el 💰 y el 🔴 miden con el precio que vio el comprador (con tu descuento), y con una sola publicación activa miden sólo ésa (no mezclan colores ni cuentas pausadas).'},{n:1,t:'🔬 Ventas: la ✓ que se cerró sin abrir la ficha dice esfuerzo "normal" (antes decía máximo).'}]},
@@ -25153,7 +25154,10 @@ function metPorOrigen(keys){
 // El objetivo: que cada mes el tramo rojo baje y el de 50%+ suba, y llegar a $22 cada $100 (MEZCLA_META_100).
 // El % de cada venta es el MISMO del renglón de Ventas (pctGananciaVP con gestDivVP); la ganancia la misma de los KPIs
 // (neto − efectivoCostoVP). Canceladas y ventas sin costo afuera, y se cuentan. Misma cuenta que el probe `mezcla` del robot.
-const MEZCLA_TRAMOS=[{k:'r',t:'menos de 25%',max:25,col:'var(--red)'},{k:'a',t:'25 a 35%',max:35,col:'var(--amber)'},{k:'v',t:'35 a 50%',max:50,col:'var(--green)'},{k:'j',t:'50% o más',max:Infinity,col:'#60a5fa'}];
+// 03/11/2026 (él: "faltan colores. joya, excelente, bien, todos esos. ponelos completos en todos"): los 7 niveles de color de la app
+// (los de `_pctNivel`), con rojo = menos de 25% y naranja = 25 a 35% como siempre (la meta sigue: que no haya rojo ni naranja).
+const MEZCLA_TRAMOS=[{k:'r',t:'🔴 Bajo · menos de 25%',max:25,col:'var(--red)'},{k:'a',t:'🟠 Justo · 25 a 35%',max:35,col:'var(--lv-justo)'},{k:'v',t:'🟢 Bien · 35 a 45%',max:45,col:'var(--green)'},{k:'b',t:'💠 Bueno · 45 a 70%',max:70,col:'var(--lv-bueno)'},{k:'e',t:'🔵 Excelente · 70 a 130%',max:130,col:'var(--lv-exc)'},{k:'s',t:'🟣 Estrella · 130 a 200%',max:200,col:'var(--lv-estr)'},{k:'j',t:'💎 JOYA · 200% o más',max:Infinity,col:'var(--lv-joya)'}];
+const _mzTr0=()=>Object.fromEntries(MEZCLA_TRAMOS.map(t=>[t.k,{tot:0,gan:0}]));
 const MEZCLA_META_100=22;
 // 26/10/2026, él: "no quiero ver los últimos 6 meses solo, sino poder elegir cuántos meses/períodos/años": se elige cuántos (3, 6, 12, 24
 // o todos) y si cada renglón es una semana (lun a dom), un mes o un año. Se recuerda en el aparato.
@@ -25163,7 +25167,7 @@ function _mzClave(k,a){if(a==='anio')return k.substring(0,4);if(a==='semana'){co
 function metMezclaMeses(n,agr){
   const meses={};
   for(const k of Object.keys(state.ventaprod||{})){const ym=_mzClave(k,agr||'mes');
-    const m=meses[ym]||(meses[ym]={ym,tot:0,gan:0,sinCosto:0,tr:{r:{tot:0,gan:0},a:{tot:0,gan:0},v:{tot:0,gan:0},j:{tot:0,gan:0}}});
+    const m=meses[ym]||(meses[ym]={ym,tot:0,gan:0,sinCosto:0,tr:_mzTr0()});
     for(const v of Object.values(state.ventaprod[k]||{})){
       if(!v||v.cancelada)continue;
       const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);
@@ -25180,7 +25184,7 @@ function metMezclaMeses(n,agr){
 // (la estrategia de su publicación). Un día sin rojo ni naranja brilla.
 // 03/11/2026 (él: "sacar eso. y poner todos los colores en la barra"): sin la lista "Abajo del 35%"; abajo de la barra los 4 colores con su parte.
 function _mezclaDiaHTML(k){
-  const dia=(state.ventaprod||{})[k]||{};const tr={r:{tot:0,gan:0},a:{tot:0,gan:0},v:{tot:0,gan:0},j:{tot:0,gan:0}};let tot=0,gan=0;const bajas=[];
+  const dia=(state.ventaprod||{})[k]||{};const tr=_mzTr0();let tot=0,gan=0;const bajas=[];
   for(const v of Object.values(dia)){if(!v||v.cancelada)continue;const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);if(!(costo>0)||ventaSinCostoVP(vv))continue;
     const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;
     if(pct<35){let e='';try{const s0=v.mla?estrategiaDe(v.mla):null;e=s0&&ESTRATEGIA_UI[s0.t]?ESTRATEGIA_UI[s0.t][0]+' '+ESTRATEGIA_UI[s0.t][1]:'';}catch(_){}bajas.push(`${_esc(String(nombreDeVenta(v)||v.prod||'').slice(0,34))} ${Math.round(pct)}%${e?' · '+_esc(e):''}`);}}
@@ -25214,7 +25218,7 @@ function renderMetMezcla(){
   const sc=ms.reduce((a,m)=>a+m.sinCosto,0);
   el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px">
     ${sel}
-    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px;line-height:1.5">Qué parte de lo <b>facturado</b> vino de ventas de cada tramo de %. El tope de H no deja facturar más, así que lo que sube la ganancia es que el rojo baje y el celeste suba. A la derecha, la <b>ganancia cada $100 facturados</b> · meta <b>$${MEZCLA_META_100}</b>.</div>
+    <div style="font-size:.66rem;color:var(--muted);margin-bottom:6px;line-height:1.5">Qué parte de lo <b>facturado</b> vino de ventas de cada tramo de %. El tope de H no deja facturar más, así que lo que sube la ganancia es que el rojo y el naranja bajen y los de arriba (Excelente, Estrella, JOYA) suban. A la derecha, la <b>ganancia cada $100 facturados</b> · meta <b>$${MEZCLA_META_100}</b>.</div>
     ${ms.map(fila).join('')}
     <div style="font-size:.62rem;color:var(--muted);margin-top:6px">${ley}${sc?` · ${sc} venta(s) sin costo cargado quedan afuera`:''}</div></div>`;
 }
