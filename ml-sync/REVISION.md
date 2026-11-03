@@ -2333,6 +2333,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+- 03/11/2026 · Etapa 7 · **La mezcla de hoy en Ventas de hoy** (él: "sacar eso. y poner todos los colores en la barra"): sin la lista "Abajo del 35%"; debajo de la barra los 4 colores (menos de 25 · 25-35 · 35-50 · 50%+) con su parte de lo facturado, también los que dan 0% (v28.88). **Chequear:** en 360 px los 4 entran sin cortar.
 - 03/11/2026 · Etapa 7 · **Pedidos → Bs As: botón 📋 Dai Nippon al lado de 🏬 De siempre** (él: "así lo encuentra rápido mi viejo"); con más listas de Bs As las otras quedan en 📋 Listas de Tito (v28.85). **Chequear:** tocar Dai Nippon abre Dai Nippon aunque antes se haya mirado otra lista; tocar Listas de Tito no abre Dai Nippon; en 360 px los tres botones entran.
 
 - **Sin "Anotar un envío a mano" (02/11/2026, v28.76)** · qué es: el desplegable de la solapa En camino quedó oculto (él: *"sacar eso"*); lo que falta en un envío salido lo corrijo con `cajaitems` · qué chequear: que la solapa En camino se vea igual sin ese bloque.

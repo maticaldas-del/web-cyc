@@ -3268,7 +3268,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.87';
+const APP_VERSION='28.88';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3281,6 +3281,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.88',f:'03/11',h:'14:30',c:[{n:1,t:'🧮 La mezcla de hoy (Ventas de hoy): se sacó la lista de abajo del 35% y debajo de la barra están los 4 colores con su parte de lo facturado.'}]},
   {v:'28.87',f:'03/11',h:'14:40',c:[{n:2,t:'📥 Mi oficina: nueva tarjeta "Para el robot". El chat de Chrome pega ahí sus comandos (en vez de GitHub) y en ~2 minutos ve el resultado.'},{n:1,t:'🧮 Ventas de hoy: la mezcla del día (rojo, naranja, verde, azul de lo facturado), cuánto deja cada $100 contra la meta y qué vendió abajo del 35%.'}]},
   {v:'28.86',f:'03/11',h:'13:50',c:[{n:2,t:'📈 Línea de tiempo: el 💰 y el 🔴 miden con el precio que vio el comprador (con tu descuento), y con una sola publicación activa miden sólo ésa (no mezclan colores ni cuentas pausadas).'},{n:1,t:'🔬 Ventas: la ✓ que se cerró sin abrir la ficha dice esfuerzo "normal" (antes decía máximo).'}]},
   {v:'28.85',f:'03/11',h:'13:40',c:[{n:1,t:'Pedidos → Bs As: 📋 Dai Nippon tiene su botón al lado de 🏬 De siempre, para encontrarlo rápido. Las otras listas de Bs As quedan en 📋 Listas de Tito.'}]},
@@ -25177,6 +25178,7 @@ function metMezclaMeses(n,agr){
 // (`metMezclaMeses`, el % de cada venta como en su renglón) pero de UN día: qué parte de lo facturado fue roja (menos de 25%), naranja
 // (25-35%), verde (35-50%) y azul (50%+), y cuánto dejó cada $100 contra la meta. Las ventas abajo del 35% se nombran con lo que ya se hizo
 // (la estrategia de su publicación). Un día sin rojo ni naranja brilla.
+// 03/11/2026 (él: "sacar eso. y poner todos los colores en la barra"): sin la lista "Abajo del 35%"; abajo de la barra los 4 colores con su parte.
 function _mezclaDiaHTML(k){
   const dia=(state.ventaprod||{})[k]||{};const tr={r:{tot:0,gan:0},a:{tot:0,gan:0},v:{tot:0,gan:0},j:{tot:0,gan:0}};let tot=0,gan=0;const bajas=[];
   for(const v of Object.values(dia)){if(!v||v.cancelada)continue;const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);if(!(costo>0)||ventaSinCostoVP(vv))continue;
@@ -25188,7 +25190,7 @@ function _mezclaDiaHTML(k){
   return `<div style="margin-top:10px;font-size:.7rem${limpio?';text-shadow:0 0 8px color-mix(in srgb,var(--green) 60%,transparent)':''}" title="La mezcla de hoy: qué parte de lo facturado salió de ventas de menos de 25% (rojo), 25-35% (naranja), 35-50% (verde) y 50%+ (azul). La meta es que no haya rojo ni naranja.">
     <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span>🧮 <b>La mezcla de hoy</b>${limpio?' · ✨ sin rojo ni naranja':''}</span><span><b style="color:${c100>=MEZCLA_META_100?'var(--green)':'var(--amber)'}">$${c100.toFixed(0)}</b> cada $100 <span style="color:var(--muted)">(meta $${MEZCLA_META_100})</span></span></div>
     <div style="display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--border)">${barra}</div>
-    ${bajas.length?`<div style="color:var(--muted);margin-top:4px;line-height:1.5">Abajo del 35%: ${bajas.slice(0,6).join(' · ')}${bajas.length>6?` · y ${bajas.length-6} más`:''}</div>`:''}
+    <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;color:var(--muted)">${MEZCLA_TRAMOS.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span style="width:9px;height:9px;border-radius:2px;background:${t.col};display:inline-block"></span>${t.t} <b style="color:var(--text)">${Math.round(tr[t.k].tot/tot*100)}%</b></span>`).join('')}</div>
   </div>`;
 }
 function renderMetMezcla(){
