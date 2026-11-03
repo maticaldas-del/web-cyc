@@ -2595,7 +2595,13 @@ let firstDataLoad=true;
 // el teléfono (IndexedDB `cyc-copia`, sólo en ese aparato). Si a los 12 s la base todavía no mandó todo (sin internet, o la sesión trabada),
 // se dibuja el panel con la copia y un cartel ámbar dice de cuándo es; cuando llega lo de la base, se reemplaza solo y el cartel se va.
 // Nunca saca la sesión. Lo que se cargue mientras tanto Firebase lo guarda cuando vuelve la conexión (si la sesión está bien).
-let _copiaTs=0;const _cycDeCopia=new Set();
+let _copiaTs=0,_copiaT=null;const _cycDeCopia=new Set();
+// 03/11 (él: "lo que más usa es pedidos… que todo abra sin internet, actualizado hasta la última vez que tuvo internet"): se guarda 15 s
+// después del último cambio (no una vez por minuto) y al salir de la app; con lo de Pedidos que se baja aparte (Paraguay), las notas 🧠
+// (los "Hola Tito!") y la edad del stock del Local.
+function _copiaArmar(){const d=Object.assign({},window._cycDRef||{});if(window._cerRaw&&window._cerReal)d.__claudeexp=window._cerRaw;if(state&&state.oficycdesde&&window._ofdReal)d.__oficycdesde=state.oficycdesde;return d;}
+function _copiaProgramar(){clearTimeout(_copiaT);_copiaT=setTimeout(()=>{if(_cycDeCopia.size)return;_copiaTs=Date.now();_copiaGuardar(_copiaArmar());},15000);}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&window._cycDRef&&!_cycDeCopia.size&&!firstDataLoad){clearTimeout(_copiaT);_copiaGuardar(_copiaArmar());}});
 function _copiaAbrir(){return new Promise((ok,no)=>{try{const r=indexedDB.open('cyc-copia',1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('s');}catch(_){}};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);setTimeout(()=>no(new Error('tarda')),4000);}catch(e){no(e);}});}
 async function _copiaGuardar(d){try{const b=await _copiaAbrir();b.transaction('s','readwrite').objectStore('s').put({ts:Date.now(),d},'cyc');}catch(_){}}
 async function _copiaLeer(){try{const b=await _copiaAbrir();return await new Promise(ok=>{try{const g=b.transaction('s').objectStore('s').get('cyc');g.onsuccess=()=>ok(g.result||null);g.onerror=()=>ok(null);}catch(_){ok(null);}setTimeout(()=>ok(null),4000);});}catch(_){return null;}}
@@ -2638,14 +2644,14 @@ function startApp(){
   });
   // QUÉ NOTAS ESCRIBIÓ CLAUDE (08/10/2026, él: *"si no hay nada que no aparezca"*): el botón 🧠 sólo se dibuja donde
   // hay una nota mía para ESE lugar. Se escucha `mlapi/claudeexp` y al cambiar se vuelve a dibujar.
-  db.ref('mlapi/claudeexp').on('value',snap=>{
-    const v=snap.val()||{};_cerNotas=new Set(Object.keys(v).filter(k=>v[k]&&v[k].simple));
+  const _cerAplicar=v=>{v=v||{};window._cerRaw=v;_cerNotas=new Set(Object.keys(v).filter(k=>v[k]&&v[k].simple));
     // El TEXTO de las notas de unidades (ped__/caja__) queda en memoria para mostrarlo a la vista (etapa 6, idea 2).
     _cerTxt={};for(const k of _cerNotas)if(k.startsWith('ped__')||k.startsWith('caja__'))_cerTxt[k]={s:_sinSoloTxt(v[k].simple),ts:v[k].ts||0};
     // 7.26: la hora de cada nota, para "🧠 Última vuelta de Claude" de Inicio.
     _cerTs={};for(const k of _cerNotas)_cerTs[k]=Number(v[k].ts)||0;
     if(typeof renderPronto==='function')renderPronto();
-  },()=>{_cerNotas=null;});
+  };window._cerAplicar=_cerAplicar;
+  db.ref('mlapi/claudeexp').on('value',snap=>{window._cerReal=true;_cerAplicar(snap.val());},()=>{if(!window._cerRaw)_cerNotas=null;});
   // ⚡ LA WEB YA NO BAJA `cyc` ENTERO (26/10/2026, él: "tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc" y "que
   // se cargue sino al clickear en eso. quizás carga cosas que no son necesarias para ese momento. las ventas sí quiero que estén cargadas").
   // `pesobase` midió 13,6 MB, y CADA escritura del robot (cada 2 min, en ráfagas) volvía a armar el árbol entero en el aparato. Ahora:
@@ -2656,7 +2662,7 @@ function startApp(){
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
   const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
-  const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
+  const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
     const d=_cycD;
@@ -2841,7 +2847,7 @@ function startApp(){
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
     // Ya se juntó la ráfaga en `_cycSched`: se dibuja en el acto (antes esperaba otros 300 ms de `renderPronto`).
     renderPronto(true);
-    if(!_cycDeCopia.size&&Date.now()-_copiaTs>60000){_copiaTs=Date.now();_copiaGuardar(Object.assign({},_cycD));}   // 📴 la copia en el teléfono
+    if(!_cycDeCopia.size)_copiaProgramar();   // 📴 la copia en el teléfono (15 s después del último cambio)
   };
   // "¿Por qué no actualiza al instante?" (26/10/2026, él, después del cambio de arriba): la ráfaga se juntaba esperando 400 ms SIN
   // cambios y después `renderPronto` otros 300; mientras el robot escribía seguido (una publicación tras otra) la espera se corría
@@ -2876,12 +2882,17 @@ function startApp(){
   // 📴 a los 12 s (o enseguida si arrancó sin sesión), lo que falta sale de la copia del teléfono.
   const _cycDeLaCopia=async()=>{if(!_cycFalta.size)return;const c=await _copiaLeer();if(!c||!c.d||!_cycFalta.size)return;
     for(const k of [..._cycFalta]){_cycD[k]=(k in c.d)?c.d[k]:null;_cycDeCopia.add(k);_cycFalta.delete(k);}
+    // lo de Pedidos que se baja aparte (candidatos de Paraguay) también sale de la copia, sin esperar; si después entra a Pedidos con
+    // internet, lo de la base lo reemplaza.
+    for(const k of Object.keys(CYC_LAZY))if(!(k in _cycD)&&(k in c.d))_cycD[k]=c.d[k];
+    if(c.d.__claudeexp&&!window._cerReal&&window._cerAplicar)window._cerAplicar(c.d.__claudeexp);
+    if(c.d.__oficycdesde&&!window._ofdReal)state.oficycdesde=c.d.__oficycdesde;
     _copiaCartel(c.ts);_cycSched();};
   setTimeout(_cycDeLaCopia,window._sinSesion?0:12000);
   window._cycReoir=()=>{CYC_KEYS.forEach(k=>{try{db.ref('cyc/'+k).off();}catch(_){}_cycOir(k);});};
   // 03/11/2026: `cyc/oficycdesde` (📅 En stock de Rotación → Local) se lee APARTE y sin frenar la carga: la web espera a que llegue TODA
   // parte de CYC_KEYS, y si una no se puede leer el panel no termina de cargar nunca (le pasó con esta el 03/11).
-  try{db.ref('cyc/oficycdesde').on('value',sn=>{state.oficycdesde=sn.val()||{};},()=>{state.oficycdesde={};});}catch(_){state.oficycdesde={};}
+  try{db.ref('cyc/oficycdesde').on('value',sn=>{window._ofdReal=true;state.oficycdesde=sn.val()||{};},()=>{if(!state.oficycdesde)state.oficycdesde={};});}catch(_){state.oficycdesde={};}
   const _cycLazyOn=new Set();
   window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_cycOir(k);}};
 }
@@ -3313,7 +3324,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.94';
+const APP_VERSION='28.95';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3326,6 +3337,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.95',f:'03/11',h:'17:20',c:[{n:2,t:'📴 La copia del teléfono se guarda 15 segundos después de cada cambio y al salir de la app (antes, una vez por minuto), y ahora lleva también Pedidos → Paraguay, las notas 🧠 (los "Hola Tito!") y la edad del stock del Local.'}]},
   {v:'28.94',f:'03/11',h:'17:00',c:[{n:3,t:'📴 Entrar sin internet: el panel guarda una copia de los datos en cada teléfono. Si la base no contesta en 12 segundos (sin señal o la sesión trabada), abre con lo guardado y un cartel naranja dice de cuándo es; cuando vuelve la conexión se actualiza solo.'}]},
   {v:'28.93',f:'03/11',h:'16:45',c:[{n:1,t:'Se sacó el botón 🔑 Entrar de nuevo de la pantalla de carga: nunca te saca de la cuenta. Queda sólo 🔄 Reintentar.'}]},
   {v:'28.92',f:'03/11',h:'16:30',c:[{n:2,t:'🩺 Si el panel no termina de cargar: a los 25 segundos dice en qué paso quedó y aparecen 🔄 Reintentar y 🔑 Entrar de nuevo (borra sólo la sesión de ese teléfono, no los datos). Y si la sesión guardada del navegador se traba, ya no se queda en "Conectando..." para siempre.'}]},
