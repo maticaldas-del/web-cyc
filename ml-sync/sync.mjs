@@ -11916,6 +11916,23 @@ async function ofertaVista(svp, nombre, get) {
 // sólo cuando se carguen las ventas"). Sin el dato no se frena nada; con el dato cargado y menos de 100, afuera. Las ventas las mira el
 // chat de compras SÓLO de lo que pasó todos los otros filtros (`faltaventas`). Misma regla en index.html (`CAND_MIN_VENTAS`).
 const CAND_MIN_VENTAS = 100;
+// 🚫 LO QUE NO APARECIÓ EN LA VUELTA COMPLETA DE NISSEI = AGOTADO (03/11/2026, él: "lo que no aparece con stock o que el chat local no vio
+// es porque no tiene stock. porque el chat local corre todos los días completo al 100%"). Al cerrarse una vuelta completa (90%+), toda
+// ficha de Paraguay (Nissei) con código que no se vio desde que arrancó la vuelta queda marcada `cyc/py_sinstock/<id>` (auto:'vuelta'):
+// la misma marca de "Nissei no lo tiene" que usan escasez (⏳ sin reposición: se estira el stock), Pedidos y la web. Se cae sola en
+// cuanto el chat lo vuelve a ver con precio (pycat / pyprecio). Devuelve cuántas marcó.
+async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
+  const prods = (await db.get('cyc/products')) || {}; const sinSt = (await db.get('cyc/py_sinstock')) || {}; const nuevos = [];
+  const cat = (await db.get('mlapi/pycat')) || {}; const vistoCod = new Set(); for (const [k, e] of Object.entries(cat)) if (e && Number(e.ts) >= desde) { vistoCod.add(String(k)); vistoCod.add(String(pycatCodDe(k))); }
+  for (const p of Object.values(prods)) {
+    if (!p || !p.id || p.origen !== 'py' || !p.codPy || /elegancia/i.test(String(p.provPy || ''))) continue;
+    if ((Number(p.nisseiTs) || 0) >= desde || vistoCod.has(String(p.codPy)) || sinSt[p.id]) continue;
+    if (GO) await db.set('cyc/py_sinstock/' + p.id, { ts: ahora, auto: 'vuelta' }); nuevos.push(p.name);
+  }
+  if (nuevos.length) console.log(`🚫 ${nuevos.length} ficha(s) de Paraguay no aparecieron en la vuelta completa: quedan como "Nissei no lo tiene" (se cae sola al volver a verlas): ${nuevos.slice(0, 12).map((n) => String(n).slice(0, 35)).join(' · ')}${nuevos.length > 12 ? ' · …' : ''}`);
+  else console.log('🚫 ninguna ficha de Paraguay quedó sin ver en la vuelta completa');
+  return nuevos.length;
+}
 const PY_VIEJO_DIAS = 2; // 2 o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él). Antes: mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
 // La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
 function candVistoTsBot(c) { let t = Math.max(Number(c && c.visto) || 0, Number(c && c.ts) || 0); if (c && Number(c.renovTs) > 0 && Math.abs(t - Number(c.renovTs)) < 5000) t = Number(c.renovDe) || 0; return t; }
@@ -20876,6 +20893,7 @@ async function main() {
       const regV = { fin: ahoraV, desde: desdeV, vistos: vistosV, total: totalV, pct: pctV };
       await db.set('cyc/mlconfig/nisseiVuelta', regV);
       await db.set('mlapi/pycatvuelta', { cur: null });
+      try { await marcarAgotadosVuelta(db, desdeV, ahoraV); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); }
       const relV = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
       console.log(`  ${relV.fin === ahoraV && relV.vistos === vistosV ? '✓ anotada como VUELTA COMPLETA y releída' : '✗ NO QUEDÓ al releer'}`);
       return;
@@ -25663,7 +25681,7 @@ async function main() {
           const nis = Object.entries({ ...cat, ...upd }).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
           const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 ? FIN_TOT : nis.length;
           const pct = total > 0 ? Math.round(vistos / total * 1000) / 10 : 0;
-          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; }
+          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
           else msgV = `⚠️ vuelta INCOMPLETA: ${vistos} de ${total} productos (${pct}%), hace falta el 90%. NO cuenta.`;
         } else if (cur) msgV = `🔄 vuelta en curso desde la página 1. Se cierra con "fin=<productos que dice la web>" en la última página.`;
         await db.set('mlapi/pycatvuelta', { cur });
@@ -26209,6 +26227,14 @@ async function main() {
     // ni `codLista`) se ofrece en 🆕 Nuevos como si no la vendiéramos y no aparece en ✅ Probados. Sin pares: lista los renglones de la
     // lista cuyo catálogo medido (`mi`) es el de una publicación nuestra con ficha sin esa lista (las candidatas). Con pares y `go`:
     // le pone a la ficha `listaProv` y `codLista` (pasa a la solapa de esa lista y a ✅ Probados). Solo lee sin `go`.
+    // BILLING_PROBE=pyagotados[:go] (03/11/2026) → lo mismo que hace solo el cierre de una vuelta completa de Nissei, con la última vuelta
+    // guardada (`cyc/mlconfig/nisseiVuelta`): las fichas de Paraguay que no se vieron desde que arrancó quedan como "Nissei no lo tiene".
+    if (/^pyagotados(:go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE)); const v = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
+      if (!(Number(v.desde) > 0) || !(Number(v.pct) >= 90)) { console.log('❌ no hay una vuelta completa guardada'); return; }
+      console.log(`=== 🚫 AGOTADOS EN NISSEI · vuelta completa del ${new Date(Number(v.desde) - 3 * 36e5).toISOString().slice(0, 16).replace('T', ' ')} (${v.pct}%) ${GO ? '· GUARDO' : '(prueba)'} ===`);
+      await marcarAgotadosVuelta(db, Number(v.desde), Date.now(), GO); return;
+    }
     if (/^listaprov:/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).slice('listaprov:'.length); const APLICAR = /(^|;)go\s*$/.test(raw);
       const partes = raw.replace(/(^|;)go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
