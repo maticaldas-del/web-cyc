@@ -2624,7 +2624,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','oficycdesde','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2751,7 +2751,7 @@ function startApp(){
     state.promohist=d.promohist||{};
     state.claudedecide=d.claudedecide||{};
     state.ofientro=d.ofientro||{};   // 1b (16/10): cuándo entró mercadería a la oficina por última vez
-    state.oficyc=d.oficyc||{};state.oficycdesde=d.oficycdesde||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
+    state.oficyc=d.oficyc||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
     state.pedperf=d.pedperf||{};   // 29/10: 🛍️ lo que pidió la perfumería (se suma en Pedidos de Bs As)
     state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
     state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
@@ -2840,6 +2840,9 @@ function startApp(){
   };
   const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);_cycSched();},_cycErr);
   CYC_KEYS.forEach(_cycOir);
+  // 03/11/2026: `cyc/oficycdesde` (📅 En stock de Rotación → Local) se lee APARTE y sin frenar la carga: la web espera a que llegue TODA
+  // parte de CYC_KEYS, y si una no se puede leer el panel no termina de cargar nunca (le pasó con esta el 03/11).
+  try{db.ref('cyc/oficycdesde').on('value',sn=>{state.oficycdesde=sn.val()||{};},()=>{state.oficycdesde={};});}catch(_){state.oficycdesde={};}
   const _cycLazyOn=new Set();
   window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_cycOir(k);}};
 }
@@ -3263,7 +3266,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.80';
+const APP_VERSION='28.81';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3276,6 +3279,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.81',f:'03/11',h:'00:10',c:[{n:3,t:'🔧 El panel no terminaba de cargar: un dato nuevo de Rotación → Local (la fecha de entrada) frenaba la carga. Ahora se lee aparte y no frena nada.'}]},
   {v:'28.80',f:'02/11',h:'21:30',c:[{n:1,t:'🔄 Rotación → Local: columna 📅 En stock (hace cuántos días está cada producto en la Oficina Local; lo contado antes del 29/10 dice "desde antes").'}]},
   {v:'28.79',f:'02/11',h:'21:15',c:[{n:1,t:'🔄 Inicio: los botones 📦 ML y 🏪 Local de Rotación van uno al lado del otro (el de Local se cortaba).'}]},
   {v:'28.78',f:'02/11',h:'21:00',c:[{n:2,t:'🔄 Rotación: en Inicio la tarjeta tiene dos botones, 📦 ML y 🏪 Local. Local muestra lo que hay en la Oficina Local, cuánta plata tiene parado cada producto y cuánto salió en 60 días (a las perfumerías o por la Tienda); lo parado primero.'}]},
