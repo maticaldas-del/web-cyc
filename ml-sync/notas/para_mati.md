@@ -8,6 +8,13 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 03/11 (1a 2a 3a 4a 5 6a 7 8a 9 10b 11a 12 13a 14a 15a 16b 17b 18a 19a 20a 21a 22a 23b 24b 25b 26b) — APLICANDO
+- 1a cupo: mandar a medida que se libere lugar · 2a 3a 4a ideas de Navidad sí (escasez de Navidad antes · regalables nuevos primero el 9 y 16/11 · no liquidar del 15/11 al 24/12 lo que vende en Navidad)
+- 5 Paulvic a $21.990: **esperar hasta que pase Navidad** (los 15 días antes del stock antiguo siguen igual) · 6a Timer con descuento hasta el 16/11 · 7 Barbarella: **el que deje más plata por semana/mes** ($23.790: 3 en 11 d contra 1 en 12 d a $27.990) · 8a Kit Jade a $14.990 · 9 Indigo: **es uno solo, dejarlo** · 10b F9 vuelve al descuento de $8.590 · 11a mira títulos/fotos y no se compran más (salvo Switch) · 12 Tendedero: **que busque el mejor precio, donde venda bien y gane más**
+- 13a lanzamientos piden 3 ventas · 14a mira Mouse pad/Sacapelusas · 15a Brisa Marina sigue en el pedido
+- Revisión de Precios: 16b 17b 18a 19a 20a 21a 22a 23b 24b 25b 26b
+
+
 ### 🎄 Pedido de Navidad adelantado (03/11, tarea de la 14a del 25/10) — para el aviso de las 12:30
 - **Decidido y cargado en Pedidos → Bs As** (`juicios.txt`, la noche no lo pisa):
   - **P47:** azul 34 + blanco 24 = 58 (~$210.000). En 2025 pasó de 19 a 59, 80 y 103 por quincena; este año vende un tercio que entonces (6 por quincena), así que hasta fin de año van ~82 entre todos los colores (hay 24). Rojo y negro no se piden (no dejan 35% contra la competencia).
