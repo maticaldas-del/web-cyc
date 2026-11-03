@@ -2658,6 +2658,10 @@ window.addEventListener('unhandledrejection',ev=>{
   try{toast((_db?'⚠️ No se guardó: ':'⚠️ Algo falló: ')+m,'err',6000);}catch(_){}
 });
 function startApp(){
+  // ⚡ ABRE ANTES DE LA SESIÓN (03/11/2026, él: "sigue cargando antes de entrar. ¿no puede entrar instantáneo? y después cargar"): si hay
+  // copia en el teléfono, el panel arranca con ella sin esperar a que el navegador recupere la sesión; las lecturas de la base se enganchan
+  // recién cuando la sesión está (`_alEntrar` las guarda en una cola y `onAuthStateChanged` las corre).
+  const _alEntrar=f=>{if(window._escucharPend)(window._escucharCola=window._escucharCola||[]).push(f);else f();};
   db.ref('.info/connected').on('value',s=>{
     const ok=s.val()===true&&!_cycSinDatos; // Etapa 5: con la lectura cancelada el punto NO puede quedar verde
     ['home','inv','ped','met','res','cmp','vp','ofi','rot','fac'].forEach(id=>{
@@ -2676,7 +2680,7 @@ function startApp(){
     _cerTs={};for(const k of _cerNotas)_cerTs[k]=Number(v[k].ts)||0;
     if(typeof renderPronto==='function')renderPronto();
   };window._cerAplicar=_cerAplicar;
-  db.ref('mlapi/claudeexp').on('value',snap=>{window._cerReal=true;_cerAplicar(snap.val());},()=>{if(!window._cerRaw)_cerNotas=null;});
+  _alEntrar(()=>db.ref('mlapi/claudeexp').on('value',snap=>{window._cerReal=true;_cerAplicar(snap.val());},()=>{if(!window._cerRaw)_cerNotas=null;}));
   // ⚡ LA WEB YA NO BAJA `cyc` ENTERO (26/10/2026, él: "tarda mucho en cargar cyc y anda medio lento y trabado. mucho más en pc" y "que
   // se cargue sino al clickear en eso. quizás carga cosas que no son necesarias para ese momento. las ventas sí quiero que estén cargadas").
   // `pesobase` midió 13,6 MB, y CADA escritura del robot (cada 2 min, en ráfagas) volvía a armar el árbol entero en el aparato. Ahora:
@@ -2903,7 +2907,7 @@ function startApp(){
     const l=document.getElementById('loading');if(l)l.style.display='none';
   };
   const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(_cycDeCopia.delete(k)&&!_cycDeCopia.size)_copiaCartelSacar();_cycSched();},_cycErr);
-  CYC_KEYS.forEach(_cycOir);
+  _alEntrar(()=>CYC_KEYS.forEach(_cycOir));
   // 📴 a los 12 s (o enseguida si arrancó sin sesión), lo que falta sale de la copia del teléfono.
   const _cycDeLaCopia=async()=>{if(!_cycFalta.size)return;const c=await _copiaLeer();if(!c||!c.d||!_cycFalta.size)return;
     for(const k of [..._cycFalta]){_cycD[k]=(k in c.d)?c.d[k]:null;_cycDeCopia.add(k);_cycFalta.delete(k);}
@@ -2920,9 +2924,9 @@ function startApp(){
   window._cycReoir=()=>{CYC_KEYS.forEach(k=>{try{db.ref('cyc/'+k).off();}catch(_){}_cycOir(k);});};
   // 03/11/2026: `cyc/oficycdesde` (📅 En stock de Rotación → Local) se lee APARTE y sin frenar la carga: la web espera a que llegue TODA
   // parte de CYC_KEYS, y si una no se puede leer el panel no termina de cargar nunca (le pasó con esta el 03/11).
-  try{db.ref('cyc/oficycdesde').on('value',sn=>{window._ofdReal=true;state.oficycdesde=sn.val()||{};},()=>{if(!state.oficycdesde)state.oficycdesde={};});}catch(_){state.oficycdesde={};}
+  _alEntrar(()=>{try{db.ref('cyc/oficycdesde').on('value',sn=>{window._ofdReal=true;state.oficycdesde=sn.val()||{};},()=>{if(!state.oficycdesde)state.oficycdesde={};});}catch(_){state.oficycdesde={};}});
   const _cycLazyOn=new Set();
-  window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_cycOir(k);}};
+  window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_alEntrar(()=>_cycOir(k));}};
 }
 function doLogin(){
   const email=(document.getElementById('login-email').value||'').trim();
@@ -2965,6 +2969,8 @@ window.addEventListener('load',async()=>{
     // 03/11/2026 (él, dos veces: "mi viejo no puede entrar a cyc. yo sí"): en algunos teléfonos (iPhone sobre todo) el guardado de la
     // sesión del navegador se traba y este paso no termina nunca → "Conectando..." para siempre. Se espera 8 s como mucho y se sigue.
     window._ldPaso='sesión';
+    // ⚡ con copia en el teléfono, se abre YA (sin esperar la sesión); la base se engancha cuando llega la sesión.
+    _copiaLeer().then(c=>{try{if(c&&c.d&&!appStarted){const ls=document.getElementById('login-screen');if(ls&&ls.style.display==='flex')return;window._escucharPend=true;appStarted=true;startApp();}}catch(_){}});
     await Promise.race([firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{}),new Promise(r=>setTimeout(r,8000))]);
     window._ldPaso='entrar';
     // 📴 si a los 12 s la sesión no contestó (ni para pedir el mail), se arranca con la copia del teléfono.
@@ -2975,6 +2981,7 @@ window.addEventListener('load',async()=>{
       if(user){
         document.getElementById('login-screen').style.display='none';
         if(tt)tt.style.display='';if(fb)fb.style.display='';
+        if(window._escucharPend){window._escucharPend=false;const q=window._escucharCola||[];window._escucharCola=[];q.forEach(f=>{try{f();}catch(_){}});}
         if(!appStarted){appStarted=true;startApp();}
         else if(window._sinSesion){window._sinSesion=false;_cycSinDatos=false;try{const b=document.getElementById('cyc-sin-datos');if(b)b.remove();}catch(_){}if(window._cycReoir)window._cycReoir();}   // 📴 llegó la sesión después de arrancar con la copia: se vuelve a escuchar la base sin recargar
         else if(typeof _cycSinDatos!=='undefined'&&_cycSinDatos)location.reload();   // se cortó la lectura por la sesión: al volver a entrar, se recarga sola
@@ -3352,7 +3359,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.97';
+const APP_VERSION='28.98';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3365,6 +3372,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.98',f:'03/11',h:'18:10',c:[{n:3,t:'⚡ Abre al instante: con la copia del teléfono el panel aparece sin esperar a que el navegador recupere la sesión; lo nuevo entra atrás. (La primera vez después de esta versión tiene que cargar una vez con internet para guardar la copia.)'}]},
   {v:'28.97',f:'03/11',h:'17:55',c:[{n:2,t:'🧾 Tarjeta de venta: el total, la ganancia y el % quedan siempre en el mismo lugar, a la derecha y completos. Lo del medio (Premium, 1ª venta, analizada…) y la fecha se achican con "…" si no entra; en el teléfono los números van siempre en el segundo renglón.'}]},
   {v:'28.96',f:'03/11',h:'17:40',c:[{n:3,t:'⚡ El panel abre al instante con lo guardado en el teléfono y lo nuevo se va cargando atrás (arriba dice "🔄 Actualizando…"). Mientras se actualiza no se guarda nada nuevo: si tocás algo, te avisa que esperes unos segundos.'}]},
   {v:'28.95',f:'03/11',h:'17:20',c:[{n:2,t:'📴 La copia del teléfono se guarda 15 segundos después de cada cambio y al salir de la app (antes, una vez por minuto), y ahora lleva también Pedidos → Paraguay, las notas 🧠 (los "Hola Tito!") y la edad del stock del Local.'}]},
