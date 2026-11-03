@@ -8,6 +8,15 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### 🎄 Pedido de Navidad adelantado (03/11, tarea de la 14a del 25/10) — para el aviso de las 12:30
+- **Decidido y cargado en Pedidos → Bs As** (`juicios.txt`, la noche no lo pisa):
+  - **P47:** azul 34 + blanco 24 = 58 (~$210.000). En 2025 pasó de 19 a 59, 80 y 103 por quincena; este año vende un tercio que entonces (6 por quincena), así que hasta fin de año van ~82 entre todos los colores (hay 24). Rojo y negro no se piden (no dejan 35% contra la competencia).
+  - **Filtro agua:** 280 (~$275.000). En 2025 pasó de 18 a 43 y 88 por quincena; este año vende el doble que entonces pero a precio más alto: cuento un 30% menos de ese pico.
+  - **Sábanas 2½:** con los 60 días ya pide 27 y eso cubre el pico (hasta fin de año van ~78 y hay 54): no hizo falta agregar.
+- ⚠️ **El cupo de Full no alcanza para que entre antes del Black Friday (24/11):** P47 va sólo en Ayelen (0 de lugar para chicos) y el Filtro está en Matías (12 de lugar). (a) sugerida: que el chat de Chrome mire mañana si se liberó y, si no, mandar el Filtro a Luciana (16.255 de lugar) como publicación nueva · (b) esperar a que se libere.
+- ⚠️ **La completa de las 03:00 del 03/11 armó los pedidos con las reglas viejas** (30 días, Limón 59, sin el ritmo más bajo): los volví a cargar con las nuevas a las ~08:40 (736 de 736). Revisar que la de mañana use las reglas nuevas.
+
+
 ### ✅ Contestó el 02/11 a la noche (1b · cupo Luciana · 4a · 5a)
 - 1b: el Paulvic Infinite Fame de Adriana (MLA1682456369, finalizado por ML por la factura) queda cerrado · el cupo de Luciana de 16.265 / 16.255 es REAL (cargado el de la rutina de hoy, 16.255/91 a las 14:38, con los otros tres) · 4a: Timer a $6.390 sin descuento · 5a: Animale For Men, escalón a $113.990 como descuento desde el 06/11 (autorizado; recordatorio para ese día).
 - Navidad, idea 1 (él, 02/11): *"paraguay pedimos cuando llega, o sea una por semana aprox. por las dudas"* → sin fechas fijas: cada pedido sale cuando llega el anterior (~1 por semana) y desde ahora lleva el pico de Navidad de cada producto (lo que vendió en la Navidad pasada). Faltan 2, 3 y 4.
