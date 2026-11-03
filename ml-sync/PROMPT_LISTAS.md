@@ -13,7 +13,7 @@ Nuestro robot midió contra ML las listas de precios de nuestros proveedores (Da
 El robot no puede hacerlo: ML no le deja ver ventas de otros vendedores ni la página del producto.
 
 PASO 1 · TRAER LA LISTA
- · (03/11/2026) PRIMERO probá por el panel: Mi oficina → "📥 Para el robot" → pegá el mismo comando → "📥 Mandar al robot" y esperá el ✅ (ahí mismo ves lo que contestó). Si en 15 minutos no anda, por GitHub así:
+ · (03/11/2026) Para muchos renglones, GitHub (lo de abajo) es lo más rápido. Si GitHub no anda: Mi oficina → "📥 Para el robot" → pegá el mismo comando → "📥 Mandar al robot" (van uno atrás del otro cada ~2 minutos).
  - Abrí https://github.com/maticaldas-del/web-cyc/actions/workflows/ml-consulta.yml (tiene que estar iniciada la sesión de GitHub; si no está, frená y avisame).
  - "Run workflow" → rama: claude/add-folder-78ysyb → en "comando" escribí: listarevisar → botón verde "Run workflow".
  - Esperá ~1 minuto, abrí esa corrida → job "consulta" → paso "Comando". Copiá todos los renglones entre @@LISTA y @@FIN.

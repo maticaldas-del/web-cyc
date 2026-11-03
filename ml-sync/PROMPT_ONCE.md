@@ -28,7 +28,7 @@ PASO 2 · COPIAR LA LISTA DE CADA UNO (de a un mayorista)
      · FOTO: si la página muestra la foto del producto, agregá la dirección de la imagen (empieza con https://) después del código con otro @:  <producto>=<pesos>@<código>@https://…/foto.jpg  (sin código: <producto>=<pesos>@@https://…). Si la dirección tiene ";" no la pongas.
      · Si dice "precio mayorista" sin aclarar IVA, cargalo tal cual y anotalo en el resumen ("no aclara IVA").
  - Cargalo así, de a 100 productos por corrida como mucho:
-     · (03/11/2026) PRIMERO probá por el panel: Mi oficina → "📥 Para el robot" → pegá el mismo comando → "📥 Mandar al robot" y esperá el ✅ (ahí mismo ves lo que contestó). Si en 15 minutos no anda, por GitHub así:
+     · (03/11/2026) Para muchos renglones, GitHub (lo de abajo) es lo más rápido. Si GitHub no anda: Mi oficina → "📥 Para el robot" → pegá el mismo comando → "📥 Mandar al robot" (van uno atrás del otro cada ~2 minutos).
      · Abrí https://github.com/maticaldas-del/web-cyc/actions/workflows/ml-consulta.yml (sesión de GitHub iniciada; si no, frená y avisame).
      · "Run workflow" → rama: claude/add-folder-78ysyb → en "comando" escribí UNA línea:
          lista:<nombre del mayorista>|fecha=<AAAA-MM-DD de hoy>;<producto>=<pesos>@<código>;<producto>=<pesos>;…;go

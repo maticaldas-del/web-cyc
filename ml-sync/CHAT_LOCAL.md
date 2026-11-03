@@ -53,14 +53,16 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
 
-CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026, él: "el chat de Chrome carga por el panel, no por GitHub")
-- PRIMERO por el panel: Mi oficina → "📥 Para el robot". Pegá UN comando (el mismo texto que antes ponías en GitHub, por ejemplo
-  `pycat:#12@nuevo;…;go` o `pyprecio:…;go`) y tocá "📥 Mandar al robot". El robot lo corre solo en ~2 minutos y ahí mismo ves
-  ⏳ en cola → ⚙️ corriendo → ✅ hecho (o ❌ falló / 🚫 rechazado) y "ver lo que dijo" con lo que contestó. Esperá el ✅ antes de mandar el
-  siguiente de la misma tanda. Sirve para: pycat, pycatres, pyprecio, candprecio, listadato, lista, listamedir, listarevisar, faltaventas,
-  faltaprecio, svprecio, pyprobadoslista, cupo, pyvisto, revcand, buzon, ancla, cajasmirar.
-- Si en 15 minutos sigue ⏳ (el robot está trabado) o te dice 🚫, recién ahí usá GitHub como antes (workflow ml-consulta → Run workflow →
-  rama claude/add-folder-78ysyb → "comando"). Si GitHub tampoco anda, pasale los comandos a Matías.
+CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026; corregido el mismo día, él: "ya va por dos horas, ¿no será que va más lento que antes?")
+- TANDAS LARGAS (GUAY: un `pycat` por página, LISTAS, ONCE, IMEGA, muchos `pyprecio`): por GitHub, como antes, que es lo más rápido
+  (cada comando corre solo y en paralelo, ~1 minuto): workflow ml-consulta → Run workflow → rama claude/add-folder-78ysyb → "comando".
+  Podés mandar el siguiente sin esperar a que termine el anterior.
+- POCOS COMANDOS (1 a 5: `cajasmirar`, `cupo`, `listawoo`, un `listadato` suelto) o si GitHub no anda: por el panel, Mi oficina →
+  "📥 Para el robot". Ahí el robot los toma cada ~2 minutos y los corre uno atrás del otro: podés mandarlos todos seguidos, no hace falta
+  esperar el ✅ de cada uno (sólo esperá el ✅ si el siguiente depende del resultado). Sirve para: listawoo, pycat, pycatres, pyprecio,
+  candprecio, listadato, lista, listamedir, listarevisar, faltaventas, faltaprecio, svprecio, pyprobadoslista, cupo, pyvisto, revcand,
+  buzon, ancla, cajasmirar.
+- Si ninguno de los dos anda, pasale los comandos a Matías.
 - La RUTINA ya no hace falta cargarla: el cupo y Mercado Pago del mensaje "RUTINA" del buzón los carga el robot solo. Vos dejá el
   mensaje igual que siempre.
 

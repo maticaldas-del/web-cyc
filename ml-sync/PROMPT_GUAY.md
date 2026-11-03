@@ -52,7 +52,7 @@ para Nissei). Ej: pycat:#412;…;fin=13467;go. Así queda anotada la vuelta: cue
 desde la página 1. Si no la terminaste, no pongas "fin".
 
 == CÓMO SE CARGA (lo hacés vos, sin molestar a Matías) ==
-PRIMERO por el panel (03/11/2026): Mi oficina → "📥 Para el robot" → pegá el comando entero → "📥 Mandar al robot" y esperá el ✅ (unos 2 minutos) antes del siguiente. Si en 15 minutos sigue ⏳ o dice 🚫: en la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/add-folder-78ysyb → en "comando" pegá el comando entero → "Run workflow".
+Por GitHub, que es lo más rápido para una vuelta entera (03/11/2026, él: "ya va por dos horas, ¿no será que va más lento?"): en la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/add-folder-78ysyb → en "comando" pegá el comando entero → "Run workflow". Podés mandar la página siguiente sin esperar a que termine la anterior. Si GitHub no anda: Mi oficina → "📥 Para el robot" (ahí van uno atrás del otro cada ~2 minutos, más lento).
 Esperá que termine (1 minuto) y abrí el resultado: tiene que decir "✓ guardado" y "Quedó en la página N". Si dice "❌", corregí lo que diga y volvelo a correr.
 Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en el chat CYC.
 

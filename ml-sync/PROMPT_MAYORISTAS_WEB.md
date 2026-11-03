@@ -14,7 +14,7 @@ la ropa, los perfumes, la comida y lo grande, y lo mide contra MercadoLibre. A T
 sólo lo que deja 35% o más. Vos hacés lo que el robot no puede.
 
 PASO 1 · ACTUALIZAR LA LISTA (cada 7 días)
- - Panel → Mi oficina → "📥 Para el robot". Mandá de a uno y esperá el ✅ de cada uno:
+ - Panel → Mi oficina → "📥 Para el robot". Mandá los cuatro seguidos (corren uno atrás del otro):
      listawoo:AnD Mitre|url=https://ventasmitre.com.ar;go
      listawoo:AVL 112|url=https://avl112.com.ar;go
      listamedir:AnD Mitre:go

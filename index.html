@@ -3375,7 +3375,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.103';
+const APP_VERSION='28.104';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3388,6 +3388,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.104',f:'03/11',h:'20:20',c:[{n:1,t:'🧮 Inicio: "La mezcla" también en Mes y Año (la del período que elegís arriba), no sólo la del día.'}]},
   {v:'28.103',f:'03/11',h:'19:50',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB (los mayoristas AnD y AVL 112).'}]},
   {v:'28.102',f:'03/11',h:'19:40',c:[{n:2,t:'🪜 Pedidos: debajo del máximo de compra, la escalera "según lo que lo pagues": por cada precio al que se vendió, hasta cuánto pagar para que deje 35% y cuántas traer con lo que se vende a ESE precio. ⭐ = el precio al que lo pensamos vender. Lo de pocos días a un precio va en gris.'}]},
   {v:'28.101',f:'03/11',h:'19:20',c:[{n:1,t:'🩺 Cada teléfono anota en cuánto abrió y en cuánto terminó de actualizar (y qué faltaba), para que Claude lo vea sin pedir fotos.'}]},
@@ -25333,16 +25334,18 @@ function metMezclaMeses(n,agr){
 // (25-35%), verde (35-50%) y azul (50%+), y cuánto dejó cada $100 contra la meta. Las ventas abajo del 35% se nombran con lo que ya se hizo
 // (la estrategia de su publicación). Un día sin rojo ni naranja brilla.
 // 03/11/2026 (él: "sacar eso. y poner todos los colores en la barra"): sin la lista "Abajo del 35%"; abajo de la barra los 4 colores con su parte.
-function _mezclaDiaHTML(k){
-  const dia=(state.ventaprod||{})[k]||{};const tr=_mzTr0();let tot=0,gan=0;const bajas=[];
-  for(const v of Object.values(dia)){if(!v||v.cancelada)continue;const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);if(!(costo>0)||ventaSinCostoVP(vv))continue;
-    const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;
-    if(pct<35){let e='';try{const s0=v.mla?estrategiaDe(v.mla):null;e=s0&&ESTRATEGIA_UI[s0.t]?ESTRATEGIA_UI[s0.t][0]+' '+ESTRATEGIA_UI[s0.t][1]:'';}catch(_){}bajas.push(`${_esc(String(nombreDeVenta(v)||v.prod||'').slice(0,34))} ${Math.round(pct)}%${e?' · '+_esc(e):''}`);}}
+// 03/11/2026 (él: "en el inicio donde dice 'la mezcla de hoy' quiero lo mismo pero en el período seleccionado, mes, año"): la misma cuenta sobre
+// un día, un mes o un año (`_mezclaDiaHTML(clave, nombre)`: clave = 'AAAA_MM_DD' | 'AAAA_MM' | 'AAAA'; suma todos los días que empiezan así).
+function _mezclaDiaHTML(k,nom){
+  const _vp=state.ventaprod||{};const _ks=k.length===10?[k]:Object.keys(_vp).filter(x=>x.startsWith(k+'_'));
+  const tr=_mzTr0();let tot=0,gan=0;const bajas=[];
+  for(const _k of _ks)for(const v of Object.values(_vp[_k]||{})){if(!v||v.cancelada)continue;const vv={...v,_dateKey:_k};const costo=efectivoCostoVP(vv);if(!(costo>0)||ventaSinCostoVP(vv))continue;
+    const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;}
   if(!(tot>0))return '';
   const c100=gan/tot*100,limpio=tr.r.tot===0&&tr.a.tot===0;
   const barra=MEZCLA_TRAMOS.map(t=>tr[t.k].tot>0?`<span title="${t.t}: ${fmt(tr[t.k].tot)} facturado" style="display:inline-block;height:100%;width:${(tr[t.k].tot/tot*100).toFixed(1)}%;background:${t.col}"></span>`:'').join('');
   return `<div style="margin-top:10px;font-size:.7rem${limpio?';text-shadow:0 0 8px color-mix(in srgb,var(--green) 60%,transparent)':''}" title="La mezcla de hoy: qué parte de lo facturado salió de ventas de menos de 25% (rojo), 25-35% (naranja), 35-50% (verde) y 50%+ (azul). La meta es que no haya rojo ni naranja.">
-    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span>🧮 <b>La mezcla de hoy</b>${limpio?' · ✨ sin rojo ni naranja':''}</span><span><b style="color:${c100>=MEZCLA_META_100?'var(--green)':'var(--amber)'}">$${c100.toFixed(0)}</b> cada $100 <span style="color:var(--muted)">(meta $${MEZCLA_META_100})</span></span></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span>🧮 <b>La mezcla ${nom||'de hoy'}</b>${limpio?' · ✨ sin rojo ni naranja':''}</span><span><b style="color:${c100>=MEZCLA_META_100?'var(--green)':'var(--amber)'}">$${c100.toFixed(0)}</b> cada $100 <span style="color:var(--muted)">(meta $${MEZCLA_META_100})</span></span></div>
     <div style="display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--border)">${barra}</div>
     <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;color:var(--muted)">${MEZCLA_TRAMOS.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span style="width:9px;height:9px;border-radius:2px;background:${t.col};display:inline-block"></span>${t.t} <b style="color:var(--text)">${Math.round(tr[t.k].tot/tot*100)}%</b></span>`).join('')}</div>
   </div>`;
@@ -27418,7 +27421,7 @@ function renderHomeHoy(){
        mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
   <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px;${ocultaVendido()?'display:none':''}">
     ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
-    ${esc==='dia'&&h.ventas>0?_mezclaDiaHTML(dateToKey(hoy)):''}
+    ${h.ventas>0?(esc==='dia'?_mezclaDiaHTML(dateToKey(hoy),_homeHoyOff===0?'de hoy':'de ese día'):esc==='mes'?_mezclaDiaHTML(_hf.getFullYear()+'_'+String(_hf.getMonth()+1).padStart(2,'0'),_homeHoyOff===0?'de este mes':'de ese mes'):esc==='anio'?_mezclaDiaHTML(String(_hf.getFullYear()),_homeHoyOff===0?'de este año':'de ese año'):''):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
     <!-- 💸 cuánto cobrar: SACADO de acá (29/10/2026, él: "sacá el cuánto cobrar de abajo de las ventas, ya que va a estar en finanzas"). Vive en el Arqueo (renderCobroCrec). -->
