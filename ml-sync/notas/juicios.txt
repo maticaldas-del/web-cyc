@@ -36,3 +36,4 @@ p1791244143398#Pure Seduction=0|VS Intense Pure Seduction: no se puede comprar: 
 p1779912655540=0|Pret a Porter Body Splash: no se consigue desde el 19/10 y a su última venta deja ~25-30% (completa del 28/10). No se pide
 p17904445727134=0|Mouse Corsair Scimitar: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva
 p1791335435353=0|Cuba Prestige Classic: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva
+p1781284068222#Limon=57|Aer x6 Limón: el ritmo de ~47 por mes sale de sólo 14 días con stock en 60 (vendió 23 en 60 días y 36 en 180). Él eligió 1a el 03/11: para 60 días con un ritmo prudente de ~30 por mes, tener 57 (hoy 12 → pedir 45). Si vende rápido, se vuelve a pedir
