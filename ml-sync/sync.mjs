@@ -14551,8 +14551,8 @@ async function colaParaRobot(db, labels) {
       const lnC = txt.split('\n').find((l) => /^\s*cupo:/i.test(l));
       if (lnC) { const ok = [];
         for (const x of lnC.replace(/^\s*cupo:/i, '').split(/[·;]/).map((y) => y.trim()).filter(Boolean)) {
-          const mm = x.match(/^([A-Za-zÁÉÍÓÚáéíóú]+)\s*=\s*(\d+)(?:\s*\/\s*(\d+))?\s*(?:@\s*(\d{1,2}):(\d{2}))?$/);
-          const cta = mm && labels.find((l) => l.toLowerCase() === mm[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
+          const mm = x.match(/^([A-Za-zÁÉÍÓÚáéíóú]+)\s*[=:]?\s*(\d+)(?:\s*\/\s*(\d+))?\s*(?:@\s*(\d{1,2}):(\d{2}))?$/);
+          const cta = mm && labels.find((l) => l.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') === mm[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
           if (!mm || !cta) { raros.push(`cupo "${x}" (no lo entiendo o tiene "?")`); continue; }
           const peq = parseInt(mm[2], 10), gra = mm[3] != null ? parseInt(mm[3], 10) : Number((cfgC[cta] || {}).gra) || 0; const ant = Number((cfgC[cta] || {}).peq);
           if (ant > 0 && peq > ant * 3 && peq > 50) { raros.push(`cupo de ${cta}: ${peq} contra ${ant} de antes (más de 3 veces)`); continue; }

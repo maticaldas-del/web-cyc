@@ -55,7 +55,7 @@ rep('  var DET = {};', """  function abelPrecio(p) {
   }
   var DET = {};""")
 rep('</style>', """.pe-abel { display: block; color: #16a34a; font-weight: 800; font-size: 19px; line-height: 1.15; }
-.pe-abel small { white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; margin-left: 4px; }
+.pe-abel small { display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; margin-left: 4px; }  /* 03/11: inline-block baja entero al renglón de abajo si no entra (en 390 px se cortaba "EN EFECTIV") */
 .pt-abel { display: block; color: var(--ink2); font-weight: 500; font-size: 12.5px; margin-top: 2px; }
 #verPrecio .pe-abel { font-size: 26px; } #verPrecio .pt-abel { font-size: 14px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pe-abel { color: #4ade80; } }
