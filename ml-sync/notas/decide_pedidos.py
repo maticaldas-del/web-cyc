@@ -1,7 +1,7 @@
 import re,sys,math,os,json
 # Arma los pedidos de TODO el catálogo a partir del log de `pedidostodo` (09/10/2026; revisión 9 del 13/10/2026).
 # Uso: python3 decide_pedidos.py <log de pedidostodo> <salida> → escribe <salida>, <salida>.json y pedidos.txt
-# Objetivo 30 días: ritmo (por día CON stock: dCS) menos Full + oficina + camino + viajando. Sin ganancia o sin costo = 0.
+# Objetivo 30 días (Bs As 60 desde el 03/11, Paulvic 45): ritmo (por día CON stock: dCS) menos Full + oficina + camino + viajando. Sin ganancia o sin costo = 0.
 src=sys.argv[1]; out=sys.argv[2]
 T=30
 # El log de GitHub trae la hora adelante de cada renglón ("2026-10-13T11:52:03.1234567Z "): se saca, si no no se lee nada.
@@ -214,6 +214,10 @@ def ritmo(x,dcs=30):
 def Tde(p,x,r,m=None):
     # PAULVIC: pedido cada 15 días para 45 días de su ritmo (análisis a fondo, 16/10/2026, idea 3 · CEREBRO.md).
     if p['g']=='PAULVIC' and r>0: return 45,'el Paulvic se pide cada 15 días'
+    # 🏬 BS AS A 60 DÍAS (03/11/2026, él: "Paulvic hay siempre. Nissei también y Bs As la mitad de las veces" → eligió 60 días): como en Bs
+    # As la mitad de los viajes no hay, todo lo de Bs As se pide para 60 días (aguanta ~8 viajes seguidos sin conseguirlo). Paraguay sigue
+    # en 30 (siempre hay y se pide ~1 por semana) y Paulvic en 45 (cada 15 días). Lo que no deja 35% sigue en 0 (no se repone).
+    if p['g']=='BSAS' and r>0: return 60,'en Bs As la mitad de las veces no hay: se pide para 60 días'
     if p['g']!='BSAS' or r<0.5: return T,''
     # Mismo % que la app (revisión etapa 1, 24/10; revisión etapa 3, 29/10/2026: con el envío de Full en el divisor y el peor caso, `margen`).
     # `m` = el del color cuando se juzga color por color; sin `m`, el del producto.
