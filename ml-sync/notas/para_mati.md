@@ -305,3 +305,16 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 - Vuelta completa de Nissei hecha el 01/11 (12.132 de 12.135). Último mensaje RUTINA: el del 01/11; el de hoy todavía no llegó.
 - Cupos y saldos de MP del 01/11: cargados en Adriana, Ayelen y Matías. **El cupo de Luciana vino mal leído (16.265, imposible)** y quedó el de hace 14 días: que el chat lo vuelva a mirar. Ayelen tiene 0 de lugar y Matías 9: no entra nada de chicos en esas dos.
 - Los avisos de ML en Publicaciones ya son parte de la rutina (parte 3b).
+
+### Revisión de Precios del 03/11 (11 decisiones, para cuando digas "resolvamos")
+1. **🔥 escasez y ⏳ sin reposición suben +50% con UNA sola venta** (no esperan la confirmación del punto medio: el mismo patrón de las Cartas Casino). (a) sugerida: que esperen igual que 📈 (24 h y la mitad de lo esperado, o 3 ventas) · (b) que sigan subiendo con cada venta.
+2. **CyberMonday y las fechas especiales inflan la confirmación de las subas** (hoy es CyberMonday: una suba puede "confirmarse" por las ventas del evento). (a) sugerida: no contar esos días para confirmar ni para volver · (b) contarlos.
+3. **Los 10 días sin vender cuentan días con 0 visitas** (un 🆕 que nadie ve queda 🔴 a los 10 días aunque bajar no lo arregla). (a) sugerida: contar sólo días con visitas · (b) dejarlo así.
+4. **La prueba del mes (+20%) que vende pide otro +50%** sin mirar el 🔴 que ya conocemos. (a) sugerida: que se quede en ese precio, como dice la regla del mes · (b) +50%.
+5. **Lo que pediste "sin buscar techo" (la waflera, 🥊 mantener la caja):** las listas de subas igual lo proponen; hoy se salva por la marca 🧊. (a) sugerida: que 🥊 y lo 🔒 que pediste queden afuera de las subas automáticas · (b) seguir con nota + 🧊.
+6. **Gemelas abajo del 35%:** la Premium y la de envío bajan solas si la Clásica queda abajo de 33% aunque sea sin querer (subió el dólar o el costo). (a) sugerida: que acompañen sólo si la Clásica está abajo a propósito (sobra, liquidación, promo, `!piso`) · (b) dejarlo así.
+7. **"Lo pide él" en el motivo abre la regla de sobra** (cualquier texto que diga "él eligió" la saltea). (a) sugerida: que pase a ser una 🔐 tuya con "autorizo", como las otras salidas · (b) dejarlo así.
+8. **La liquidación de 30 días sin vender:** "un escalón por semana" hoy sólo se cumple abajo del 35%; arriba puede bajar cada 48 h. (a) sugerida: un escalón por semana siempre · (b) dejarlo así.
+9. **"Nunca abajo de 0%"** se mide con la ganancia normal, pero los 15 días antes del stock antiguo usan el peor caso. (a) sugerida: el peor caso en todos lados (más prudente) · (b) la ganancia normal.
+10. **`!bajopiso`** desde el 02/11 es tuya para bajar del 💰, pero la regla de escasez (F9) todavía me deja usarla. (a) sugerida: que también ahí sea tuya · (b) dejarlo así.
+11. **El control de ventas de cada hora** despierta la vuelta con cada venta de un 📈/🆕, aunque una sola venta ya no alcanza para subir. (a) sugerida: que toque sólo cuando la suba quedaría confirmada · (b) dejarlo así.

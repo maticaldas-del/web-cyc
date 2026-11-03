@@ -4832,6 +4832,8 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       const V = await vueltaDeSuba(db, d.mla, links, prods, camb, p0, ahora, a);
       // 🔥/⏳ suben a propósito para que el stock dure: ahí la vuelta sólo con 10 días sin vender (= 🔴 techo, regla del 02/11).
       if ((ult === 'escasez' || ult === 'sinrepo') && V && V.ok && !V.sinVenta10) { frenar(`!vuelve: está en ${ult === 'escasez' ? '🔥 escasez' : '⏳ sin reposición'}: ahí vender menos es a propósito; la vuelta sólo con ${TECHO_DIAS_SIN_VENTA} días sin vender (F11)`, { regla: 'punto medio' }); continue; }
+      // Revisión etapa 1, 03/11/2026: la vuelta no se saltea 🔒 no bajar (F10, abajo, nunca llegaba: `continue` antes): él la trabó en ese precio.
+      { const nbV = nobaj && nobaj[d.mla]; if (nbV && !(Number(nbV.ts) > ahora)) { frenar(`F10 🔒 pediste no bajarla${nbV.m ? ' (' + String(nbV.m).slice(0, 100) + ')' : ''}: la vuelta del punto medio también es una baja. HUBIERA HECHO: volverla de ${$(p0)} a ${$(a)}${V && V.txt ? ' (' + String(V.txt).slice(0, 160) + ')' : ''}. Con tu autorización va sin !vuelve y con !nobajar.`, { regla: 'F10' }); continue; } }
       if (V == null) { frenar('!vuelve: no pude leer su línea o sus ventas para ver si la suba salió mal: no bajo a ciegas', { sinDato: true }); continue; }
       if (!V.ok) { frenar('!vuelve: ' + V.txt, { regla: 'punto medio' }); continue; }
       if (Math.abs(a - V.target) > V.target * 0.02) { frenar(`!vuelve: ${V.txt}; pediste ${$(a)} y el precio al que se vuelve es ${$(V.target)}`, { regla: 'punto medio' }); continue; }
@@ -5060,12 +5062,14 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // Una baja por sobra pasa sólo si lo facturado por día esperado al precio nuevo (su ritmo medido a ±3% en 120 días) es 1,3 veces lo de
       // hoy (al bajar, la ganancia por unidad cae más que el precio), o si hoy no vendió nada en 30 días. Lo de los 15 días antes del stock
       // antiguo, la liquidación de 30 días y el 🧨 remate siguen como siempre.
-      if ((tagNuevo === 'sobra' || tagNuevo === 'desobra' || (!tagNuevo && ult === 'sobra')) && !antiguo15 && lin && !/lo pide él|lo pidió él|elegido por él|él eligió|eligió él/i.test(String(fz.motivo || ''))) {
+      // Revisión etapa 1, 03/11/2026: también cuando la exención que se usa es la de 📦 sobra aunque la etiqueta sea otra (#descuento, #bajando…:
+      // antes saltaban F7/F8/F14 por sobra sin pasar por el 1,3×), y no frena renovar el mismo descuento (46a: no es una baja; si no, vencía y SUBÍA).
+      if ((tagNuevo === 'sobra' || tagNuevo === 'desobra' || (!tagNuevo && ult === 'sobra') || exento === 'sobra') && !renueva0 && !antiguo15 && lin && !/lo pide él|lo pidió él|elegido por él|él eligió|eligió él/i.test(String(fz.motivo || ''))) {
         const k30s = kDia(ahora - 30 * 864e5); let dH = 0, uH = 0;
         for (const k of ks) { if (k < k30s) continue; const x = lin[k]; if (!diaConStock(x)) continue; const pp = [Number(x.p) || 0, Number(x.pLista) || 0]; if (!pp.some((n) => n > 0 && Math.abs(n - p0) <= p0 * 0.03)) continue; dH++; uH += Number(x.u) || 0; }
         if (uH > 0) {
           const Rn = ritmoAPrecioLin(lin, a, ahora - 120 * 864e5, ahora);
-          const facH = uH / dH * p0, facN = Rn && Rn.dias >= 3 ? Rn.r * a : null;
+          const facH = uH / dH * (p0v > 0 ? p0v : p0), facN = Rn && Rn.dias >= 3 ? Rn.r * a : null;
           if (facN == null) return { regla: 'sobra-plata', txt: `📦 sobra: a ${$(p0)} vende ${(uH / dH).toFixed(2)} por día y a ${$(a)} no hay ritmo medido (3+ días con stock en 120): sin saber si deja más plata, se queda; el stock antiguo lo resuelve cuando se acerque (él, 1a del 02/11)` };
           if (facN < facH * 1.3) return { regla: 'sobra-plata', txt: `📦 sobra: a ${$(a)} facturaría ~${$(facN)} por día contra ${$(facH)} hoy: no deja más plata, se queda; el stock antiguo lo resuelve cuando se acerque (él, 1a del 02/11)` };
         }
@@ -5478,6 +5482,9 @@ async function autDesdeChat(db, texto, go) {
 // descuento sale (`salirPromoMia`) y un precio que sólo terminaba mal sube al 90 de arriba. Manda UN aviso a su canal privado con
 // lo deshecho. Lo de antes del detector sólo se lista, con el comando para deshacerlo. Las subas no se deshacen solas (se miran).
 // Cada corrección nueva suya agrega acá su chequeo (CLAUDE.md, "🔐 UN AVISO ALCANZA").
+// Revisión etapa 1, 03/11/2026: las banderas que `decido` pide para una suba que proponen las listas (antes faltaban y la lista nunca
+// quedaba vacía): cruzar la barrera desde abajo de $33.000 va con !cruza; más del doble (venta por la gemela de envío) con !salto.
+const banderasSuba = (P, obj, ya = '') => { let b = ''; if (P > 0 && P < UMBRAL_ENVIO_GRATIS && obj >= UMBRAL_ENVIO_GRATIS && !ya.includes('!cruza')) b += '!cruza'; if (P > 0 && obj > P * 2 && !ya.includes('!salto')) b += '!salto'; return b; };
 const DET_REGLA_DESDE = { techo30: Date.parse('2026-10-21T03:31:00Z'), techo50: Date.parse('2026-10-28T01:30:00Z'), salto: Date.parse('2026-10-19T18:02:00Z'), estrategia: Date.parse('2026-10-19T19:08:00Z'),
   ultimaUnidad: Date.parse('2026-10-24T15:23:00Z') };   // revisión etapa 8, 28/10/2026: desde ahí "la última unidad" no es excepción (F2)
 // Revisión etapa 8, 28/10/2026: "la última unidad" como excusa de un !golpe (él, 24/10, con el Cuba Gold: "que baje cuando encuentre techo en
@@ -5540,10 +5547,12 @@ function ritmoAPrecioLin(lin, precio, t0, t1) {
   return dias ? { dias, u, r: u / dias } : null;
 }
 // Ventas del grupo (ésta, hermanas de stock y gemelas) entre t0 y t1 (ts de cada venta).
-async function ventasGrupoEntre(db, mla, links, prods, t0, t1) {
+// Revisión etapa 1, 03/11/2026: con `viejo` (el precio de antes de la suba) cuenta como `ventaCuentaDesde`: la gemela recién 3 h después del cambio
+// (antes de alinearse vende al precio viejo) y no una compra vieja pagada después de la suba. Antes 1 venta real + 3 viejas = "confirmada".
+async function ventasGrupoEntre(db, mla, links, prods, t0, t1, viejo = 0) {
   const grupo = [mla, ...hermanasStockDe(links, prods, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)]; let uds = 0;
   for (let t = t0 - 864e5, i = 0; i < 40 && t <= t1 + 864e5; t += 864e5, i++) { let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
-    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t0 && ts < t1) uds += Number(v.qty) || 1; } }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t0 && ts < t1 && (!(viejo > 0) || ventaCuentaDesde(v, mla, t0, ts, viejo))) uds += Number(v.qty) || 1; } }
   return uds;
 }
 const PUNTO_MEDIO_MIN_H = 24;     // él: "mínimo dejar 24 h" a un precio antes de juzgarlo
@@ -5555,11 +5564,18 @@ async function subaConfirmada(db, mla, links, prods, desde, viejo, ahora = Date.
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `lleva ${Math.round(horas)} h a este precio: se juzga con 24 h como mínimo (él, 02/11)` };
   let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; } catch { return null; }
   const J = await lineaJuntaStock(links, prods || {}, mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } });
-  const R = viejo > 0 ? ritmoAPrecioLin(J.d, viejo, desde - 60 * 864e5, desde) : null;
-  const uds = await ventasGrupoEntre(db, mla, links, prods, desde, ahora); if (uds == null) return null;
+  let R = viejo > 0 ? ritmoAPrecioLin(J.d, viejo, desde - 60 * 864e5, desde) : null;
+  // Revisión etapa 1, 03/11/2026: desde la 2ª suba el escalón anterior siempre tiene menos de 2 días en la línea y caía en "1 venta alcanza"
+  // ($4.290 → $6.390 → $9.590 con 1 venta → $14.390: las Cartas Casino otra vez). Se mide contra el último escalón MEDIBLE de la cadena de
+  // subas seguidas (como `vueltaDeSuba`).
+  if (!R || R.dias < 2 || !(R.r > 0)) { let cc = null; try { cc = (await db.get('cyc/claudecambios')) || {}; } catch { cc = null; }
+    if (cc) { const ch = Object.values(cc).filter((r) => r && String(r.mla) === String(mla) && r.por !== 'errores' && Number(r.ts) < desde - 60e3 && Number(r.ts) > desde - 60 * 864e5).sort((x, y) => Number(y.ts) - Number(x.ts));
+      for (const c of ch) { if (!(Number(c.a) > Number(c.de) * 1.02)) break; const R2 = ritmoAPrecioLin(J.d, Number(c.de), Number(c.ts) - 60 * 864e5, Number(c.ts)); if (R2 && R2.dias >= 2 && R2.r > 0) { R = R2; break; } } } }
+  const uds = await ventasGrupoEntre(db, mla, links, prods, desde, ahora, viejo); if (uds == null) return null;
   if (!R || R.dias < 2 || !(R.r > 0)) return uds >= 1 ? { ok: true, txt: `vendió ${uds} en ${Math.round(horas)} h (sin ritmo de antes medible)` } : { ok: false, txt: 'no vendió a este precio' };
   const esp = R.r * horas / 24;
-  if (uds >= PUNTO_MEDIO_ESPERADAS || (esp >= PUNTO_MEDIO_ESPERADAS && uds >= esp * 0.5)) return { ok: true, txt: `vendió ${uds} en ${Math.round(horas)} h; al ritmo de ${money(viejo)} (${R.r.toFixed(2)}/día) se esperaban ~${esp.toFixed(1)}` };
+  // Revisión etapa 1, 03/11/2026: "3 ventas" vale sólo si las esperadas no llegan a 3 (antes algo que vendía 16/día subía con 3 en 25 h y la 📉 lo mandaba de vuelta).
+  if ((esp < PUNTO_MEDIO_ESPERADAS && uds >= PUNTO_MEDIO_ESPERADAS) || (esp >= PUNTO_MEDIO_ESPERADAS && uds >= esp * 0.5)) return { ok: true, txt: `vendió ${uds} en ${Math.round(horas)} h; al ritmo de ${money(viejo)} (${R.r.toFixed(2)}/día) se esperaban ~${esp.toFixed(1)}` };
   return { ok: false, txt: `vendió ${uds} en ${Math.round(horas)} h y al ritmo de ${money(viejo)} (${R.r.toFixed(2)}/día) se esperaban ~${esp.toFixed(1)}: ${esp < PUNTO_MEDIO_ESPERADAS ? 'todavía no hay 3 esperadas para juzgar' : 'vende menos de la mitad'} · la próxima +50% espera a confirmar (él, 02/11)` };
 }
 // 1+2 · ¿LA SUBA SALIÓ MAL? → VOLVER AL ÚLTIMO PRECIO QUE VENDÍA BIEN (!vuelve). Salió mal = 24 h+ a este precio y vendió menos de la mitad de
@@ -5599,7 +5615,7 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   // ¿salió mal? desde que dejó ESE precio (toda la cadena de subas de arriba), contra lo esperado a su ritmo
   const t0 = ch[i].ts, horas = (ahora - t0) / 36e5;
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `dejó ${money(ch[i].de)} hace ${Math.round(horas)} h: se juzga con 24 h como mínimo (él, 02/11)` };
-  const uds = await ventasGrupoEntre(db, mla, links, prods, t0, ahora); if (uds == null) return null;
+  const uds = await ventasGrupoEntre(db, mla, links, prods, t0, ahora, ch[i].de); if (uds == null) return null;
   const Rt0 = rit(i), Rt = rMal != null ? { ...Rt0, r: rMal } : Rt0, esp = Rt.r * horas / 24;
   const mal = (esp >= PUNTO_MEDIO_ESPERADAS && uds < esp * 0.5) || (horas >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0);
   // 02/11/2026 (él: "¿estás seguro de que esos precios generan más ganancia que el precio que tenían?"; las Almohadillas Metatarso a $19.690
@@ -5607,7 +5623,7 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   // Lo facturado por día al precio de hoy contra lo esperado al de antes; como al bajar la ganancia por unidad cae más que el precio, se pide
   // que el de antes facture 1,5 veces lo de hoy (si no, se queda arriba).
   // lo facturado HOY = las ventas al precio de hoy (desde la última suba), no las de los escalones del medio (Cartas Casino: daba $98.000/día)
-  const uds0 = await ventasGrupoEntre(db, mla, links, prods, ch[0].ts, ahora); const h0 = Math.max(1, (ahora - ch[0].ts) / 36e5);
+  const uds0 = await ventasGrupoEntre(db, mla, links, prods, ch[0].ts, ahora, ch[0].de); const h0 = Math.max(1, (ahora - ch[0].ts) / 36e5);
   const facHoy = uds0 == null ? 0 : uds0 / (h0 / 24) * ch[0].a, facAntes = Rt.r * ch[i].de;
   // 02/11/2026 (él, después: "si vende más lo suficiente bajalo… o sino dejalo a este precio si venden bien y se le gana más y cuando
   // estemos por llegar a pagar stock, lo pagamos, retiramos o antes lo vendemos más barato"): el stock que dura 120+ días NO hace volver;
@@ -5908,6 +5924,10 @@ async function detectarErrores(db, o = {}) {
   const tope500 = (m, P) => { const r = Object.values(_cc500).filter((c) => c && String(c.mla) === String(m) && Number(c.a) > 0 && Math.abs(Number(c.a) - P) <= P * 0.02 && c.mgPA != null).sort((x, y) => Number(y.ts) - Number(x.ts))[0]; return !!(r && Number(r.mgPA) >= TOPE_GANANCIA_PCT); };
   const lanza = [], lzC = { nuevo: 0, inact: 0, sinVenta: 0, subio: 0, congelada: 0, convenir: 0, antiguo: 0 }; const rsC = new Map();
   let nbDet = {}; try { nbDet = (await db.get('cyc/nobajar')) || {}; } catch { nbDet = {}; }
+  // Revisión etapa 1, 03/11/2026: el precio que no rindió (🪜 o la vuelta del punto medio, `cyc/techofreno`, 30 días) no se vuelve a proponer
+  // en las listas de subas (antes la 🔎 pedía otra vez el precio del que se acababa de volver: ida y vuelta).
+  let tfDet = {}; try { tfDet = (await db.get('cyc/techofreno')) || {}; } catch { tfDet = {}; }
+  const noRindio = (m, obj) => { const t = tfDet[m]; return !!(t && Number(t.probado) > 0 && obj >= Number(t.probado) * 0.98 && ahora - (Number(t.ts) || 0) < 30 * 864e5); };
   let t95Det = {}; try { t95Det = (await db.get('cyc/techo95pct')) || {}; } catch { t95Det = {}; }
   { const vdC = new Map(); const ventasDia = async (k) => { if (!vdC.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } vdC.set(k, o); } return vdC.get(k); };
     for (const [m, h] of Object.entries(est)) {
@@ -5988,9 +6008,9 @@ async function detectarErrores(db, o = {}) {
     const esc = x.ult === 'escasez' || x.ult === 'sinrepo';
     // 30/10/2026: la suba sigue siendo +50% del PRECIO (él: "me gusta la subida que tenemos ahora… sólo dije lo del % por el tema de las premium y
     // clásicas": todas las formas de venta quedan con el mismo %, que ya lo hacen las gemelas). `decido` igual acepta `=%N` / `=%xK` si hace falta.
-    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}${x.cruzaE ? '!cruza' : ''}#${x.ult}|Vendió${x.cruzaE ? ' (por su gemela de envío gratis a ' + $(x.pEnv) + ')' : ''} a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
-      : x.cruzaE ? `   ▶️ decido:${x.mla}=${x.obj}!vendio!cruza#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% sobre ese precio y la Clásica cruza la barrera (él, 30/10, el detector);go`
-      : `   ▶️ decido:${x.mla}=${x.obj}!vendio#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
+    if (x.obj > x.P) console.log(esc ? `   ▶️ decido:${x.mla}=${x.obj}${banderasSuba(x.P, x.obj)}#${x.ult}|Vendió${x.cruzaE ? ' (por su gemela de envío gratis a ' + $(x.pEnv) + ')' : ''} a ${$(x.P)} en ${x.ult === 'escasez' ? 'escasez' : 'sin reposición'} sin techo medido: no es techo, +50% (1a del 28/10, el detector);go`
+      : x.cruzaE ? `   ▶️ decido:${x.mla}=${x.obj}!vendio!cruza${banderasSuba(x.P, x.obj, '!cruza')}#techo|Vendió por su gemela de envío gratis a ${$(x.pEnv)} buscando techo: no es techo, +50% sobre ese precio y la Clásica cruza la barrera (él, 30/10, el detector);go`
+      : `   ▶️ decido:${x.mla}=${x.obj}!vendio${banderasSuba(x.P, x.obj)}#techo|Vendió a ${$(x.P)} buscando techo: no es techo, +50% (reglas del 27/10, el detector);go`);
   });
   console.log(`(miré ${lzC.nuevo} en 📈/🆕: ${lzC.inact} no activas · ${lzC.sinVenta} sin venta a este precio · ${lzC.subio} ya subieron después de vender · ${lzC.congelada} 🧊 congeladas a pedido suyo · ${lzC.convenir} 🟠 ya no conviene subir (techo95 o el tope) · ${lzC.antiguo} cerca de pagar stock antiguo · ${lzC.lento || 0} 📈 que venden menos de 1 por semana (4a: quedan 💰) · ${lanza.length} para subir)`);
   // ── 🧪 VENDEN MENOS DE 1 POR SEMANA Y NUNCA PROBARON MÁS CARO (1a del 02/11/2026, él: "encontrar el precio que más ganancia da… lo más
@@ -6015,7 +6035,7 @@ async function detectarErrores(db, o = {}) {
     } }
   bloque('🔁 PRUEBA DEL MES · lo que ya tiene su precio (💰/🏔️) o vende menos de 1 por semana, sin suba en 30 días: probar más caro (con techo +20%, sin techo +50%; a los 10 días decide la plata por día, nunca abajo del 💰) EN ESTA VUELTA', lentos, (x) => {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult} · hoy ${$(x.P)} · vende ${x.rs.toFixed(1)} por semana (${x.dSt} días con stock de 60) · ${x.mensual ? 'con techo medido' : 'sin 🔴 techo'} · sin suba en ${PRUEBA_LENTO_DIAS} días`);
-    console.log(`   ▶️ decido:${x.mla}=${x.obj}${x.mensual ? '!mensual' : ''}#techo|QUÉ HICE de ${x.P} a ${x.obj}. POR QUÉ prueba del mes (él 02/11): ${x.mensual ? 'ya tenía su mejor precio, cada mes se prueba +20% más caro por si rinde más' : 'nunca probó más caro, +50% para encontrar el precio que más ganancia deja'}. SI A LOS 10 DÍAS deja menos plata por día vuelve de una a ${x.P};go`);
+    console.log(`   ▶️ decido:${x.mla}=${x.obj}${x.mensual ? '!mensual' : ''}${banderasSuba(x.P, x.obj)}#techo|QUÉ HICE de ${x.P} a ${x.obj}. POR QUÉ prueba del mes (él 02/11): ${x.mensual ? 'ya tenía su mejor precio, cada mes se prueba +20% más caro por si rinde más' : 'nunca probó más caro, +50% para encontrar el precio que más ganancia deja'}. SI A LOS 10 DÍAS deja menos plata por día vuelve de una a ${x.P};go`);
   });
   // ── 🔎 VENDIERON AYER U HOY Y NO ESTÁN BUSCANDO TECHO (27/10/2026, él: "que mire todos los productos de ayer y hoy… los que hay que
   // subir el precio para buscar el techo lo más rápido posible… el objetivo es que todas estén en buscando el mejor precio lo más rápido
@@ -6030,7 +6050,7 @@ async function detectarErrores(db, o = {}) {
     for (const [m, camb] of Object.entries(porM)) {
       const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || '')) || ML_REVISION_NO_MIRAR.has(m)) continue;
       const ult = camb.filter((c) => !c.rev).sort((x, y) => y.ts - x.ts)[0]; if (!ult || !(ult.a > ult.de * 1.02)) continue;
-      if (nbDet[m] && nbDet[m].congelado) continue;
+      if (nbDet[m]) continue;   // revisión etapa 1, 03/11/2026: 🔒 no bajar (y 🧊): la vuelta del punto medio también es una baja; antes sólo salteaba 🧊
       if (pcl && pcl[m] && Number(pcl[m].precio) > 0) continue;   // en un descuento o promo mía: se decide con su vencimiento
       { const h = est[m] || {}; let uT = ''; for (const k of Object.keys(h).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = h[k]; if (!x || !x.t) continue; uT = x.t === 'correccion' ? pasajeDe(uT) : x.t; }
         globalThis._esc = uT === 'escasez' || uT === 'sinrepo'; }
@@ -6045,7 +6065,8 @@ async function detectarErrores(db, o = {}) {
     console.log(`   ▶️ decido:${x.mla}=${x.V.target}!vuelve#volviendo|${x.V.txt.replace(/;/g, ',')};go`);
   });
   const vendio48 = [], v48C = { vendieron: 0, enPrueba: 0, conTecho: 0, explica: 0, inact: 0 };
-  { const NO_SUBE = new Set(['escasez', 'sinrepo', 'sobra', 'promo', 'descuento', 'liquidando', 'remate', 'desobra', 'gemela', 'bajando']);
+  // Revisión etapa 1, 03/11/2026: + 🥊 caja (él, 27/10: la waflera sin buscar techo), 🛡️ excepción, 🎁 fecha, ↘️ volviendo (7 días) y 🧪 prueba.
+  { const NO_SUBE = new Set(['escasez', 'sinrepo', 'sobra', 'promo', 'descuento', 'liquidando', 'remate', 'desobra', 'gemela', 'bajando', 'caja', 'excepcion', 'fecha', 'volviendo', 'prueba']);
     let ray = {}; try { ray = (await db.get('cyc/rayas')) || {}; } catch { ray = null; }
     let nos = {}; try { nos = (await db.get('cyc/nosubir')) || {}; } catch { nos = {}; }
     const clasicaDe = (x) => { let m = x; for (let i = 0; i < 3 && links[m] && links[m].gemelaDe; i++) m = links[m].gemelaDe; return m; };
@@ -6068,6 +6089,7 @@ async function detectarErrores(db, o = {}) {
       const t95 = Object.entries(h).some(([k, x]) => techookDeTecho95(x) && Number(k) > ahora - 60 * 864e5);
       if (rT == null) { vendio48.push({ mla: m, e, u, P, ult, no: '❓ no pude leer sus rayas' }); continue; }
       if (tope500(m, P)) { v48C.explica++; vendio48.push({ mla: m, e, u, P, ult, no: `ya deja ${TOPE_GANANCIA_PCT}%+ de ganancia (tope suyo, 02/11)` }); continue; }
+      if (noRindio(m, P * TECHO_SUBA)) { v48C.explica++; vendio48.push({ mla: m, e, u, P, ult, no: `a ${$(Number(tfDet[m].probado))} ya no rindió hace menos de 30 días: no se vuelve a probar` }); continue; }
       if (rT > 0 || t95) { v48C.conTecho++; vendio48.push({ mla: m, e, u, P, ult, no: `ya tiene techo medido (${rT > 0 ? '🔴/🟠 ' + $(rT) : '🏔️ techo95'}): se afina desde ahí` }); continue; }
       let obj = P > 0 ? Math.min(objTerm(P * TECHO_SUBA) || TECHO_DURO, TECHO_DURO) : 0;
       if (P > 0 && P < 32900 && obj >= UMBRAL_ENVIO_GRATIS) obj = 32990;
@@ -6079,7 +6101,7 @@ async function detectarErrores(db, o = {}) {
   const subir48 = vendio48.filter((x) => x.obj > x.P);
   bloque('🔎 VENDIERON AYER U HOY SIN TECHO MEDIDO Y NO ESTÁN BUSCANDO TECHO · subir +50% a buscar techo EN ESTA VUELTA', subir48, (x) => {
     console.log(`${x.mla} · ${x.e.cuenta || '?'} · ${String(x.e.title || '?').slice(0, 44)} · ${x.ult || 'sin estrategia'} · vendió ${x.u} u. en 48 h · hoy ${$(x.P)}`);
-    console.log(`   ▶️ decido:${x.mla}=${x.obj}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo (él, 27/10);go`);
+    console.log(`   ▶️ decido:${x.mla}=${x.obj}${banderasSuba(x.P, x.obj)}#techo|Vendió ayer/hoy y no tiene techo medido: a buscar techo (él, 27/10);go`);
   });
   { const resto = vendio48.filter((x) => !(x.obj > x.P)); if (resto.length) { console.log('   (no suben:)'); for (const x of resto) console.log(`   · ${x.mla} · ${String(x.e.title || '?').slice(0, 40)} · ${x.ult || 'sin estrategia'} · ${x.P ? $(x.P) : '¿?'} · ${x.no}`); } }
   console.log(`(vendieron en 48 h: ${v48C.vendieron} Clásicas · ${v48C.inact} no activas · ${v48C.enPrueba} ya en 📈/🆕 (lista de arriba) · ${v48C.conTecho} con techo medido · ${v48C.explica} con una estrategia que explica no subir · ${subir48.length} para subir)`);
@@ -20761,6 +20783,10 @@ async function main() {
         const lin = await lineaDe(m); if (lin == null) { no('no pude leer su línea'); continue; }
         const R = precioMasCaroVendido(lin, h, hoyK);
         if (!R || !(Pv < R.p * 0.98)) { no(R ? 'ya está en (o arriba de) lo más caro que vendió' : 'sin ventas medibles en 60 días'); continue; }
+        // Revisión etapa 1, 03/11/2026: si ese precio ya no rindió en los últimos 30 días (🪜 o la vuelta del punto medio, `cyc/techofreno`), no se
+        // vuelve a pedir (antes, A → B → vuelta a A, y 🔙 pedía B otra vez).
+        { let tfV = null; try { tfV = await db.get('cyc/techofreno/' + m); } catch { tfV = null; }
+          if (tfV && Number(tfV.probado) > 0 && R.p >= Number(tfV.probado) * 0.98 && Date.now() - (Number(tfV.ts) || 0) < 30 * 864e5) { no(`a ${money(Number(tfV.probado))} ya no rindió hace menos de 30 días`); continue; } }
         // Sin techo medido no es "bajó de más después del techo": se muestra aparte (lo que vende 1+ por semana va a 📈 con +50%).
         if (!conTecho) { no('sin techo medido (abajo de lo más caro que vendió: lista aparte)'); sinT.push({ m, e, ult, Pv, R }); continue; }
         // sobra y stock antiguo: con la línea junta (las del mismo stock), el stock de hoy contra el ritmo con stock de 60 días
@@ -50743,6 +50769,19 @@ async function main() {
                 if (!SC.ok) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO punto medio: ${SC.txt}`; continue; } }
               umbS = Number(t9 && t9.umb) || 0.95;
             }
+            // Revisión etapa 1, 03/11/2026: el punto medio (4) también para una suba 📈/🆕 SIN !vendio cuando el último cambio mío fue una suba: antes
+            // sólo `!vendio#techo` pasaba por `subaConfirmada` y un `#techo` suelto podía subir otro +50% horas después (el error de las Cartas Casino).
+            else if (tg === 'techo' || tg === 'nuevo') {
+              if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } }
+              if (globalThis._ccCache4a === null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO punto medio: no pude leer mis cambios de precio (cyc/claudecambios) para ver si la suba anterior se confirmó. Se vuelve a mirar en la próxima vuelta.'; continue; }
+              const uC = Object.values(globalThis._ccCache4a).filter((r) => r && String(r.mla) === String(d.mla) && Number(r.ts) > Date.now() - 30 * 864e5 && r.por !== 'errores').sort((x, y) => Number(y.ts) - Number(x.ts))[0];
+              if (uC && Number(uC.a) > Number(uC.de) * 1.02) {
+                if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
+                if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
+                const SC = await subaConfirmada(db, d.mla, linksD, globalThis._ritmoCacheD.prods, Number(uC.ts), Number(uC.de));
+                if (SC == null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO punto medio: no pude leer su línea o sus ventas para ver si la suba anterior se confirmó.'; continue; }
+                if (!SC.ok) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO punto medio (la suba anterior a ${money(Number(uC.a))} todavía no se confirmó): ${SC.txt}`; continue; } }
+            }
             if (t9 && Number(t9.seg) >= umbS && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
               d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 50%: ya hay ${Math.round(Number(t9.seg) * 100)}% de certeza de que ${money(Number(t9.p))} es el techo (techo95 del ${new Date(Number(t9.ts)).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): ${umbS > 0.5 ? `vendió a este precio, pero ya deja de convenir (🟠, pide ${Math.round(umbS * 100)}%): termina la búsqueda acá.` : 'para subir hace falta que sea más probable ganar que perder (menos de 50%). Se espera a que la prueba termine.'}`;
             }
@@ -50812,7 +50851,8 @@ async function main() {
         // 🪜 LA PRIMERA BAJA DE UNA ESCALERA ANOTA EL PRECIO QUE NO RINDIÓ (21/10/2026, él con el Centímetro Blanco: "está bajando sin
         // techo"). Sin `cyc/techofreno` la línea de tiempo no dibuja la raya 🚧 y parece que baja a ciegas. Si ya hay uno de los últimos
         // 30 días con un precio igual o más alto, no se pisa (los escalones siguientes bajan desde el mismo techo probado).
-        if (tg === 'bajando' && Number(h.a) < Number(h.de)) { try { const tf = await db.get('cyc/techofreno/' + h.f.mla); if (!(tf && Number(tf.probado) >= Number(h.de) && Date.now() - (Number(tf.ts) || 0) < 30 * 864e5)) { await db.set('cyc/techofreno/' + h.f.mla, { ts: Date.now(), probado: Math.round(Number(h.de)), volvio: Math.round(Number(h.a)), motivo: String(fz.motivo || 'escalera').slice(0, 300), cat: false, auto: true, fotoTs: Date.now() }); const rr = await db.get('cyc/techofreno/' + h.f.mla); console.log(`   ${rr && rr.probado === Math.round(Number(h.de)) ? '🚧 anotado' : '⚠️ no quedó anotado'} el precio que no rindió (${money(Number(h.de))}) · ${h.f.mla}`); } } catch { console.log(`   ⚠️ ${h.f.mla}: no pude anotar el precio que no rindió en techofreno`); } } }
+        // Revisión etapa 1, 03/11/2026: también la vuelta del punto medio (`!vuelve`/#volviendo): el precio que no rindió queda anotado 30 días.
+        if ((tg === 'bajando' || tg === 'volviendo' || fz.vuelve) && Number(h.a) < Number(h.de)) { try { const tf = await db.get('cyc/techofreno/' + h.f.mla); if (!(tf && Number(tf.probado) >= Number(h.de) && Date.now() - (Number(tf.ts) || 0) < 30 * 864e5)) { await db.set('cyc/techofreno/' + h.f.mla, { ts: Date.now(), probado: Math.round(Number(h.de)), volvio: Math.round(Number(h.a)), motivo: String(fz.motivo || 'escalera').slice(0, 300), cat: false, auto: true, fotoTs: Date.now() }); const rr = await db.get('cyc/techofreno/' + h.f.mla); console.log(`   ${rr && rr.probado === Math.round(Number(h.de)) ? '🚧 anotado' : '⚠️ no quedó anotado'} el precio que no rindió (${money(Number(h.de))}) · ${h.f.mla}`); } } catch { console.log(`   ⚠️ ${h.f.mla}: no pude anotar el precio que no rindió en techofreno`); } } }
       for (const h of ac.hechos) { const fz = forzar[h.f.mla] || {}; await escribirNota(h.f.mla, `${Number(h.a) > Number(h.de) ? 'Lo subí' : 'Lo bajé'} de ${money(h.de)} a ${money(h.a)}. ${fz.motivo || ''}`.trim(), { tipo: 'precio', de: h.de, a: h.a }); }
       // EXCEPCIONES A PROPÓSITO (12/10/2026): un precio que dejé abajo del 25% con `!piso` (remate, liquidar, sobrestock)
       // queda anotado con el precio exacto, para que el chequeo del peor caso de `planilla` no lo marque. Si después

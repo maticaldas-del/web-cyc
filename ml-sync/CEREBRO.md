@@ -277,7 +277,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   1º 📈 techo: +50% con cada venta hasta que no vende (🔴). 2º 🪜 escalera desde el 🔴 (≤15%, uno cada 48 h, como descuento) y **en el
   primer escalón que vende se queda** (🔒 F14: lo que vendió a su precio en los últimos 30 días no se baja; `techo95` le anota 🏔️). 3º
   ahí se queda salvo que **sobre** (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
-  90+ días), se acerque el **stock antiguo** (los 15 días de ganar la caja), pase **30 días sin vender** (vuelve a ser 🔴) o **venda muchísimo menos** (1a del 28/10: menos de la MITAD de la plata por día que el 💰, 95% y 7+ días con stock → un escalón hacia el 💰). No se baja
+  90+ días), se acerque el **stock antiguo** (los 15 días de ganar la caja), pase **10 días sin vender** (vuelve a ser 🔴; 02/11, antes 30) o **venda muchísimo menos** (1a del 28/10: menos de la MITAD de la plata por día que el 💰, 95% y 7+ días con stock → un escalón hacia el 💰). No se baja
   para buscar más plata por día. La web lo muestra 💰 "el más alto que vende" (el 🪜 de después del techo, "· Nº escalón").
   **Lo que bajó de más antes de esta regla vuelve al precio más caro que vendió** (60 días, sin escasez ni fechas especiales): lista
   🔙 `vendiocaro` en la completa, con el `decido:…!vendiocaro#punto` listo (decido verifica la venta en la línea de tiempo).
@@ -371,11 +371,11 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Las rayas** (una sola cuenta en la web y el robot, `_rayas` = `rayasPrecioLinea`; días con 3+ u. en Full y con visitas):
   💰 **más plata** (antes "piso") = el precio que más plata por día dejó de los que se probaron (5+ días con ventas; desde la primera
   venta hay uno provisorio, punteado). 🔒 No se baja de ahí salvo sobra de verdad, ⏳ a 20 días del stock antiguo o stock antiguo,
-  **o si nunca se midió un precio más bajo** (1a del 24/10). 🔴 **techo: no vende** = arriba del 💰, no vende (30 días sin vender ahí
+  **o si nunca se midió un precio más bajo** (1a del 24/10). 🔴 **techo: no vende** = arriba del 💰, no vende (10 días sin vender ahí, 02/11, antes 30,
   o más caro, o 0 vendidas con la certeza del día) · 🟠 **deja de convenir** = vende, pero deja menos plata por día que el 💰 con esa
   certeza (27/10); el robot toma como techo el más bajo de los dos. **La certeza baja con los días** (24/10, él: *"no tener 1 mes
   buscando techo"*): 95% hasta el día 30 con stock a ese precio y después baja hasta 70% el día 44 (`umbralTecho`; 28/10, él: *"alargar de 7 días a 30 y después sí bajar a 70%"*). La raya 🚧 de una prueba vuelta dice "N% seguro" o "sin certeza". **Las rayas se miden con los últimos 60 días y sin los días de fechas especiales** (24/10, él con el Infusor cajita: el 🔴 $5.290 salía contra un 💰 de 8 días de fines de julio que vendieron el triple; lo pasó y vende a $6.890). Subir arriba del 🔴 → decir por qué no le creo.
-- **🏔️ techo encontrado:** 🔒 sólo con `techo95`, con la certeza del día (95% hasta el día 30, 70% el día 44, o 30 días sin vender ahí); si no llega, vuelve a 📈. Corre en cada completa sobre las 🏔️ y las 🆕, y con `techo95:buscando` sobre todas las 📈 (25/10).
+- **🏔️ techo encontrado:** 🔒 sólo con `techo95`, con la certeza del día (95% hasta el día 30, 70% el día 44, o 10 días sin vender ahí — 02/11, antes 30); si no llega, vuelve a 📈. Corre en cada completa sobre las 🏔️ y las 🆕, y con `techo95:buscando` sobre todas las 📈 (25/10).
 - **📏 Todo producto tiene su techo marcado** (21/10/2026, regla suya): 🏔️, raya 🔴 o raya 🚧. Las únicas excepciones: 📦 sobra,
   🪜 bajando por un motivo puntual (y ese motivo es el precio probado que no rindió, anotado en `techofreno`) o 📈 todavía buscándolo
   (🔥 escasez y 🆕 lanzamiento también buscan su precio; 💳 la gemela sigue el techo de su Clásica). 🔒 La primera baja 🪜 de `decido` anota sola el precio que no rindió en `techofreno`.
@@ -463,7 +463,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   Lo nuevo que nunca estuvo en Full se pone a precio ANTES de activarse.
 - **Si vende** → 📈 buscar techo desde ahí.
 - 🔒 **No se baja** (ni descuento, ni promo, ni lista, ni para ganar la caja) **hasta que `techo95` lo diga** (visitas × conversión
-  típica a ese precio con 0 ventas: 95% hasta el día 30 con stock, 70% el día 44, o 30 días sin vender) y anote 🏔️. Ahí escalones de ~5-8% como descuento propio con el arranque tachado
+  típica a ese precio con 0 ventas: 95% hasta el día 30 con stock, 70% el día 44, o 10 días sin vender — 02/11) y anote 🏔️. Ahí escalones de ~5-8% como descuento propio con el arranque tachado
   (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|lanzamiento …`), cada uno con 95% o 7 días sin venta con visitas. Nunca abajo
   del 35% peor caso: ahí pasa a 📦. Reloj de fondo: 4 meses; a ~60 días sin venta entra la 📦.
 - Si casi no lo ven (<1 visita/día), bajar no lo arregla: título, fotos, caja.

@@ -3267,7 +3267,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.82';
+const APP_VERSION='28.83';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3280,6 +3280,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.83',f:'03/11',h:'06:30',c:[{n:1,t:'La raya 🔴 de la línea de tiempo dice "10+ días: techo por regla" (regla del 02/11; antes decía 30).'}]},
   {v:'28.82',f:'03/11',h:'02:30',c:[{n:2,t:'📳 Ventas: la tarjeta que tiembla ya no se corta contra el borde de la lista (tiene aire alrededor y tiembla sin girar).'}]},
   {v:'28.81',f:'03/11',h:'00:10',c:[{n:3,t:'🔧 El panel no terminaba de cargar: un dato nuevo de Rotación → Local (la fecha de entrada) frenaba la carga. Ahora se lee aparte y no frena nada.'}]},
   {v:'28.80',f:'02/11',h:'21:30',c:[{n:1,t:'🔄 Rotación → Local: columna 📅 En stock (hace cuántos días está cada producto en la Oficina Local; lo contado antes del 29/10 dice "desde antes").'}]},
@@ -5492,6 +5493,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:1,t:'03/11 · 11 decisiones de Precios',que:'escasez con una venta · fechas especiales · días sin visitas · prueba del mes · lo que pediste sin techo · gemelas abajo del 35% · "lo pide él" · liquidación semanal · 0% en el peor caso · !bajopiso · el timbre',pedi:'resolvamos'},
   {etapa:6,t:'02/11 · 19 ideas nuevas para elegir',que:'Navidad en 4 tandas · escasez de Navidad · regalables nuevos · no liquidar lo de Navidad · Tienda de regalos · ABEL en Navidad · edad real del stock · más vendidos · experiencia de compra · barrera de $33.000 · ficha en las preguntas · pedido de la Tienda · rutina sola · caja con lo de ML · carga por el panel · respuestas guardadas · mezcla de hoy · Te espera a vos · Tito de corrido',pedi:'resolvamos'},
   {etapa:5,t:'01/11 · 16 decisiones de Datos y cerebro',que:'las rayas no ven los descuentos · 🔴 sin 💰 · liquidación antes de 90 días · gemelas al mismo % · cajas después de una suba · gemelas y descuentos · cupón de ML · ritmo normal y liquidaciones · 💰 lento · juicios y descuentos · ventas por la gemela · historia sin límite · día de la suba · rayas con una sola activa · línea de anteayer · plata por día de hoy',pedi:'resolvamos'},
   {etapa:7,t:'31/10 · 13 decisiones de Diseño',que:'lo que se corta o se corre · el 🧠 igual que la línea · Ventas de hoy fija · dólar y Tienda · tarjetas de Inicio · ventas nuevas · pedido en dos pisos · Armar caja en grilla · Cerrar la caja que se llena · perfumería y deudas · colores · línea en el teléfono · repetidos',pedi:'resolvamos'},
@@ -5515,7 +5517,8 @@ const REV_HIST={
      {f:'2026-09-27',t:'4 revisores, 23 hallazgos: 22 arreglados (cuotas Premium, variantes, remate en tramos). Él eligió cómo juzgar la prueba de +5%.'},
      {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'},
      {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'},
-     {f:'2026-10-24',t:'4 revisores en máximo (frenos y escritura, gemelas y publicar, techo y listas, web y vara de compra): ~45 arreglos (v26.41: frenos que no se apagan si la base no contesta, gemelas sin datos en $0 ni 🔒, publicar sin doble retención y con la barrera, rayas con toda la línea, máximo de compra sin la gemela, vara de 35% en las listas de Bs As). Quedan 11 decisiones suyas (36-46).'}],
+     {f:'2026-10-24',t:'4 revisores en máximo (frenos y escritura, gemelas y publicar, techo y listas, web y vara de compra): ~45 arreglos (v26.41: frenos que no se apagan si la base no contesta, gemelas sin datos en $0 ni 🔒, publicar sin doble retención y con la barrera, rayas con toda la línea, máximo de compra sin la gemela, vara de 35% en las listas de Bs As). Quedan 11 decisiones suyas (36-46).'},
+     {f:'2026-11-03',t:'4 revisores en máximo (punto medio, bajas, subas y gemelas, detector): ~11 arreglos (la vuelta ya no saltea 🔒, la 2ª suba ya no se confirma con 1 venta, el detector propone lo que decido acepta, no se vuelve a pedir un precio que falló); 11 decisiones para él.'}],
   2:[{f:'2026-10-27',t:'4 revisores en máximo (Arqueo, Mercado Pago, gastos y cobro, dólar y tope de H): ~40 hallazgos, ~25 arreglados; 6 decisiones a para_mati.'},{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
@@ -13303,7 +13306,7 @@ function lineaPintar(prodId){
       if(_prueba)_prNotas.push(`<span style="color:#fb923c">${R.techo===R.noVende?'🔴 techo (no vendía)':'🟠 dejaba de convenir'} medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
       const _sgNV=R.noVende?_segTecho({probado:R.noVende.p}):null;
       // 29/10/2026 (él: "quiero que TODOS los que tienen techo digan el % de seguridad"): el 🔴 también dice con cuánto se sabe.
-      if(R.noVende)_ray(R.noVende.p,'#ef4444','6,3',`🔴 techo ${fmt(R.noVende.p)}: no vende · ${R.noVende.dias} días sin vender · ${_sgNV&&_sgNV.dias?Math.round(_sgNV.seg*100)+'% seguro':R.noVende.dias>=30?'30+ días: techo por regla':'sin % medible'}`,`🔴 Techo ${fmt(R.noVende.p)}: a ese precio o más estuvo ${R.noVende.dias} días a la venta con stock y no vendió ninguna. Eso es el techo: el precio al que no se vende (30 días, regla suya del 24/10). Se arranca la escalera.`,-3);
+      if(R.noVende)_ray(R.noVende.p,'#ef4444','6,3',`🔴 techo ${fmt(R.noVende.p)}: no vende · ${R.noVende.dias} días sin vender · ${_sgNV&&_sgNV.dias?Math.round(_sgNV.seg*100)+'% seguro':R.noVende.dias>=TECHO_DIAS_SIN_VENTA_W?TECHO_DIAS_SIN_VENTA_W+'+ días: techo por regla':'sin % medible'}`,`🔴 Techo ${fmt(R.noVende.p)}: a ese precio o más estuvo ${R.noVende.dias} días a la venta con stock y no vendió ninguna. Eso es el techo: el precio al que no se vende (${TECHO_DIAS_SIN_VENTA_W} días, regla suya del 02/11; antes 30). Si una suba salió mal, vuelve de una al último precio que vendía; si no, escalera.`,-3);
       // 🟠 deja de convenir (27/10/2026): vende, pero menos de lo que hace falta para dejar la misma plata por día que el 💰. No es el techo
       // (si vendió, no es techo): es donde subir más ya no conviene. Si queda arriba del 🔴, no se dibuja (el 🔴 ya manda).
       if(R.convenir&&R.best&&!(R.noVende&&R.convenir.p>=R.noVende.p*0.98))_ray(R.convenir.p,'#f59e0b','4,3',`🟠 ${fmt(R.convenir.p)}: vende, pero deja menos plata por día que a ${fmt(R.best.p)} · ${Math.round(R.convenir.seg*100)}% seguro`,`🟠 Deja de convenir a ${fmt(R.convenir.p)}: a ese precio vendió ${R.convenir.u} en ${R.convenir.dias} días con stock; para dejar la misma plata por día que a ${fmt(R.best.p)} tenía que vender ~${R.convenir.lam.toFixed(1)}. ${Math.round(R.convenir.seg*100)}% seguro (con ${R.convenir.dias} días alcanzaba ${Math.round((R.convenir.umb||0.95)*100)}%). Vende, así que techo no es: es donde subir más ya no conviene.`,-3);

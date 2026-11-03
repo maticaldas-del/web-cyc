@@ -78,6 +78,22 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🔍 Revisión de la etapa 1 (03/11/2026, 4 revisores en máximo: punto medio · bajas · subas y gemelas · detector y listas)
+- **Arreglado (robot):**
+  · `!vuelve` (la vuelta del punto medio) se salteaba F10 🔒: ahora frena con "HUBIERA HECHO"; la lista 📉 de `errores` saltea todo 🔒 (antes sólo 🧊).
+  · `ventasGrupoEntre(…, viejo)`: confirmar o juzgar una suba ya no cuenta la gemela antes de alinearse (3 h) ni una compra vieja pagada después (usa `ventaCuentaDesde`).
+  · `subaConfirmada`: desde la 2ª suba mide contra el último escalón MEDIBLE de la cadena (antes "1 venta alcanzaba"); "3 ventas" vale sólo si las esperadas no llegan a 3 (antes algo de 16/día subía con 3 y la 📉 lo volvía).
+  · `decido`: el punto medio también para un `#techo`/`#nuevo` SIN `!vendio` cuando el último cambio fue una suba (antes se salteaba).
+  · `banderasSuba`: las listas de `errores` (📈🆕🔥⏳, 🔁, 🔎) proponen `!cruza` al cruzar los $33.000 y `!salto` si pasa el doble (antes `decido` los rechazaba y las listas nunca se vaciaban).
+  · 🔎 de `errores`: no propone subir 🥊 caja, 🛡️ excepción, 🎁 fecha, ↘️ volviendo ni 🧪 prueba; ni un precio que ya no rindió en 30 días (`cyc/techofreno`, `noRindio`).
+  · La vuelta del punto medio anota el precio que no rindió en `cyc/techofreno` (como 🪜) y 🔙 `vendiocaro` no lo vuelve a pedir (antes A → B → vuelta a A → 🔙 pedía B).
+  · `sobra-plata`: corre también cuando la exención usada es 📦 sobra aunque la etiqueta sea otra (#descuento/#bajando), no frena renovar el mismo descuento (46a) y mide "hoy" con el precio que ve el comprador.
+- **Arreglado (web):** la raya 🔴 dice "10+ días: techo por regla" (antes 30).
+- **Textos:** VENTAS.md (10 días, +50% con el punto medio), CEREBRO.md y CLAUDE.md (10 días).
+- **11 decisiones** en `notas/para_mati.md`.
+- **Quedan para mirar (no arreglados):** la vuelta cuenta los días sin stock como "no vendió" (una caja que tarda 6 días manda a volver) · lo que se cambia de 00:00 a ~06:10 queda anotado en la línea con el precio de la mañana · la vuelta usa facturación ×1,5 antes del día 10 y ganancia el día 10 · `ventana15` juzga con la caja de hoy (el detector puede deshacer la baja de los 15 días justo cuando ganó la caja) · la lista 📈🆕 cuenta desde el último renglón de estrategia (techo95 lo reescribe de noche) y no desde el último cambio de precio · 🤔 marca mal los descuentos de escalera/liquidación/15 días · 🛡️ con variantes pausadas sin stock se repite días · si no se lee la línea, F5/F8/sobra-plata dejan pasar · liq30 no ve las ventas de hoy · gemelas que bajan abajo del 35% sin que la Clásica esté abajo a propósito (decisión 6) · variantes adentro de una publicación no tienen cómo subir +50%.
+- **Qué chequear:** la completa: `errores` sin renglones en la barrera sin `!cruza`; ninguna 🔒 en 📉; un `decido …#techo` después de una suba sin confirmar sale "FRENO punto medio".
+
 
 - **Tope de crear $600.000 (02/11/2026, v28.73)** · qué es: `TOPE_CREAR` 550.000 → 600.000 (él); el monotributo deja hasta $716.841 por unidad (ago-2026 a ene-2027) y `TECHO_DURO` sigue en $650.000 · dónde vive: `sync.mjs` y el precio sugerido de `index.html` · qué chequear: que ninguna gemela Premium pase de $650.000 y actualizar el $716.841 en febrero 2027.
 

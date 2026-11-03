@@ -122,7 +122,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 ### Techo (📈 → 🏔️)
 - **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba. Afuera (🔥/⏳ sin techo medido NO quedan afuera: si vendieron, +50%, 1a del 28/10):
   sobra (+90 d), lo que vende menos de 1 por semana (queda 💰 punto), liquidando, mis promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
-- 🔒 **Salto grande, nunca de a poco:** **+50% cada vez que vende** (27/10 a la noche; antes +30%). `decido` frena una suba `#techo` de menos de +50%, salvo
+- 🔒 **Salto grande, nunca de a poco:** **+50%, pero la próxima suba espera a que el precio nuevo se confirme** (⚡ punto medio, 02/11: 24 h mínimo y la mitad de lo esperado al ritmo de antes con 3+ esperadas, o 3 ventas si no llegan a 3; una sola venta ya no alcanza; la suba que sale mal vuelve DE UNA al último precio que vendía, `!vuelve#volviendo`). `decido` frena una suba `#techo` de menos de +50%, salvo
   frenar en $32.990 por la barrera, el techo de $650.000, o `!chico` con "EXCEPCIÓN: …" (un techo ya visto).
 - **Cada escalón se mide antes del siguiente**, por certeza (Poisson sobre la plata por día: 3 esperadas y 0 ventas = 5% de azar ·
   6 y 0-1 = 2% · 10 y ≤2 = 0,3%). Nunca con un solo día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
@@ -131,11 +131,11 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   `!lista` con "EXCEPCIÓN: …". La primera baja 🪜 anota sola el precio que no rindió (`techofreno`).
 - **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (Persea).
 - 🔒 **🏔️ techo encontrado sólo lo anota `techo95`** (`techo95:<MLA>;go`), con la certeza que pide ese día: 95% hasta el día 30 con
-  stock a ese precio, baja hasta 70% el día 44 (28/10, él: *"alargar de 7 días a 30 y después sí bajar a 70%"*); 30 días sin vender ahí = techo sí o sí.
+  stock a ese precio, baja hasta 70% el día 44 (28/10, él: *"alargar de 7 días a 30 y después sí bajar a 70%"*); **10 días sin vender ahí = techo sí o sí** (02/11, antes 30).
   `#techook` a mano lo rechaza el código.
 - **Las rayas** (días con 3+ u. en Full y con visitas; últimos 60 días, sin fechas especiales): 💰 **más plata** = el precio que más
   plata por día dejó de los que se probaron (5+ días con ventas; desde la primera venta hay uno provisorio, punteado, que es sólo para
-  mirar) · 🔴 **techo: no vende** = arriba del 💰, no vende (30 días sin vender ahí o más caro, o 0 vendidas con la certeza del día) ·
+  mirar) · 🔴 **techo: no vende** = arriba del 💰, no vende (10 días sin vender ahí o más caro, 02/11, o 0 vendidas con la certeza del día) ·
   🟠 **deja de convenir** = vende, pero deja menos plata por día que el 💰 con esa certeza (27/10). El robot toma como techo el más
   bajo de los dos. Subir arriba del 🔴 → decir por qué no le creo.
 - **`techofreno`**: el freno de no volver a probar más caro se reabre si el más barato ajeno sube 8%+, ya no hay ajenos abajo, ganamos
