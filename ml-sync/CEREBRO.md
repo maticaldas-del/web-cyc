@@ -620,3 +620,9 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - 💡 El precio sugerido de ML (`sugP`) es una referencia para lanzamiento y techo, nunca motivo para bajar algo que vende.
 - 🪜 Arriba de $15.000 hay ~15% de zona muerta de comisión: una suba que cae ahí se frena sola salvo `!escalon` con motivo.
 - 💳 Caja perdida por cuotas (`cajaPorCuotas`) = candidata a 💳 gemela Premium, no a bajar el precio.
+
+### 03/11/2026 · De la revisión de Datos (él: 1a 2a 3a 4a 6a 9a)
+- Las rayas (💰/🔴) miden con el precio que vio el comprador (lista menos MI descuento, `pV` de la línea). El 🔴 de 10 días sin vender vale aunque no haya 💰.
+- 🧲 La liquidación de 30 días sin vender no baja del **30%** en el peor caso mientras la unidad más vieja tenga menos de 90 días en Full; desde los 90, hasta el 0%.
+- 💳📦 Las gemelas quedan al **mismo %** que su Clásica (peor caso) y siguen su precio CON descuento.
+- Lo que vende menos de 1 por semana y está en 💰 no vuelve a 📈 por `techo95`.

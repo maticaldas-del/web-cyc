@@ -48,8 +48,14 @@ def r_de(v30,v60,v180,tiene,dcs=30,hoy=None):
     # con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio (`HOY u/d` de
     # pedidostodo), se manda con lo que se vende A ESE PRECIO. Si no, después de una suba se mandaban 37 días al ritmo del precio barato.
     if hoy and hoy[1]>=7: return hoy[0]/hoy[1],f"al precio de hoy vende {hoy[0]} en {hoy[1]} días con stock (desde el último cambio de precio)"
-    if hoy and len(hoy)>2 and hoy[2]: return 0,f"subió mucho de precio hace poco ({hoy[0]} vendidas en {hoy[1]} días a este precio): el ritmo de antes era a un precio más barato y no vale, sólo va el mínimo si está en cero"
+    # 5a de la revisión de Datos (01/11, él el 03/11): después de una suba, los primeros 7 días va el ritmo de ANTES, igual que Pedidos (antes ponía
+    # 0 y el 01/11 quedaron 12 renglones en 0, uno con 2 en Full). Con 2+ días con stock al precio nuevo, el más bajo de los dos (1a del 03/11).
+    suba=bool(hoy and len(hoy)>2 and hoy[2])
     d=max(7,min(30,dcs))
+    if suba:
+        rA,bA=r_de(v30,v60,v180,tiene,dcs,None)
+        if hoy[1]>=2 and hoy[0]/hoy[1]<rA: return hoy[0]/hoy[1],f"subió de precio hace poco: al precio nuevo vendió {hoy[0]} en {hoy[1]} días con stock (más bajo que el ritmo de antes: uso ése)"
+        return rA,(bA+" · subió de precio hace menos de 7 días: va el ritmo de antes, como Pedidos (5a del 03/11)") if rA>0 else bA
     if v30>=3: return max(v30/d,v60/60*0.8),(f"vende {v30} en {d} d con stock" if d<30 else f"vende {v30} en 30 d")
     if v60>=3: return v60/60,f"vendió {v60} en 60 d"
     if v180>=4 and tiene==0: return v180/180,f"agotado, vendía {v180} en 180 d"

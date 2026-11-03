@@ -3267,7 +3267,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.84';
+const APP_VERSION='28.85';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3280,6 +3280,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.85',f:'03/11',h:'13:50',c:[{n:2,t:'📈 Línea de tiempo: el 💰 y el 🔴 miden con el precio que vio el comprador (con tu descuento), y con una sola publicación activa miden sólo ésa (no mezclan colores ni cuentas pausadas).'},{n:1,t:'🔬 Ventas: la ✓ que se cerró sin abrir la ficha dice esfuerzo "normal" (antes decía máximo).'}]},
   {v:'28.84',f:'03/11',h:'13:30',c:[{n:1,t:'🔴 Línea de tiempo: los 10 días sin vender no cuentan los días con 0 visitas (nadie la vio; regla del 03/11).'}]},
   {v:'28.83',f:'03/11',h:'06:30',c:[{n:1,t:'La raya 🔴 de la línea de tiempo dice "10+ días: techo por regla" (regla del 02/11; antes decía 30).'}]},
   {v:'28.82',f:'03/11',h:'02:30',c:[{n:2,t:'📳 Ventas: la tarjeta que tiembla ya no se corta contra el borde de la lista (tiene aire alrededor y tiembla sin girar).'}]},
@@ -12707,6 +12708,7 @@ function _lineaJunta(porMla,lks,varSel){
           if(!varSel||vr===varSel){const S=(o._st=o._st||{})[cta]=(o._st||{})[cta]||{P:null,V:{}};const q=Math.max(0,Number(x.st)||0);
             if(vr)S.V[vr]=Math.max(S.V[vr]||0,q);else if(_conC&&!_todosAd){if(x.stF==='ops'||x.stF==='sinmov')S.V['?'+mla]=Math.max(S.V['?'+mla]||0,q);}else S.P=Math.max(S.P||0,q);}}
         else o.st=(o.st||0)+Number(x.st||0);o.stN++;}
+      if(Number(x.pV)>0&&(x.est==null||x.est==='active'))o.pV=o.pV==null?Number(x.pV):Math.min(o.pV,Number(x.pV));   // 1a del 03/11: el precio con mi descuento
       if(x.p!=null&&Number(x.p)>0){o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
         // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
         // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
@@ -13015,7 +13017,10 @@ function lineaPintar(prodId){
       const pr=Number(u&&(u.pLista||u.p))||0;if(pr>0)act.push({m,p:Math.round(pr/10)*10});}
     // (21/10/2026 · etapa 1) Con 2+ activas aunque estén al MISMO precio, una sola (la más barata; empate → la de MLA menor),
     // igual que `techo95`, que mide la línea de cada publicación sola: si no, las ventas de las dos se sumaban en un escalón.
-    return act.length>=2?act.sort((a,b)=>a.p-b.p||String(a.m).localeCompare(String(b.m)))[0].m:null;})();
+    // 14a de la revisión de Datos (01/11, él el 03/11): con UNA sola activa también se mide sólo ésa (y las de su stock: gemelas, repetidas),
+    // como el robot. Antes, con una activa, la línea juntaba los colores y cuentas pausados y el 💰 podía ser de un color que esa publicación
+    // nunca tuvo (y el 🧠 decía otra cosa). Sin ninguna activa, la línea junta como siempre.
+    return act.length>=1?act.sort((a,b)=>a.p-b.p||String(a.m).localeCompare(String(b.m)))[0].m:null;})();
   // 5.2a (21/10/2026): la publicación de las rayas se mide JUNTO con las que comparten su stock (gemela Premium, repetidas): sus ventas
   // y su plata suman, y el stock (la plata parada, 1.6a) va una sola vez. La misma cuenta que `techo95` y la ficha del robot.
   const _grupoRaya=_mlaRaya?[_mlaRaya].concat(_hermanasStock(_mlaRaya).filter(m=>C.porMla[m]&&typeof C.porMla[m]==='object')):[];
@@ -13048,7 +13053,7 @@ function lineaPintar(prodId){
     // Los días de fecha especial salen SÓLO si este producto tuvo un pico ahí (el doble o más por día con stock): copia de `diasFechaPico`.
     const _fueraR=(()=>{const o=new Set();const kk=ksR.filter(k=>k>=_kDesdeR&&_rayasDias[k]&&Number(_rayasDias[k].st)>0);const enF=kk.filter(k=>_diaFechaRaya(k));if(!enF.length)return o;
       const r=L0=>L0.length?L0.reduce((a,k)=>a+(Number(_rayasDias[k].u)||0),0)/L0.length:0;const rF=r(enF),rN=r(kk.filter(k=>!_diaFechaRaya(k)));if(rF>0&&rF>=2*rN)enF.forEach(k=>o.add(k));return o;})();
-    const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;const pN=Number(d.pLista||d.p)>0?Number(d.pLista||d.p):pA;let pl=pN||0;
+    const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;/* 1a del 03/11: con mi descuento ese día, el precio que vio el comprador (pV), igual que el robot */const pN=Number(d.pV||d.pLista||d.p)>0?Number(d.pV||d.pLista||d.p):pA;let pl=pN||0;
       if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uOwn)>0&&Number(d.totOwn)>0?Number(d.totOwn)/Number(d.uOwn):Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
     const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&Number(d.vis)>0))return;/* revisión etapa 8 (28/10): un día con 0 visitas no mide el precio, igual que `rayasPrecioLinea` */if(k<_kDesdeR||_fueraR.has(k))return;const pl=_plR[k]||0;if(!(pl>0))return;
       const b=Math.round(pl/10)*10;const g=(G[b]=G[b]||{p:b,dias:0,dF:0,u:0,gan:0});g.dias++;g.dF+=_franjaMesW(k);g.u+=Math.max(0,(d.u||0)-(d.uR||0));g.gan+=_ganRaya(k)-_pdDed(d);});
@@ -14237,7 +14242,7 @@ function estrategiaChip(e){if(!e)return'';const u=ESTRATEGIA_UI[e.t];if(!u)retur
 // no hizo ningún cambio y todo estaba correcto que aparezca como las cuotas transparente. si hubo algún cambio poner el color del
 // cambio relacionado a la estrategia que se tomó y al poner el cursor arriba que explique lo sucedido y qué resolución se tomó".
 // Lo escribe el robot en `cyc/ventaanalisis/<día>/<id>` al cerrar cada vuelta (`ventasvistas`). Una venta sin análisis no muestra nada.
-const ESF_NOMBRE={low:'bajo',medium:'medio',high:'alto',xhigh:'muy alto',max:'máximo'};
+const ESF_NOMBRE={low:'bajo',medium:'medio',high:'alto',xhigh:'muy alto',max:'máximo',normal:'normal (sin abrir la ficha)'};   // 11a del 03/11: la ✓ normal dice su esfuerzo real
 // 21/10/2026: Ventas x Producto arma la lista con COPIAS ({...v,_dateKey}) y el índice por objeto no las encontraba nunca: ningún
 // 🔬 salía. Ahora también busca por la firma de la venta (día, venta, publicación y hora), que la copia conserva.
 let _vaIdx={ref:null,m:new WeakMap(),f:new Map()};

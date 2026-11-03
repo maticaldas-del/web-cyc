@@ -2750,6 +2750,24 @@ a la lista. Chequear: que cada hoja muestre el nombre del mismo id que se marca 
 Chequear: que los ayudantes no corran nada que escriba y que cada publicación activa tenga juicio.
 
 ## 5 · DATOS, HISTORIAL Y CEREBRO (viernes · junta las viejas 8 y 9; datos e historial nació el 08/10/2026)
+### ✅ 03/11/2026 · Las 16 decisiones de la revisión del 01/11 (él: 1a…11a, 12 = 365 días, 13a 14a 15a, 16b)
+- **1a precio visto:** la línea guarda `pV` = el precio con MI descuento activo ese día (`precioVistoDiaBot`, de `cyc/promohist`/`cyc/promoclaude`); `p` sigue siendo la lista. Las rayas del robot (`rayasPrecioLinea`) y de la web (`_rayas`, `_lineaJunta` lleva `pV`) miden con `pV` cuando está. `lineavista[:días][:go]` (ml-sync) rellena los días ya guardados (60 por defecto). **Chequear:** un 📈 a $20.000 que bajó con descuento a $17.000 y vendió dice 💰 $17.000 y no propone +50% arriba de $20.000.
+- **2a:** `cyc/rayas` guarda el 🔴 de 10 días sin vender aunque no haya 💰 (`piso:null`, `por10:true`); la web no dibuja barrita sin 💰 (como antes).
+- **3a:** la liquidación de 30 días no baja del 30% en el peor caso (`LIQ_PISO_JOVEN`) mientras la unidad más vieja tenga menos de 90 días (F13); sin saber la edad, tampoco.
+- **4a:** las gemelas van al MISMO % de la Clásica en el peor caso (`GEMELA_PCT_TOL` 0,3 puntos), además de la misma plata (`precioGemelaIgual`, `precioGemelaEnvioIgual`).
+- **5a:** `decide_cajas.py`: después de una suba los primeros 7 días va el ritmo de antes (con 2+ días al precio nuevo, el más bajo), como Pedidos.
+- **6a:** `alinearGemelas`/`alinearGemelasEnvio` siguen el precio CON mi descuento de la Clásica (`vistaCla`).
+- **7a:** `totalANuestroPrecio`: lo que puso ML (cupón, `cyc/promoventa`) se suma a lo cobrado en la línea (`tot`) y en `pedidostodo` (precio para el máximo de compra, ritmo al precio de hoy).
+- **8a:** el ritmo a precio normal (`NOR`) saca también los DÍAS marcados `rem` en la línea (sobra, liquidando de `cyc/nosubir`, remate), no sólo sus ventas.
+- **9a:** `techo95;go` no vuelve a 📈 lo que está en 💰 y vende menos de 1 por semana (14+ días con stock).
+- **10a:** `supervisor:medir` mete mis descuentos (`cyc/promohist`, entra más barato; renovar el mismo no repite) como cambios a juzgar (`origen: 'descuento mío'`).
+- **11a:** `ventasvistas`: una venta por la gemela se juzga con su Clásica (cambio y estrategia de la Clásica, `fila.cla`); el esfuerzo anotado es el real (✓ sin texto ni cambio = `normal`, "cerrada sin abrir la ficha"; la web lo muestra).
+- **12 (365 días):** `archivar[:días][:go]` (ml-sync, sin `go` cuenta) mueve a `archivo/` lo de más de 365 días de `cyc/claudecambios`, `cyc/estrategia`, `cyc/promohist` y `cyc/ventaanalisis`; copia, relee y recién ahí saca; la última estrategia y el último descuento de cada publicación quedan. **Todavía no se corrió.**
+- **13a:** `pedidostodo` (`HOY`): el día del cambio de precio sólo cuentan las ventas cobradas más cerca del precio nuevo.
+- **14a:** web: con UNA sola publicación activa las rayas también miden sólo ésa y su stock (como el robot).
+- **15a:** la completa tiene que correr `linea:go` (ml-sync) ANTES de medir: la línea de ayer queda escrita antes de techo95/planilla/errores. (Va en la tarea de las 03:00.)
+- **Chequear:** que `lineavista` sin go cuente días razonables; `archivar` sin go cuente; una gemela de envío sube al mismo % de su Clásica; Armar caja no pone 0 después de una suba.
+
 ### 🔍 Revisión de la etapa 5 (01/11/2026, 4 revisores en máximo)
 - **Arreglado:** `errores` · 🔥/⏳ que vendió por la gemela de envío gratis arriba de $33.000 sale con `!cruza` (si no, `decido` lo frenaba en $32.999 y la lista nunca quedaba vacía) · el ⛔ de la ficha frena una 🔥/⏳ sólo si lo que no rindió fue una SUBA (antes también "bajar a X no rindió") · `clasificarRemates`: una venta por la gemela toma la estrategia de su Clásica (`mlaEst`) · `bajasviejas` propone +50% (`TECHO_SUBA`; antes +30% y `decido` lo rechazaba) · texto de techo95 "70% el día 44" · VENTAS.md al día con las reglas del 28-30/10 y los errores del Espejo 4" y el Aer Jasmín.
 - **🔴 30 días sin vender y las fechas especiales (arreglado, web y robot):** los días de fecha especial se sacaban también de esa cuenta, con sus ventas: algo que vendió en el Día de la Madre a $20.000 y a $30.000 salía "🔴 $20.000 · 44 días sin una venta" (F7 dejaba bajar y techo95 decía "techo sí o sí"). Ahora un día de fecha CON venta corta la racha; sin venta sigue afuera (`rayasPrecioLinea`, `_t30` de `_rayas`). Probado con las funciones reales: el caso da sin 🔴 y web = robot en las pruebas de siempre.
