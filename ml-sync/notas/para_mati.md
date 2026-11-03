@@ -8,6 +8,12 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó "resolvamos" del 03/11 — APLICANDO
+- **Revisión de Datos del 01/11:** 1a 2a 3a 4a 5a 6a 7a 8a 9a 10a 11a · 12: guardar **365 días** (no 180) y archivar lo viejo · 13a 14a 15a · 16b (dejar "plata por día" como está).
+- **Ideas del 02/11 (numeradas 17-31 en el chat):** 17 Tienda de Navidad y 18 ABEL en Navidad sin contestar · 19a edad real del stock (idea 7) · 20a lo más vendido de cada categoría (8) · 21a experiencia de compra (9) · 22a aviso de la barrera de $33.000 (10) · 23a ficha técnica en las preguntas (11) · 24a encargos de Tienda/ABEL en un paso (12) · 25a el buzón se carga solo (13) · 26 (14, cerrar la caja sola): **en vez de eso, tarea nueva para el chat local: mirar las cajas llegadas, si llegó todo bien o hubo problemas** · 27a el chat de Chrome carga por el panel (15) · 28 (16) sin contestar · 29a la mezcla de hoy en Ventas de hoy (17) · 30 y 31 (18, 19) sin contestar.
+- Las 4 fichas de Dai Nippon (Doree 20 y 30 vol., Otowil Lila, Calipso Nocturna) unidas a la lista el 03/11; él pidió revisar antes que sean las mismas (revisado: mismo catálogo de ML, mismo nombre y tamaño; Calipso mismo costo exacto).
+
+
 ### ✅ Contestó la lista de las 12:30 del 03/11 (1a 2a 3a 4a 5 6a 7 8a 9 10b 11a 12 13a 14a 15a 16b 17b 18a 19a 20a 21a 22a 23b 24b 25b 26b) — APLICANDO
 - 1a cupo: mandar a medida que se libere lugar · 2a 3a 4a ideas de Navidad sí (escasez de Navidad antes · regalables nuevos primero el 9 y 16/11 · no liquidar del 15/11 al 24/12 lo que vende en Navidad)
 - 5 Paulvic a $21.990: **esperar hasta que pase Navidad** (los 15 días antes del stock antiguo siguen igual) · 6a Timer con descuento hasta el 16/11 · 7 Barbarella: **el que deje más plata por semana/mes** ($23.790: 3 en 11 d contra 1 en 12 d a $27.990) · 8a Kit Jade a $14.990 · 9 Indigo: **es uno solo, dejarlo** · 10b F9 vuelve al descuento de $8.590 · 11a mira títulos/fotos y no se compran más (salvo Switch) · 12 Tendedero: **que busque el mejor precio, donde venda bien y gane más**
