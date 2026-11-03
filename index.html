@@ -1032,8 +1032,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 </div>
 <script>
 // 🩺 SI NO TERMINA DE CARGAR (03/11/2026, él: "mi viejo otra vez dice que no puede entrar a cyc"): a los 25 s la pantalla de carga dice en
-// qué paso quedó (sesión del navegador · entrar · qué partes de la base faltan · el último error) y da dos botones: Reintentar y
-// "Entrar de nuevo" (borra SÓLO la sesión guardada de este navegador, no toca ningún dato de CYC, y pide el mail y la contraseña).
+// qué paso quedó (sesión del navegador · entrar · qué partes de la base faltan · el último error) y un botón 🔄 Reintentar. NUNCA saca
+// la sesión (él, 03/11: "que no lo saque del usuario, es un lío lo de la contraseña").
 window._ldErr='';window.addEventListener('error',e=>{try{window._ldErr=String((e&&e.message)||'')+(e&&e.lineno?' (renglón '+e.lineno+')':'');}catch(_){}});
 setTimeout(function _ldVigia(){try{
   const l=document.getElementById('loading');if(!l||l.style.display==='none')return;
@@ -1041,11 +1041,10 @@ setTimeout(function _ldVigia(){try{
   const paso=window._ldPaso||'abrir la página';const falta=typeof window._cycFaltaVer==='function'?window._cycFaltaVer():null;
   const que=paso==='datos'?(falta&&falta.length?'bajando los datos: faltan '+falta.length+' partes ('+falta.slice(0,6).join(', ')+(falta.length>6?'…':'')+')':'armando las pantallas'):paso==='sesión'?'la sesión guardada del navegador no responde':paso==='entrar'?'esperando la sesión':paso;
   d.innerHTML='⏳ Está tardando. Quedó en: <b>'+que+'</b>'+(window._ldErr?'<br>⚠️ '+String(window._ldErr).replace(/</g,'&lt;').slice(0,160):'')+(navigator.onLine===false?'<br>📵 El teléfono dice que no tiene internet.':'')
-    +'<br><span style="opacity:.8">Sacale una foto a esto y mandásela a Matías.</span><div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap"><button class="btn" onclick="location.reload()">🔄 Reintentar</button><button class="btn" onclick="_ldEntrarDeNuevo()">🔑 Entrar de nuevo</button></div>';
+    +'<br><span style="opacity:.8">Sacale una foto a esto y mandásela a Matías.</span><div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap"><button class="btn" onclick="location.reload()">🔄 Reintentar</button></div>';
   d.style.display='';
   setTimeout(_ldVigia,15000);
 }catch(_){}},25000);
-function _ldEntrarDeNuevo(){try{const r=indexedDB.deleteDatabase('firebaseLocalStorageDb');const fin=()=>location.reload();r.onsuccess=fin;r.onerror=fin;r.onblocked=fin;setTimeout(fin,3000);}catch(_){location.reload();}}
 </script>
 <script>
 // 🎬 La pantalla de "cargando" del día (26/10/2026): cambia todos los días a las 4 de la mañana (hora del aparato), en rueda de 7.
@@ -3290,7 +3289,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.92';
+const APP_VERSION='28.93';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3303,6 +3302,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.93',f:'03/11',h:'16:45',c:[{n:1,t:'Se sacó el botón 🔑 Entrar de nuevo de la pantalla de carga: nunca te saca de la cuenta. Queda sólo 🔄 Reintentar.'}]},
   {v:'28.92',f:'03/11',h:'16:30',c:[{n:2,t:'🩺 Si el panel no termina de cargar: a los 25 segundos dice en qué paso quedó y aparecen 🔄 Reintentar y 🔑 Entrar de nuevo (borra sólo la sesión de ese teléfono, no los datos). Y si la sesión guardada del navegador se traba, ya no se queda en "Conectando..." para siempre.'}]},
   {v:'28.91',f:'03/11',h:'15:45',c:[{n:1,t:'📊 Línea de tiempo de Todos: el % de ganancia también es el de los últimos 7 días juntos (como en cada producto).'}]},
   {v:'28.90',f:'03/11',h:'15:30',c:[{n:2,t:'📊 Línea de tiempo, % de ganancia: la línea ahora es el % de todas las ventas de los últimos 7 días juntas (todos los colores y formas de venta, pesado por la plata), en todos los productos. Ya no salta con una venta suelta; al pasar el dedo dice el % de ese día y el de 7 días.'}]},
