@@ -332,7 +332,7 @@
 - **Pedidos se ordena por lo que SALVA cada $1** (27/10, él eligió 1a y *"que quede sólo esa"*): 💸 en riesgo (`riesgoComprar`) ÷ lo que cuesta la compra (`_pedDevuelve`); lo que todavía tiene stock queda abajo aunque deje mucho, lo que está en 0 sube. La ganancia que usa es **la del precio de hoy** cuando lleva 7+ días con stock desde el último cambio de precio (1a del 27/10); si no, la de 30 días. Medido en `sim.py`/`sim2.py`: gana ~$170-480 mil/mes contra ordenar por la plata total cuando faltan pesos.
 - Por color: un color agotado hace 30+ d pide con su ritmo viejo ("ritmo viejo"). Pedido a mano ya no existe (lo arma el panel/yo).
 - **Bs As:** el padre compra en persona (~1 semana, plata ~$3M, lugar en la Kangoo). Solapas 🏬 De siempre / 📋 Dai Nippon
-  (`pedCambiarGrupo`). Rojo de Pedidos = 14 días o menos (se corta sí o sí).
+  (`pedCambiarGrupo`); **los proveedores conocidos tienen su botón al lado** (03/11, él): Dai Nippon, AnD Mitre, AVL 112, Pirineo; el resto del Once en Listas de Tito. Rojo de Pedidos = 14 días o menos (se corta sí o sí).
 - **"Pausar por precio" se sacó entero** (01/10): no volver a proponerlo; si no da, no se compra. `pedremate` decidido (b): se deja; él
   manda a la papelera lo que no quiere. **No volver a proponer cortar el ritmo viejo.**
 - **Cajas a Full:** cubren **37 días** (30 + 7 de viaje) al ritmo de 30 días o, con 7+ días con stock desde el último cambio de precio, al de ESE precio (`HOY`, 27/10 a la noche); **60 si vende parejo** y no tiene prueba de precio abierta

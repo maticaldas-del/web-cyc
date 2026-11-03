@@ -3379,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.105';
+const APP_VERSION='28.106';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.106',f:'03/11',h:'22:10',c:[{n:1,t:'Pedidos → Bs As: los proveedores conocidos tienen su botón al lado de De siempre: Dai Nippon, AnD Mitre, AVL 112 y Pirineo. Las demás listas del Once quedan en Listas de Tito.'}]},
   {v:'28.105',f:'03/11',h:'21:00',c:[{n:1,t:'Arqueo en el teléfono: el Patrimonio total ya no se corta (va solo en su renglón, entero, y el ▼% abajo).'}]},
   {v:'28.104',f:'03/11',h:'20:20',c:[{n:1,t:'🧮 Inicio: "La mezcla" también en Mes y Año (la del período que elegís arriba), no sólo la del día.'}]},
   {v:'28.103',f:'03/11',h:'19:50',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB (los mayoristas AnD y AVL 112).'}]},
@@ -24489,10 +24490,13 @@ function _renderPedidosIn(){
       const b=(v,t)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${_bsasVista===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="bsasSetVista('${v}')">${t}</button>`;
       // 📋 DAI NIPPON AL LADO DE "DE SIEMPRE" (03/11/2026, él: "pone dai nippon al lado de lo de siempre, así lo encuentra rápido mi
       // viejo"): con otras listas de Bs As (las del Once), Dai Nippon tiene su propio botón y "Listas de Tito" queda para las demás.
-      const DN=bp.find(x=>/dai.?nippon/i.test(x+' '+((pv[x]||{}).nombre||'')));
-      if(DN&&bp.length>1){const otras=bp.filter(x=>x!==DN);const enDN=_bsasVista==='listas'&&_listaSel===DN;
+      // 03/11/2026 (él: "Pirineo, AVL 112 y AnD son proveedores conocidos. Poner al lado de Nippon"): los CONOCIDOS (Dai Nippon, Pirineo,
+      // AVL 112, AnD, o cualquiera con `listasProv/<k>/conocido`) tienen cada uno su botón; "Listas de Tito" queda para las demás del Once.
+      const _CONOC=/dai.?nippon|pirineo|avl.?112|and.?mitre/i;
+      const CON=bp.filter(x=>(pv[x]||{}).conocido||_CONOC.test(x+' '+((pv[x]||{}).nombre||''))).sort((a,c)=>/nippon/i.test(a)?-1:/nippon/i.test(c)?1:String((pv[a]||{}).nombre||a).localeCompare(String((pv[c]||{}).nombre||c)));
+      if(CON.length&&bp.length>1){const otras=bp.filter(x=>!CON.includes(x));const enCon=_bsasVista==='listas'&&CON.includes(_listaSel);
         const bb=(on,t,js)=>`<button class="btn" style="font-size:.72rem;padding:6px 16px;${on?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}" onclick="${js}">${t}</button>`;
-        st.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${bb(enDN,'📋 '+escHtml((pv[DN]||{}).nombre||'Dai Nippon'),`_listaSel='${DN}';_listaSelB='${DN}';_listaQ='';bsasSetVista('listas')`)}${bb(_bsasVista==='listas'&&!enDN,'📋 '+(otras.length===1?escHtml((pv[otras[0]]||{}).nombre||otras[0]):'Listas de Tito'),`if(_listaSel==='${DN}'||!_listaSel){_listaSel='${otras[0]}';_listaSelB=_listaSel;}_listaQ='';bsasSetVista('listas')`)}</div>`;}
+        st.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${CON.map(k=>bb(_bsasVista==='listas'&&_listaSel===k,'📋 '+escHtml((pv[k]||{}).nombre||k),`_listaSel='${k}';_listaSelB='${k}';_listaQ='';bsasSetVista('listas')`)).join('')}${otras.length?bb(_bsasVista==='listas'&&!enCon,'📋 '+(otras.length===1?escHtml((pv[otras[0]]||{}).nombre||otras[0]):'Listas de Tito'),`if(!_listaSel||${JSON.stringify(CON).replace(/"/g,"'")}.includes(_listaSel)){_listaSel='${otras[0]}';_listaSelB=_listaSel;}_listaQ='';bsasSetVista('listas')`):''}</div>`;}
       else st.innerHTML=bp.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${b('siempre','🏬 De siempre')}${b('listas','📋 '+escHtml(nomL))}</div>`:'';}
     const wr=document.getElementById('bsas-siempre-wrap');if(wr)wr.style.display=_bsasVista==='listas'?'none':'';
     if(_bsasVista==='listas'){renderListas();return;}
