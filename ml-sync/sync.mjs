@@ -20604,6 +20604,15 @@ async function main() {
     // de Chrome). SOLO LEE. Las cajas que el robot NO puede cerrar solo: despachadas (no en pausa), con 3+ días desde que salieron y que ML
     // todavía no dio de alta enteras (`cyc/cajasentrado`, la misma cuenta que el informe §9). El chat mira en ML SÓLO éstas y anota el
     // motivo (rechazadas, dañadas, no aptas, en revisión, sin etiqueta, faltante); las completas las cierra el robot y no se miran.
+    // BILLING_PROBE=diagweb (03/11/2026) → SOLO LEE. Cómo abrió el panel en cada teléfono (`cyc/diag/<nombre>`, lo escribe la web): versión,
+    // en cuánto abrió (con la copia o con la base), en cuánto terminó de actualizar y qué partes faltaban al minuto.
+    if (/^diagweb$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const d = (await db.get('cyc/diag')) || {}; const s1 = (ms) => (ms == null ? '—' : (Number(ms) / 1000).toFixed(1) + ' s');
+      console.log(`=== 🩺 CÓMO ABRE EL PANEL EN CADA TELÉFONO (${Object.keys(d).length}) ===`);
+      for (const [q, x] of Object.entries(d)) { if (!x) continue;
+        console.log(`· ${q} · v${x.v || '?'} · ${x.tel || '?'} ${x.nav || ''} (${x.app || '?'}) · hace ${Math.round((Date.now() - Number(x.ts)) / 60000)} min · abrió en ${s1(x.abrioMs)} con ${x.abrioCon || '?'} · terminó de actualizar en ${s1(x.completoMs)}${x.faltan && x.faltan.length ? ' · AL MINUTO FALTABAN: ' + x.faltan.join(', ') : ''}${x.sinCopia ? ' · sin copia' : ''}${x.online === false ? ' · SIN INTERNET' : ''}`); }
+      return;
+    }
     if (/^cajasmirar$/.test(String(process.env.BILLING_PROBE || ''))) {
       const envs = (await db.get('cyc/envios_full')) || {}; const entC = (await db.get('cyc/cajasentrado')) || {}; const prodsM = {}; for (const p of products) prodsM[p.id] = p;
       const filas = []; const ahoraM = Date.now();

@@ -2607,6 +2607,14 @@ let firstDataLoad=true;
 // se dibuja el panel con la copia y un cartel ámbar dice de cuándo es; cuando llega lo de la base, se reemplaza solo y el cartel se va.
 // Nunca saca la sesión. Lo que se cargue mientras tanto Firebase lo guarda cuando vuelve la conexión (si la sesión está bien).
 let _copiaTs=0,_copiaT=null;const _cycDeCopia=new Set();
+// 🩺 CÓMO ABRIÓ CADA TELÉFONO (03/11/2026, él: "¿y por qué no seguís solo mirando?"): cada teléfono deja en `cyc/diag/<nombre>` la versión,
+// en cuánto abrió, en cuánto terminó de actualizar y qué partes faltaban al minuto. Así lo miro yo (`diagweb`) sin pedirle fotos.
+// Sólo números y el tipo de teléfono/navegador; nada de datos de nadie.
+const _diagT0=Date.now();window._diag={};
+function _diagMandar(extra){try{if(!db||!firebase.auth().currentUser)return;const quien=String(localStorage.getItem('cyc_who')||'sin_nombre').replace(/[.#$\[\]\/]/g,'_').slice(0,30);
+  const ua=navigator.userAgent||'';const tel=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Windows/.test(ua)?'PC Windows':/Mac/.test(ua)?'Mac':'otro';
+  const nav=/SamsungBrowser/.test(ua)?'Samsung':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'otro';
+  db.ref('cyc/diag/'+quien).set(Object.assign({v:APP_VERSION,ts:Date.now(),tel,nav,app:window.matchMedia&&matchMedia('(display-mode: standalone)').matches?'instalada':'navegador',online:navigator.onLine!==false},window._diag,extra||{})).catch(()=>{});}catch(_){}}
 // 03/11 (él: "lo que más usa es pedidos… que todo abra sin internet, actualizado hasta la última vez que tuvo internet"): se guarda 15 s
 // después del último cambio (no una vez por minuto) y al salir de la app; con lo de Pedidos que se baja aparte (Paraguay), las notas 🧠
 // (los "Hola Tito!") y la edad del stock del Local.
@@ -2629,7 +2637,7 @@ function _copiaCartel(ts,suave){try{let b=document.getElementById('cyc-copia-car
 window._deCopia=()=>_cycDeCopia.size>0;
 (function _copiaFrenoEscritura(){try{const R=firebase&&firebase.database&&firebase.database.Reference&&firebase.database.Reference.prototype;if(!R||R._cycFreno)return;R._cycFreno=true;
   let _ultAviso=0;const aviso=()=>{if(Date.now()-_ultAviso<4000)return;_ultAviso=Date.now();try{toast('⏳ Todavía se está actualizando: no se guardó. Probá de nuevo en unos segundos.','err',4000);}catch(_){}};
-  for(const m of ['set','update','remove','transaction','setWithPriority']){const o=R[m];if(typeof o!=='function')continue;R[m]=function(){if(window._deCopia()){aviso();return Promise.resolve();}return o.apply(this,arguments);};}
+  for(const m of ['set','update','remove','transaction','setWithPriority']){const o=R[m];if(typeof o!=='function')continue;R[m]=function(){if(window._deCopia()&&!/\/cyc\/diag\//.test(String(this))){aviso();return Promise.resolve();}return o.apply(this,arguments);};}
   const op=R.push;if(typeof op==='function')R.push=function(v){if(window._deCopia()&&arguments.length&&v!==undefined){aviso();return op.call(this);}return op.apply(this,arguments);};
 }catch(_){}})();
 function _copiaCartelSacar(){try{const b=document.getElementById('cyc-copia-cartel');if(b)b.remove();}catch(_){}}
@@ -2871,6 +2879,7 @@ function startApp(){
     rebuildReclamoStats();
     if(_extEntries.length)_applyStockEntries(_extEntries);
     document.getElementById('loading').style.display='none';
+    if(firstDataLoad)window._diag.abrioMs=Date.now()-_diagT0,window._diag.abrioCon=_cycDeCopia.size?'copia':'base';
     const primeraVez=firstDataLoad;
     if(firstDataLoad){firstDataLoad=false;const _pg0=_paginaDeHash();currentPage=currentPage||'home';goPage('home');if(_pg0&&_pg0!=='home')goPage(_pg0);}   // #ventaprod = abrió tocando el aviso de una venta (o un acceso directo del ícono)
     // La primera carga se dibuja ya; las demás se juntan y respetan tu scroll (ver renderPronto).
@@ -2906,7 +2915,7 @@ function startApp(){
     b.textContent='⚠️ Se cortó la lectura de la base ('+((err&&(err.code||err.message))||'error')+'). Lo que ves puede estar VIEJO y lo que cargues puede no guardarse. Tocá acá para volver a entrar.';
     const l=document.getElementById('loading');if(l)l.style.display='none';
   };
-  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(_cycDeCopia.delete(k)){if(!_cycDeCopia.size)_copiaCartelSacar();else if(window._copiaTsVisto&&document.getElementById('cyc-copia-cartel')&&!window._sinSesion)_copiaCartel(window._copiaTsVisto,true);}_cycSched();},_cycErr);
+  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(_cycDeCopia.delete(k)){if(!_cycDeCopia.size){_copiaCartelSacar();window._diag.completoMs=Date.now()-_diagT0;window._diag.faltan=null;_diagMandar();}else if(window._copiaTsVisto&&document.getElementById('cyc-copia-cartel')&&!window._sinSesion)_copiaCartel(window._copiaTsVisto,true);}_cycSched();},_cycErr);
   _alEntrar(()=>CYC_KEYS.forEach(_cycOir));
   // 📴 a los 12 s (o enseguida si arrancó sin sesión), lo que falta sale de la copia del teléfono.
   const _cycDeLaCopia=async()=>{if(!_cycFalta.size)return;const c=await _copiaLeer();if(!c||!c.d||!_cycFalta.size)return;
@@ -2926,6 +2935,8 @@ function startApp(){
   // 03/11 (él: "que entre lo más rápido posible… que abra aunque no haya descargado toda la info nueva"): SIEMPRE se abre primero con la
   // copia del teléfono (si hay) y lo de la base la va reemplazando a medida que llega.
   setTimeout(_cycDeLaCopia,0);
+  // 🩺 al minuto: si no terminó, qué partes faltan; si terminó sin copia (primera vez), también se anota.
+  setTimeout(()=>{if(_cycDeCopia.size||_cycFalta.size)_diagMandar({faltan:[..._cycDeCopia,..._cycFalta].slice(0,20),completoMs:null});else if(!window._diag.completoMs){window._diag.completoMs=null;_diagMandar({sinCopia:true});}},60000);
   window._cycReoir=()=>{CYC_KEYS.forEach(k=>{try{db.ref('cyc/'+k).off();}catch(_){}_cycOir(k);});};
   // 03/11/2026: `cyc/oficycdesde` (📅 En stock de Rotación → Local) se lee APARTE y sin frenar la carga: la web espera a que llegue TODA
   // parte de CYC_KEYS, y si una no se puede leer el panel no termina de cargar nunca (le pasó con esta el 03/11).
@@ -3364,7 +3375,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.100';
+const APP_VERSION='28.101';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3377,6 +3388,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.101',f:'03/11',h:'19:20',c:[{n:1,t:'🩺 Cada teléfono anota en cuánto abrió y en cuánto terminó de actualizar (y qué faltaba), para que Claude lo vea sin pedir fotos.'}]},
   {v:'28.100',f:'03/11',h:'19:00',c:[{n:2,t:'🔄 El renglón de arriba dice cuánto va de la actualización (%) y se va solo al terminar. El cartel naranja de "sin conexión" sale sólo si de verdad no llega nada.'}]},
   {v:'28.99',f:'03/11',h:'18:40',c:[{n:3,t:'📶 Con señal floja la app instalada ya no se queda en la pantalla del ícono: si la red no contesta en 2,5 segundos abre lo guardado en el teléfono y baja lo nuevo atrás.'}]},
   {v:'28.98',f:'03/11',h:'18:10',c:[{n:3,t:'⚡ Abre al instante: con la copia del teléfono el panel aparece sin esperar a que el navegador recupere la sesión; lo nuevo entra atrás. (La primera vez después de esta versión tiene que cargar una vez con internet para guardar la copia.)'}]},
