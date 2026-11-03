@@ -10,7 +10,7 @@ Tito (el socio) compra en persona en dos mayoristas del Once que tienen tienda e
   · AnD — https://ventasmitre.com.ar  (en la lista se llama "AnD Mitre")
   · AVL 112 — https://avl112.com.ar   (Pasteur 112, CABA; en la lista se llama "AVL 112")
 El robot ya baja el catálogo entero de las dos páginas con precio, foto y código, saca las marcas reales (en el Once son imitación),
-la ropa, los perfumes, la comida y lo grande, y lo mide contra MercadoLibre. A Tito le aparece en Pedidos → Bs As → 📋 Listas de Tito
+la ropa, los perfumes, la comida y lo grande, y lo mide contra MercadoLibre. A Tito le aparece en Pedidos → Bs As → 📋 Listas
 sólo lo que deja 35% o más. Vos hacés lo que el robot no puede.
 
 PASO 1 · ACTUALIZAR LA LISTA (cada 7 días)
@@ -28,7 +28,7 @@ PASO 2 · LO QUE LA PÁGINA NO DICE (una vez, y si algo cambia)
    No te registres ni pongas datos de nadie. Si para ver el precio mayorista pide registrarse, frená y avisá.
 
 PASO 3 · REVISAR LO QUE DA (lo que le aparece a Tito)
- - Panel → Pedidos → Bs As → 📋 Listas de Tito → elegí AnD Mitre y después AVL 112 → 🆕 Productos nuevos.
+ - Panel → Pedidos → Bs As → 📋 Listas → elegí AnD Mitre y después AVL 112 → 🆕 Productos nuevos.
  - De cada uno que da 35% o más, abrí el producto en la página del mayorista y la publicación de ML con la que lo midió el robot y
    fijate que sea EXACTAMENTE el mismo (modelo, medida, capacidad, cantidad que trae, color). Si es otro, o es pack contra unidad:
      listadato:<AnD Mitre o AVL 112>;<código>=no;go          (no es el mismo)
