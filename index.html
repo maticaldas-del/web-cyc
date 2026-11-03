@@ -166,6 +166,17 @@ html{font-size:118%}
 #vp-day-list>*,.ingreso-list>*{flex-shrink:0}
 /* Ventas en la PC (26/10/2026): ventas a la izquierda, pegadas al borde; los cuadros de números apilados a la derecha (también es el lugar
    para apoyar el mouse y mover la página). */
+/* 🧾 LA CABECERA DE LA TARJETA DE VENTA NO SE MUEVE (03/11/2026, él: "que el % no se mueva, que quede siempre igual la tarjeta. si no entra
+   todo poner ... al final de la palabra, nombre o lo que sea (no a los números)"): un solo renglón; cuenta y fecha a la izquierda, los
+   números (total, gan., %, nivel) a la derecha y SIEMPRE completos; los chips del medio se achican con "…" y la fecha también se achica antes que un número; en el teléfono los números van SIEMPRE en el segundo renglón, a la derecha. */
+.vp-pc-cab{flex-wrap:nowrap}
+.vp-pc-cab>.who-badge{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vp-cab-chips{display:flex;align-items:center;gap:6px;flex:1 1 0;min-width:0;overflow:hidden;justify-content:flex-end}
+.vp-cab-chips>*{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vp-cab-chips:empty{display:block}
+.vp-cab-num{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}
+.vp-cab-fecha{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:600px){.vp-pc-cab{flex-wrap:wrap}.vp-pc-cab>.who-badge{flex:none}.vp-cab-chips{justify-content:flex-start}.vp-cab-num{flex:1 0 100%;justify-content:flex-end}}
 @media(min-width:1100px){#vp-top{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
   #vp-top>#vp-day-list{grid-column:1;grid-row:1;margin:0!important;max-width:none;padding:8px}
   #vp-top>#vp-kpis{grid-column:2;grid-row:1;grid-template-columns:1fr;gap:6px;margin:0;position:sticky;top:12px}}
@@ -3341,7 +3352,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.96';
+const APP_VERSION='28.97';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3354,6 +3365,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.97',f:'03/11',h:'17:55',c:[{n:2,t:'🧾 Tarjeta de venta: el total, la ganancia y el % quedan siempre en el mismo lugar, a la derecha y completos. Lo del medio (Premium, 1ª venta, analizada…) y la fecha se achican con "…" si no entra; en el teléfono los números van siempre en el segundo renglón.'}]},
   {v:'28.96',f:'03/11',h:'17:40',c:[{n:3,t:'⚡ El panel abre al instante con lo guardado en el teléfono y lo nuevo se va cargando atrás (arriba dice "🔄 Actualizando…"). Mientras se actualiza no se guarda nada nuevo: si tocás algo, te avisa que esperes unos segundos.'}]},
   {v:'28.95',f:'03/11',h:'17:20',c:[{n:2,t:'📴 La copia del teléfono se guarda 15 segundos después de cada cambio y al salir de la app (antes, una vez por minuto), y ahora lleva también Pedidos → Paraguay, las notas 🧠 (los "Hola Tito!") y la edad del stock del Local.'}]},
   {v:'28.94',f:'03/11',h:'17:00',c:[{n:3,t:'📴 Entrar sin internet: el panel guarda una copia de los datos en cada teléfono. Si la base no contesta en 12 segundos (sin señal o la sesión trabada), abre con lo guardado y un cartel naranja dice de cuándo es; cuando vuelve la conexión se actualiza solo.'}]},
@@ -15435,7 +15447,7 @@ function renderVentaProd(){
       // lado de un número de venta es peor que no tenerla.
       const _hs=grp.items.map(v=>Number(v.ts)||0).filter(t=>t>0);
       const _hora=_hs.length?new Date(Math.min(..._hs)).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
-      const fechaTag=grp._dateKey?`<span style="font-size:.6rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}${_hora?' · '+_hora:''}</span>`:'';
+      const fechaTag=grp._dateKey?`<span class="vp-cab-fecha" style="font-size:.6rem;color:var(--muted)">${grp._dateKey.replace(/_/g,'-')}${_hora?' · '+_hora:''}</span>`:'';
       // El número de venta va en BLANCO, no en verde. Pedido suyo del 09/09/2026: en verde se
       // confundía con el % de ganancia, que está en el mismo renglón y también en verde. El verde
       // acá no significaba nada — el número es un dato, no una señal de que algo esté bien.
@@ -15622,21 +15634,20 @@ function renderVentaProd(){
       const _esAv=!!(_vpAvisoIds&&grp.items.some(v=>_vpAvisoIds.has(v.id))),_avSt=_esAv?`--avc:${gpct!=null?pctColor(gpct):'var(--green)'};`:'';
       const _avTag=_esAv?`<span class="vp-aviso-tag">🔔 la del aviso</span>`:'';
       const _pcHtml=`<div class="ingreso-item vp-pc${_esAv?' vp-aviso':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
-        <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:4px;white-space:nowrap">
+        <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;row-gap:4px;white-space:nowrap">
           ${_esNueva?_dot:''}<span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           ${fechaTag}
           ${cancelBadge}${_avTag}
           ${grp.items.length>1?`<span style="font-size:.64rem;color:var(--muted)">${grp.items.length} prod.</span>`:''}
-          <span style="flex:1"></span>
-          ${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
+          <span class="vp-cab-chips">${promoLabel?promoLabel.replace(/>🏷️ [^<]*</,'>🏷️ '+(promoLabel.includes('vp-promo-ml')?'desc. ML':'promo')+'<'):''}
           ${tipoLabel}${nroLabel?' '+nroLabel:''}
           ${analisisLabel}
           ${entLabel}
-          ${rescLabel}
-          ${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
+          ${rescLabel}</span>
+          <span class="vp-cab-num">${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
           ${ganLabel}
           ${pctBox}
-          ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}
+          ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}</span>
         </div>
         ${lines}
         ${_hechoV}
