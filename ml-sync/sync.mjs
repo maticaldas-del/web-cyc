@@ -25962,8 +25962,13 @@ async function main() {
     // pasada por Claude entera, comprimida (gzip + base64) para que entre en el campo de GitHub y SIN pasar por el repo (los precios de un
     // proveedor no van al repo público). Adentro va un `lista:<prov>|fecha=…;<producto>=<pesos>@<cód>;…;go` normal y corre igual que ése.
     if (/^listagz:/.test(String(process.env.BILLING_PROBE || ''))) {
-      const zlib = await import('zlib'); let txt = '';
-      try { txt = zlib.gunzipSync(Buffer.from(String(process.env.BILLING_PROBE).slice('listagz:'.length).replace(/\s+/g, ''), 'base64')).toString('utf8'); } catch (e) { console.log('❌ no pude abrir el texto comprimido: ' + e.message); return; }
+      // `listagz:privado=<nombre>` = el mismo texto comprimido pero CERRADO en `ml-sync/privado/<nombre>.enc` (leerPrivado): para listas que
+      // no entran en el campo de GitHub. Varios nombres separados por coma se cargan uno atrás del otro.
+      const zlib = await import('zlib'); let txt = ''; const _argGz = String(process.env.BILLING_PROBE).slice('listagz:'.length).trim();
+      const _mPriv = _argGz.match(/^privado=([\w.,-]+)$/);
+      if (_mPriv) { const ns = _mPriv[1].split(',').filter(Boolean); if (ns.length > 1) { const { execFileSync } = await import('child_process'); for (const n of ns) { console.log('##### listagz:privado=' + n); try { process.stdout.write(execFileSync(process.execPath, [new URL(import.meta.url).pathname], { env: { ...process.env, BILLING_PROBE: 'listagz:privado=' + n }, encoding: 'utf8', maxBuffer: 64e6 })); } catch (e) { console.log('❌ ' + n + ': ' + String(e.message).slice(0, 200)); } } return; }
+        const buf = await leerPrivado(db, ns[0]); if (!buf) return; try { txt = zlib.gunzipSync(buf).toString('utf8'); } catch (e) { console.log('❌ ' + ns[0] + ': no es un texto comprimido (' + e.message + ')'); return; } }
+      else try { txt = zlib.gunzipSync(Buffer.from(_argGz.replace(/\s+/g, ''), 'base64')).toString('utf8'); } catch (e) { console.log('❌ no pude abrir el texto comprimido: ' + e.message); return; }
       if (!/^lista:/.test(txt)) { console.log('❌ adentro no hay un comando lista:'); return; }
       console.log(`📦 listagz: ${txt.length} letras · ${txt.split(';').length - 2} renglones`); process.env.BILLING_PROBE = txt;
     }
