@@ -125,6 +125,17 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
 
 - 🔒 **Publicar: 35% mínimo en el peor caso** (23/10/2026, él): ninguna publicación nueva arranca abajo de 35% (`PUBLICAR_MIN_PCT`, freno en `publicar`). Lo que hoy no llega se publica a su precio de 35% y espera (el otro vendedor se queda sin stock); bajar recién cuando se acerca el stock antiguo, con las reglas de siempre.
 
+### 0d · LO QUE ELIGIÓ EL 03/11/2026 (lista de las 12:30; en el código, ver REVISION etapa 1)
+- 🆕 un lanzamiento sin ritmo de antes medible también espera la confirmación: **3 ventas** antes de la próxima +50% (13a).
+- Los **10 días sin vender** no cuentan los días con **0 visitas** (18a): un 🆕 que nadie ve no se vuelve 🔴 por eso.
+- La **prueba del mes** (+20%) que vende **se queda** en ese precio (19a): no se le pide otro +50% hasta la próxima prueba.
+- 🔒 no bajar y 🥊 mantener la caja **no salen en las listas de subas** (20a); una suba ahí sólo con su OK.
+- Gemelas: acompañan a la Clásica abajo del 35% **sólo si está abajo a propósito** (sobra, liquidando, remate, promo, descuento, `!piso`); si quedó abajo sin querer (dólar, costo) la gemela queda en el 35% (21a).
+- "Lo pide él" escrito en un motivo **ya no abre la regla de sobra** (22a): es la 🔐 `!pideel`, con su autorizo.
+- 🔙 No se vuelve al precio más caro que vendió si **el de hoy deja igual o más plata por día** medido (7, Barbarella: *"el que deje más plata por semana/mes"*).
+- 🎄 Navidad (2a 3a 4a): lo regalable con pico en la Navidad pasada se mide en `escasez` con ese pico del 03/12 al 24/12 · del 15/11 al 24/12 no se liquida ni baja por sobra lo que vendió ×2+ en Navidad (se renueva el descuento) y el escalón del 23-26/11 se corre al Black Friday · los pedidos de Paraguay del 9 y 16/11 llevan primero los regalables nuevos (35%+). Lo de Navidad que no entra en el cupo se manda a medida que se libera lugar (1a).
+- Quedan como están (eligió b): 🔥/⏳ suben +50% con cada venta (16b) · las fechas especiales cuentan para confirmar una suba (17b) · la liquidación de 30 días arriba del 35% (23b) · el 0% con la ganancia normal (24b) · `!bajopiso` en escasez (25b) · el control de cada hora (26b).
+
 ## 1 · CADA VUELTA, EN ESTE ORDEN
 
 **Cortas (9:52, 11:52, 13:52, 15:52, 17:52, 19:37, 21:22, 22:52; 23/10, eligió 1a):**

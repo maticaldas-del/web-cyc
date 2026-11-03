@@ -3267,7 +3267,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.83';
+const APP_VERSION='28.84';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3280,6 +3280,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.84',f:'03/11',h:'13:30',c:[{n:1,t:'🔴 Línea de tiempo: los 10 días sin vender no cuentan los días con 0 visitas (nadie la vio; regla del 03/11).'}]},
   {v:'28.83',f:'03/11',h:'06:30',c:[{n:1,t:'La raya 🔴 de la línea de tiempo dice "10+ días: techo por regla" (regla del 02/11; antes decía 30).'}]},
   {v:'28.82',f:'03/11',h:'02:30',c:[{n:2,t:'📳 Ventas: la tarjeta que tiembla ya no se corta contra el borde de la lista (tiene aire alrededor y tiembla sin girar).'}]},
   {v:'28.81',f:'03/11',h:'00:10',c:[{n:3,t:'🔧 El panel no terminaba de cargar: un dato nuevo de Rotación → Local (la fecha de entrada) frenaba la carga. Ahora se lee aparte y no frena nada.'}]},
@@ -13055,7 +13056,7 @@ function lineaPintar(prodId){
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,rN:g.dF>0?g.u/g.dF:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     // 🔴 POR 30 DÍAS SIN VENDER (24/10/2026, él: "a los 30 días de no vender sí o sí se marca como techo"): el precio más bajo que, con sus
     // días y los de todos los más caros (activa, 1+ u. en Full), lleva 30+ días sin una venta. Misma cuenta que `rayasPrecioLinea`.
-    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];/* revisión etapa 5 (01/11): un día de fecha especial con venta SÍ cuenta (cortaba la racha: vendió y decía "30 días sin vender"); sin venta sigue afuera, igual que `rayasPrecioLinea` */if(!d||k<_kDesdeR||(_fueraR.has(k)&&!((d.u||0)-(d.uR||0)>0)))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;const pl=_plR[k]||0;if(!(pl>0))return;
+    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];/* revisión etapa 5 (01/11): un día de fecha especial con venta SÍ cuenta (cortaba la racha: vendió y decía "30 días sin vender"); sin venta sigue afuera, igual que `rayasPrecioLinea` */if(!d||k<_kDesdeR||(_fueraR.has(k)&&!((d.u||0)-(d.uR||0)>0)))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;/* 18a del 03/11 (él: contar sólo días con visitas): un día con 0 visitas no cuenta para los 10 días sin vender; sin el dato sí, igual que `sinVisitasDia` del robot */if(d.vis!=null&&Number(d.vis)===0)return;const pl=_plR[k]||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G1[b]=G1[b]||{p:b,dias:0,u:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));});
       let D=0,t=null;for(const g of Object.values(G1).sort((a,b)=>b.p-a.p)){if(g.u>0)break;D+=g.dias;if(D>=TECHO_DIAS_SIN_VENTA_W)t={p:g.p,dias:D,u:0,por30:true};}return t;})();
     // 💰 sólo un precio que VENDIÓ (21/10/2026, Aer Jasmín: $19.490 salía de "más plata" con 0 ventas en 5 días, por ser el único con 5 días).
