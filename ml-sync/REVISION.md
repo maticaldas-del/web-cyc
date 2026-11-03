@@ -88,6 +88,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ### 🏬 Pedidos de Bs As para 60 días (03/11/2026, etapa 3; él: *"Paulvic hay siempre. Nissei también y Bs As la mitad de las veces"*, eligió 60)
 - **Qué es:** `Tde` en `ml-sync/notas/decide_pedidos.py`: todo lo de Bs As con ritmo pide para 60 días (antes 30, o 45 si se cortaba). Paraguay 30, Paulvic 45. Las cajas a Full siguen en 37 días: lo demás espera en la oficina (no paga stock antiguo).
+- **1a del 03/11:** en `ritmo()` (rama NOR), con el precio cambiado hace 2-6 días con stock, manda el más bajo entre el ritmo normal y el del precio nuevo (17 renglones el 03/11; Bs As $3,29M → $3,28M).
 - **Qué chequear:** que la plata del pedido de Tito no se dispare (comparar el total contra el de antes en la próxima completa); que lo de menos de 35% siga en 0.
 
 ### 🔄 Rotación del Local (02/11/2026, v28.78, etapa 9 Local; él: *"en rotación poner los productos de local también, que haya para clickear en la tarjeta del inicio dentro de la tarjeta de rotación, dos una ml otra local"*)

@@ -179,6 +179,12 @@ def ritmo(x,dcs=30):
         if esc and min(esc)<=30:
             rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
             if rPre>r: r=rPre; base+=f" · subí el precio por escasez hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
+        # 1a del 03/11/2026 (él, con Bs As a 60 días: "¿con ritmo nuevo del precio que más vende, viejo o mezcla?"): si el precio cambió hace
+        # menos de 7 días (2+ días con stock al precio nuevo), manda el MÁS BAJO entre el ritmo de antes y lo que vendió al precio nuevo, para
+        # no comprar de más. Reemplaza la 2b del 28/10 ("los primeros 7 días con el ritmo de antes"). La escasez sigue con su regla de arriba.
+        elif nr.get('hoyD') is not None and 2<=nr['hoyD']<7:
+            rN=nr['hoyU']/nr['hoyD']
+            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr['hoyU']} en {nr['hoyD']} días con stock: uso ese ritmo, el más bajo (1a del 03/11)"
         return r,tiene,base
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)

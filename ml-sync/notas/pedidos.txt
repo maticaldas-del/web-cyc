@@ -92,7 +92,7 @@ ped:p1779912656400=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y
 ped:p1779912656400=venta|10190|precio de la venta mas cara de 365 dias (deja 388%) para el maximo de compra
 ped:p1779912655950=u|0|Hola Tito! Este no hace falta: se venden unos 9 por mes y ya hay 56, alcanza para unos 196 días. Cuento 93 que se vendieron baratas porque salían al toque.|cub=24
 ped:p1779912655950=venta|8490|precio de la venta mas cara de 365 dias (deja 199%) para el maximo de compra
-ped:p1779912655630#Azul=u|6|Hola Tito! Te pido 6 del Azul: se venden unos 6 por mes y entre Full, la oficina y lo que viene en camino hay 7. Con 6 más cubrimos un mes.
+ped:p1779912655630#Azul=u|5|Hola Tito! Te pido 5 del Azul: se venden unos 6 por mes y entre Full, la oficina y lo que viene en camino hay 7. Con 5 más cubrimos un mes.
 ped:p1779912655630#Negro=u|1|Hola Tito! Te pido 1 del Negro: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 7. Con 1 más cubrimos un mes.
 ped:p1779912655630#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 2 por mes y ya hay 14, alcanza para unos 196 días.
 ped:p1779912655630#Rosa=u|47|Hola Tito! Te pido 47 del Rosa: se venden unos 25 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 47 más cubrimos un mes.
@@ -132,7 +132,7 @@ ped:p1779912655610#Rosa=venta|17070|precio de la ultima venta de ese color ($170
 ped:p1779912655610#Verde Musgo=venta|17990|precio de la ultima venta de ese color ($17990) para el maximo de compra
 ped:p1779912655610#Violeta=venta|14790|precio de la ultima venta de ese color ($14790) para el maximo de compra
 ped:p1779912655610#Cian=venta|14770|precio de la ultima venta de ese color ($14770) para el maximo de compra
-ped:p1779912655940=u|0|Hola Tito! Este no hace falta: se venden unos 18 por mes y ya hay 42, alcanza para unos 70 días. Cuento 63 que se vendieron baratas porque salían al toque.|cub=24
+ped:p1779912655940=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes y ya hay 42, alcanza para unos 126 días. Cuento 63 que se vendieron baratas porque salían al toque.|cub=24
 ped:p1779912655940=venta|13090|precio de la venta mas cara de 365 dias (deja 306%) para el maximo de compra
 ped:p1779912655870=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -17%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $5690, lo vuelvo a pedir.|cub=0
 ped:p1779912655870=venta|5300|precio de la ultima venta ($5300) para el maximo de compra
@@ -165,7 +165,7 @@ ped:p1779912655920=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes 
 ped:p1779912655920=venta|6490|precio de la venta mas cara de 365 dias (deja 127%) para el maximo de compra
 ped:p1779912656050=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6090, lo vuelvo a pedir.|cub=0
 ped:p1779912656050=venta|5500|precio de la ultima venta ($5500) para el maximo de compra
-ped:p1779912656070=u|7|Hola Tito! Te pido 7: se venden unos 16 por mes y entre Full, la oficina y lo que viene en camino hay 25. Con 7 más cubrimos un mes.|cub=12
+ped:p1779912656070=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 25, alcanza para unos 62 días.|cub=12
 ped:p1779912656070=venta|11390|precio de la venta mas cara de 365 dias (deja 257%) para el maximo de compra
 ped:p1779912655890=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $27790, lo vuelvo a pedir.|cub=0
 ped:p1779912655890=venta|27110|precio de la ultima venta ($27110) para el maximo de compra
@@ -194,7 +194,7 @@ ped:p1787786300945=u|40|Hola Tito! Mini balanza: en la última tanda vendió 16 
 ped:p1787786300945=venta|10500|precio de la venta mas cara de 365 dias (deja 65%) para el maximo de compra
 ped:p1779912655540=u|0|Hola Tito! Pret a Porter Body Splash: no se consigue desde el 19/10 y a su última venta deja ~25-30% (completa del 28/10). No se pide|cub=0
 ped:p1779912655540=venta|19990|precio de la ultima venta ($19990) para el maximo de compra
-ped:p1779912655840=u|0|Hola Tito! Este no hace falta: se venden unos 9 por mes y ya hay 17, alcanza para unos 56 días. Cuento 9 que se vendieron baratas porque salían al toque.|cub=10
+ped:p1779912655840=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 17. Cuento 9 que se vendieron baratas porque salían al toque.|cub=10
 ped:p1779912655840=venta|25190|precio de la ultima venta ($25190) para el maximo de compra
 ped:p1779912655850=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17090, lo vuelvo a pedir.|cub=15
 ped:p1779912655850=venta|12990|precio de la ultima venta ($12990) para el maximo de compra
@@ -237,7 +237,7 @@ ped:p1779912655690=u|26|Hola Tito! Te pido 26: se venden unos 13 por mes y entre
 ped:p1779912655690=venta|18520|precio de la venta mas cara de 365 dias (deja 41%) para el maximo de compra
 ped:p1787783558381=u|1|Hola Tito! Te pido 1: se venden unos 9 por mes y entre Full, la oficina y lo que viene en camino hay 18. Con 1 más cubrimos un mes.|cub=12
 ped:p1787783558381=venta|6090|precio de la competencia (deja 73%) para el maximo de compra
-ped:p1779912656080=u|15|Hola Tito! Te pido 15: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 5. Con 15 más cubrimos un mes. Cuento 10 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656080=u|7|Hola Tito! Te pido 7: se venden unos 6 por mes y entre Full, la oficina y lo que viene en camino hay 5. Con 7 más cubrimos un mes. Cuento 10 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656080=venta|7090|precio de la venta mas cara de 365 dias (deja 147%) para el maximo de compra
 ped:p1783356360695=u|21|Hola Tito! Te pido 21: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 13. Con 21 más cubrimos un mes.|cub=12
 ped:p1783356360695=venta|8250|precio de la competencia (deja 83%) para el maximo de compra
@@ -651,7 +651,7 @@ ped:p1779912655490#Scarf=u|0|Hola Tito! El Scarf no lo compres por ahora: la com
 ped:p1779912655490#Sexy Mujer=u|0|Hola Tito! El Sexy Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 7%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17290, lo vuelvo a pedir.
 ped:p1779912655490#Sí=u|7|Hola Tito! Te pido 7 del Sí: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 7 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
 ped:p1779912655490#Silver Hombre=u|0|Hola Tito! El Silver Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 23%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17490, lo vuelvo a pedir.
-ped:p1779912655490#Teikirisi=u|0|Hola Tito! El Teikirisi no hace falta: se venden unos 1 por mes y ya hay 5, alcanza para unos 140 días.
+ped:p1779912655490#Teikirisi=u|0|Hola Tito! El Teikirisi no hace falta: se venden unos 0 por mes y ya hay 5.
 ped:p1779912655490#Transparent Mujer=u|0|Hola Tito! El Transparent Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17490, lo vuelvo a pedir.
 ped:p1779912655490#Turbulence=u|0|Hola Tito! El Turbulence no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 17%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $16990, lo vuelvo a pedir.
 ped:p1779912655490#Victory=u|0|Hola Tito! El Victory no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 14%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $14890, lo vuelvo a pedir.
