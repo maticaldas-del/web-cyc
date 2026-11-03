@@ -344,7 +344,7 @@
   sólo si él lo pide (21/10). **Lo de Navidad que no entra se manda a medida que se libera lugar** y lo demás espera en la oficina (1a del 03/11).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
   adivina** (sin color en el título → `fijarvar:<MLA>=<color>:go`). No es el MLA.
-- **Cajas llegadas:** el robot anota lo entrado (`cyc/cajasentrado`); **las que entraron COMPLETAS las marca solo cada hora** (24/10, él con
+- **Cajas llegadas:** (03/11, él: *"las unidades ya las mira el otro robot"*: el chat de Chrome mira en ML SÓLO las que lista `cajasmirar` —despachadas hace 3+ días y no dadas de alta enteras— y deja el motivo en el buzón, "CAJAS LLEGADAS") el robot anota lo entrado (`cyc/cajasentrado`); **las que entraron COMPLETAS las marca solo cada hora** (24/10, él con
   la 79567049: *"¿no tenés datos suficientes para darte cuenta?"*); **las que tienen faltantes las marco yo** con
   `cajallego:<seg>[;…][!<palabras>=<u>]:go` (faltante real confirmado) o `abrircaja`. Lo de la oficina no es reposición hasta despachar.
 - **Mercadería en tres lugares:** oficina (`ofi`), en camino a Full (`cyc/envios_full/<id>/cajasDet`), en ML. Lo en camino cuenta como

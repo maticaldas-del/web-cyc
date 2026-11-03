@@ -14524,7 +14524,7 @@ const BARRERA_CADA_H = 6;
 // cola como `cupo:…;go` (sólo las cuentas con números claros y no más de 3 veces lo de antes) y `ancla:buzon=<ts>;go` (los saldos de MP, que
 // no se imprimen nunca). Lo raro (un "?", un cupo 3 veces más grande, los `visto:` y lo que no sé leer) queda anotado en
 // `mlapi/rutinaauto/<ts>` para que lo mire Claude en la vuelta (el `buzon` lo muestra).
-const COLA_OK = new Set(['pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla']);
+const COLA_OK = new Set(['pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla', 'cajasmirar']);
 const COLA_DIR = '/tmp/cyc-cola';
 const RUTINA_AUTO_DESDE = Date.parse('2026-11-03T18:00:00Z');   // las RUTINA de antes las cargó Claude a mano
 async function colaParaRobot(db, labels) {
@@ -20600,6 +20600,28 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=cajasmirar (03/11/2026, él: "lo que vos pienses que es mejor y no tiene errores", sobre la tarea CAJAS LLEGADAS del chat
+    // de Chrome). SOLO LEE. Las cajas que el robot NO puede cerrar solo: despachadas (no en pausa), con 3+ días desde que salieron y que ML
+    // todavía no dio de alta enteras (`cyc/cajasentrado`, la misma cuenta que el informe §9). El chat mira en ML SÓLO éstas y anota el
+    // motivo (rechazadas, dañadas, no aptas, en revisión, sin etiqueta, faltante); las completas las cierra el robot y no se miran.
+    if (/^cajasmirar$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const envs = (await db.get('cyc/envios_full')) || {}; const entC = (await db.get('cyc/cajasentrado')) || {}; const prodsM = {}; for (const p of products) prodsM[p.id] = p;
+      const filas = []; const ahoraM = Date.now();
+      for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
+        if (!c || c.recibida || env.pausado) continue;
+        const t0 = envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : (env.reanudado || env.ts)); const dd = t0 > 0 ? (ahoraM - t0) / 864e5 : null;
+        if (dd == null || dd < 3) continue;
+        const r = entC[id + '__' + ci]; const ok = r && String(r.track || '') === String(c.track || ''); const its = ok ? (Array.isArray(r.items) ? r.items : Object.values(r.items || {})) : [];
+        const falt = []; let uC = 0, eC = 0;
+        for (const it of (c.items || [])) { if (!it) continue; const u = Number(it.u) || 0; uC += u; const x = its.find((y) => y && y.p === it.prodId && (y.v || '') === (it.variante || '')); const e = x ? Math.max(0, Math.min(Number(x.q) || 0, u)) : 0; eC += e;
+          if (e < u) falt.push(`${u - e} de ${u} ${String((prodsM[it.prodId] || {}).name || it.nombre || '?').slice(0, 38)}${it.variante ? ' · ' + it.variante : ''}`); }
+        if (uC > 0 && eC >= uC) continue;
+        filas.push(`· ${env.cuenta || '?'} · envío …${String(c.track || id).slice(-4)} · salió ${Math.round(dd)} d atrás · ML dio de alta ${eC} de ${uC} · faltan: ${falt.slice(0, 6).join(' · ')}${falt.length > 6 ? ' · …' : ''}`);
+      }
+      console.log(`=== 📦 CAJAS PARA MIRAR EN ML (${filas.length}) · despachadas hace 3+ días y que ML todavía no dio de alta enteras ===`);
+      if (!filas.length) console.log('· ninguna: todo lo despachado ya entró entero o salió hace menos de 3 días'); else filas.forEach((x) => console.log(x));
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '').startsWith('cajasllegaron')) {
       const APLICAR = String(process.env.BILLING_PROBE).split(':')[1] === 'go';
       const r = await cajasQueLlegaron(db, accounts, labels, products, !APLICAR);

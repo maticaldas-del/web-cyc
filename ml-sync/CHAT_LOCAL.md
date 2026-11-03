@@ -29,7 +29,7 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Mayoristas del Once con precios en internet.  → ONCE
 - Imega (mayorista que conoce Tito).  → IMEGA
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
-- "cajas llegadas" (cada vez que te prenden, después de la RUTINA): mirar en ML las cajas que llegaron a Full y avisar si llegó todo bien o hubo problemas.  → CAJAS LLEGADAS
+- "cajas llegadas" (cada vez que te prenden, después de la RUTINA): sólo las cajas que el robot no pudo cerrar (`cajasmirar`) y el porqué de lo que falta.  → CAJAS LLEGADAS
 - "más vendidos" (cada 7 días): lo más vendido de cada categoría de ML cruzado con Nissei y las listas.  → MÁS VENDIDOS
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
@@ -57,21 +57,23 @@ CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026, él: "el chat de Chrome carga p
   `pycat:#12@nuevo;…;go` o `pyprecio:…;go`) y tocá "📥 Mandar al robot". El robot lo corre solo en ~2 minutos y ahí mismo ves
   ⏳ en cola → ⚙️ corriendo → ✅ hecho (o ❌ falló / 🚫 rechazado) y "ver lo que dijo" con lo que contestó. Esperá el ✅ antes de mandar el
   siguiente de la misma tanda. Sirve para: pycat, pycatres, pyprecio, candprecio, listadato, lista, listamedir, listarevisar, faltaventas,
-  faltaprecio, svprecio, pyprobadoslista, cupo, pyvisto, revcand, buzon, ancla.
+  faltaprecio, svprecio, pyprobadoslista, cupo, pyvisto, revcand, buzon, ancla, cajasmirar.
 - Si en 15 minutos sigue ⏳ (el robot está trabado) o te dice 🚫, recién ahí usá GitHub como antes (workflow ml-consulta → Run workflow →
   rama claude/add-folder-78ysyb → "comando"). Si GitHub tampoco anda, pasale los comandos a Matías.
 - La RUTINA ya no hace falta cargarla: el cupo y Mercado Pago del mensaje "RUTINA" del buzón los carga el robot solo. Vos dejá el
   mensaje igual que siempre.
 
-CAJAS LLEGADAS (la tarea a2; 03/11/2026, él: "que mire las cajas llegadas, si todo llegó correcto o hubo problemas")
-- En cada una de las 4 cuentas: Mercado Libre → Full (o Ventas → Envíos a Full / Planificación de envíos) → los envíos de los últimos 10
-  días que dicen recibido, en proceso o con problemas.
-- De cada envío nuevo (que no anotaste antes) mirá el detalle: cuántas unidades se mandaron y cuántas recibió ML de cada producto, y si ML
-  dice faltantes, unidades rechazadas, dañadas, "no aptas", "en revisión" o "sin etiqueta".
-- Dejá UN mensaje en el buzón que EMPIECE con "CAJAS LLEGADAS <AAAA-MM-DD>", un renglón por envío:
-  `<cuenta> · envío …<últimos 4 números> · <fecha> · <recibido entero | EN PROCESO | CON PROBLEMAS> · <qué pasó, producto por producto, sólo si no está bien>`
-  Si no llegó ninguno nuevo: "CAJAS LLEGADAS <fecha> · nada nuevo".
-- No toques nada, no confirmes ni respondas nada en ML: sólo mirás y anotás.
+CAJAS LLEGADAS (la tarea a2; 03/11/2026, él: "que mire las cajas llegadas, si todo llegó correcto o hubo problemas"; y después: "las unidades ya las mira el otro robot")
+- Las unidades que entran a Full las cuenta el robot solo, y las cajas que entraron ENTERAS las cierra él. Vos mirás SÓLO las que el
+  robot no puede cerrar, para saber el PORQUÉ.
+- Primero, en el panel → Mi oficina → "📥 Para el robot", mandá `cajasmirar` y esperá el ✅. Te lista las cajas despachadas hace 3+ días
+  que ML todavía no dio de alta enteras: cuenta, los últimos 4 números del envío y qué falta.
+- Si dice "ninguna": dejá en el buzón "CAJAS LLEGADAS <AAAA-MM-DD> · nada para mirar" y listo.
+- Si lista alguna: en ESA cuenta de Mercado Libre → Full (Ventas → Envíos a Full / Planificación de envíos) abrí ese envío y fijate qué
+  dice ML de lo que falta: todavía en camino o sin recibir · en proceso · faltante · rechazada · dañada · "no apta" · en revisión · sin etiqueta.
+- Dejá UN mensaje en el buzón que EMPIECE con "CAJAS LLEGADAS <AAAA-MM-DD>", un renglón por envío de la lista:
+  `<cuenta> · envío …<últimos 4> · <EN CAMINO | EN PROCESO | CON PROBLEMAS> · <lo que dice ML de lo que falta, producto por producto>`
+- No toques nada, no confirmes ni respondas nada en ML: sólo mirás y anotás. Con eso Claude cierra la caja o arma el reclamo.
 
 MÁS VENDIDOS (la tarea f2, cada 7 días; 03/11/2026, idea 8 que eligió Matías: "productos nuevos con venta segura para llenar el lugar")
 - Entrá a mercadolibre.com.ar/mas-vendidos y recorré estas categorías: Belleza y Cuidado Personal (perfumes), Celulares y accesorios,
