@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1180";
+const CACHE = "cyc-v1182";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -19,29 +19,38 @@ self.addEventListener("activate", (e) => {
 
 // Solo interceptamos archivos propios (mismo origen). Todo lo externo —Firebase (googleapis),
 // el SDK de jsdelivr, Chart.js, Google Fonts— va directo a la red para no romper la sync.
+// ⏱️ RED CON PLAZO (03/11/2026, él con la foto del teléfono de Tito: la app instalada se quedaba en la pantalla del ícono "CYC"). Antes
+// se esperaba a la red SIN límite: con señal floja (4G con una rayita) el panel (2,8 MB) no terminaba de bajar y no se mostraba nada.
+// Ahora: si hay copia guardada y la red no contesta en 2,5 s, se abre lo guardado; la red sigue atrás y guarda lo nuevo para la próxima
+// (y la vigía de versión recarga sola si cambió). Sin copia, se espera a la red como antes.
+function redConPlazo(e, ms, guardar) {
+  const red = fetch(e.request).then((resp) => {
+    if (guardar && resp && (resp.ok || resp.type === "opaque")) { const copia = resp.clone(); caches.open(CACHE).then((c) => c.put(e.request, copia)); }
+    return resp;
+  });
+  const guardado = caches.match(e.request, { ignoreSearch: e.request.mode === "navigate" })
+    .then((r) => r || (e.request.mode === "navigate" ? caches.match("index.html") : null));
+  e.waitUntil(red.catch(() => {}));
+  return new Promise((ok) => {
+    let listo = false;
+    const dar = (r) => { if (!listo && r) { listo = true; ok(r); } };
+    red.then(dar).catch(() => guardado.then((g) => { if (g) dar(g); else if (!listo) { listo = true; ok(Response.error()); } }));
+    setTimeout(() => guardado.then(dar), ms);
+  });
+}
+
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   // 📴 (03/11/2026, él: "que se pueda entrar sin internet"): los programas de Firebase y Chart.js (jsdelivr, con versión fija) se guardan
-  // también: primero la red y, si no hay, lo guardado. Las LECTURAS de la base (googleapis/firebaseio) siguen yendo siempre a la red.
-  if (url.hostname === "cdn.jsdelivr.net" && /\/npm\/(firebase@|chart\.js@)/.test(url.pathname)) {
-    e.respondWith(fetch(e.request).then((resp) => { if (resp && (resp.ok || resp.type === "opaque")) { const copia = resp.clone(); caches.open(CACHE).then((c) => c.put(e.request, copia)); } return resp; })
-      .catch(() => caches.match(e.request)));
-    return;
-  }
+  // también. Las LECTURAS de la base (googleapis/firebaseio) siguen yendo siempre a la red.
+  if (url.hostname === "cdn.jsdelivr.net" && /\/npm\/(firebase@|chart\.js@)/.test(url.pathname)) { e.respondWith(redConPlazo(e, 2500, true)); return; }
   if (url.origin !== location.origin) return; // externo → red directa
   // La tienda pública (/tienda/, 30/10/2026) es otra página: este service worker no la cachea ni le contesta con el panel.
   if (/\/tienda(\/|$)/.test(url.pathname)) return;
-  e.respondWith(
-    fetch(e.request)
-      .then((resp) => {
-        const copia = resp.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copia));
-        return resp;
-      })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match("index.html")))
-  );
+  e.respondWith(redConPlazo(e, 2500, true));
 });
+
 
 // EL AVISO DE CADA VENTA, QUE VIBRA Y SUENA (15/10/2026, pedido suyo). Lo manda el robot por "push";
 // acá sólo se muestra. Al tocarlo abre la app (o la trae al frente) en Ventas x Producto.

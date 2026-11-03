@@ -3359,7 +3359,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.98';
+const APP_VERSION='28.99';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3372,6 +3372,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.99',f:'03/11',h:'18:40',c:[{n:3,t:'📶 Con señal floja la app instalada ya no se queda en la pantalla del ícono: si la red no contesta en 2,5 segundos abre lo guardado en el teléfono y baja lo nuevo atrás.'}]},
   {v:'28.98',f:'03/11',h:'18:10',c:[{n:3,t:'⚡ Abre al instante: con la copia del teléfono el panel aparece sin esperar a que el navegador recupere la sesión; lo nuevo entra atrás. (La primera vez después de esta versión tiene que cargar una vez con internet para guardar la copia.)'}]},
   {v:'28.97',f:'03/11',h:'17:55',c:[{n:2,t:'🧾 Tarjeta de venta: el total, la ganancia y el % quedan siempre en el mismo lugar, a la derecha y completos. Lo del medio (Premium, 1ª venta, analizada…) y la fecha se achican con "…" si no entra; en el teléfono los números van siempre en el segundo renglón.'}]},
   {v:'28.96',f:'03/11',h:'17:40',c:[{n:3,t:'⚡ El panel abre al instante con lo guardado en el teléfono y lo nuevo se va cargando atrás (arriba dice "🔄 Actualizando…"). Mientras se actualiza no se guarda nada nuevo: si tocás algo, te avisa que esperes unos segundos.'}]},
