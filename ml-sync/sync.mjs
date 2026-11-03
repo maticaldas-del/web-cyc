@@ -50091,7 +50091,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' + (porCajaBot(p) > 0 ? ' porcaja ' + porCajaBot(p) : '') : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -50117,7 +50117,7 @@ async function main() {
             let xs = de((cM) => cM === va); if (!xs.length) xs = de((cM) => !cM);
             let win = null; for (const r of xs) { const c = { ...r, neto: Number(r.neto), activa: !!r.activa }; if (_netoGana(c, win)) win = c; } return win; })();
           const netoCTxt = npC ? ` · netoC $${Math.round(npC.neto)} precioC $${Math.round(Number(npC.precio) || 0)} envC $${Math.round(Number(npC.envio) || 0)}` : '';
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
+          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${ESC[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -50221,7 +50221,7 @@ async function main() {
       // (comisión que pide ML a ESE precio, envío, impuestos de la cuenta, retención de otra provincia). Y el ritmo A ESE PRECIO: días con
       // stock de la línea de tiempo con el precio a 3% o menos de ese (o más caro) y lo vendido en ellos. Sale `M35 <comp|v365>:$:%:u/d` o
       // `M35 no:%comp:%v365` y decide_pedidos.py lo usa en vez del 35% al precio de hoy. Sin datos (sin token, sin comisión): no sale.
-      const M35 = {};
+      const M35 = {}, ESC = {};
       try {
         const MIN35 = await pisoConfig(db, 35); let mono35 = null; try { mono35 = await leerMonoPct(db); } catch { mono35 = null; }
         // Revisión etapa 4, 30/10/2026: sin leer `cyc/techofull` no se mide (antes quedaba vacío y todo salía "M35 no": compra de prueba de 1 semana en vez de 30 días).
@@ -50248,6 +50248,41 @@ async function main() {
           const mg = async (pr) => { if (!(pr > 0)) return null; const com = await fee(b, pr); if (com == null) return null;
             const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
             const mlx = pr * mm; return (pr - com - env - costo - mlx - pr * PEOR_RET_PCT) / (costo + mlx + env) * 100; };
+          // 🪜 LA ESCALERA DE COMPRA (03/11/2026, Tito por audio con el Kit Limpia: "al vender más caro se puede comprar más caro y eso está
+          // bien, pero también tiene que poner el ritmo vendido a ese precio. o sea más barato más unidades, a comprar más caro menos"). Para
+          // cada precio de venta que de verdad se midió en 365 días (días con stock a precio normal: sin escasez, sobra, liquidando ni remate,
+          // `normalEn` y `rem` como el NOR; precios a ±5% juntos), el ritmo A ESE PRECIO (lo vendido ÷ los días con stock a ese precio), lo
+          // más que se puede pagar para que deje 35% en el peor caso a ESE precio (la misma cuenta de `mg` dada vuelta) y la plata por día
+          // (ganancia por unidad con el costo de hoy × ritmo). Con menos de 7 días a ese precio va como "poco medido". Sale `ESC p:c:u:d:gd;…`
+          // (c = lo que se paga la unidad, en pesos, sin el envío/embalaje ni el % de reclamos) y decide_pedidos.py arma las unidades.
+          try {
+            const SAM = {}; let fallaL = false;
+            for (const m of mlas) { const lin = await lineaDe(m); if (!lin) { fallaL = true; break; }
+              for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
+                if (!diaConStock(x) || Number(x.rem) === 1 || !normalEn(m, mediodia(k))) continue;
+                const X = Number(x.pV) > 0 ? Number(x.pV) : Number(x.pLista || x.p) || 0; if (!(X > 0)) continue;
+                const o = SAM[Math.round(X)] || (SAM[Math.round(X)] = { D: new Set(), u: 0 }); o.D.add(k); o.u += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); } }
+            if (!fallaL) {
+              const ps = Object.keys(SAM).map(Number).sort((a2, b2) => a2 - b2); const CL = [];
+              for (const X of ps) { const c0 = CL[CL.length - 1]; if (c0 && X <= c0.ini * 1.05) { c0.ps.push(X); } else CL.push({ ini: X, ps: [X] }); }
+              const m35 = MIN35 / 100, base = costoPesos(p, 1, tc), tcL = tc > 0 ? tc : 0, baseUSD = Number(base.costBaseUSD) || 0, shipU = Number(base.shipUSD) || 0;
+              const devF = baseUSD > 0 && tcL > 0 ? Math.max(1, ((costo / tcL) - shipU) / baseUSD) : 1;   // (1 + % de reclamos) de la ficha, el mismo de `costoPesos`
+              const filas = [];
+              for (const c0 of CL) { const D = new Set(); let u = 0, best = c0.ps[0], bd = -1;
+                for (const X of c0.ps) { for (const k of SAM[X].D) D.add(k); u += SAM[X].u; if (SAM[X].D.size > bd) { bd = SAM[X].D.size; best = X; } }
+                const d = D.size; if (!d) continue; const P = best; const com = await fee(b, P); if (com == null) continue;
+                const env = P < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+                const mlx = P * mm, A = P - com - env - mlx - P * PEOR_RET_PCT;
+                const cMax = (A - m35 * (mlx + env)) / (1 + m35);   // lo más que puede costar PUESTO (con envío/embalaje y reclamos) para quedar en 35%
+                const cPago = tcL > 0 ? Math.max(0, ((cMax / tcL - shipU) / devF) * tcL) : cMax;   // lo que se paga la unidad
+                const gd = (A - costo - PD_TRABAJO_U) * (u / d);
+                filas.push({ P, c: Math.round(cPago), u, d, gd: Math.round(gd) });
+              }
+              // como mucho 4: primero los medidos (7+ días) con más días, después los de pocos días
+              const sel = filas.sort((a2, b2) => (b2.d >= 7) - (a2.d >= 7) || b2.d - a2.d).slice(0, 4).sort((a2, b2) => a2.c - b2.c);
+              if (sel.length) ESC[va ? p.id + '#' + va : p.id] = ' · ESC ' + sel.map((f) => `${f.P}:${f.c}:${f.u}:${f.d}:${f.gd}`).join(';');
+            }
+          } catch { /* sin escalera: Pedidos sigue como siempre */ }
           const pc = Math.max(0, ...mlas.map((m) => Number((TF[m] || {}).t) || 0));
           const pv = Math.max(0, ...(VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && !(L[v.mla] && L[v.mla].gemelaDe)).map((v) => v.pu));
           const mc = await mg(pc), mv = await mg(pv);
@@ -50952,6 +50987,18 @@ async function main() {
         // el precio de venta con el que se calcula el MÁXIMO DE COMPRA (el normal, no uno subido por escasez) ·
         // `caja:<q>@<cuenta>[#var]=u|<n>|motivo` = cuántas mandar · `…=auto` borra lo mío y vuelve la cuenta automática.
         // Vive en `cyc/claudedecide/{ped,caja}` y vale 4 días (si dejo de revisar, vuelve la cuenta de la web).
+        // 🪜 `ped:<q>[#var]=esc|<precio>:<pago>:<ritmo>:<u>:<días>:<⭐>,…|motivo` (03/11/2026, lo escribe `decide_pedidos.py`): la escalera de
+        // compra de ese producto o color (hasta cuánto pagar y cuántas traer según el precio de venta). Va a `cyc/claudedecide/ped/<id>/esc`
+        // (o `escVars/<color>`); no cambia lo que se pide.
+        const mesc = String(izq).match(/^\s*ped:(.+?)\s*=\s*esc\s*$/i);
+        if (mesc) {
+          let resto = mesc[1]; let vari = '';
+          if (resto.includes('#')) { vari = resto.slice(resto.indexOf('#') + 1).trim(); resto = resto.slice(0, resto.indexOf('#')); }
+          const filasE = String(mot[0] || '').split(',').map((z) => z.split(':')).filter((a) => a.length === 6 && a.every((y) => /^-?\d+(\.\d+)?$/.test(y)))
+            .map((a) => ({ p: Math.round(+a[0]), c: Math.round(+a[1]), r: +(+a[2]).toFixed(4), u: Math.round(+a[3]), d: Math.round(+a[4]), s: +a[5] === 1 ? 1 : 0 }));
+          if (!filasE.length || filasE.length !== String(mot[0] || '').split(',').length) { malos.push(x + ' (escalera mal escrita: precio:pago:ritmo:u:días:⭐)'); continue; }
+          notasCtx.push({ tipo: 'ped', q: resto.trim(), vari, cta: '', t: 'escalera', raw: x, dec: 'esc', val: filasE }); continue;
+        }
         const mdc = String(izq).match(/^\s*(ped|caja):(.+?)\s*=\s*(u|venta|auto)\s*$/i);
         if (mdc) {
           const tipo = mdc[1].toLowerCase(); const que = mdc[3].toLowerCase(); let resto = mdc[2]; let vari = ''; let cta = '';
@@ -51060,6 +51107,20 @@ async function main() {
           if (n.vari && !(p.variantes || []).some((v) => sid(String(v).toLowerCase()) === sid(n.vari.toLowerCase()))) { console.log(`✗ "${p.name}" no tiene la variante "${n.vari}" — no la escribo`); TAL.rech++; continue; }
           const vk = n.vari ? '__v__' + sid(n.vari.toLowerCase()) : '';
           const key = n.tipo === 'ped' ? `ped__${p.id}${vk}` : `caja__${p.id}__${ctaL}${vk}`;
+          if (n.dec === 'esc') {
+            const vskE = n.vari ? sid(n.vari.toLowerCase()) : ''; const baseE = `cyc/claudedecide/ped/${p.id}`;
+            console.log(`· 🪜 escalera · ${p.name}${n.vari ? ' · ' + n.vari : ''}: ${n.val.map((f) => `${f.s ? '⭐' : ''}a $${f.p} → pagar hasta $${f.c} · ${f.u} u.${f.d < 7 ? ' (poco medido)' : ''}`).join(' · ')}`);
+            if (GOp && !DRY) {
+              try {
+                // la primera escalera del producto en esta corrida borra las de antes (un color que ya no la trae no queda con una vieja)
+                if (!_limpiosDec.has('e' + p.id)) { _limpiosDec.add('e' + p.id); await db.set(baseE + '/esc', null); await db.set(baseE + '/escVars', null); }
+                const leafE = vskE ? baseE + '/escVars/' + vskE : baseE + '/esc';
+                await db.set(leafE, { ts: Date.now(), f: n.val });
+                const rl = await db.get(leafE); console.log(marcaG(!!(rl && Array.isArray(rl.f) && rl.f.length === n.val.length), '   ✓ guardada'));
+              } catch (eN) { TAL.no++; console.log(`   ⚠️ no pude guardarla: ${String(eN.message || eN).slice(0, 60)}`); }
+            }
+            continue;
+          }
           if (n.dec) {
             const vsk = n.vari ? sid(n.vari.toLowerCase()) : '';
             const base = n.tipo === 'ped' ? `cyc/claudedecide/ped/${p.id}` : `cyc/claudedecide/caja/${p.id}__${ctaL}${vk}`;

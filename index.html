@@ -3375,7 +3375,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.101';
+const APP_VERSION='28.102';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3388,6 +3388,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.102',f:'03/11',h:'19:40',c:[{n:2,t:'🪜 Pedidos: debajo del máximo de compra, la escalera "según lo que lo pagues": por cada precio al que se vendió, hasta cuánto pagar para que deje 35% y cuántas traer con lo que se vende a ESE precio. ⭐ = el precio al que lo pensamos vender. Lo de pocos días a un precio va en gris.'}]},
   {v:'28.101',f:'03/11',h:'19:20',c:[{n:1,t:'🩺 Cada teléfono anota en cuánto abrió y en cuánto terminó de actualizar (y qué faltaba), para que Claude lo vea sin pedir fotos.'}]},
   {v:'28.100',f:'03/11',h:'19:00',c:[{n:2,t:'🔄 El renglón de arriba dice cuánto va de la actualización (%) y se va solo al terminar. El cartel naranja de "sin conexión" sale sólo si de verdad no llega nada.'}]},
   {v:'28.99',f:'03/11',h:'18:40',c:[{n:3,t:'📶 Con señal floja la app instalada ya no se queda en la pantalla del ícono: si la red no contesta en 2,5 segundos abre lo guardado en el teléfono y baja lo nuevo atrás.'}]},
@@ -22677,7 +22678,7 @@ function pedVarFila(x,p){
   const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${(x.pv||0)-(x.li||0)>0?` · 🧴 ${n((x.pv||0)-(x.li||0))} al Paulvic`:''}${x.li>0?` · 📋 ${n(x.li)} pedidas a la lista`:''}`:'';
   const dTxt=sem==='rojo'?((x.ml!=null&&(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0)<=0)?'🔴 sin stock en ningún lado':`🔴 escasez${x.dias!=null&&x.dias<999?': alcanza ~'+x.dias+' d':''}`):(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
-    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
+    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i>${p&&p.prodId?pedEscHTML((state.products||[]).find(z=>z.id===p.prodId),x.v):''}</div>
     ${p&&p.prodId?`<span style="display:inline-flex;gap:6px;align-items:center" onclick="event.stopPropagation()">${lineaBtn(p.prodId,'📈',x.v)}${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}${noConsigoBtn((state.products||[]).find(z=>z.id===p.prodId),x.v)}</span>`:''}
     ${p&&p.prodId?`<span class="ped-var-u" style="color:${q>0?col:'var(--green)'}" onclick="event.stopPropagation()"><input type="number" min="0" step="1" value="${q}" onchange="pedSetVarU('${p.prodId}','${String(x.v).replace(/'/g,"\\'")}',this.value)" title="${x.mano?'Lo cambiaste vos a mano: manda sobre lo que decidí yo hasta que marques el pedido hecho':'Tocá para cambiar cuántas pedir de este color'}" style="width:62px;font:inherit;font-weight:700;font-size:1.3rem;text-align:right;background:transparent;border:1px ${x.mano?'solid':'dashed'} ${x.mano?'var(--amber)':'var(--border)'};border-radius:6px;color:inherit;padding:0 4px"><i>${x.mano?'✋ a mano':q>0?'u. a comprar':_irCajaLink('mandar de casa')}</i></span>`
       :q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>${_irCajaLink('mandar de casa')}</i></span>`}
@@ -23020,6 +23021,23 @@ function pyProbVeredicto(ped,o){
     return{k:'noda',corto,txt:`Nissei ${fmtUS2(nu)}${pedTxt} · máx para ${PY_PROB_PISO}%: ${fmtUS2(mxW)}${fullTxt}`};}
   return{k:'da',corto,txt:`Nissei ${fmtUS2(nu)} · máx ${fmtUS2(mxW)} · mirado hace ${dias} d${fullTxt}`};
 }
+// 🪜 LA ESCALERA DE COMPRA (03/11/2026, Tito por audio con el Kit Limpia: "al vender más caro se puede comprar más caro y eso está bien,
+// pero también tiene que poner el ritmo vendido a ese precio. o sea más barato más unidades, a comprar más caro menos"). La arma el robot
+// cada noche (`pedidostodo` → `decide_pedidos.py` → `decido:ped:…=esc`, en `claudedecide/ped/<id>/esc` o `escVars/<color>`): por cada
+// precio de venta que se midió, hasta cuánto pagar para que deje 35% ahí y cuántas traer con el ritmo de ESE precio. ⭐ = el que más plata
+// por día deja (el precio al que lo pensamos vender). Con menos de 7 días a un precio va en gris "poco medido". No cambia lo que se pide.
+function pedEscHTML(pr,color){
+  try{
+    if(!pr)return '';const cl=clPedDe(pr.id);if(!cl)return '';
+    const e=color?((cl.escVars||{})[sid(String(color).toLowerCase())]):cl.esc;const F=e&&Array.isArray(e.f)?e.f:null;if(!F||!F.length)return '';
+    const enPesos=pr.origen!=='py'||esProductoPaulvic(pr),tc=curTC();
+    const pl=v=>(enPesos||!(tc>0))?fmt(v):'US$ '+(v/tc).toFixed(2).replace('.',',');
+    const rit=r=>r>=1?r.toFixed(1).replace('.',',')+'/día':(r*30>=10?Math.round(r*30):(r*30).toFixed(1).replace('.',','))+'/mes';
+    const rows=F.slice().sort((a,b)=>a.c-b.c).map(f=>{const poco=f.d<7;
+      return `<span style="white-space:nowrap;${poco?'opacity:.55':''}" title="Vendiéndolo a ${fmt(f.p)} se vendieron ~${rit(f.r)} (${f.d} días con stock a ese precio). Para que a ese precio deje 35% hay que pagarlo hasta ${pl(f.c)}, y con ese ritmo van ${f.u} u. para el pedido.${f.s?' ⭐ Es el precio que más plata por día deja: al que lo pensamos vender.':''}${poco?' Poco medido: menos de 7 días a ese precio.':''}">${f.s?'⭐ ':''}hasta <b style="color:var(--text)">${pl(f.c)}</b> → <b style="color:var(--text)">${fmtN(f.u)} u.</b> (~${rit(f.r)} a ${fmt(f.p)}${poco?' · poco medido':''})</span>`;}).join(' · ');
+    return `<div class="ped-esc" style="flex-basis:100%;font-size:.62rem;line-height:1.6;color:var(--muted);margin-top:2px">🪜 Según lo que lo pagues: ${rows}</div>`;
+  }catch(e){return '';}
+}
 function maxCompraHTML(p){
   const r=maxCompraDe(p); if(!r)return'';
   const st='flex-basis:100%;font-size:.62rem;line-height:1.5;margin-top:2px';
@@ -23237,7 +23255,7 @@ function _pedidoItemHtml(p,opts){
       ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
       ${varsSorted?origenBtn+_grupoBsasBtn(_prod):''}
       ${cuentaPedidoHTML(p)}
-      ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod):''}
+      ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod)+pedEscHTML(_prod):''}
       ${(()=>{
         // Lo que cambia o saca el pedido (origen, solapa, proveedor, estado, fecha y la ✕). Con colores ya va adentro de
         // "más datos"; sin colores va en su propio desplegable para que no se toque sin querer (20/10/2026, etapa 7).
