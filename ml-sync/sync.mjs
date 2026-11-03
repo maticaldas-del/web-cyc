@@ -24799,7 +24799,7 @@ async function main() {
       for (const m of sel) { const e = links[m] || {}; const lab = labels.find((l) => l.toLowerCase() === String(e.cuenta || '').toLowerCase()); const tk = lab && TKx[lab]; if (!tk) { fallas++; continue; }
         let r = null; try { r = await mlGet(`/reputation/items/${m}/purchase_experience/integrators?locale=es_AR`, tk); } catch { fallas++; continue; }
         if (CRUDO && !crudoDicho) { console.log('CRUDO (sólo nombres de campo): ' + Object.keys(r || {}).join(', ') + (r && r.reputation ? ' · reputation: ' + Object.keys(r.reputation).join(', ') : '')); crudoDicho = true; }
-        const rep = (r && r.reputation) || {}; const v = Number(rep.value); const color = String(rep.color || ''); const txt = String(rep.text || (r && r.title && r.title.text) || '').slice(0, 80);
+        const rep = (r && r.reputation) || {}; const v0 = Number(rep.value); const v = isFinite(v0) && v0 >= 0 ? v0 : NaN;   // 03/11: ML manda -1 cuando no hay puntaje (pocas ventas): es "sin dato", no un 🔴 const color = String(rep.color || ''); const txt = String(rep.text || (r && r.title && r.title.text) || '').slice(0, 80);
         if (!isFinite(v) && !color) { filas.push({ m, nom: String(e.title || '').slice(0, 40), cta: e.cuenta, v: null, color: 'sin dato', txt: '' }); continue; }
         filas.push({ m, nom: String(e.title || '').slice(0, 40), cta: e.cuenta, v: isFinite(v) ? v : null, color, txt });
         up[m] = { v: isFinite(v) ? v : null, color: color || null, txt: txt || null, ts: Date.now() }; }

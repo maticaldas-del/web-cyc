@@ -2137,6 +2137,7 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
 
 ## 6 · IDEAS NUEVAS (sábado)
+- 03/11/2026 · Etapa 6 · **experiencia: el -1 de ML es "sin dato"** (la primera corrida marcó 73 de 222 en 🔴 porque ML manda -1 a las que no tienen puntaje). **Chequear:** `experiencia` sólo pone 🔴 con un número de 0 a 74.
 ### ✅ 03/11/2026 · Las ideas del 02/11 que eligió (él: 7a 8a 9a 10a 11a 12a 13a 15a 17a; 14 → tarea del chat "CAJAS LLEGADAS")
 - **7 edad real del stock:** `edadreal[:<palabra>][:go]` arma por FIFO, desde el `st` diario de la línea (los movimientos de ML), la edad de la unidad más vieja de cada código de Full; sin go compara con el Excel de ML; con go escribe en `cyc/lotesfull/<código>` (`fuente:'movimientos'`) SÓLO donde no hay Excel o tiene más de 45 días. **Todavía no se corrió con go.**
 - **8 más vendidos:** tarea nueva del chat de Chrome (CHAT_LOCAL, "MÁS VENDIDOS", cada 7 días) → mensaje del buzón; Claude lo mide.
