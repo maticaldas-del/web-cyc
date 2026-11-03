@@ -2137,6 +2137,17 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
 
 ## 6 · IDEAS NUEVAS (sábado)
+### ✅ 03/11/2026 · Las ideas del 02/11 que eligió (él: 7a 8a 9a 10a 11a 12a 13a 15a 17a; 14 → tarea del chat "CAJAS LLEGADAS")
+- **7 edad real del stock:** `edadreal[:<palabra>][:go]` arma por FIFO, desde el `st` diario de la línea (los movimientos de ML), la edad de la unidad más vieja de cada código de Full; sin go compara con el Excel de ML; con go escribe en `cyc/lotesfull/<código>` (`fuente:'movimientos'`) SÓLO donde no hay Excel o tiene más de 45 días. **Todavía no se corrió con go.**
+- **8 más vendidos:** tarea nueva del chat de Chrome (CHAT_LOCAL, "MÁS VENDIDOS", cada 7 días) → mensaje del buzón; Claude lo mide.
+- **9 experiencia de compra:** `experiencia[:MLA…|:crudo][:go]` lee `/reputation/items/<MLA>/purchase_experience/integrators` (prueba sin escribir primero; con go guarda `mlapi/experiencia`), la ficha (`ficha:`) la muestra con 🔴 si es 74 o menos.
+- **10 barrera $33.000:** `vigilarBarrera` cada 6 h en la vuelta horaria (Clásicas activas cerca de la barrera: arriba sin envío gratis = subió; 2+ abajo con envío gratis = bajó) → `sendAlerta` al canal privado una vez por cambio (`mlapi/barrera`); `barrera` la mira ya sin avisar.
+- **11 ficha técnica:** el `informe` §10 pone debajo de cada pregunta de los últimos 7 días la ficha técnica de ML de esa publicación (atributos).
+- **13 la RUTINA se carga sola + 15 📥 Para el robot:** `colaParaRobot` (cada vuelta del ciclo) toma `cyc/pararobot` (lo carga el panel, Mi oficina → 📥 Para el robot, o la RUTINA del buzón) y lo deja en `/tmp/cyc-cola/<id>.cmd`; `ciclo.sh` lo corre como un comando de GitHub y la vuelta siguiente sube el resultado (`estado`, `res`). Lista cerrada `COLA_OK` (web `PARAROBOT_OK`, iguales). La RUTINA nueva (desde 03/11 18:00 UTC, no leída) pasa `cupo` (cuentas con número claro y no más de 3 veces lo de antes) y `ancla:buzon=<ts>`; lo raro queda en `mlapi/rutinaauto` y lo muestra `buzon`. Los `visto:` siguen a mano.
+- **17 mezcla de hoy:** Inicio → Ventas de hoy (Día) muestra la barrita de la mezcla de ese día, "$X cada $100 (meta $22)", las ventas abajo del 35% con su estrategia y ✨ si no hay rojo ni naranja (`_mezclaDiaHTML`, misma cuenta que Métricas).
+- **12 encargos de Tienda/ABEL en un paso:** NO hecho (queda pendiente).
+- **Chequear:** que un comando del panel termine en ✅ con su resultado; que un comando fuera de la lista quede 🚫; que la RUTINA cargue el cupo y Mercado Pago sin imprimir los saldos; `barrera` diga "en su lugar"; `experiencia:crudo` muestre los campos; `edadreal` sin go compare bien contra el Excel.
+
 ### 🔍 Revisión de la etapa 6 (02/11/2026, 4 revisores en máximo · sólo propuestas)
 - **Qué se hizo:** 4 frentes (datos de ML sin usar · lo que se hace a mano · plata de noviembre-diciembre · comodidad con maqueta). 19 ideas en `notas/para_mati.md` ("Ideas nuevas del 02/11"), ninguna repetida de `ideas.md`, del 21/10 ni de Diseño del 31/10. Maquetas en el scratchpad de la sesión (`d6/laminas/`).
 - **Para la etapa 10 (Tienda):** fotos servidas desde `…/fotos/produtos/…` (portugués) y 7 carteles de ABEL de más de 50% "menos que en ML" poco creíbles (adidas Dynamic Pulse 83%).

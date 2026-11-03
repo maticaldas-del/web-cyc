@@ -47,6 +47,21 @@ while [ "$(date +%s)" -lt "$fin" ]; do
     # repite la vuelta pesada cada vez.
     corre env SKIP_PRICES=1 PESADA_SI_TOCA=1 node ml-sync/sync.mjs || { cortado; echo "⚠️ esta vuelta falló, sigo con la próxima"; }
   fi
+  # 📥 PARA EL ROBOT (03/11/2026, ideas 13 y 15): lo que dejó el panel en `cyc/pararobot` (el chat de Chrome o la RUTINA del buzón) y la
+  # vuelta de recién pasó a /tmp/cyc-cola/<id>.cmd se corre acá, uno por uno, como un comando de GitHub. El resultado (código y las últimas
+  # líneas) lo sube la vuelta siguiente al panel. El texto va en un archivo y entra como variable: nunca se ejecuta en bash.
+  if [ -d /tmp/cyc-cola ]; then
+    for f in /tmp/cyc-cola/*.cmd; do
+      [ -e "$f" ] || continue
+      cortado
+      id=$(basename "$f" .cmd)
+      cmd=$(cat "$f"); rm -f "$f"
+      echo "##### 📥 del panel ($id): ${cmd:0:80}"
+      if corre env BILLING_PROBE="$cmd" node ml-sync/sync.mjs > "/tmp/cyc-cola/$id.log" 2>&1; then echo 0 > "/tmp/cyc-cola/$id.rc"; else echo 1 > "/tmp/cyc-cola/$id.rc"; fi
+      tail -n 60 "/tmp/cyc-cola/$id.log"
+      tail -n 400 "/tmp/cyc-cola/$id.log" > "/tmp/cyc-cola/$id.out"
+    done
+  fi
   # RESUMEN DEL DÍA AL CELULAR. Lo manda ESTE ciclo, no el cron de ml-daily.
   # Por qué: el cron pide las 00:07 de Argentina, pero GitHub demora las corridas
   # programadas cuando está cargado — el 30 de julio lo corrió 02:51, y a esa hora el

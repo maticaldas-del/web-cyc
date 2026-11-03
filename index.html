@@ -1692,6 +1692,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
     <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
     <div id="ofi-buzon-card"></div>
+    <div id="ofi-pararobot-card"></div>
     <div id="ofi-prompts-card"></div>
     <div id="ofi-sinetiq-card"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
@@ -3267,7 +3268,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.86';
+const APP_VERSION='28.87';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3280,6 +3281,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.87',f:'03/11',h:'14:40',c:[{n:2,t:'📥 Mi oficina: nueva tarjeta "Para el robot". El chat de Chrome pega ahí sus comandos (en vez de GitHub) y en ~2 minutos ve el resultado.'},{n:1,t:'🧮 Ventas de hoy: la mezcla del día (rojo, naranja, verde, azul de lo facturado), cuánto deja cada $100 contra la meta y qué vendió abajo del 35%.'}]},
   {v:'28.86',f:'03/11',h:'13:50',c:[{n:2,t:'📈 Línea de tiempo: el 💰 y el 🔴 miden con el precio que vio el comprador (con tu descuento), y con una sola publicación activa miden sólo ésa (no mezclan colores ni cuentas pausadas).'},{n:1,t:'🔬 Ventas: la ✓ que se cerró sin abrir la ficha dice esfuerzo "normal" (antes decía máximo).'}]},
   {v:'28.85',f:'03/11',h:'13:40',c:[{n:1,t:'Pedidos → Bs As: 📋 Dai Nippon tiene su botón al lado de 🏬 De siempre, para encontrarlo rápido. Las otras listas de Bs As quedan en 📋 Listas de Tito.'}]},
   {v:'28.84',f:'03/11',h:'13:30',c:[{n:1,t:'🔴 Línea de tiempo: los 10 días sin vender no cuentan los días con 0 visitas (nadie la vio; regla del 03/11).'}]},
@@ -8827,6 +8829,7 @@ function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
   try{renderSinEtiqCard();}catch(e){console.warn('sinetiq',e);}
   try{renderBuzonCard();}catch(e){console.warn('buzon',e);}
+  try{renderParaRobotCard();}catch(e){console.warn('pararobot',e);}
   try{renderPromptsCard();}catch(e){console.warn('prompts',e);}
   const fcc=document.getElementById('ofi-contar-cuentas');
   if(fcc)fcc.innerHTML=`<button class="pf-btn${ofiContarCuenta===''?' active-all':''}" onclick="setOfiContarCuenta('')">Todas</button>`
@@ -9055,6 +9058,37 @@ function renderBuzonCard(){
     <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="buzonEnviar()">📬 Dejar mensaje</button>
   </details>`;
   if(_v){const t=document.getElementById('buzon-txt');if(t){t.value=_v;if(_foc)t.focus();}}
+}
+// 📥 PARA EL ROBOT (03/11/2026, idea 15 del 02/11, él eligió la a): el chat de Chrome deja acá el comando que antes mandaba por GitHub
+// (pycat, pyprecio, candprecio, listadato, lista, faltaventas, svprecio, cupo, pyvisto…). Va a `cyc/pararobot/<ts>` = {t, por, estado, ts};
+// el ciclo del robot (cada 2 minutos) lo toma y lo corre con las mismas reglas que GitHub, y acá se ve el resultado (✅/❌ y las últimas
+// líneas). Se lee APARTE (no está en CYC_KEYS: si no se pudiera leer, no frena la carga del panel).
+const PARAROBOT_OK=['pycat','pycatres','pyprecio','candprecio','listadato','lista','listamedir','listarevisar','faltaventas','faltaprecio','svprecio','pyprobadoslista','cupo','pyvisto','revcand','buzon','ancla'];
+let _paraRobotOn=false;
+function _paraRobotOir(){if(_paraRobotOn||!db)return;_paraRobotOn=true;try{db.ref('cyc/pararobot').limitToLast(30).on('value',sn=>{state.pararobot=sn.val()||{};try{renderParaRobotCard();}catch(_){}} ,()=>{state.pararobot=null;});}catch(_){state.pararobot=null;}}
+async function paraRobotEnviar(){
+  const el=document.getElementById('pararobot-txt');if(!el)return;const t=String(el.value||'').replace(/\r/g,'').trim();if(!t){el.focus();return;}
+  if(/\n/.test(t)){toast('Un comando por vez (sin renglones)','err');return;}
+  const nom=t.split(/[:;|=]/)[0].trim().toLowerCase();if(!PARAROBOT_OK.includes(nom)){toast('"'+nom+'" no lo puede pedir el panel. Sólo: '+PARAROBOT_OK.join(', '),'err',6000);return;}
+  if(t.length>60000){toast('Muy largo (más de 60.000 letras): partilo','err');return;}
+  const ts=Date.now();
+  try{await fbSet('pararobot/'+ts,{t,ts,por:'panel',estado:'nuevo'});}catch(e){toast('⚠️ No se mandó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+  (state.pararobot=state.pararobot||{})[ts]={t,ts,por:'panel',estado:'nuevo'};el.value='';toast('📥 Lo corre el robot en ~2 minutos','ok',3000);renderParaRobotCard();
+}
+function renderParaRobotCard(){
+  const el=document.getElementById('ofi-pararobot-card');if(!el)return;_paraRobotOir();
+  const _ta=document.getElementById('pararobot-txt'),_v=_ta?_ta.value:'',_foc=_ta&&document.activeElement===_ta,_ab=el.querySelector('details')?.open;
+  const L=state.pararobot==null?null:Object.entries(state.pararobot||{}).map(([k,x])=>({k,...(x||{})})).sort((a,b)=>Number(b.k)-Number(a.k)).slice(0,8);
+  const ic={nuevo:'⏳ en cola',tomado:'⚙️ corriendo',hecho:'✅ hecho','falló':'❌ falló',rechazado:'🚫 rechazado'};
+  const pend=L?L.filter(x=>x.estado==='nuevo'||x.estado==='tomado').length:0;
+  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${pend||_ab||_v?' open':''}>
+    <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📥 Para el robot${pend?` <span style="color:var(--amber);font-weight:400">· ${pend} en curso</span>`:''}</summary>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el chat de Chrome: pegá el comando (uno por vez) en vez de mandarlo por GitHub. El robot lo corre en ~2 minutos y acá ves el resultado. Sólo: ${PARAROBOT_OK.join(', ')}.</div>
+    ${L==null?'<div style="font-size:.66rem;color:var(--amber)">No pude leer la cola (volvé a entrar).</div>':L.map(x=>`<div style="font-size:.66rem;padding:4px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">${new Date(Number(x.k)).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> · <b>${ic[x.estado]||_esc(x.estado||'?')}</b> · <code style="font-size:.62rem">${_esc(String(x.t||'').slice(0,70))}${String(x.t||'').length>70?'…':''}</code>${x.por&&x.por!=='panel'?` · <span style="color:var(--muted)">${_esc(x.por)}</span>`:''}${x.res?`<details style="margin-top:2px"><summary style="cursor:pointer;color:var(--muted)">ver lo que dijo</summary><pre style="white-space:pre-wrap;font-size:.6rem;max-height:220px;overflow:auto;margin:4px 0">${_esc(String(x.res))}</pre></details>`:''}</div>`).join('')}
+    <textarea id="pararobot-txt" rows="2" placeholder="pycat:#12@nuevo;…;go" style="width:100%;box-sizing:border-box;margin-top:6px;font-size:.74rem;font-family:monospace"></textarea>
+    <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="paraRobotEnviar()">📥 Mandar al robot</button>
+  </details>`;
+  if(_v){const t=document.getElementById('pararobot-txt');if(t){t.value=_v;if(_foc)t.focus();}}
 }
 // 🛍️ LO QUE PIDIÓ LA PERFUMERÍA (29/10/2026, él: "si pide para perfumería que diga en chiquito en el nombre y que sume lo pedido para ML y para
 // perf"). Lo carga Claude (`pedperf:<producto>=<u>;go` → `cyc/pedperf/<id>`); lo decidido en Pedidos ya trae la suma. Baja sola al dejárselo.
@@ -25139,6 +25173,24 @@ function metMezclaMeses(n,agr){
   }
   const L=Object.values(meses).sort((a,b)=>a.ym<b.ym?1:-1);return n===0?L:L.slice(0,n||6);
 }
+// 🧮 LA MEZCLA DE HOY, ADENTRO DE VENTAS DE HOY (03/11/2026, idea 17 del 02/11, él eligió la a): la misma cuenta que la tarjeta de Métricas
+// (`metMezclaMeses`, el % de cada venta como en su renglón) pero de UN día: qué parte de lo facturado fue roja (menos de 25%), naranja
+// (25-35%), verde (35-50%) y azul (50%+), y cuánto dejó cada $100 contra la meta. Las ventas abajo del 35% se nombran con lo que ya se hizo
+// (la estrategia de su publicación). Un día sin rojo ni naranja brilla.
+function _mezclaDiaHTML(k){
+  const dia=(state.ventaprod||{})[k]||{};const tr={r:{tot:0,gan:0},a:{tot:0,gan:0},v:{tot:0,gan:0},j:{tot:0,gan:0}};let tot=0,gan=0;const bajas=[];
+  for(const v of Object.values(dia)){if(!v||v.cancelada)continue;const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);if(!(costo>0)||ventaSinCostoVP(vv))continue;
+    const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;
+    if(pct<35){let e='';try{const s0=v.mla?estrategiaDe(v.mla):null;e=s0&&ESTRATEGIA_UI[s0.t]?ESTRATEGIA_UI[s0.t][0]+' '+ESTRATEGIA_UI[s0.t][1]:'';}catch(_){}bajas.push(`${_esc(String(nombreDeVenta(v)||v.prod||'').slice(0,34))} ${Math.round(pct)}%${e?' · '+_esc(e):''}`);}}
+  if(!(tot>0))return '';
+  const c100=gan/tot*100,limpio=tr.r.tot===0&&tr.a.tot===0;
+  const barra=MEZCLA_TRAMOS.map(t=>tr[t.k].tot>0?`<span title="${t.t}: ${fmt(tr[t.k].tot)} facturado" style="display:inline-block;height:100%;width:${(tr[t.k].tot/tot*100).toFixed(1)}%;background:${t.col}"></span>`:'').join('');
+  return `<div style="margin-top:10px;font-size:.7rem${limpio?';text-shadow:0 0 8px color-mix(in srgb,var(--green) 60%,transparent)':''}" title="La mezcla de hoy: qué parte de lo facturado salió de ventas de menos de 25% (rojo), 25-35% (naranja), 35-50% (verde) y 50%+ (azul). La meta es que no haya rojo ni naranja.">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span>🧮 <b>La mezcla de hoy</b>${limpio?' · ✨ sin rojo ni naranja':''}</span><span><b style="color:${c100>=MEZCLA_META_100?'var(--green)':'var(--amber)'}">$${c100.toFixed(0)}</b> cada $100 <span style="color:var(--muted)">(meta $${MEZCLA_META_100})</span></span></div>
+    <div style="display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--border)">${barra}</div>
+    ${bajas.length?`<div style="color:var(--muted);margin-top:4px;line-height:1.5">Abajo del 35%: ${bajas.slice(0,6).join(' · ')}${bajas.length>6?` · y ${bajas.length-6} más`:''}</div>`:''}
+  </div>`;
+}
 function renderMetMezcla(){
   const el=document.getElementById('met-mezcla');if(!el)return;
   const CF=_mzCfg();
@@ -27210,6 +27262,7 @@ function renderHomeHoy(){
        mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
   <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px;${ocultaVendido()?'display:none':''}">
     ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
+    ${esc==='dia'&&h.ventas>0?_mezclaDiaHTML(dateToKey(hoy)):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
     <!-- 💸 cuánto cobrar: SACADO de acá (29/10/2026, él: "sacá el cuánto cobrar de abajo de las ventas, ya que va a estar en finanzas"). Vive en el Arqueo (renderCobroCrec). -->

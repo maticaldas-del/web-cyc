@@ -14491,6 +14491,101 @@ function cerebroDeAvisos(text, opt = {}) {
 // que trae código y no se mandó, va UNA vez al canal privado. El código NUNCA se imprime en el registro (es público y abre la
 // entrega): queda sólo en Telegram y en `mlapi/devcodigo/<envío>` (fuera de `cyc/`, la web no lo lee).
 const DEVCOD_CADA_H = 2;
+// 🚧 ¿ML MOVIÓ LA BARRERA DE $33.000? (idea 10 del 02/11, él eligió la a el 03/11). Abajo de la barrera el envío lo paga el comprador; arriba
+// ML pone envío gratis obligatorio y lo paga el vendedor. ML no la publica: se mira en NUESTRAS publicaciones Clásicas activas (no gemelas):
+// si alguna arriba de $33.000 quedó SIN envío gratis, la barrera subió; si alguna abajo quedó CON envío gratis obligatorio, bajó. 4 veces por
+// día como mucho (cada 6 h); avisa al canal privado UNA vez por cambio (`mlapi/barrera`). Sólo lee ML.
+const BARRERA_CADA_H = 6;
+// ── 📥 PARA EL ROBOT: LA COLA DEL PANEL (idea 15 del 02/11, él eligió la a el 03/11) ─────────────────────────────────────────────
+// El chat de Chrome cargaba por GitHub: una vuelta de Nissei tardaba 2-4 h y si GitHub se trababa se lo pedían a él. Ahora deja el comando
+// en Mi oficina → "📥 Para el robot" (`cyc/pararobot/<ts>` = {t, por, estado:'nuevo', ts}) y el ciclo de 2 minutos lo corre: cada vuelta
+// del ciclo (`colaParaRobot`) 1) sube el resultado de lo que ya corrió (`/tmp/cyc-cola/<id>.rc` + `.out`, lo escribe ciclo.sh), 2) toma lo
+// nuevo que pasa la lista (`COLA_OK`: sólo los comandos que usa el chat) y lo deja en `/tmp/cyc-cola/<id>.cmd`; ciclo.sh lo corre igual que
+// un comando de GitHub (mismo robot, mismas reglas, sale en el registro). Lo que no está en la lista o es muy largo queda `rechazado` con
+// el motivo. Lo `tomado` hace más de 40 min sin resultado (se cortó el ciclo) vuelve a `nuevo` una vez; la segunda, `falló`.
+// 🤖 LA RUTINA SE CARGA SOLA (idea 13, él eligió la a el 03/11): un mensaje del 📬 buzón que empieza con "RUTINA" y no se miró pasa a la
+// cola como `cupo:…;go` (sólo las cuentas con números claros y no más de 3 veces lo de antes) y `ancla:buzon=<ts>;go` (los saldos de MP, que
+// no se imprimen nunca). Lo raro (un "?", un cupo 3 veces más grande, los `visto:` y lo que no sé leer) queda anotado en
+// `mlapi/rutinaauto/<ts>` para que lo mire Claude en la vuelta (el `buzon` lo muestra).
+const COLA_OK = new Set(['pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla']);
+const COLA_DIR = '/tmp/cyc-cola';
+const RUTINA_AUTO_DESDE = Date.parse('2026-11-03T18:00:00Z');   // las RUTINA de antes las cargó Claude a mano
+async function colaParaRobot(db, labels) {
+  const fs = await import('fs'); const R = { subidos: 0, tomados: 0, rechazados: 0, rutina: '' };
+  try { fs.mkdirSync(COLA_DIR, { recursive: true }); } catch { return R; }
+  // 1) resultados de lo que ya corrió
+  for (const f of fs.readdirSync(COLA_DIR).filter((x) => x.endsWith('.rc'))) {
+    const id = f.slice(0, -3); let rc = '1', out = '';
+    try { rc = fs.readFileSync(`${COLA_DIR}/${f}`, 'utf8').trim(); out = fs.readFileSync(`${COLA_DIR}/${id}.out`, 'utf8'); } catch { /* sin salida */ }
+    out = _tapaCodigo(String(out)).replace(/(^|\n)(\s*mp:)[^\n]*/gi, '$1$2 (oculto)').split('\n').slice(-400).join('\n').slice(-40000);   // las de leer (faltaventas, listarevisar…) traen listas largas
+    try { await db.patch('cyc/pararobot/' + id, { estado: rc === '0' ? 'hecho' : 'falló', fin: Date.now(), res: out }); R.subidos++; } catch { continue; }
+    for (const ext of ['.rc', '.out', '.log']) { try { fs.unlinkSync(`${COLA_DIR}/${id}${ext}`); } catch { /* */ } }
+  }
+  let cola = {}; try { cola = (await db.get('cyc/pararobot')) || {}; } catch { return R; }
+  // 🤖 RUTINA del buzón → a la cola (una sola vez por mensaje)
+  try {
+    const buz = (await db.get('cyc/buzon')) || {}; const hechas = (await db.get('mlapi/rutinaauto')) || {};
+    const cfgC = (await db.get('cyc/mlconfig/cupoFull')) || {};
+    for (const [ts, m] of Object.entries(buz)) {
+      const txt = String((m && m.t) || ''); const tsM = Number(m && m.ts) || Number(ts) || 0;
+      // Sólo las RUTINA nuevas (desde que esto existe) y que nadie leyó todavía: una que ya cargó Claude a mano no se vuelve a cargar.
+      if (!/^\s*RUTINA\b/i.test(txt) || hechas[ts] || m.leido || tsM < RUTINA_AUTO_DESDE || Date.now() - tsM > 2 * 864e5) continue;
+      const dia = new Date((Number(m.ts) || Number(ts)) - 3 * 36e5).toISOString().slice(0, 10); const raros = []; const cmds = [];
+      const lnC = txt.split('\n').find((l) => /^\s*cupo:/i.test(l));
+      if (lnC) { const ok = [];
+        for (const x of lnC.replace(/^\s*cupo:/i, '').split(/[·;]/).map((y) => y.trim()).filter(Boolean)) {
+          const mm = x.match(/^([A-Za-zÁÉÍÓÚáéíóú]+)\s*=\s*(\d+)(?:\s*\/\s*(\d+))?\s*(?:@\s*(\d{1,2}):(\d{2}))?$/);
+          const cta = mm && labels.find((l) => l.toLowerCase() === mm[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
+          if (!mm || !cta) { raros.push(`cupo "${x}" (no lo entiendo o tiene "?")`); continue; }
+          const peq = parseInt(mm[2], 10), gra = mm[3] != null ? parseInt(mm[3], 10) : Number((cfgC[cta] || {}).gra) || 0; const ant = Number((cfgC[cta] || {}).peq);
+          if (ant > 0 && peq > ant * 3 && peq > 50) { raros.push(`cupo de ${cta}: ${peq} contra ${ant} de antes (más de 3 veces)`); continue; }
+          ok.push(`${cta.toLowerCase()}=${peq}/${gra}${mm[4] ? '@' + dia + ' ' + String(mm[4]).padStart(2, '0') + ':' + mm[5] : ''}`); }
+        if (ok.length) cmds.push('cupo:' + ok.join(';') + ';go'); }
+      else raros.push('sin renglón cupo:');
+      if (txt.split('\n').some((l) => /^\s*mp:/i.test(l))) { if (/^\s*mp:[^\n]*\?/im.test(txt)) raros.push('mp: con algún "?" (cargo las que se leen)'); cmds.push(`ancla:buzon=${ts};go`); } else raros.push('sin renglón mp:');
+      const vistos = txt.split('\n').filter((l) => /^\s*visto:/i.test(l)).length; if (vistos) raros.push(`${vistos} renglón(es) visto: (los cargo yo con pyprecio/candprecio)`);
+      let i = 0; for (const c of cmds) { const id = String(Date.now() + i++); cola[id] = { t: c, por: 'rutina ' + ts, estado: 'nuevo', ts: Date.now() }; await db.set('cyc/pararobot/' + id, cola[id]); }
+      await db.set('mlapi/rutinaauto/' + ts, { ts: Date.now(), cmds: cmds.map((c) => c.split(':')[0]), raros });
+      R.rutina = `RUTINA ${dia}: ${cmds.length} a la cola${raros.length ? ' · para Claude: ' + raros.join(' | ') : ''}`;
+    }
+  } catch (e) { R.rutina = 'no pude mirar la RUTINA del buzón: ' + String(e.message || e).slice(0, 80); }
+  // 2) lo nuevo, a /tmp para que lo corra ciclo.sh
+  for (const [id, x] of Object.entries(cola).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+    if (!x || typeof x !== 'object') continue;
+    if (x.estado === 'tomado' && Date.now() - (Number(x.tomado) || 0) > 40 * 60e3 && !fs.existsSync(`${COLA_DIR}/${id}.cmd`) && !fs.existsSync(`${COLA_DIR}/${id}.rc`)) {
+      await db.patch('cyc/pararobot/' + id, x.reintento ? { estado: 'falló', fin: Date.now(), res: 'se cortó el ciclo dos veces mientras corría: volvé a cargarlo' } : { estado: 'nuevo', reintento: 1 }); continue; }
+    if (x.estado && x.estado !== 'nuevo') continue;
+    const t = String(x.t || '').replace(/\r/g, '').trim(); const nom = t.split(/[:;|=]/)[0].trim().toLowerCase();
+    const malo = !t ? 'vacío' : t.length > 60000 ? 'muy largo (más de 60.000 letras): partilo' : /\n/.test(t) ? 'un comando por mensaje (sin renglones)' : !COLA_OK.has(nom) ? `"${nom}" no lo puede pedir el panel (sólo: ${[...COLA_OK].join(', ')})` : '';
+    if (malo) { await db.patch('cyc/pararobot/' + id, { estado: 'rechazado', fin: Date.now(), res: '❌ ' + malo }); R.rechazados++; continue; }
+    try { fs.writeFileSync(`${COLA_DIR}/${id}.cmd`, t); await db.patch('cyc/pararobot/' + id, { estado: 'tomado', tomado: Date.now() }); R.tomados++; } catch { /* la próxima vuelta */ }
+  }
+  return R;
+}
+async function vigilarBarrera(db, labels, tokensRun, DRY, forzar = false) {
+  const R = { miradas: 0, maxSin: 0, minCon: 0, movida: '', salteo: '' };
+  let mem = {}; try { mem = (await db.get('mlapi/barrera')) || {}; } catch { R.salteo = 'no pude leer mlapi/barrera'; return R; }
+  if (!forzar && Number(mem.ts) > Date.now() - BARRERA_CADA_H * 3600e3 + 5 * 60e3) { R.salteo = 'la miré hace menos de 6 h'; return R; }
+  let links = {}; try { links = (await db.get('cyc/mllinks')) || {}; } catch { R.salteo = 'no pude leer las publicaciones'; return R; }
+  const porCta = {};
+  for (const [m, e] of Object.entries(links)) { if (!e || e.gemelaDe || e.status !== 'active' || !e.cuenta) continue; const p = Number(e.price || e.precio) || 0; if (p > 0 && !(p >= UMBRAL_ENVIO_GRATIS * 0.75 && p <= UMBRAL_ENVIO_GRATIS * 1.4)) continue; /* sin precio anotado se lee igual */ (porCta[e.cuenta] = porCta[e.cuenta] || []).push(m); }
+  let maxSin = 0, minCon = 0, nSin = 0, nCon = 0;
+  for (const l of labels) { const tk = tokensRun && tokensRun[l]; const ms = porCta[l] || []; if (!tk || !ms.length) continue;
+    for (let i = 0; i < ms.length; i += 20) { let arr = null; try { arr = await mlGet('/items?ids=' + ms.slice(i, i + 20).join(',') + '&attributes=id,price,status,listing_type_id,shipping', tk); } catch { continue; }
+      for (const x of (arr || [])) { const b = x && x.body; if (!b || b.status !== 'active' || b.listing_type_id !== 'gold_special' || !b.shipping) continue; const p = Number(b.price) || 0; if (!(p >= UMBRAL_ENVIO_GRATIS * 0.75 && p <= UMBRAL_ENVIO_GRATIS * 1.4)) continue; R.miradas++;
+        if (b.shipping.free_shipping) { if (p < UMBRAL_ENVIO_GRATIS) { nCon++; if (!minCon || p < minCon) minCon = p; } }
+        else if (p >= UMBRAL_ENVIO_GRATIS) { nSin++; if (p > maxSin) maxSin = p; } } } }
+  R.maxSin = maxSin; R.minCon = minCon;
+  // Abajo, con envío gratis, puede ser a propósito (una gemela vieja mal marcada): hacen falta 2 para decir que bajó.
+  R.movida = nSin >= 1 ? `subió: ${nSin} publicación(es) arriba de $${UMBRAL_ENVIO_GRATIS.toLocaleString('es-AR')} sin envío gratis (la más cara a $${maxSin.toLocaleString('es-AR')})` : nCon >= 2 ? `bajó: ${nCon} publicación(es) abajo de $${UMBRAL_ENVIO_GRATIS.toLocaleString('es-AR')} con envío gratis obligatorio (la más barata a $${minCon.toLocaleString('es-AR')})` : '';
+  if (DRY) return R;
+  const antes = String(mem.movida || '');
+  try { await db.set('mlapi/barrera', { ts: Date.now(), miradas: R.miradas, maxSin, minCon, movida: R.movida || null }); } catch { /* se vuelve a mirar en la hora */ }
+  const tipo = (t) => t.split(':')[0];
+  if (R.movida && tipo(R.movida) !== tipo(antes)) await sendAlerta(`🚧 ML parece haber movido la barrera de $33.000 del envío gratis: ${R.movida}.//Hay ~16 publicaciones esperando en $32.990: hay que rever esos precios.`.replace(/\/\//g, '\n'));
+  else if (!R.movida && antes) await sendAlerta('✅ La barrera de $33.000 del envío gratis volvió a estar donde estaba.', { info: true });
+  return R;
+}
 async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accounts = {}, conEntregados = false) {
   const R = { mirados: 0, conCodigo: 0, mandados: 0, fallas: 0, salteo: '' };
   const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
@@ -18952,6 +19047,45 @@ async function main() {
       const re = (await db.get('cyc/mlconfig/tamFull')) || {};
       const ok = Object.entries(upd).filter(([k, v]) => (re[k] || null) === v).length;
       console.log(`✓ releído: ${ok} de ${Object.keys(upd).length}`);
+      return;
+    }
+    // BILLING_PROBE=edadreal[:<palabra o MLA>][:go] (idea 7 del 02/11, él eligió la a el 03/11): LA EDAD REAL DEL STOCK EN FULL, de los
+    // movimientos de ML que ya guarda la línea de tiempo (`st` de cada día, `stF` 'ops' = salió de los movimientos de cada depósito, hasta 365
+    // días). Lo que ya estaba antes de agosto figuraba "por lo menos 74 días" (`stockhist`). Se arma en orden de llegada (FIFO, como cobra
+    // ML: se venden primero las más viejas): cada día que el stock sube entra un lote con esa fecha; cada día que baja se van las más viejas.
+    // Lo que quedó de antes del primer día con dato queda "por lo menos" (aprox). Sin `go` compara contra el Excel de ML (`cyc/lotesfull`)
+    // donde lo hay; con `go` (ml-sync) escribe en `cyc/lotesfull/<código>` SÓLO donde no hay Excel o el Excel tiene más de 45 días
+    // (`fuente:'movimientos'`), y no pisa un Excel reciente. Una publicación por código de Full (`inv`); la línea es la de stock junta.
+    if (/^edadreal(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE); const GOe = /:go\s*$/.test(raw) && !DRY && !CONSULTA_SOLO_LEE;
+      const filtro = raw.replace(/^edadreal:?/, '').replace(/:?go\s*$/, '').trim().toLowerCase();
+      const links = (await db.get('cyc/mllinks')) || {}; const lf = (await db.get('cyc/lotesfull')) || {};
+      const hoyK = dayKeyFromISO(Date.now()); const hoyT = Date.parse(hoyK.replace(/_/g, '-') + 'T12:00:00-03:00');
+      const porInv = {}; for (const [m, e] of Object.entries(links)) { if (!e || !e.inv || e.gemelaDe) continue; if (filtro && !(m.toLowerCase() === filtro || String(e.title || '').toLowerCase().includes(filtro))) continue; if (!porInv[e.inv] || e.status === 'active') porInv[e.inv] = m; }
+      const upd = {}; let n = 0, nAprox = 0, nCmp = 0, nDif = 0; const filas = [];
+      for (const [inv, m] of Object.entries(porInv)) {
+        let lin; try { lin = (await db.get('mlapi/linea/' + m)) || {}; } catch { continue; }
+        const ks = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && lin[k] && typeof lin[k] === 'object' && lin[k].st != null).sort();
+        if (!ks.length) continue;
+        const lotes = []; let prev = null; const k0 = ks[0];
+        for (const k of ks) { const st = Math.max(0, Number(lin[k].st) || 0);
+          if (prev == null) { if (st > 0) lotes.push({ k, u: st, aprox: true }); prev = st; continue; }
+          if (st > prev) lotes.push({ k, u: st - prev, aprox: false });
+          else if (st < prev) { let q = prev - st; while (q > 0 && lotes.length) { const l = lotes[0]; const t = Math.min(q, l.u); l.u -= t; q -= t; if (l.u <= 0) lotes.shift(); } }
+          prev = st; }
+        const quedan = lotes.filter((l) => l.u > 0); if (!quedan.length) continue;
+        const diasDe = (k) => Math.round((hoyT - Date.parse(k.replace(/_/g, '-') + 'T12:00:00-03:00')) / 864e5);
+        const viejo = quedan[0]; const ap = !!viejo.aprox; n++; if (ap) nAprox++;
+        const ex = lf[inv]; let cmp = '';
+        if (ex && Array.isArray(ex.lotes) && ex.ref) { const refT = Date.parse(ex.ref + 'T12:00:00-03:00'); const exV = Math.max(...ex.lotes.filter((x) => Number(x.u) > 0).map((x) => Number(x.dias) || 0)) + Math.round((hoyT - refT) / 864e5); nCmp++; const dd = diasDe(viejo.k) - exV; if (Math.abs(dd) > 7 && !ap) nDif++; cmp = ` · Excel de ML (al ${ex.ref}${ex.fuente === 'movimientos' ? ', de movimientos' : ''}): ${exV} d${Math.abs(dd) > 7 && !ap ? ` ⚠️ ${dd > 0 ? '+' : ''}${dd} d` : ''}`; }
+        filas.push(`· ${inv} · ${m} · ${String((links[m] || {}).title || '').slice(0, 38)} · ${quedan.reduce((a, l) => a + l.u, 0)} u. · la más vieja ${ap ? 'por lo menos ' : ''}${diasDe(viejo.k)} d (desde ${viejo.k.slice(8, 10)}/${viejo.k.slice(5, 7)}${ap ? ', el primer día con dato' : ''})${cmp}`);
+        const exRefT = ex && ex.ref ? Date.parse(ex.ref + 'T12:00:00-03:00') : 0;
+        if (!ex || ex.fuente === 'movimientos' || (hoyT - exRefT) > 45 * 864e5) upd[inv] = { cuenta: String((links[m] || {}).cuenta || (ex && ex.cuenta) || '').toLowerCase(), tam: (ex && ex.tam) || null, ref: hoyK.replace(/_/g, '-'), lotes: quedan.map((l) => ({ dias: diasDe(l.k), u: l.u, ...(l.aprox ? { aprox: 1 } : {}) })), ts: Date.now(), fuente: 'movimientos', desdeDato: k0 };
+      }
+      console.log(`=== 📅 EDAD REAL DEL STOCK EN FULL (de los movimientos de ML) · ${n} código(s) con stock · ${nAprox} con unidades de antes del primer día con dato ("por lo menos") · ${nCmp} con Excel de ML para comparar · ${nDif} difieren más de 7 días ${GOe ? '· GUARDO' : '(prueba)'} ===`);
+      filas.slice(0, 120).forEach((f) => console.log(f)); if (filas.length > 120) console.log(`(y ${filas.length - 120} más)`);
+      console.log(`→ ${Object.keys(upd).length} se escribirían en cyc/lotesfull (sin Excel o Excel de más de 45 días); los ${n - Object.keys(upd).length} con Excel reciente no se tocan`);
+      if (GOe && Object.keys(upd).length) { await db.patch('cyc/lotesfull', upd); const re = (await db.get('cyc/lotesfull')) || {}; console.log(`✓ releído: ${Object.keys(upd).filter((k) => re[k] && re[k].fuente === 'movimientos' && re[k].ref === upd[k].ref).length} de ${Object.keys(upd).length}`); }
       return;
     }
     // BILLING_PROBE=lotesfull:<cuenta>@<AAAA-MM-DD>;<código>=<tamaño>:<días>x<u>,<días>x<u>;…[;go]
@@ -24648,6 +24782,39 @@ async function main() {
         console.log(`\n--- ${new Date(x.ts - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} (hora de acá) · ${x.wf || '?'}${x.probe ? ' · ' + x.probe : ''} ---`);
         console.log(_tapaCodigo(String(x.t || '')).replace(/\d{9,}/g, m => '…' + m.slice(-4)));
       }
+      return;
+    }
+    // BILLING_PROBE=experiencia[:<MLA>,<MLA>…|:crudo][:go] (idea 9 del 02/11, él eligió la a el 03/11; "primero una prueba sin escribir"):
+    // LA EXPERIENCIA DE COMPRA DE CADA PUBLICACIÓN (el puntaje de ML por reclamos, cancelaciones y demoras: con 74 o menos ML le baja la
+    // exposición o la pausa). Así no se confunde un castigo de ML con un techo. Sin lista: todas las Clásicas activas con stock. Sin `go` sólo
+    // imprime (`:crudo` = el JSON de la primera, sólo nombres de campo); con `go` (ml-sync) guarda `mlapi/experiencia/<MLA>` = {v, color, txt, ts}
+    // y la ficha lo muestra.
+    if (/^experiencia(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE); const GOx = /:go\s*$/.test(raw) && !DRY && !CONSULTA_SOLO_LEE; const CRUDO = /:crudo/.test(raw);
+      const lista = (raw.match(/MLA\d+/gi) || []).map((x) => x.toUpperCase());
+      const links = (await db.get('cyc/mllinks')) || {};
+      const sel = lista.length ? lista : Object.entries(links).filter(([, e]) => e && !e.gemelaDe && e.status === 'active' && e.cuenta).map(([m]) => m);
+      const TKx = {}; for (const l of labels) { const acc = accounts[l]; if (!acc || !acc.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TKx[l] = t.access_token; } catch { /* */ } }
+      const filas = []; let fallas = 0, crudoDicho = false; const up = {};
+      for (const m of sel) { const e = links[m] || {}; const lab = labels.find((l) => l.toLowerCase() === String(e.cuenta || '').toLowerCase()); const tk = lab && TKx[lab]; if (!tk) { fallas++; continue; }
+        let r = null; try { r = await mlGet(`/reputation/items/${m}/purchase_experience/integrators?locale=es_AR`, tk); } catch { fallas++; continue; }
+        if (CRUDO && !crudoDicho) { console.log('CRUDO (sólo nombres de campo): ' + Object.keys(r || {}).join(', ') + (r && r.reputation ? ' · reputation: ' + Object.keys(r.reputation).join(', ') : '')); crudoDicho = true; }
+        const rep = (r && r.reputation) || {}; const v = Number(rep.value); const color = String(rep.color || ''); const txt = String(rep.text || (r && r.title && r.title.text) || '').slice(0, 80);
+        if (!isFinite(v) && !color) { filas.push({ m, nom: String(e.title || '').slice(0, 40), cta: e.cuenta, v: null, color: 'sin dato', txt: '' }); continue; }
+        filas.push({ m, nom: String(e.title || '').slice(0, 40), cta: e.cuenta, v: isFinite(v) ? v : null, color, txt });
+        up[m] = { v: isFinite(v) ? v : null, color: color || null, txt: txt || null, ts: Date.now() }; }
+      filas.sort((a, b) => (a.v == null ? 999 : a.v) - (b.v == null ? 999 : b.v));
+      const malas = filas.filter((f) => f.v != null && f.v <= 74);
+      console.log(`=== ⭐ EXPERIENCIA DE COMPRA · ${filas.length} publicaciones${fallas ? ` · ${fallas} no se pudieron leer` : ''} · ${malas.length} con 74 o menos (ML les baja la exposición o las pausa) ${GOx ? '· GUARDO' : '(prueba)'} ===`);
+      for (const f of filas.slice(0, 40)) console.log(`${f.v != null && f.v <= 74 ? '🔴' : f.v != null && f.v < 90 ? '🟠' : '🟢'} ${f.m} · ${f.cta} · ${f.nom} · ${f.v == null ? f.color : f.v}${f.txt ? ' · ' + f.txt : ''}`);
+      if (GOx && Object.keys(up).length) { await db.patch('mlapi/experiencia', up); console.log(`✓ guardadas ${Object.keys(up).length}`); }
+      return;
+    }
+    // BILLING_PROBE=barrera → mira YA si ML movió la barrera de $33.000 (idea 10 del 03/11). Sólo lee; no avisa ni guarda.
+    if (/^barrera$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const TKb = {}; for (const l of labels) { const acc = accounts[l]; if (!acc || !acc.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TKb[l] = t.access_token; } catch { /* esa cuenta no */ } }
+      const vb = await vigilarBarrera(db, labels, TKb, true, true);
+      console.log(`=== 🚧 BARRERA DE $33.000 === ${vb.miradas} Clásicas activas entre $24.750 y $46.200 · arriba sin envío gratis: ${vb.maxSin ? 'la más cara $' + vb.maxSin.toLocaleString('es-AR') : 'ninguna'} · abajo con envío gratis: ${vb.minCon ? 'la más barata $' + vb.minCon.toLocaleString('es-AR') : 'ninguna'} → ${vb.movida || 'en su lugar'}`);
       return;
     }
     // BILLING_PROBE=archivar[:<días>][:go] (03/11/2026, 12 de la revisión de Datos, él: "365 días que guarde no?"): LA HISTORIA QUE CRECE SIN
@@ -41357,6 +41524,7 @@ async function main() {
         if (Object.keys(updO).length) { try { await db.patch('mlapi/opiniones', updO); } catch { console.log('⚠️ no pude guardar las opiniones: la ficha las usa igual esta vez'); } }
         console.log(`⭐ Opiniones y preguntas de ML: ${okO} leídas ahora de ${viejas.length} que tocaba releer${okParc ? ` · ${okParc} a medias (guardé lo leído, se reintentan)` : ''}${cupo >= 5 ? ' · ML cortó por cupo: el resto sigue mañana' : ''}`);
       }
+      try { globalThis._expF = (await db.get('mlapi/experiencia')) || {}; } catch { globalThis._expF = {}; }   // idea 9 del 03/11 (lo guarda `experiencia:go`)
       const pIdx = {}; for (const pr of products) pIdx[pr.id] = pr;
       const hoyK = dayKeyFromISO(Date.now());
       const camb = {};
@@ -41403,6 +41571,7 @@ async function main() {
         const r = f.res;
         console.log(`\n■ ${mla} · ${f.producto}${f.variante ? ' · 🎨 ' + f.variante : ''} · ${f.cuenta} · "${f.nom}"`);
         console.log(`   hoy: ${$(r.p)} · ${r.est || '?'} · ${r.st != null ? r.st + ' u. en Full' : 'stock ?'} · 30 d: ${r.u30} u. (${r.r30 ?? '—'} por día con stock, ${$(r.pd30)} por día) · costo ${$(r.cu)} · línea guardada ${fK(r.primero)} a ${fK(r.ultimo)} (${r.dias} días${r.inc ? ', ' + r.inc + ' incompletos' : ''})`);
+        { const ex = (globalThis._expF || {})[mla]; if (ex && (ex.v != null || ex.color)) console.log(`   ⭐ EXPERIENCIA DE COMPRA (ML): ${ex.v != null ? ex.v : ex.color}${ex.txt ? ' · ' + ex.txt : ''}${ex.v != null && ex.v <= 74 ? ' · 🔴 74 o menos: ML le baja la exposición (no confundir con un techo)' : ''} · medida el ${new Date(Number(ex.ts) - 3 * 36e5).toISOString().slice(5, 10)}`); }   // idea 9 del 03/11
         console.log(`   RAYAS (la barrita de la web): ${f.rayas ? `💰 piso ${f.rayas.piso ? $(f.rayas.piso) : 'sin medir'} · 🔴 techo ${f.rayas.techo ? $(f.rayas.techo) : 'sin medir'}` : 'sin 💰 medido (no se dibuja barrita)'}`);
         if (f.juntaCon) console.log(`   🔗 medida JUNTO con ${f.juntaCon.join(', ')} (mismo stock: gemela o repetida): las ventas de las dos cuentan y la plata parada va una vez`);
         console.log('   LO QUE SABEMOS:'); if (!f.sabemos.length) console.log('    · nada medido todavía');
@@ -48945,7 +49114,15 @@ async function main() {
         for (const l of qNoLeida) porC[l] = 'no leída';
         console.log(`\n── 10 · PREGUNTAS SIN RESPONDER (${qsT.length}${qNoLeida.length ? ' o más' : ''} · ${Object.entries(porC).map(([k, v]) => k + ' ' + v).join(' · ')} · ${recientes.length} de los últimos 7 días · la más vieja ${qsT.length ? Math.round(Math.max(...qsT.map(edad))) : 0} d) ──`);
         if (recientes.length > 20) console.log(`⚠️ muestro las 20 más nuevas de ${recientes.length} de los últimos 7 días: las otras ${recientes.length - 20} también hay que contestarlas (comando preguntas)`);
-        for (const x of recientes.slice(0, 20)) console.log(`· q${x.id} · ${x._c} · ${x.item_id} · ${tit(x.item_id)} · ${(links[x.item_id] || {}).status || '?'} · hace ${edad(x) < 1 ? Math.round(edad(x) * 24) + ' h' : Math.round(edad(x)) + ' d'} · «${corta(taparQ(x.text), 160)}»`);
+        // 💡 LA FICHA TÉCNICA DE ML AL LADO DE CADA PREGUNTA (idea 11 del 02/11, él eligió la a el 03/11): los atributos de la publicación
+        // (lo que ML muestra en "Características"), para contestar en la vuelta lo que la ficha dice TEXTUAL. Lo que no está ahí no se contesta
+        // inventando: va a él (regla de las preguntas). Una lectura por publicación, sólo de las de los últimos 7 días.
+        const fichaT = {};
+        for (const x of recientes.slice(0, 20)) console.log(`· q${x.id} · ${x._c} · ${x.item_id} · ${tit(x.item_id)} · ${(links[x.item_id] || {}).status || '?'} · hace ${edad(x) < 1 ? Math.round(edad(x) * 24) + ' h' : Math.round(edad(x)) + ' d'} · «${corta(taparQ(x.text), 160)}»` + await (async () => {
+          const it = x.item_id; if (!it) return ''; if (!(it in fichaT)) { fichaT[it] = null; try { const b = await mlGet(`/items/${it}?attributes=attributes`, tokI[x._c]); const at = (b && b.attributes) || [];
+            fichaT[it] = at.filter((a) => a && a.name && a.value_name && !/^(SELLER_SKU|GTIN|ITEM_CONDITION|PRODUCT_DATA_SOURCE|IS_FLAMMABLE|PACKAGE_)/.test(String(a.id || ''))).slice(0, 18).map((a) => `${a.name}: ${String(a.value_name).slice(0, 40)}`).join(' · '); } catch { fichaT[it] = null; } }
+          return fichaT[it] ? `\n    📋 ficha técnica de ML: ${corta(fichaT[it], 700)}` : '\n    📋 ficha técnica: ML no la devolvió';
+        })());
         if (qsT.length > recientes.length) console.log(`  (las ${qsT.length - recientes.length} de más de 7 días: comando preguntas)`);
       } catch (eQ) { console.log('preguntas: no pude leerlas · ' + eQ.message); }
       // 11) Publicaciones frenadas por ML (revisión, documentación, infracción) o cerradas, de lo que vende o tiene ficha
@@ -54416,6 +54593,10 @@ async function main() {
       const f = (t) => new Date((Number(t) || 0) - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
       console.log(`=== 📬 BUZÓN · ${sin.length} sin leer ===`);
       for (const x of sin) { const z = _taparBz(_tapaMP(x.t)); console.log(`  [${x.k}] ${f(x.ts)} · ${z.t.slice(0, 600)}${z.nota}`); }
+      // 🤖 Lo que el robot ya cargó solo de las RUTINA y lo que dejó para Claude (idea 13 del 03/11), y la cola del panel (idea 15).
+      try { const RA = (await db.get('mlapi/rutinaauto')) || {}; for (const [t, r] of Object.entries(RA).sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 3)) console.log(`  🤖 RUTINA [${t}]: a la cola ${(r.cmds || []).join(', ') || 'nada'}${(r.raros || []).length ? ' · PARA VOS: ' + r.raros.join(' | ') : ''}`);
+        const PR = (await db.get('cyc/pararobot')) || {}; const pend = Object.entries(PR).filter(([, x]) => x && (x.estado === 'nuevo' || x.estado === 'tomado' || x.estado === 'falló' || x.estado === 'rechazado') && Date.now() - (Number(x.ts) || 0) < 3 * 864e5);
+        if (pend.length) console.log(`  📥 Para el robot: ${pend.map(([k, x]) => `${x.estado} ${String(x.t || '').split(/[:;]/)[0]} (${f(Number(k))})`).join(' · ')}`); } catch { /* */ }
       if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) { const z = _taparBz(_tapaMP(x.t)); console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${z.t.slice(0, 200)}${z.nota}`); } }
       return;
     }
@@ -57798,6 +57979,11 @@ async function main() {
   //  · una liviana del ciclo (`PESADA_SI_TOCA=1`) se vuelve pesada si ya pasaron VUELTA_PESADA_CADA_MIN, así el reinicio no
   //    corre la pesada una hora más.
   // Si la memoria no se puede leer, manda lo que decidió el ciclo (como antes). `FORZAR_PESADA=1` la corre igual.
+  // 📥 La cola del panel y la RUTINA del buzón (ideas 13 y 15, 03/11/2026): en cada vuelta del ciclo; los comandos los corre ciclo.sh.
+  if (!DRY && parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !(process.env.ACCOUNT || '').trim()) {
+    try { const cq = await colaParaRobot(db, labels); if (cq.tomados || cq.subidos || cq.rechazados || cq.rutina) console.log(`📥 Para el robot · ${cq.tomados} tomados · ${cq.subidos} terminados · ${cq.rechazados} rechazados${cq.rutina ? ' · ' + cq.rutina : ''}`); }
+    catch (e) { console.log('📥 No pude mirar la cola del panel: ' + String(e.message || e).slice(0, 100)); }
+  }
   let _vueltaPesadaAnotar = false;
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !DRY && !(process.env.ACCOUNT || '').trim() && process.env.FORZAR_PESADA !== '1') {
     let _ultP = null;
@@ -59449,6 +59635,12 @@ async function main() {
       const dc = await avisoDevCodigo(db, labels, tokensRun, DRY, false, accounts);
       if (!dc.salteo) console.log(`📦 Devoluciones con código · ${dc.mirados} en camino · ${dc.conCodigo} con código · ${dc.mandados} mandadas a Telegram${dc.fallas ? ' · ' + dc.fallas + ' lecturas fallaron' : ''}`);
     } catch (e) { console.log('No pude mirar los códigos de las devoluciones: ' + String(e.message || e).slice(0, 120)); }
+  }
+
+  // 🚧 La barrera de $33.000 (idea 10, 03/11/2026): cada 6 h, sólo lee ML; avisa al canal privado si se movió.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1') {
+    try { const vb = await vigilarBarrera(db, labels, tokensRun, DRY); if (!vb.salteo) console.log(`🚧 Barrera $33.000 · ${vb.miradas} Clásicas cerca · ${vb.movida || 'en su lugar'}`); }
+    catch (e) { console.log('No pude mirar la barrera de $33.000: ' + String(e.message || e).slice(0, 120)); }
   }
 
   // SACAR LA MARCA DE "LIQUIDANDO" A LO QUE YA SE VENDIÓ ENTERO. Va en la vuelta horaria: el stock

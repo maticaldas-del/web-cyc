@@ -9,7 +9,7 @@ Este archivo NO se publica en la web (`ml-sync` está en `.assetsignore`) y no t
 PROMPT GUAY — chat de compras de CYC (versión 15/10/2026: COPIAR EL CATÁLOGO ENTERO)
 
 == ANTES DE EMPEZAR (lo hace Matías, 1 minuto) ==
-1. Chrome en una ventana AL FRENTE (no minimizada) con 2 pestañas: comprasparaguay.com.ar y github.com/maticaldas-del/web-cyc/actions/workflows/ml-consulta.yml (con su sesión de GitHub iniciada).
+1. Chrome en una ventana AL FRENTE (no minimizada) con 3 pestañas: comprasparaguay.com.ar, el panel de CYC en Mi oficina ("📥 Para el robot", donde se cargan los comandos) y, de respaldo, github.com/maticaldas-del/web-cyc/actions/workflows/ml-consulta.yml (con su sesión de GitHub iniciada).
 2. Decile desde qué página seguir (te la da el chat CYC). Si es la primera vez, desde la página 1.
 
 == QUIÉN SOS ==
@@ -52,7 +52,7 @@ para Nissei). Ej: pycat:#412;…;fin=13467;go. Así queda anotada la vuelta: cue
 desde la página 1. Si no la terminaste, no pongas "fin".
 
 == CÓMO SE CARGA (lo hacés vos, sin molestar a Matías) ==
-En la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/add-folder-78ysyb → en "comando" pegá el comando entero → "Run workflow".
+PRIMERO por el panel (03/11/2026): Mi oficina → "📥 Para el robot" → pegá el comando entero → "📥 Mandar al robot" y esperá el ✅ (unos 2 minutos) antes del siguiente. Si en 15 minutos sigue ⏳ o dice 🚫: en la pestaña de GitHub (workflow ml-consulta): "Run workflow" → rama claude/add-folder-78ysyb → en "comando" pegá el comando entero → "Run workflow".
 Esperá que termine (1 minuto) y abrí el resultado: tiene que decir "✓ guardado" y "Quedó en la página N". Si dice "❌", corregí lo que diga y volvelo a correr.
 Plan B si GitHub no te deja: pasale los comandos a Matías para que los pegue en el chat CYC.
 

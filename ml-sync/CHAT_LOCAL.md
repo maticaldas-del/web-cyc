@@ -29,6 +29,8 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Mayoristas del Once con precios en internet.  → ONCE
 - Imega (mayorista que conoce Tito).  → IMEGA
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
+- "cajas llegadas" (cada vez que te prenden, después de la RUTINA): mirar en ML las cajas que llegaron a Full y avisar si llegó todo bien o hubo problemas.  → CAJAS LLEGADAS
+- "más vendidos" (cada 7 días): lo más vendido de cada categoría de ML cruzado con Nissei y las listas.  → MÁS VENDIDOS
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
 No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
@@ -41,11 +43,46 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    d) LISTAS → si hace 7 días o más.
    e) ONCE → si hace 7 días o más (1 o 2 mayoristas nuevos, una hora como mucho).
    f) IMEGA → si hace 14 días o más.
+   a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
+   f2) MÁS VENDIDOS → si hace 7 días o más (ver abajo).
    g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
-   fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …".
+   fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …",
+   "CAJAS LLEGADAS …", "MÁS VENDIDOS …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
+
+CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026, él: "el chat de Chrome carga por el panel, no por GitHub")
+- PRIMERO por el panel: Mi oficina → "📥 Para el robot". Pegá UN comando (el mismo texto que antes ponías en GitHub, por ejemplo
+  `pycat:#12@nuevo;…;go` o `pyprecio:…;go`) y tocá "📥 Mandar al robot". El robot lo corre solo en ~2 minutos y ahí mismo ves
+  ⏳ en cola → ⚙️ corriendo → ✅ hecho (o ❌ falló / 🚫 rechazado) y "ver lo que dijo" con lo que contestó. Esperá el ✅ antes de mandar el
+  siguiente de la misma tanda. Sirve para: pycat, pycatres, pyprecio, candprecio, listadato, lista, listamedir, listarevisar, faltaventas,
+  faltaprecio, svprecio, pyprobadoslista, cupo, pyvisto, revcand, buzon, ancla.
+- Si en 15 minutos sigue ⏳ (el robot está trabado) o te dice 🚫, recién ahí usá GitHub como antes (workflow ml-consulta → Run workflow →
+  rama claude/add-folder-78ysyb → "comando"). Si GitHub tampoco anda, pasale los comandos a Matías.
+- La RUTINA ya no hace falta cargarla: el cupo y Mercado Pago del mensaje "RUTINA" del buzón los carga el robot solo. Vos dejá el
+  mensaje igual que siempre.
+
+CAJAS LLEGADAS (la tarea a2; 03/11/2026, él: "que mire las cajas llegadas, si todo llegó correcto o hubo problemas")
+- En cada una de las 4 cuentas: Mercado Libre → Full (o Ventas → Envíos a Full / Planificación de envíos) → los envíos de los últimos 10
+  días que dicen recibido, en proceso o con problemas.
+- De cada envío nuevo (que no anotaste antes) mirá el detalle: cuántas unidades se mandaron y cuántas recibió ML de cada producto, y si ML
+  dice faltantes, unidades rechazadas, dañadas, "no aptas", "en revisión" o "sin etiqueta".
+- Dejá UN mensaje en el buzón que EMPIECE con "CAJAS LLEGADAS <AAAA-MM-DD>", un renglón por envío:
+  `<cuenta> · envío …<últimos 4 números> · <fecha> · <recibido entero | EN PROCESO | CON PROBLEMAS> · <qué pasó, producto por producto, sólo si no está bien>`
+  Si no llegó ninguno nuevo: "CAJAS LLEGADAS <fecha> · nada nuevo".
+- No toques nada, no confirmes ni respondas nada en ML: sólo mirás y anotás.
+
+MÁS VENDIDOS (la tarea f2, cada 7 días; 03/11/2026, idea 8 que eligió Matías: "productos nuevos con venta segura para llenar el lugar")
+- Entrá a mercadolibre.com.ar/mas-vendidos y recorré estas categorías: Belleza y Cuidado Personal (perfumes), Celulares y accesorios,
+  Electrónica/Audio, Computación (accesorios), Hogar y Cocina, Herramientas, Deportes, Juegos y Juguetes, Relojes. En cada una, los
+  primeros 20.
+- De cada uno buscá si está en Nissei (comprasparaguay.com.ar, la fila de Nissei) EXACTAMENTE igual (marca, modelo, color, capacidad).
+  Lo grande o pesado y lo que no se mira (celulares, notebooks, tablets, TV, monitores, cámaras) no lo busques.
+- Dejá un mensaje en el buzón que EMPIECE con "MÁS VENDIDOS <AAAA-MM-DD>", un renglón por producto que SÍ encontraste:
+  `<categoría> · #<puesto> · <nombre corto> · ML $<precio del más barato nuevo> · Nissei <código> US$ <precio>`
+  y al final "no encontré en Nissei: N".
+- Con eso Claude lo mide (la vara de 35%) y lo agrega a Para probar.
 
 REVISAR LA TIENDA (la tarea g; es lo que hacés cuando no queda nada más)
 - Abrí https://tiendacyc.github.io y andá página por página desde donde quedaste la última vez (lo dice tu último mensaje "TIENDA: …";
