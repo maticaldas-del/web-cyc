@@ -3385,7 +3385,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.116';
+const APP_VERSION='28.117';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3398,6 +3398,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.117',f:'04/11',h:'13:35',c:[{n:2,t:'💵 Plata por día: el promedio del mes en curso cuenta sólo los días terminados (hoy, que está a medio día, ya no lo baja). El día 1 usa el de hoy.'}]},
   {v:'28.116',f:'04/11',h:'13:20',c:[{n:2,t:'📊 Métricas → % de Ganancia: botón nuevo Ajustada / Desde 0%. Desde 0% arranca abajo en 0, marca la línea del 35% y arriba llega al % más alto (queda recordado).'}]},
   {v:'28.115',f:'04/11',h:'13:05',c:[{n:2,t:'📊 Métricas: el selector de período (Mes ▾, Total/Neto/Ganancia y las flechas) pasó abajo del gráfico de % de Ganancia.'}]},
   {v:'28.113',f:'04/11',h:'12:05',c:[{n:1,t:'💰 Arqueo → Lo que debemos: "Deuda de CYC" ahora se llama "Dólares Abuela".'}]},
@@ -12838,7 +12839,10 @@ const _MESES_LN=['enero','febrero','marzo','abril','mayo','junio','julio','agost
 function _lnMesNom(k){return _MESES_LN[(parseInt(String(k).slice(5,7),10)||1)-1]||'';}
 function _lnPreMes(ks){return ks&&ks.length?Math.max(0,(parseInt(String(ks[0]).slice(8,10),10)||1)-1):0;}
 // {k: promedio por día del mes de k}, contando sólo los días con dato (`dato`) hasta hoy.
-function _lnPromMes(ksAll,ks,ganK,dato){const M={};ksAll.forEach(k=>{if(!dato(k))return;const o=(M[k.slice(0,7)]=M[k.slice(0,7)]||{t:0,n:0});o.t+=Number(ganK(k))||0;o.n++;});
+// 04/11/2026 (él: "hoy es 4, que haga la cuenta con las ventas de los 3 días y divida por tres"): HOY no entra (está a medio día y
+// bajaba el promedio); sólo los días terminados. El día 1 del mes, sin días terminados todavía, usa el de hoy.
+function _lnPromMes(ksAll,ks,ganK,dato){const M={},hoyK=dateToKey(new Date()),H={};ksAll.forEach(k=>{if(!dato(k))return;const o=k===hoyK?(H[k.slice(0,7)]=H[k.slice(0,7)]||{t:0,n:0}):(M[k.slice(0,7)]=M[k.slice(0,7)]||{t:0,n:0});o.t+=Number(ganK(k))||0;o.n++;});
+  Object.keys(H).forEach(m=>{if(!M[m]||!M[m].n)M[m]=H[m];});
   const out={};ks.forEach(k=>{const o=M[k.slice(0,7)];if(o&&o.n)out[k]=o.t/o.n;});return out;}
 function _lineaDias(n){const out=[];const hoy=new Date();for(let i=n-1;i>=0;i--){const d=new Date(hoy.getTime()-i*864e5);out.push(dateToKey(d));}return out;}
 // EL STOCK NO SE SUMA DOS VECES (08/10/2026, él con el Centímetro: "aumentó el costo, el precio y el %"; la línea de
@@ -13600,7 +13604,7 @@ function lineaPintar(prodId){
     const _h=`${_lineaFmtDia(k)}${d&&d.hoy?' · HOY (incompleto: hasta ahora)':''}`;
     const _vent=d&&d.u!=null&&d.u>0?[`🛒 vendió ${d.u} u.`,`🟩 normales: ${d.u-(d.uP||0)-(d.uG||0)-(d.uR||0)}`,d.uP?`🟧 Premium: ${d.uP}`:'',d.uG?`🟦 envío gratis: ${d.uG}`:'',d.uR?`📦 liquidadas (sacando stock): ${d.uR}`:''].filter(Boolean).join('\n'):(k>=_gd0||(d&&d.u===0)?'🛒 no vendió':'🛒 ventas: sin dato');
     const _pctU=!gd[k]&&pdUlt[k]?`💰 % ganancia de la última venta (${_lineaFmtDia(pdUlt[k][1])}): ${pdUlt[k][0].toFixed(0)}%`:'';
-    const _g7=g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (lo que va del mes)':''}: ${fmt(Math.round(g7[k]))} por día`:`💵 promedio de ${_lnMesNom(k)}: sin dato`;
+    const _g7=g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (los días terminados del mes, sin hoy)':''}: ${fmt(Math.round(g7[k]))} por día`:`💵 promedio de ${_lnMesNom(k)}: sin dato`;
     // Sin costo cargado no hay % (deja $0, regla del 26/09) · con neto estimado va "≈", como el renglón de Ventas (21/10/2026 · etapa 5).
     const _gan=gd[k]?(gd[k].sinCosto?`💰 ganancia ${fmt(gd[k].gan)} · sin costo cargado (no hay % que mostrar)`:`💰 ${gd[k].est?'≈ ganancia estimada':gd[k].estV?'≈ ganancia':'ganancia'} ${fmt(gd[k].gan)}${(()=>{const q=pctGananciaVP(gd[k].gan,gd[k].costo,gd[k].gest);return q!=null&&isFinite(q)?` (${q.toFixed(0)}% ese día${pd7[k]!=null?` · ${pd7[k].toFixed(0)}% los últimos 7 días`:''})`:'';})()}${gd[k].estV&&!gd[k].est?' · neto estimado: ML todavía no liquidó':''}`):'';
     // EL DÍA CON CARRITO (21/10/2026 · etapa 5): acá la ganancia es la de cada producto "vendido solo" (`netoProductoVP`); en Ventas
@@ -13884,7 +13888,7 @@ function lineaTodoPintar(){
     const por={
       vent:[..._vent,r&&r.vis!=null?`👀 ${r.vis} visitas`:''],
       st:[stU[k]!=null?`📦 ${Math.round(stU[k])} u. en Full${k===hk?' (ahora)':''}`:(r&&r.st!=null?`📦 stock: sólo ${r.stN} publicaciones lo informan ese día (no se dibuja)`:'📦 stock: sin dato')],
-      gan:[v?`💰 ganancia del día ${fmt(Math.round(v.gan))}`:'',g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (lo que va del mes)':''}: ${fmt(Math.round(g7[k]))} por día`:'',_semK[k]||'',..._franjaTxt(k)],
+      gan:[v?`💰 ganancia del día ${fmt(Math.round(v.gan))}`:'',g7[k]!=null?`💵 promedio de ${_lnMesNom(k)}${k.slice(0,7)===dateToKey(new Date()).slice(0,7)?' (los días terminados del mes, sin hoy)':''}: ${fmt(Math.round(g7[k]))} por día`:'',_semK[k]||'',..._franjaTxt(k)],
       pct:[pdDia[k]!=null?`📊 ${pdDia[k].toFixed(0)}% de ganancia ese día${pd7[k]!=null?` · ${pd7[k].toFixed(0)}% los últimos 7 días`:''}`:'📊 sin ventas con costo ese día'],
       pr:[idx[k]!=null?`💲 índice de precio ${idx[k].toFixed(1)} (${idx[k]>=100?'+':''}${(idx[k]-100).toFixed(1)}% contra el primer día)`:''],
       cam:s.length||b.length||(r&&(r.sb||r.bj))?[`✏️ ▲ ${s.length} subas · ▼ ${b.length} bajadas`,...lst(s,'▲'),...lst(b,'▼'),r&&(r.sb||r.bj)?`🔎 en el precio guardado: ▲ ${r.sb||0} · ▼ ${r.bj||0}`:'']:['✏️ sin cambios de precio'],
