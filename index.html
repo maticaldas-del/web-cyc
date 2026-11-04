@@ -3395,7 +3395,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.123';
+const APP_VERSION='28.124';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3408,6 +3408,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.124',f:'04/11',h:'16:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: lo que Nissei no tiene dice ⚪ Nissei no lo tiene (no "sin medir" ni "sin precio de Paraguay"); la marca automática de la vuelta completa ahora agarra también las fichas sin código (el Cuba Gold)'}]},
   {v:'28.123',f:'04/11',h:'15:40',c:[{n:2,t:'📦 Armar caja: el ❌ no da 35% sale sólo si la competencia no da y ninguna venta de los últimos 60 días da 35% (antes miraba sólo la más cara). Arriba de $33.000 usa el envío de ese producto, no el del más pesado.'}]},
   {v:'28.122',f:'04/11',h:'15:05',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: los aparatos para el pelo (secador, planchita, rizador, cepillo secador) van en el pedido del Resto, no en Perfumería.'}]},
   {v:'28.121',f:'04/11',h:'14:40',c:[{n:2,t:'🇵🇾 Pedido de Paraguay: un perfume que no da 35% en ML ya no entra "por la perfumería" (ni con 🪄 Llenar ni a mano sin confirmar): la perfumería ahora paga costo + 25%. Lo que pida la perfumería se carga aparte.'}]},
@@ -23365,16 +23366,16 @@ function _pedidoItemHtml(p,opts){
       <div style="flex:1;min-width:0">
         <div class="cand-nom" style="font-size:.8rem;font-weight:600;line-height:1.3">${p.producto||'—'}${p.variante?` <span style="color:#a78bfa;font-size:.7rem">· ${p.variante}</span>`:''}${pedCambioChip(p)}</div>
         <div class="cand-cel" style="font-size:.66rem;color:var(--muted);margin-top:2px">comprar <b style="color:var(--text)">${fmtN(p.cantidad||0)}</b> u.${_ps?` · ${fmt(_ps)}`:''}${_locP!=null?` · ${perfLocalHTML(_locP)}`:''}</div>
-        <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`${fmtUS2(_nu)} → <b style="color:var(--text)">${fmtUS2(_pu)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'<span style="color:var(--red)">sin precio de Paraguay</span>'}${p.cVend!=null?` · <b style="color:var(--green)">🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}</b>`:''}</div>
+        <div class="cand-sub" style="font-size:.68rem;color:var(--muted);margin-top:3px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'<span style="color:var(--amber)">🔖 sin código</span> · '}${_nu>0?`${fmtUS2(_nu)} → <b style="color:var(--text)">${fmtUS2(_pu)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:((state.pySinStock||{})[_prod.id]?`<span style="color:var(--muted)">⚪ ${pyProvNom()} no lo tiene`:'<span style="color:var(--red)">sin precio de Paraguay')+'</span>'}${p.cVend!=null?` · <b style="color:var(--green)">🛒 vendiste ${fmtN(p.cVend)}${p.cDias?` en ${p.cDias} d`:''}</b>`:''}</div>
       </div>
       <div class="cand-der" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:0 1 auto">
         ${_locP!=null?`<div class="cand-loc">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div class="cand-loc" style="font-size:.6rem;color:var(--muted)">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}
         <div class="cand-sub" style="font-size:.8rem;color:var(--text);white-space:nowrap">comprar <b style="font-size:1.15rem">${fmtN(p.cantidad||0)}</b> u.</div>
         ${_armU!=null?(_armPorColor?`<span style="font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}" title="Se pide por color: abrí el detalle para cargar cada uno">🧾 pedir ${_armU>0?'<b>'+_armU+'</b> u.':''} por color ▾</span>`:`<span onclick="event.preventDefault();event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;color:${_armU>0?'var(--green)':'var(--muted)'}">🧾 pedir <input type="number" min="0" step="1" value="${_armU||''}" placeholder="0" onchange="pyArmSet('${_prod.id}',this.value)" style="width:54px;font-size:.95rem;padding:3px 5px;text-align:center;background:var(--surface2);border:1px solid ${_armU>0?'var(--green)':'var(--border)'};border-radius:6px;color:var(--text)"></span>`):''}
-        <div style="text-align:right">${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}<div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div></div>
+        <div style="text-align:right">${_mgP!=null?`<div style="font-size:1.35rem;font-weight:700;color:${_colP};line-height:1">${Math.round(_mgP)}%</div>`:(state.pySinStock||{})[_prod.id]?`<div style="font-size:.68rem;color:var(--muted)">⚪ ${pyProvNom()} no lo tiene</div>`:'<div style="font-size:.68rem;color:var(--amber)">sin medir</div>'}<div style="font-size:.6rem;color:var(--muted);margin-top:3px">detalle ▾</div></div>
       </div>
     </summary>
-    <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6;margin-top:10px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'🔖 sin código · '}${_nu>0?`${fmtUS2(_nu)} → <b style="color:var(--text)">${fmtUS2(_pu)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:'sin precio de Paraguay'}${_locP!=null?`<div style="margin-top:4px">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}</div>
+    <div class="cand-solocel" style="font-size:.72rem;color:var(--muted);line-height:1.6;margin-top:10px">${_prod.codPy?`🔖 ${_prod.codPy} · `:'🔖 sin código · '}${_nu>0?`${fmtUS2(_nu)} → <b style="color:var(--text)">${fmtUS2(_pu)}</b> puesto${_ps?` · ${fmt(_ps)}`:''}`:((state.pySinStock||{})[_prod.id]?`⚪ ${pyProvNom()} no lo tiene`:'sin precio de Paraguay')}${_locP!=null?`<div style="margin-top:4px">${perfLocalHTML(_locP)}${perfNoLocalBtn('p',_prod.id,false)}</div>`:_esPerfP&&_prod.noLocal?`<div style="margin-top:4px">🏪 no da en el local${perfNoLocalBtn('p',_prod.id,true)}</div>`:''}</div>
     <div style="margin-top:10px">${_pyVis?`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px">${_pyVis}</div>`:''}${_armHTML?_card.slice(0,-_armHTML.length):_card}</div>
   </details>`;
 }

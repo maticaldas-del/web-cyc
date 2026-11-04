@@ -1734,6 +1734,11 @@ Error mío: `open('sw.js','w').write(open('sw.js').read()…)` en Python abre pa
 `sw.js` publicado estaba vacío y la app no abría (él: *"se rompió web cyc no ingresa"*); se repuso entero (CACHE cyc-v960).
 - **Qué chequear siempre:** después de subir el `CACHE`, `wc -c sw.js` > 0 y `node --check sw.js`. Leer y escribir un archivo en dos pasos.
 
+### Etapa 3 · 04/11/2026 · v28.124 · ⚪ Nissei no lo tiene: también lo que no tiene código
+- **Qué es:** él con el Cuba Gold (*"esto es porque no hay stock, no es que está sin medir"*): la marca automática de la vuelta completa (`marcarAgotadosVuelta`) sólo miraba fichas de Paraguay CON código; ahora también las que no tienen (salvo `soloLocal` y Elegancia). En Pedidos → Paraguay la tarjeta dice "⚪ Nissei no lo tiene" en vez de "sin medir" / "sin precio de Paraguay".
+- **Dónde vive:** `sync.mjs` `marcarAgotadosVuelta` (y `pyagotados[:go]`) · `index.html` tarjeta de Probados (`_mgP`).
+- **Qué chequear:** que una ficha sin código que el chat sí vio en Nissei (con `nisseiTs` de la vuelta) no quede marcada; que la marca se caiga sola al volver a verla.
+
 ### Etapa 3 · 26/10/2026 · 📷 Las fotos del ticket que me pasa por el chat se ven en el detalle
 Él: *"los cargaste para poder verlo en el detalle del envío? siempre quiero ver"*. Antes sólo quedaba "la vio Claude" (`pyticketvisto`)
 porque la foto no podía pasar por el repo ni el registro (públicos). Ahora viaja CERRADA: `ticketllave;go` crea la llave del robot (la
