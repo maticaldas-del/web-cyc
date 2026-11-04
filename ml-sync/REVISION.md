@@ -2151,6 +2151,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Dónde vive:** `sync.mjs` → `bajastecho`.
 - **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
 
+- **Auditoría 03/11/2026 · el envío en pausa ya no sale como caja vieja en la sección 9 del `informe`.** Qué es: una caja con `pausado` (en la oficina, no cuenta días) salía "sin fecha" y se contaba en "9+ días en camino". Dónde: `ml-sync/sync.mjs`, bloque 9 del `informe` (`nPausI`). Qué chequear: con un envío en pausa, el renglón dice "⏸️ envío en pausa" y el título lo cuenta aparte ("· N en pausa"), no en los 9+ días.
+
 ## 6 · IDEAS NUEVAS (sábado)
 - 03/11/2026 · Etapa 6 · **experiencia: el -1 de ML es "sin dato"** (la primera corrida marcó 73 de 222 en 🔴 porque ML manda -1 a las que no tienen puntaje). **Chequear:** `experiencia` sólo pone 🔴 con un número de 0 a 74.
 ### ✅ 03/11/2026 · Las ideas del 02/11 que eligió (él: 7a 8a 9a 10a 11a 12a 13a 15a 17a; 14 → tarea del chat "CAJAS LLEGADAS")

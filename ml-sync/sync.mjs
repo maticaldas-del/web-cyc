@@ -49175,9 +49175,11 @@ async function main() {
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
           // Revisión etapa 3, 29/10/2026: una caja en PAUSA no (está en la oficina; lo "entrado" sería de otra caja).
           if (entC && uC > 0 && eC >= uC && c.track && !env.pausado) completas.push({ txt: `${env.cuenta || '?'} …${String(c.track).slice(-4)} (${uC} u.)`, track: String(c.track) });
-          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}` : 'no pude leer lo que ML dio de alta'}`);
+          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${env.pausado ? '⏸️ envío en pausa (en la oficina, no cuenta días)' : dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}` : 'no pude leer lo que ML dio de alta'}`);
         }
-        console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length} con 9+ días) ──`);
+        // Auditoría 03/11/2026: el envío en pausa no es "9+ días en camino" (está en la oficina): se cuenta aparte.
+        const nPausI = abiertas.filter((x) => x.includes('⏸️ envío en pausa')).length;
+        console.log(`\n── 9 · CAJAS EN CAMINO A FULL (${nAb} abiertas · ${abiertas.length - nPausI} con 9+ días${nPausI ? ` · ${nPausI} en pausa` : ''}) ──`);
         for (const x of abiertas.slice(0, 15)) console.log(x);
         if (completas.length) console.log(`  ✅ ML ya dio de alta ENTERAS ${completas.length}: ${completas.map((x) => x.txt).join(' · ')}\n  → cajallego:${[...new Set(completas.map((x) => x.track))].join(';')}:go   (por ml-sync)`);
         if (abiertas.length > 15) console.log(`  (y ${abiertas.length - 15} cajas viejas más…)`);
