@@ -25979,6 +25979,26 @@ async function main() {
       if (!provW || !/^https:\/\//.test(urlW)) { console.log('❌ Va así: listawoo:<proveedor>|url=https://…[;go]'); return; }
       const MARCAS = /samsung|jbl|apple|iphone|ipad|airpods?|sony|xiaomi|redmi|lattafa|l.?or[eé]al|philips|motorola|\blg\b|huawei|logitech|nike|adidas|puma|disney|marvel|stanley|havaianas|gillette|braun|remington|maybelline|revlon|nivea|\bdove\b|colgate|oral.?b|\bbic\b|hello kitty|barbie|hot wheels|pok[eé]mon|minecraft|spider.?man|frozen|mickey|minnie|peppa|nintendo|playstation|\bps[2345]\b|xbox|gopro|canon|nikon|kodak|casio|rolex|ray.?ban|tommy|calvin|victoria.?s|chanel|dior|carolina herrera|paco rabanne|versace|armani|hugo boss|lacoste|kingston|sandisk|lexar|tp.?link|mercusys|anker|baseus|ugreen|bluey|stitch|sanrio|kuromi|harry potter|batman|superman|star wars|avengers|paw patrol|sonic|mario bros|labubu|real madrid|boca|river plate|barcelona|messi|coca.?cola|pepsi|ferrari|mercedes|bmw|audi|jeep|harley|tesla|beats|bose|marshall|garmin|fitbit|amazfit|honor|oppo|realme|tcl|nokia|lenovo|\bhp\b|dell|asus|acer|msi|corsair|razer|redragon|hyperx|steelseries|genius|noga|gadnic|atma|liliana|oster|peabody|moulinex|black.?decker|bosch|dewalt|makita|truper|tramontina|mawj|armaf|afnan|al haramain|alhambra|rasasi|fragrance world/i;
       const FUERA = /\bmedias?\b|remera|zapatill|ojota|pantal|\bbuzo\b|campera|calz[oó]n|boxer|corpiño|bombacha|vestido|pollera|\bedp\b|\bedt\b|perfum|parfum|colonia|fragancia|body splash|alimento|golosina|chocolate|caramelo|galletit|bebida|yerba|estanter[ií]a|colch[oó]n|sill[oó]n|\bmesa\b|\bsilla\b|heladera|lavarropa|monopat|bicicleta/i;
+      /* 04/11/2026 (él: "buscá proveedores por internet… comparalo todo, precio y foto"): |plat=shopify baja /products.json; |marcas no saca
+         las marcas reales (distribuidores oficiales, no el Once); |rubros no saca perfumes/ropa/comida; |rec=<%> (IVA u otro recargo) y
+         |arevisar (solapa 🔎 Proveedores a revisar) pasan a `lista`. */
+      const SHOP = opW.includes('plat=shopify'); const KEEPM = opW.includes('marcas'), KEEPR = opW.includes('rubros');
+      const recW = (opW.find((o) => /^rec=[\d.,]+$/.test(o)) || ''); const arevW = opW.includes('arevisar');
+      if (SHOP) { const todoS = []; let pgS = 1, malS = 0;
+        while (pgS < 120) { let d = null; try { const r = await fetch(`${urlW}/products.json?limit=250&page=${pgS}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
+          if (d == null) { if (++malS > 4) break; await new Promise((r) => setTimeout(r, 3000)); continue; }
+          const ps = (d && d.products) || []; if (!ps.length) break; todoS.push(...ps); pgS++; }
+        const itemsS = []; const fS = { marca: 0, rubro: 0, sinstock: 0, sinprecio: 0 };
+        for (const x of todoS) { const v = (x.variants || []).find((y) => y && y.available) || null;
+          const n = String(x.title || '').replace(/[;|=@]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
+          if (!v) { fS.sinstock++; continue; } const pr = Number(v.price) || 0; if (!(pr > 0)) { fS.sinprecio++; continue; }
+          if (!KEEPM && MARCAS.test(n)) { fS.marca++; continue; } if (!KEEPR && FUERA.test(n)) { fS.rubro++; continue; }
+          const cod = (String(v.sku || '').replace(/[;|=@\s]/g, '').slice(0, 30)) || 's' + x.id; let foto = ((x.images || [])[0] || {}).src || ''; if (/[;|@]/.test(foto)) foto = '';
+          itemsS.push(`${n}=${Math.round(pr)}@${cod}${foto ? '@' + foto : ''}`); }
+        console.log(`=== listawoo (shopify) · ${provW} · ${urlW} · ${todoS.length} productos · cargo ${itemsS.length} · afuera: ${fS.marca} marca real · ${fS.rubro} rubro · ${fS.sinstock} sin stock · ${fS.sinprecio} sin precio ${GOw ? '' : '(PRUEBA)'} ===`);
+        if (!GOw || !itemsS.length) { itemsS.slice(0, 8).forEach((i) => console.log('  · ' + i.replace(/@https?:\/\/\S+$/, ''))); return; }
+        process.env.BILLING_PROBE = `lista:${provW}|fecha=${fechaW}${recW ? '|' + recW : ''}${arevW ? '|arevisar' : ''};${itemsS.join(';')};go`;
+      } else {
       const todo = []; let pg = 1, malas = 0;
       while (pg < 200) { let d = null; try { const r = await fetch(`${urlW}/wp-json/wc/store/v1/products?per_page=100&page=${pg}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
         if (d == null) { if (++malas > 4) { console.log(`❌ la página no contestó (página ${pg}); cargado hasta ahí: ${todo.length}`); break; } await new Promise((r) => setTimeout(r, 3000)); continue; }
@@ -25991,13 +26011,14 @@ async function main() {
         const pr0 = x.prices || {}; const mu = Number(pr0.currency_minor_unit) || 0; let pr = Number(pr0.price) / 10 ** mu;
         if (x.type === 'variable' && pr0.price_range) pr = Number(pr0.price_range.min_amount) / 10 ** mu;
         if (!(pr > 0)) { fuera.sinprecio++; continue; }
-        if (MARCAS.test(n)) { fuera.marca++; continue; } if (FUERA.test(n)) { fuera.rubro++; continue; }
+        if (!KEEPM && MARCAS.test(n)) { fuera.marca++; continue; } if (!KEEPR && FUERA.test(n)) { fuera.rubro++; continue; }
         const cod = (String(x.sku || '').replace(/[;|=@\s]/g, '').slice(0, 30)) || 'w' + x.id; let foto = ((x.images || [])[0] || {}).src || ''; if (/[;|@]/.test(foto)) foto = '';
         items.push(`${n}=${Math.round(pr)}@${cod}${foto ? '@' + foto : ''}`);
       }
       console.log(`=== listawoo · ${provW} · ${urlW} · ${todo.length} productos en la página · cargo ${items.length} · afuera: ${fuera.marca} marca real · ${fuera.rubro} ropa/perfume/comida/grande · ${fuera.sinstock} sin stock · ${fuera.sinprecio} sin precio ${GOw ? '' : '(PRUEBA)'} ===`);
       if (!GOw || !items.length) { items.slice(0, 8).forEach((i) => console.log('  · ' + i.replace(/@https?:\/\/\S+$/, ''))); return; }
-      process.env.BILLING_PROBE = `lista:${provW}|fecha=${fechaW};${items.join(';')};go`;
+      process.env.BILLING_PROBE = `lista:${provW}|fecha=${fechaW}${recW ? '|' + recW : ''}${arevW ? '|arevisar' : ''};${items.join(';')};go`;
+      }
     }
     if (/^lista(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _ls = String(process.env.BILLING_PROBE).slice('lista'.length).replace(/^:/, '');
@@ -26123,7 +26144,7 @@ async function main() {
       const total = Object.keys({ ...cat, ...upd }).length;
       // Los números del botón (cuántos dan / falta medir) se rehacen: un costo nuevo deja de "dar" hasta medirlo (etapa 3, 20/10/2026).
       const _cl = cuentaLista({ ...cat, ...upd }, fechaL || fechaG);
-      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}), ..._cl });
+      await db.patch('cyc/mlconfig/listasProv/' + provK, { nombre: provNom, rec, n: total, ts: ahora, ...(fechaL ? { fecha: fechaL } : {}), ...(_neg ? { negocio: true } : {}), ...(opc.some((o) => o.trim() === 'arevisar') ? { arevisar: true } : {}), ..._cl });   /* 04/11/2026: |arevisar = va a 🔎 Proveedores a revisar */
       const r = (await db.get('mlapi/listas/' + provK + '/' + filas[filas.length - 1].cod)) || {};
       console.log(`\n${Math.abs((Number(r.p) || 0) - filas[filas.length - 1].p) < 1 ? '✓' : '❌'} guardado (${total} productos en la lista). Medila con \`listamedir:<proveedor>:<cuántos>:go\`.`);
       if (_cl.viejos) console.log(`📅 ${_cl.viejos} de una lista anterior no vienen en la del ${fechaL || fechaG}: no dan ni se piden (si la estás cargando de a partes, vuelven al cargarlos).`);
