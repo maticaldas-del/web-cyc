@@ -32304,8 +32304,8 @@ async function main() {
       const vpPct = (P, netoU, cu, m) => { const e = vpEnv(P); return (netoU - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + e) * 100; };
       const vpCnt = { g: 0, c: 0, p: 0, s: 0 }, vpArr = [], vpPorProd = {}, vpQ3 = {}; let vpMlas = 0, vpSinPtw = 0;
       for (const [mla, l] of Object.entries(vpLinks)) {
-        if (!l || !l.catalogo || !l.prodId || l.ignored) continue;
-        let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || null; } catch { lin = null; } if (!lin) continue; vpMlas++;
+        if (!l || !l.prodId || l.ignored) continue;   /* `catalogo` casi nunca está en mllinks: la caja del día (g/c/p) ya dice que es de catálogo */
+        let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || null; } catch { lin = null; } if (!lin || !Object.values(lin).some((x) => x && ['g', 'c', 'p'].includes(x.caja))) continue; vpMlas++;
         const pr = vpProds[l.prodId]; const cu = pr ? costoPesos(pr, 1, vpTc).costo : 0; const m = ((ML_EXTRA_PCT[String(l.cuenta || '').toLowerCase()] || 4) + vpMono) / 100;
         for (const [k, d] of Object.entries(lin)) {
           if (!d || k < vpDesde || !(Number(d.u) > 0)) continue;
