@@ -32288,6 +32288,58 @@ async function main() {
         console.log([cod, String(e.n || '').replace(/\|/g, '/').slice(0, 60), Math.round(Number(e.m)) + '%', Number(e.mv) || 0, mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 70), e.f || '', fotoML[mi] || '', listaOkVale(e) ? 'ok' : ''].join('|')); }
       console.log('@@FIN'); return;
     }
+    // BILLING_PROBE=vendeperdiendo[:días] → SOLO LEE (04/11/2026, él: "quizás dice que no da pero se venden igual… quizás descartamos
+    // productos pero al mandarlos se venden igual"). Mira la línea diaria (`mlapi/linea/<MLA>/<día>`: `caja` g/c/p, `ptw` = precio para
+    // ganar, `u`/`tot`/`neto` vendido) de las publicaciones de CATÁLOGO y cuenta las ventas ganando / compartiendo / perdiendo la caja,
+    // cuánto más caras que el que ganaba se vendieron, y si el producto daba 35% en el peor caso a NUESTRO precio y NO al del que ganaba
+    // (o sea: lo que la vara "35% al precio de la competencia" hubiera descartado y se vendió igual). El % al precio del que ganaba es
+    // aproximado: misma proporción de comisión que nuestra venta y envío de Full sólo arriba de la barrera.
+    if (/^vendeperdiendo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const vpDias = Math.max(7, parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 90);
+      const vpDesde = dayKeyFromISO(Date.now() - vpDias * 864e5);
+      const vpLinks = (await db.get('cyc/mllinks')) || {}; const vpProds = (await db.get('cyc/products')) || {};
+      const vpTc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; let vpMono = null; try { vpMono = await leerMonoPct(db); } catch { vpMono = null; }
+      if (!(vpTc > 0) || vpMono == null) { console.log('❌ sin dólar o sin % de monotributo: no puedo medir el %'); return; }
+      const vpEnv = (pr) => (pr >= UMBRAL_ENVIO_GRATIS ? 6000 : 0);
+      const vpPct = (P, netoU, cu, m) => { const e = vpEnv(P); return (netoU - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + e) * 100; };
+      const vpCnt = { g: 0, c: 0, p: 0, s: 0 }, vpArr = [], vpPorProd = {}, vpQ3 = {}; let vpMlas = 0, vpSinPtw = 0;
+      for (const [mla, l] of Object.entries(vpLinks)) {
+        if (!l || !l.catalogo || !l.prodId || l.ignored) continue;
+        let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || null; } catch { lin = null; } if (!lin) continue; vpMlas++;
+        const pr = vpProds[l.prodId]; const cu = pr ? costoPesos(pr, 1, vpTc).costo : 0; const m = ((ML_EXTRA_PCT[String(l.cuenta || '').toLowerCase()] || 4) + vpMono) / 100;
+        for (const [k, d] of Object.entries(lin)) {
+          if (!d || k < vpDesde || !(Number(d.u) > 0)) continue;
+          const u = Number(d.u), P = Number(d.tot) > 0 ? Number(d.tot) / u : Number(d.pV || d.p) || 0; const cj = d.caja;
+          if (!(P > 0)) continue;
+          if (cj === 'g' || cj === 'c' || cj === 'p') vpCnt[cj] += u; else { vpCnt.s += u; continue; }
+          if (cj !== 'p') continue;
+          const ptw = Number(d.ptw) || 0; if (!(ptw > 0)) { vpSinPtw += u; continue; }
+          const arriba = (P / ptw - 1) * 100; for (let i = 0; i < u; i++) vpArr.push(arriba);
+          const key = l.prodId; const q = vpPorProd[key] = vpPorProd[key] || { n: String((pr && pr.name) || l.title || mla).slice(0, 60), u: 0, sum: 0 };
+          q.u += u; q.sum += arriba * u;
+          if (cu > 0 && Number(d.neto) > 0) {
+            const netoU = Number(d.neto) / u; const comR = Math.max(0, Math.min(0.6, (P - netoU - vpEnv(P)) / P));
+            const netoW = ptw * (1 - comR) - vpEnv(ptw); const pS = vpPct(P, netoU, cu, m), pW = vpPct(ptw, netoW, cu, m);
+            if (pS >= 35 && pW < 35) { const z = vpQ3[key] = vpQ3[key] || { n: q.n, u: 0, pS: [], pW: [] }; z.u += u; z.pS.push(pS); z.pW.push(pW); }
+          }
+        }
+      }
+      const tot = vpCnt.g + vpCnt.c + vpCnt.p; const pc = (x) => (tot ? Math.round(x / tot * 100) : 0);
+      console.log(`=== VENTAS DE CATÁLOGO · últimos ${vpDias} días · ${vpMlas} publicaciones de catálogo con línea ===`);
+      console.log(`unidades vendidas: ${tot} con dato de caja (+${vpCnt.s} sin dato) · ganando ${vpCnt.g} (${pc(vpCnt.g)}%) · compartiendo ${vpCnt.c} (${pc(vpCnt.c)}%) · PERDIENDO ${vpCnt.p} (${pc(vpCnt.p)}%)`);
+      vpArr.sort((a, b) => a - b); const med = vpArr.length ? vpArr[Math.floor(vpArr.length / 2)] : null;
+      const tr = [[-Infinity, 0, 'más barato o igual (dato raro)'], [0, 10, '0-10%'], [10, 25, '10-25%'], [25, 50, '25-50%'], [50, 100, '50-100%'], [100, Infinity, '+100%']];
+      console.log(`perdiendo la caja con precio del que ganaba: ${vpArr.length} u. (sin ese precio: ${vpSinPtw}) · cuánto más caros que el que ganaba: mediana ${med == null ? '—' : med.toFixed(0) + '%'}`);
+      for (const [a, b, t] of tr) { const n = vpArr.filter((x) => x > a && x <= b).length; console.log(`   ${t}: ${n} u.`); }
+      const L2 = Object.values(vpPorProd).filter((q) => q.u >= 3 && q.sum / q.u > 20).sort((a, b) => b.u - a.u);
+      console.log(`\n=== ${L2.length} productos con 3+ ventas perdiendo la caja por más de 20% ===`);
+      for (const q of L2.slice(0, 40)) console.log(`   ${q.u} u. · ${(q.sum / q.u).toFixed(0)}% más caro que el que ganaba · ${q.n}`);
+      const L3 = Object.values(vpQ3).sort((a, b) => b.u - a.u); const u3 = L3.reduce((t, z) => t + z.u, 0);
+      const avg = (a) => a.reduce((t, x) => t + x, 0) / (a.length || 1);
+      console.log(`\n=== ${L3.length} productos (${u3} u.) vendieron a 35%+ en el peor caso mientras al precio del que ganaba la caja nos dejaba MENOS de 35% ===`);
+      for (const z of L3.slice(0, 40)) console.log(`   ${z.u} u. · a nuestro precio ${avg(z.pS).toFixed(0)}% · al del que ganaba ${avg(z.pW).toFixed(0)}% · ${z.n}`);
+      return;
+    }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
     // Nombre y fotos (direcciones de mlstatic) del catálogo de ML, para mirar si es el mismo producto antes de publicar en él.
     if (/^fotocat:/.test(String(process.env.BILLING_PROBE || ''))) {
