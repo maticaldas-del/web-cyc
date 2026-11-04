@@ -3379,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.111';
+const APP_VERSION='28.112';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.112',f:'04/11',h:'05:40',c:[{n:1,t:'🔍 Revisión de las Reglas del cerebro: textos al día y 18 decisiones para "resolvamos".'}]},
   {v:'28.111',f:'04/11',h:'02:20',c:[{n:2,t:'Pedidos → 📋 Listas: solapa nueva 🔎 Proveedores a revisar, con los proveedores que encuentra Claude por internet. Sólo aparecen los que tienen productos que dan 35% o más y son el mismo producto que en ML (foto revisada).'}]},
   {v:'28.110',f:'04/11',h:'02:00',c:[{n:2,t:'Envíos a Full: cada caja tiene el botón ⚠️ no llegó bien para contar qué pasó (faltó algo, llegó rota…). El problema queda en la caja con un cartel y le llega a Claude por el buzón; ✅ resuelto lo saca.'}]},
   {v:'28.109',f:'04/11',h:'01:20',c:[{n:2,t:'Pedidos → Listas: un pack armado con sueltos de la lista (el Aer x6 con los Aer Power Pocket de Pirineo) cuesta 6 sueltos y el mensaje a Tito pide los sueltos ("x12 (2 packs de 6)").'}]},
@@ -5633,6 +5634,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:8,t:'04/11 · 18 decisiones de las Reglas del cerebro',que:'una sola vara · objetivo y F14 · la vuelta con 80% · F14 10 días · prueba del mes · después de volver · prueba con sobra · lo lento · escasez con caja · caja después de escasez · gemela de envío · Black Friday · lo que nadie ve · caja ganada a 15 días · perfumes · 1-2 unidades · 🔒/🥊 · !golpe',pedi:'resolvamos'},
   {etapa:1,t:'03/11 · 11 decisiones de Precios',que:'escasez con una venta · fechas especiales · días sin visitas · prueba del mes · lo que pediste sin techo · gemelas abajo del 35% · "lo pide él" · liquidación semanal · 0% en el peor caso · !bajopiso · el timbre',pedi:'resolvamos'},
   {etapa:6,t:'02/11 · 19 ideas nuevas para elegir',que:'Navidad en 4 tandas · escasez de Navidad · regalables nuevos · no liquidar lo de Navidad · Tienda de regalos · ABEL en Navidad · edad real del stock · más vendidos · experiencia de compra · barrera de $33.000 · ficha en las preguntas · pedido de la Tienda · rutina sola · caja con lo de ML · carga por el panel · respuestas guardadas · mezcla de hoy · Te espera a vos · Tito de corrido',pedi:'resolvamos'},
   {etapa:5,t:'01/11 · 16 decisiones de Datos y cerebro',que:'las rayas no ven los descuentos · 🔴 sin 💰 · liquidación antes de 90 días · gemelas al mismo % · cajas después de una suba · gemelas y descuentos · cupón de ML · ritmo normal y liquidaciones · 💰 lento · juicios y descuentos · ventas por la gemela · historia sin límite · día de la suba · rayas con una sola activa · línea de anteayer · plata por día de hoy',pedi:'resolvamos'},
@@ -5683,7 +5685,8 @@ const REV_HIST={
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'},
      {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'},
      {f:'2026-10-31',t:'4 revisores en máximo dibujaron cada pantalla a 360/390/1200 px: ~40 cosas que se cortan o se corren y 20 propuestas con maqueta; 13 decisiones para él (sólo propone).'}],
-  8:[{f:'2026-10-28',t:'4 revisores en máximo (contradicciones, decisiones de la semana, frenos contra el código, correcciones): cerebro y VENTAS al día, ~15 frenos arreglados en el robot, 53 correcciones contadas; 4 decisiones a para_mati.'},{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'}],
+  8:[{f:'2026-10-28',t:'4 revisores en máximo (contradicciones, decisiones de la semana, frenos contra el código, correcciones): cerebro y VENTAS al día, ~15 frenos arreglados en el robot, 53 correcciones contadas; 4 decisiones a para_mati.'},{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'},
+     {f:'2026-11-04',t:'Tercera revisión (4 revisores en máximo): pedidos y cajas de la completa con scripts viejos (rehechos), 3 frenos arreglados, CEREBRO/VENTAS/CLAUDE sin bloques sueltos; 18 decisiones para él.'}],
   9:[{f:'2026-10-30',t:'Primera (4 revisores en máximo: robot, pedidos/cajas, Arqueo/deudas, Métricas): ~40 reales, todos arreglados y probados; 12 decisiones a para_mati.'}],
   10:[{f:'2026-10-30',t:'Primera revisión de la Tienda: lo más grave era que desde su dirección se llegaba a archivos que dicen de dónde viene la mercadería (cerrado). Anotada el 31/10 por la revisión de Diseño.'}]
 };

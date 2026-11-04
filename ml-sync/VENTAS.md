@@ -60,13 +60,17 @@ está en su ficha): no se rehace el análisis de la venta vieja.
 ## 3 · EL PROCEDIMIENTO PARA UNA VENTA
 
 1. **¿Qué pasó en la venta?** Precio cobrado de la orden (no el precio del día), % de ganancia, si fue en carrito, en promo o con
-   cupón (🏷️ de `ventasraras`: cuánto puso ML y cuánto nosotros), si es Clásica o Premium y en cuántas cuotas. Lo de UNA sola vez
+   cupón (🏷️ de `ventasraras`: cuánto puso ML y cuánto nosotros; **la venta con cupón o plata de ML cuenta a NUESTRO precio**, 15b del
+   29/10: no es "vendió más barato"), si es Clásica o Premium y en cuántas cuotas. Lo de UNA sola vez
    (retención de IIBB de otra provincia, cuotas que pagamos, carrito, envío caro) **no toca el precio**. Casi todas las ventas
    tienen una retención chica (0,5-2%): sólo es motivo si explica la diferencia. "Dejó lo normal para su precio" = el problema es el
    PRECIO de hoy, no la venta.
 2. **PRIMERO, LA LÍNEA DE TECHO (🔒, regla suya del 21/10, manda sobre todo lo demás).** ¿Tiene 🔴 techo al 95% (rayas) o 🏔️ de
-   `techo95` (últimos 60 días)? **Si NO: la decisión es 📈 buscar techo (subir con salto grande)**, salvo sobra,
-   liquidando, remate o **lo que vende menos de 1 por semana** (🔥 escasez y ⏳ sin reposición SIN techo medido también suben +50% si vendieron: 1a del 28/10, el Espejo 4") (4a/37a: no sube, queda 💰 punto, salvo llevarlo al 35% o 🔥/⏳ con stock para menos de 100 días). "Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan.
+   `techo95` (últimos 60 días)? **Si NO: la decisión es 📈 buscar techo (subir con salto grande, cuando el precio de hoy se confirmó: ⚡
+   punto medio, §4)** — también 🔥 escasez y ⏳ sin reposición SIN techo medido que vendieron (1a del 28/10, el Espejo 4") —, salvo
+   liquidando, remate, sobra (con sobra no se ARRANCA a buscar techo, pero lo que ya venía subiendo y vendió sube igual: 2b del 28/10) o
+   **lo que vende menos de 1 por semana** (4a/37a: no sube, queda 💰 punto, salvo llevarlo al 35%, 🔥/⏳ con stock para menos de 100 días
+   o la prueba de +50% una vez por mes, 1a del 02/11). "Ya probó techo", "va volviendo al normal" o "está bien a este precio" NO alcanzan.
 3. **Escasez / sobra / stock / reposición.** Días de stock en Full al ritmo CON stock; ¿se corta antes de que vuelva a haber?
    (caja despachada ~8 d · oficina ~10 d · Paraguay ~16-17 d · Bs As ~1 semana + caja · sin reposición = sin fecha). ¿Le sobra
    (+90 d)? ¿Paga o va a pagar stock antiguo (120 d lo chico, 60 lo grande/Tenders)? ¿Hay unidades en la oficina para mandar?
@@ -89,14 +93,21 @@ está en su ficha): no se rehace el análisis de la venta vieja.
 ## 4 · LAS REGLAS QUE DECIDEN (🔒 = freno en el código · 🧠 = pensar)
 
 ### Quién manda cuando dos chocan (de arriba gana)
+**🎯 El objetivo de todo precio** (02/11, él: *"encontrar el precio que más ganancia da entre 35% y 500% de ganancia. lo más rápido
+posible"*): el que más plata por día deja (ganancia por unidad × ritmo: barato y muchos contra caro y pocos), entre 35% y 500% en el
+peor caso, encontrado lo más rápido posible. Las filas son el camino:
 1. Lo que pide él para ESE producto · 2. dato dudoso = no se toca · 3. frenos duros (ML la frenó, variantes de una publicación
-todas o ninguna, techo $650.000, liquidando no se sube, releer de ML) · 4. nunca abajo de 0% · 4b. **sin línea de techo no se
-baja** (F7) · 4c. **arriba del 💰 no se baja sin 95%** (F8) · 4d. **lo que vendió a su precio no se baja** (F14) · 5. **lo nuevo no se baja sin 🏔️** (F1) · 6. no llegar a pagar stock
-antiguo (15 días antes: ganar la caja hasta el 0%; si a 3 días sigue sin venderse, pedirle el retiro) · 7. escasez = sube (🔥/⏳ nunca
-bajan sin techo al 95%, F11) · 8. sobra = baja en escalera (60 días sin vender: hasta ganar la caja) · 8b. **perfumes nunca abajo del
-10%** (F12) · 8c. **bajar pide 95%, subir 50%** · 9. 35% en el peor caso; **abajo sólo con la unidad más vieja de 90+ días** (F13) ·
-9b. **menos de 1 por semana no sube** (4a) y **1+ por semana no queda en 💰 sin 🔴** · 10. buscar el techo · 11. las formas
-(escalera, 90/990, barrera, 🤔). Una regla dura ("nunca", "sólo con 95%") gana siempre sobre la que parece dar más plata hoy.
+todas o ninguna, techo $650.000, 🛑 ninguna suba pasa el 500% de ganancia, liquidando no se sube, releer de ML) · 4. nunca abajo de 0%
+· 4a. **⚡ la suba que salió mal vuelve de una** al escalón medido que más ganancia dejó (punto medio, `!vuelve`; no la frenan F1-F4,
+F7, F8 ni F14; sí F5, F10 y el 35%) · 4b. **sin línea de techo no se baja** (F7) · 4c. **arriba del 💰 no se baja sin 95%** (F8) · 4d.
+**lo que vendió a su precio no se baja** (F14) · 5. **lo nuevo no se baja sin 🏔️** (F1) · 6. no llegar a pagar stock antiguo (15 días
+antes: ganar la caja hasta el 0%; si a 3 días sigue sin venderse, pedirle el retiro) · 7. escasez = sube (🔥/⏳ nunca bajan sin techo al
+95%, F11) · 7b. **nunca abajo del 💰** (F5: sólo los 15 días antes del stock antiguo, la liquidación de 30 días, 🧨 remate o 🔐
+`!bajopiso`) · 8. sobra = baja en escalera **sólo si deja igual o más plata** (lo que no vende nada en 30 días es la liquidación, 9) ·
+8b. **perfumes nunca abajo del 10%** (F12) · 8c. **bajar pide 95%, subir 50%** · 9. 35% en el peor caso; **abajo sólo con la unidad
+más vieja de 90+ días** (F13); 🧲 la liquidación de 30 días sin vender, hasta el 30% antes de los 90 días · 9b. **menos de 1 por
+semana no sube** (4a, salvo una prueba de +50% por mes) y **1+ por semana no queda en 💰 sin 🔴** · 10. buscar el techo · 11. las
+formas (escalera, 90/990, barrera, 🤔). Una regla dura ("nunca", "sólo con 95%") gana siempre sobre la que parece dar más plata hoy.
 Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace nada esa vuelta y va a las decisiones de él.
 
 ### Margen y formas
@@ -120,22 +131,53 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   al toque, es DEMANDA: el precio estaba barato.
 
 ### Techo (📈 → 🏔️)
-- **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba. Afuera (🔥/⏳ sin techo medido NO quedan afuera: si vendieron, +50%, 1a del 28/10):
-  sobra (+90 d), lo que vende menos de 1 por semana (queda 💰 punto), liquidando, mis promos, regalables en las 2 semanas antes de su fecha, frenadas por ML.
-- 🔒 **Salto grande, nunca de a poco:** **+50%, pero la próxima suba espera a que el precio nuevo se confirme** (⚡ punto medio, 02/11: 24 h mínimo y la mitad de lo esperado al ritmo de antes con 3+ esperadas, o 3 ventas si no llegan a 3; una sola venta ya no alcanza; la suba que sale mal vuelve DE UNA al último precio que vendía, `!vuelve#volviendo`). `decido` frena una suba `#techo` de menos de +50%, salvo
-  frenar en $32.990 por la barrera, el techo de $650.000, o `!chico` con "EXCEPCIÓN: …" (un techo ya visto).
+- **Sin línea de techo, se busca techo** (ver paso 2). Todo lo que vende sin techo conocido se prueba para arriba (🔥/⏳ sin techo
+  medido también: si vendieron, +50%, 1a del 28/10). Afuera: sobra (+90 d: no se ARRANCA, pero lo que ya venía subiendo y vendió sube
+  igual, 2b del 28/10), lo que vende menos de 1 por semana (queda 💰 punto, salvo la prueba del mes), liquidando, mis promos,
+  regalables en las 2 semanas antes de su fecha, frenadas por ML, lo 🔒/🥊 que él pidió (no sale en las listas de subas, 20a del 03/11)
+  y lo que ya deja 500%.
+- 🔒 **Salto grande, nunca de a poco: +50%** (y la próxima, cuando el precio nuevo se confirma: ⚡ abajo). `decido` frena una suba
+  `#techo` de menos de +50%, salvo frenar en $32.990 por la barrera, el techo de $650.000, el tope de 500% o `!chico` con "EXCEPCIÓN: …"
+  (un techo ya visto). 🛑 **Ninguna suba pasa el 500% de ganancia en el peor caso** (02/11, él: *"y para, pongamos que tome 500% de
+  ganancia. Sino no para de subir"*): ahí termina la búsqueda de techo aunque siga vendiendo; no es motivo para bajar.
 - **Cada escalón se mide antes del siguiente**, por certeza (Poisson sobre la plata por día: 3 esperadas y 0 ventas = 5% de azar ·
-  6 y 0-1 = 2% · 10 y ≤2 = 0,3%). Nunca con un solo día. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
-- **Vende** → otro salto (+50%). **No vende (🔴)** → 🔒 se baja en escalera hasta la PRIMERA VENTA y ahí se queda (F14) **como DESCUENTO propio con el precio
-  tachado** (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|…`); `decido` frena bajar la LISTA de algo que ya probó techo salvo
-  `!lista` con "EXCEPCIÓN: …". La primera baja 🪜 anota sola el precio que no rindió (`techofreno`).
+  6 y 0-1 = 2% · 10 y ≤2 = 0,3%), con **24 h como mínimo**. En lo que se compra de a muchos se cuentan COMPRADORES y 7 días mínimo.
+- 🔒 **⚡ PUNTO MEDIO** (02/11, él eligió 1 2 3 4 + *"mínimo dejar 24 h"*; las Cartas Casino subieron 7 veces en una semana con una
+  venta cada vez, $4.290 → $26.290, y dejaron de vender): (1) todo precio se juzga con **24 h como mínimo** y por las **ventas
+  esperadas al ritmo del precio de antes** (~3); nunca más de **10 días** sin vender (los días con 0 visitas no cuentan, 18a del 03/11).
+  (2) **La suba que salió mal** (menos de la mitad de lo esperado con 3+ esperadas, o 10 días sin vender) **vuelve DE UNA al escalón
+  MEDIDO que más ganancia por día dejó** (2+ días con stock y alguna venta; si arriba hay uno que vendió y no se llegó a medir, primero a
+  ése: la Lupa Monóculo) con `decido:<MLA>=<precio>!vuelve#volviendo|…`. Se mide en PLATA: si hoy vende algo, vuelve sólo si el de antes
+  facturaba 1,5 veces lo de hoy (Almohadillas Metatarso); a los 10 días decide la ganancia por día. Nunca abajo del 💰 ni del 35% (Sony
+  EX15C: *"dejalo al precio que está, nunca bajar el 35"*), ni sobre un 🔒; el stock que dura mucho no hace volver (si sobra, sigue la
+  regla de sobra); en 🔥/⏳ sólo con 10 días sin vender. Lista 📉 de `errores`: vacía. (3) La **escalera de ≤15%** queda para lo que NO
+  tiene un precio anterior que vendía (lanzamientos, lo que nunca vendió). (4) **La próxima +50% espera a confirmar**
+  (`subaConfirmada`): 24 h y la mitad de lo esperado al ritmo de antes (3+ esperadas) o 3 ventas si las esperadas no llegan a 3; un 🆕
+  sin ritmo de antes, 3 ventas (13a del 03/11). Una sola venta ya no alcanza. Las fechas especiales cuentan (17b del 03/11). Hoy 🔥/⏳
+  suben con cada venta (16b del 03/11; a decidir el freno cuando el stock ya alcanza: 9 del 04/11).
+- **Vende (y se confirma)** → otro salto (+50%). **Sale mal o no vende (🔴)** → ⚡ vuelve de una (punto medio); sin un precio anterior
+  que vendía, 🔒 escalera hasta la PRIMERA VENTA y ahí se queda (F14) **como DESCUENTO propio con el precio tachado**
+  (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|…`); `decido` frena bajar la LISTA de algo que ya probó techo salvo `!lista` con
+  "EXCEPCIÓN: …". La vuelta y la primera baja 🪜 anotan solas el precio que no rindió (`techofreno`).
+- 🔒 **Vende cualquier forma de venta = vale para todas** (30/10, él con el Aer Jasmín): si vendió la gemela de envío gratis arriba de
+  $33.000, el +50% va sobre ESE precio y la Clásica cruza la barrera (`!vendio!cruza`, o `!cruza` en 🔥/⏳). 🧠 Las formas de venta siguen
+  al % más alto en las subas y **bajan todas juntas** en las bajas a propósito (3a del 30/10).
+- 🧠 **Aunque le sobre stock, la que vendió sin techo sube igual** (2b del 28/10). **Vender menos por las subas es a propósito** (29/10):
+  la caída de unidades después de subir no es motivo para bajar.
+- 🔒 **🔁 Precios vivos: una prueba por mes, sólo para arriba** (02/11, él: *"que cada un mes se cuestione… sólo para arriba, nunca abajo
+  del precio que más da… 10 días como máximo en decidir"*): todo 💰/🏔️ sin suba en 30 días prueba más caro (con techo +20%, `!mensual`;
+  sin techo +50%), y lo que vende menos de 1 por semana prueba UNA suba de +50% por mes si no tiene 🔴 y no subió en 30 días
+  (`pruebaLentoOk`, 1a del 02/11). A los 10 días como máximo decide la ganancia por día: si arriba deja igual o más, se queda; si no,
+  vuelve de una. La prueba del mes que vende se queda en ese precio (19a del 03/11). Nunca abajo del 💰. Listas 🔁 y 🧪 de `errores`.
 - **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (Persea).
 - 🔒 **🏔️ techo encontrado sólo lo anota `techo95`** (`techo95:<MLA>;go`), con la certeza que pide ese día: 95% hasta el día 30 con
   stock a ese precio, baja hasta 70% el día 44 (28/10, él: *"alargar de 7 días a 30 y después sí bajar a 70%"*); **10 días sin vender ahí = techo sí o sí** (02/11, antes 30).
   `#techook` a mano lo rechaza el código.
-- **Las rayas** (días con 3+ u. en Full y con visitas; últimos 60 días, sin fechas especiales): 💰 **más plata** = el precio que más
-  plata por día dejó de los que se probaron (5+ días con ventas; desde la primera venta hay uno provisorio, punteado, que es sólo para
-  mirar) · 🔴 **techo: no vende** = arriba del 💰, no vende (10 días sin vender ahí o más caro, 02/11, o 0 vendidas con la certeza del día) ·
+- **Las rayas** (días con 3+ u. en Full y con visitas; últimos 60 días, sin fechas especiales; con el precio que vio el comprador, lista
+  menos mi descuento: 1a del 03/11): 💰 **más plata** = el precio que más plata por día dejó de los que se probaron (5+ días con ventas;
+  desde la primera venta hay uno provisorio, punteado, que es sólo para mirar; nunca se baja de ahí, F5) · 🔴 **techo: no vende** =
+  arriba del 💰, no vende (10 días sin vender ahí o más caro, 02/11, sin contar días con 0 visitas; vale aunque no haya 💰; o 0
+  vendidas con la certeza del día) ·
   🟠 **deja de convenir** = vende, pero deja menos plata por día que el 💰 con esa certeza (27/10). El robot toma como techo el más
   bajo de los dos. Subir arriba del 🔴 → decir por qué no le creo.
 - **`techofreno`**: el freno de no volver a probar más caro se reabre si el más barato ajeno sube 8%+, ya no hay ajenos abajo, ganamos
@@ -148,16 +190,20 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   Bandera `!golpe`.
 - 🔒 **F3 · escalón medido:** otra baja antes de 48 h de la anterior (12 h en escasez) no pasa. Bandera `!golpe`.
 - 🔒 **F4 · una suba no se deshace por casualidad:** bajar del precio de una suba (5%+) de menos de 15 días pide 95% (Poisson) o las
-  visitas a la mitad. Pasados 15 días: si vendió a ese precio en 30 días manda F14 (se queda; un escalón hacia el 💰 sólo si deja
-  menos de la MITAD); si no vendió, decide la plata por día de las dos ventanas: si la suba deja igual o más, se queda; si deja menos,
-  baja UN escalón (≤15%), no vuelve directo. Bandera `!sincerteza`.
-- 🔒 **F5 · no abajo del 💰 más plata**, salvo 📦 sobra o 📉 liquidando con sobra de verdad, ⏳ a 20 días o menos del stock antiguo
-  (F11) o 🧨 remate autorizado (escribir el tag no alcanza), **o si nunca se midió un precio más bajo** (1a del 24/10). Bandera `!bajopiso`.
+  visitas a la mitad. **La vuelta del punto medio (`!vuelve`) no pasa por F4** (tiene su cuenta: 24 h a 10 días); F4 queda para las
+  otras bajas. Pasados 15 días: si vendió a ese precio en 30 días manda F14 (se queda; un escalón hacia el 💰 sólo si deja menos de la
+  MITAD); si no vendió, decide la plata por día de las dos ventanas: si la suba deja igual o más, se queda; si deja menos, baja UN
+  escalón (≤15%). Bandera `!sincerteza`.
+- 🔒 **F5 · nunca abajo del 💰 más plata** (02/11, él: *"nunca bajar precios por debajo de la línea de mejor precio, o sea del precio que
+  da más ganancias"*): sólo los 15 días antes del stock antiguo, la liquidación de 30 días sin vender, 🧨 remate autorizado (escribir el
+  tag no alcanza) y 🔐 `!bajopiso` (suya desde el 02/11). La sobra, el sin reposición y "nunca se midió uno más bajo" ya no lo abren; la
+  vuelta del punto medio tampoco baja de ahí. Renovar el mismo descuento no es una baja.
 - 🔒 **F6 · 🤔 ¿tiene sentido el descuento?** Un descuento o promo nuevo (fuera de escalera de techo, escasez, lanzamiento, sinrepo,
   fecha) pide sobra de verdad (90+ d en Full al ritmo con stock) y no recién llegado (30+ d desde la última entrada). Que ML ponga
   parte no lo justifica solo. Bandera `!nosobra`.
 - 🔒 **F7 · SIN LÍNEA DE TECHO NO SE BAJA NUNCA.** Línea = 🔴 al 95% o 🏔️ de techo95 en 60 días. No frena la sobra de verdad
-  (📦/📉 con sobra medida), ⏳ a 20 días o menos del stock antiguo, el remate autorizado ni la escasez mientras no baje del precio de
+  (📦/📉 con sobra medida), ⏳ a 20 días o menos del stock antiguo, los 15 días antes del stock antiguo, la liquidación de 30 días, el
+  remate autorizado ni la escasez mientras no baje del precio de
   antes (y su salida, ↘️ #volviendo, pasa sólo con 30+ días de stock: F11). **Vence a los 15 días de la última suba (5%+)**: ahí decide la plata por día (F4).
   `!sinlinea` es 🔐 **SÓLO SUYA** (ver abajo). **Lo que vendieron OTRAS variantes o la familia NO alcanza nunca** (Protectores de
   talón, 22/10). Única salida mía: corregir el precio de lo que NUNCA estuvo activo ni vendió, al activarlo (`!activar` +
@@ -166,14 +212,16 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   precio contra lo que tenía que vender para igualar la plata por día del 💰. Con 95% y sin venta a este precio en 30 días → otro
   escalón (≤15%); si vendió, manda F14. Sin 95% se queda (estrategia 💰 `punto`, *el más alto que vende*); si deja más, la raya 💰
   sube sola. Bandera `!sincerteza`.
-- 🔒 **F9 · en escasez nunca abajo del precio de antes de la escasez.** Bandera `!bajopiso`.
+- 🔒 **F9 · en escasez nunca abajo del precio de antes de la escasez.** Bandera `!bajopiso` (acá sigue siendo mía, con "EXCEPCIÓN":
+  25b del 03/11).
 - 🔒 **F10 · él pidió no bajarla** (🔒 `nobajar`, 23/10): ninguna baja ni descuento; antes dice "HUBIERA HECHO…". 🔐 `!nobajar`.
 - 🔒 **F11 · 🔥 escasez y ⏳ sin reposición NUNCA bajan sin techo al 95%** (24/10, él: *"Nada más"*), en todo caso suben. Única
   excepción: la unidad más vieja a 20 días o menos del stock antiguo. Escribir #sinrepo no abre ningún freno. 🔐 `!sinlinea`.
 - 🔒 **F12 · 🌸 perfumes nunca abajo del 10%** (26/10), salvo los 15 días antes del stock antiguo: ahí hasta el 0% (27/10, él:
   *"perfumes hasta 0%"*). 🔐 `!bajocero`.
 - 🔒 **F13 · abajo del 35% sólo con la unidad más vieja en Full de 90+ días** (27/10, él con el Paulvic Hot): antes ni la sobra ni
-  `!piso` lo abren (sí los 15 días antes del stock antiguo y la liquidación de 30 días sin vender, `liq30`, 29/10); a los 90 días se abre hasta el 0%. 🔐 `!bajocero`.
+  `!piso` lo abren (sí los 15 días antes del stock antiguo, y la liquidación de 30 días sin vender, `liq30`, pero sólo hasta el 30%: 3a
+  del 03/11); a los 90 días se abre hasta el 0%. 🔐 `!bajocero`.
 - 🔒 **F14 · lo que vendió a su precio no se baja** (27/10 a la noche, él: *"primero buscar techo, segundo buscar 1 venta y quedarse ahí…
   normalmente siempre conviene mantener el precio más caro posible… 100 productos con pocas unidades que venden poco y ganan muchísimo"*):
   una venta (ésta, su gemela o las de su stock) desde el último cambio del precio que ve el comprador, en 30 días, frena toda baja y
@@ -184,7 +232,8 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   no se propone bajarla para buscar más plata por día. Bandera `!sincerteza` (🔐 suya).
 - **Excepciones a los frenos, siempre las mismas cinco:** precio mal puesto · stock antiguo con fecha encima · ML la pausó por el
   precio · lo pide él · el envío (cruzar la barrera de $33.000 cuando deja claramente más). "Ganar la caja", "para ver si sale" y
-  **la última unidad NO son excepciones** (24/10, él con el Cuba Gold: también en escalera y con techo).
+  **la última unidad NO son excepciones** (24/10, él con el Cuba Gold: también en escalera y con techo). La vuelta del punto medio a un
+  escalón que ya vendía no es una excepción: es su regla (4a).
 - **Bajar algo que NO sobra** (salir de techo, escasez o lanzamiento) va como 💸 descuento con el precio de antes tachado, con su tag;
   no bajando la lista. Primero descuento (mínimo 5%, 14 días, renovable), nunca subir la lista para inflar el tachado.
 
@@ -208,9 +257,16 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 ### Sobra (📦), sin reposición (⏳), stock antiguo
 - **Sobra (una sola definición):** más de 90 días de stock **en Full** al ritmo **con stock** (de los últimos 60 días, o al de ESE
   precio con 7+ días medidos), o sin ventas con stock en 60 d, o la unidad más vieja con 90+ días en Full. La oficina no hace "sobra".
-  Con sobra NO se busca techo: primero sale lo que sobra (escalera, como descuento). **Lo caro que no vende: a los 60 días sin vender,
-  la escalera apunta al precio que GANA la caja** (26/10), sin pasar el 35% si la unidad más vieja tiene menos de 90 días (F13) ni el
-  10% en perfumes (F12).
+  Con sobra NO se ARRANCA a buscar techo: primero sale lo que sobra (escalera, como descuento); lo que ya venía subiendo y vendió sube
+  igual (2b del 28/10). 🔒 **La baja por sobra pasa sólo si deja igual o más plata** (02/11, él eligió 1a: *"si vende más lo suficiente
+  bajalo… o sino dejalo a este precio"*): con ventas hoy, el precio nuevo tiene que facturar por día 1,3 veces lo de hoy con su ritmo
+  medido; sin ritmo medido, se queda (freno `sobra-plata`; "lo pide él" no la saltea: es la 🔐 `!pideel`, 22a del 03/11). Nunca abajo
+  del 💰 (F5), del 35% si la unidad más vieja tiene menos de 90 días (F13) ni del 10% en perfumes (F12).
+- 🔒 **🧲 30 días sin vender con stock = se liquida** (29/10, él: *"ir a los extremos"*; `liq30`): un escalón (≤15%, como descuento)
+  hasta el primero que vende y ahí se queda (abajo del 35%, uno por semana; arriba, la escalera de siempre: 23b del 03/11), con el
+  motivo "30 días sin vender" y `#liquidando` (así se ve 📉 liquidando, 30/10); abre F5, F7, F8 y F13, pero **no baja del 30% en el peor
+  caso mientras la unidad más vieja tenga menos de 90 días** (3a del 03/11); desde los 90, hasta el 0%; perfumes 10% (F12). 🎄 Del
+  15/11 al 24/12 no se liquida ni baja por sobra lo que vendió ×2+ en la Navidad pasada (4a del 03/11).
 - **Sin reposición** (Nissei no lo tiene, Paraguay no da 35%, Bs As no se consigue, "no lo consigo"): vender TODO en ~100 días (nunca
   120) al precio más alto que lo vacía. Más rápido → sube; más lento → **no baja sin techo al 95% (F11)** ni si vendió a ese precio en
   30 días (F14); con techo, en escalera. A 20 días del stock antiguo se abre (F11). 1-2 unidades no se tocan más.
@@ -218,15 +274,17 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   de 90+ días o en los 15 días antes (F13); se baja (📦 o ⏳ con `!piso`) para que salga a tiempo, y lo que falta para el 35% se anota al
   error de origen (mandar o comprar de más), no al precio. **15 días antes: ganar la caja hasta el 0% (al costo; sin catálogo, en
   escalera); si a 3 días de pagar sigue sin venderse, se le pide el retiro** (27/10, él: *"vende al costo antes de retirar. 3 días antes
-  de pagar por stock retiramos"*). Fecha aproximada ≠ recién llegado.
+  de pagar por stock retiramos"*). Fecha aproximada ≠ recién llegado. El motivo de toda baja por stock antiguo dice "stock antiguo"
+  (así se ve ⏰ pagando stock y no "sobra", 30/10).
 
 ### Lanzamiento (🆕)
 - Arranca en lo MÁS ALTO que tenga sentido contra su catálogo (23/10, él: *"buscá el precio más alto que podamos, que tenga sentido,
   quizás al de los competidores"*): si nadie tiene Full, cerca del más caro (Full vale ~19%); si hay otros con Full, ~20% arriba del
-  Full más barato sin pasar el más caro; nunca abajo del 35% en el peor caso. **🆕 que vende → 📈 buscar techo en la misma vuelta
-  (+50%).** 🔒 No se baja (ni descuento, ni promo, ni lista, ni para ganar la caja) hasta que `techo95` lo diga y anote 🏔️; ahí
-  escalones de ~5-8% como descuento propio con el arranque tachado. Si casi no lo ven (<1 visita/día), bajar no lo arregla: título,
-  fotos, caja.
+  Full más barato sin pasar el más caro; nunca abajo del 35% en el peor caso. **🆕 que vende → 📈 buscar techo (+50%) en la vuelta en
+  que se confirma:** sin ritmo de antes medible, con 3 ventas a su precio y 24 h (13a del 03/11; antes alcanzaba la primera). 🔒 No se
+  baja (ni descuento, ni promo, ni lista, ni para ganar la caja) hasta que `techo95` lo diga y anote 🏔️; ahí escalones de ~5-8% como
+  descuento propio con el arranque tachado. Si casi no lo ven (<1 visita/día), bajar no lo arregla: título, fotos, caja (y los días con
+  0 visitas no cuentan para los 10 días sin vender: 18a del 03/11).
 
 ### Caja, competencia, Premium, cuotas
 - **La caja de compra orienta, no decide** (Full vale ~19% de precio). Perdiendo y vendiendo bien → no se baja. Perdiendo y sin vender
@@ -235,9 +293,12 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   argentinos: ahí su precio +20%. Se compara contra el más barato CON Full.
 - **Premium:** la que gana la caja se queda en Premium. Premium sin cuotas medidas no se baja ni se rescata. En algunas categorías la
   comisión de Premium YA trae las cuotas adentro: no contarlas dos veces. Caja perdida por cuotas = candidata a gemela, no a bajar.
-- 💳 **Toda Clásica con stock lleva su gemela Premium** al precio de igual plata neta; 📦 lo de menos de $33.000 lleva además su gemela
-  Clásica con envío gratis. **Las dos las alinea el robot solo** (`alinearGemelas` / `alinearGemelasEnvio`): al mover la Clásica no se
-  toca la gemela. 💳 `gemela` NO es una estrategia: la gemela muestra la de su Clásica.
+- 💳 **Toda Clásica con stock lleva su gemela Premium** al precio de igual plata neta y el mismo % en el peor caso (4a del 03/11); 📦 lo
+  de menos de $33.000 lleva además su gemela Clásica con envío gratis (pausada sola mientras su Clásica esté en $33.000 o más, 6a del
+  28/10). **Las dos las alinea el robot solo** (`alinearGemelas` / `alinearGemelasEnvio`), siguiendo el precio CON descuento de la
+  Clásica (6a del 03/11): al mover la Clásica no se toca la gemela. Con la Clásica abajo del 35% a propósito (sobra, liquidando, remate,
+  promo, descuento, `!piso`) la acompañan; si quedó abajo sin querer (dólar, costo), quedan en el 35% (21a del 03/11). 💳 `gemela` NO es
+  una estrategia: la gemela muestra la de su Clásica.
 - 💡 El precio sugerido de ML es una referencia, nunca motivo para bajar algo que vende.
 
 ### Lo que vende poco y los datos
@@ -253,15 +314,6 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 - **Él no toca precios ni promos**: lo que diga él para un producto manda (fila 1) y el 🧠 dice que vino de él.
 
 ---------------------------------------------------------------------------------------------------------------------------
-### Reglas del 29-30/10 que el ayudante tiene que saber (revisión etapa 5, 01/11/2026)
-- 🔒 **Vende cualquier forma de venta = vale para todas** (30/10, él con el Aer Jasmín): si vendió la gemela de envío gratis arriba de $33.000, el +50% va sobre ESE precio y la Clásica cruza la barrera (`!vendio!cruza`, o `!cruza` en 🔥/⏳).
-- 🧠 **Las formas de venta siguen al % más alto en las subas** y **bajan todas juntas** en las bajas a propósito (3a del 30/10).
-- 🧠 **La venta con cupón o plata de ML cuenta a NUESTRO precio** (15b del 29/10): no es "vendió más barato".
-- 🧠 **Aunque le sobre stock, la que vendió sin techo sube igual** (2b del 28/10).
-- 🧠 **Vender menos por las subas es a propósito** (29/10): la caída de unidades después de subir no es motivo para bajar.
-- 🔒 **30 días sin vender con stock = se liquida** (29/10, `liq30`): un escalón (≤15%) por semana, motivo "30 días sin vender" con `#liquidando`; abre F13.
-- 🧠 **⏰ pagando stock y 📉 liquidando se ven por el motivo** (30/10): el motivo de una baja por stock antiguo dice "stock antiguo".
-
 ## 5 · LOS COMANDOS (sintaxis real del código)
 
 Todos: **sin `;go` = PRUEBA** (muestra qué haría, no toca nada). Varios en uno se separan con `;` y el `;go` va al final. Los que
@@ -328,21 +380,25 @@ techofreno:<MLA>=<precio probado>|<motivo>;go
 | `!sintecho` | F1 lo nuevo sin 🏔️ | decido, entrarpromo | 🔐 **suya** |
 | `!golpe` | F2/F3 escalón más grande o antes de tiempo | decido, entrarpromo | **sí** |
 | `!sincerteza` | F4 deshacer una suba sin 95% · F8 bajar arriba del 💰 sin 95% · F14 bajar algo que vendió a su precio | decido, entrarpromo | 🔐 **suya** |
-| `!bajopiso` | F5 abajo del 💰 | decido, entrarpromo | **sí** |
+| `!bajopiso` | F5 abajo del 💰 · F9 en escasez abajo del precio de antes | decido, entrarpromo | F5: 🔐 **suya** (02/11) · F9: **sí** (mía, 25b del 03/11) |
 | `!nosobra` | F6 descuento sin sobra | decido, entrarpromo | **sí** |
 | `!sinlinea` | F7 sin línea de techo | decido | 🔐 **suya** |
 | `!chico` | suba `#techo` de menos de +50% | decido | **sí** |
-| `!vendio` | subir +50% una prueba 📈 que vendió a este precio (decido verifica la venta; el freno 50% pide la certeza de techo95, 🟠) | decido | no |
-| `!vendiocaro` | volver al precio más caro que vendió en 60 días (decido lo verifica en la línea; no lo frenan 4a ni el 50%) | decido | no |
+| `!vendio` | subir +50% una prueba 📈 que vendió a este precio, con el precio ya confirmado (decido verifica la venta y el punto medio; el freno 50% pide la certeza de techo95, 🟠) | decido | no |
+| `!vendiocaro` | volver al precio más caro que vendió en 60 días (decido lo verifica en la línea; no lo frenan 4a ni el 50%; no va si el de hoy, medido, deja igual o más plata por día: 7 del 03/11, Barbarella) | decido | no |
+| `!vuelve` | la vuelta del punto medio: volver de una al escalón medido que más ganancia dejó (decido la mide con `vueltaDeSuba`; no la frenan F1-F4, F7, F8 ni F14; sí F5, F10 y el 35%) | decido | no |
+| `!mensual` | la prueba del mes: hasta +20% a lo que no subió en 30 días (no la frenan el +50%, la 4a ni el 50%) | decido | no |
 | `!lista` | bajar la LISTA de algo que ya probó techo | decido | **sí** |
 | `!nobajar` | F10 bajar una publicación que él marcó 🔒 | decido, entrarpromo | 🔐 **suya** |
+| `!pideel` | la regla de sobra-plata: bajar por sobra lo que no deja más plata, porque lo pide él (22a del 03/11) | decido, entrarpromo | 🔐 **suya** |
 | `!bajocero` | F0 abajo de 0% · F12 perfume abajo del 10% · F13 abajo del 35% antes de los 90 días | entrarpromo | 🔐 **suya** |
 
 **Una bandera de excepción sin "EXCEPCIÓN: <por qué>" en el motivo NO vale** (el código la ignora y frena igual). Las únicas
 excepciones válidas son las cinco de la sección 4.
 
-**🔐 Salidas SÓLO SUYAS (22/10, CEREBRO §0c):** `!sinlinea` · `!sincerteza` · `!sintecho` · `!bajocero` · `!nobajar` · la estrategia
-🧨 `#remate`. Sin su autorización vigente el cambio NO se hace: queda GUARDADO en `cyc/autoriza/<código>` (no vence ni sale por
+**🔐 Salidas SÓLO SUYAS (22/10, CEREBRO §0c):** `!sinlinea` · `!sincerteza` · `!sintecho` · `!bajocero` · `!nobajar` · `!bajopiso`
+(abajo del 💰, desde el 02/11) · `!pideel` (22a del 03/11) · la estrategia 🧨 `#remate` (y prender 🥊 `ganarcaja` o sacar un 🔒). Sin su
+autorización vigente el cambio NO se hace: queda GUARDADO en `cyc/autoriza/<código>` (no vence ni sale por
 Telegram, 24/10); se lo paso en el chat (aviso de las 12:30) y su respuesta la anoto con `autorizo:<su texto>;go` (vale 48 h desde que
 la anoto, para ese renglón). El ayudante NO las propone como si fueran mías: si cree que hace falta una, lo dice como
 decisión de Matías. `autoriza` (consulta) lista lo autorizado. Todo camino que baja pasa por `frenosBajas` (F0-F14; F9: en escasez
@@ -409,21 +465,23 @@ lleva y qué falta) (27/10, él con los Paulvic a $21.990: *"dame el % de seguri
 - **Cuba Platinum y otros 3 (20/10):** se bajó lo recién llegado sin 🏔️ para "ganar la caja". La regla dura (lo nuevo no baja sin 95%)
   gana sobre la que parece dar más plata. Hoy es F1.
 - **Adaptador 8 en 1 (13-18/10):** subido sin medir el escalón, vuelto de golpe, y después el redondeo a 990 lo dejó abajo del 💰 más plata.
-  Escalera, escalón medido y redondeo PARA ARRIBA si el 💰 queda abajo.
+  Escalón medido antes del siguiente, la vuelta sólo a un escalón medido (⚡ punto medio) y redondeo PARA ARRIBA si el 💰 queda abajo.
 - **Cabotine Turquoise (18/10):** se midió con el ritmo de 2 meses cuando vendía 4 en 10 días: no se subió en la 1ª venta ni en la 2ª
   que lo dejaba en escasez. Cada venta es un dato (⚡).
 - **Batidora negro (19/10):** decía "buscando techo" y no había subido. Techo y escasez = el precio sube; si no, otro tag.
 - **Victoria's Secret (08-09/10):** se usaron marcas viejas del robot (escalera, liquidando) como dato. Dato crudo siempre.
 - **Iscos (19/10):** se midió contra un solo vendedor inflado ($96.000 cuando el real era ~$20.000). Un solo vendedor no vale.
 - **Ferrari Premium (20/10):** se comparó la gemela contra sus hermanas y no contra qué pasaba SIN ella.
-- **Hub 8 en 1 (18/10):** saltó a $27.990 sin medir $19.990 y volvió directo. Cada escalón se juzga antes del siguiente, y se baja en
-  escalera.
+- **Hub 8 en 1 (18/10):** saltó a $27.990 sin medir $19.990 y volvió directo. Cada escalón se juzga antes del siguiente (24 h como
+  mínimo); la vuelta va al escalón MEDIDO que más ganancia dejó (⚡ punto medio, 02/11), no a ciegas.
 - **Pendrive 128 (18/10):** abajo del 35% por haber mandado 48: el error es de la cantidad, no del precio. El cerebro se juzga contra
   no hacer nada.
 - **Masajeador de cara (23/10):** 🆕 que vendió por su gemela Premium y quedó quieto (se leyó la estrategia 💳 de la gemela). La venta
-  de una gemela o hermana se juzga con la estrategia de su CLÁSICA: 🆕/📈 que vendió → +50% en esa vuelta.
-- **Naipes Casino (24/10):** la prueba de $3.890 vendía hace 5 días y no se subió más (*"a ese precio ya vendió, no es techo"*). Si vende
-  al precio de la prueba no es techo: +50% en la misma vuelta, sin quedarse "esperando certeza".
+  de una gemela o hermana se juzga con la estrategia de su CLÁSICA: cuenta para confirmar la próxima +50% de la Clásica.
+- **Naipes / Cartas Casino (24/10 y 02/11):** el 24/10 la prueba de $3.890 vendía hace 5 días y no se subió más (*"a ese precio ya vendió,
+  no es techo"*); después subió +50% con cada venta, 7 veces en una semana ($4.290 → $26.290, 373 u. en Full), y dejó de vender. Hoy (⚡
+  punto medio, 02/11): si vende no es techo, pero la próxima +50% espera a que el precio se confirme (24 h y la mitad de lo esperado al
+  ritmo de antes, o 3 ventas si las esperadas no llegan a 3), y la suba que sale mal vuelve de una.
 - **Cuba Gold (24/10):** se pidió bajar de golpe la última unidad ($67.174 → $32.990). La última unidad NO es excepción: escalera y con
   línea de techo.
 - **Infusor cajita (24/10):** 🔴 $5.290 falso: el 💰 salía de 8 días de fines de julio (antes del Día del Niño) que vendieron el triple;
@@ -442,6 +500,11 @@ lleva y qué falta) (27/10, él con los Paulvic a $21.990: *"dame el % de seguri
   (F13); antes, ni la sobra ni `!piso`.
 - **Espejo 4" (28/10):** 🔥 escasez que vendió sin techo medido y no se subió. Él: *"¿por qué no lo subió? no tiene techo conocido aún"*. 🔥/⏳ sin techo que vende también sube +50%.
 - **Aer Jasmín (30/10):** vendió la gemela de envío gratis arriba de $33.000 y la Clásica no se movió. Él: *"no importa quién venda, si no tiene techo tiene que seguir buscando"*. La venta de cualquier forma de venta vale para todas (`!vendio!cruza`).
+- **Lupa Monóculo, Almohadillas Metatarso y Sony EX15C (02/11), la vuelta del punto medio:** la Lupa volvió de $10.690 a $4.690 sin medir
+  $7.090, donde había vendido (*"sí se puede bajar así si sabemos que es el mejor precio… ya que conoce todos los escalones"*): se vuelve
+  al escalón MEDIDO que más ganancia por día dejó, y si arriba hay uno que vendió sin medir, primero a ése. Las Almohadillas a $19.690
+  dejaban más plata que a $4.390 (*"¿estás seguro de que esos precios generan más ganancia?"*): la vuelta se mide en plata, no en
+  unidades. El Sony volvía abajo del 35% (*"dejalo al precio que está, nunca bajar el 35"*): la vuelta nunca baja del 35%.
 
 ---------------------------------------------------------------------------------------------------------------------------
 ## 8 · PRIVACIDAD
