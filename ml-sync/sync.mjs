@@ -25205,7 +25205,7 @@ async function main() {
       // mucho con pocos vendedores 3-4, caro 1). Antes decía "US$ 500" y "2 u." fijos aunque él los hubiera cambiado.
       // COPIA de `candMaxU` / `PED_BARATO_USD` / `PED_CARO_USD` / `PED_POCOS_VEND` de index.html: si se toca una, se toca la otra.
       let _cfgP = {}; try { _cfgP = (await db.get('cyc/mlconfig')) || {}; } catch { _cfgP = {}; }
-      const _topeP = (() => { const v = parseFloat(_cfgP.pedTopeUSD); return isFinite(v) && v > 0 ? v : 500; })();
+      const _topeP = (() => { const v = parseFloat(_cfgP.pedTopeUSD); return Math.min(600, isFinite(v) && v > 0 ? v : 600); })();   // 04/11/2026: igual que `pedTopeUSD` de la web (PED_TOPE_USD 600; antes acá 500 y decía "pasa el tope" con 554)
       const _maxUP = (() => { const v = parseInt(_cfgP.pedMaxU); return isFinite(v) && v > 0 ? v : 2; })();
       // 26/10/2026 (él): hasta llegar a US$ 20 con el precio de la web, máximo 4, mínimo 1. COPIA de `candMaxU` (PED_UNI_USD/PED_UNI_MAX).
       const candMaxUBot = (c) => { const usd = parseFloat(c && c.usd) || 0; void _maxUP; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
