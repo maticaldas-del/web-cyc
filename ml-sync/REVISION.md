@@ -1736,7 +1736,7 @@ Error mío: `open('sw.js','w').write(open('sw.js').read()…)` en Python abre pa
 
 ### Etapa 3 · 04/11/2026 · v28.124 · ⚪ Nissei no lo tiene: también lo que no tiene código
 - **Qué es:** él con el Cuba Gold (*"esto es porque no hay stock, no es que está sin medir"*): la marca automática de la vuelta completa (`marcarAgotadosVuelta`) sólo miraba fichas de Paraguay CON código; ahora también las que no tienen (salvo `soloLocal` y Elegancia). En Pedidos → Paraguay la tarjeta dice "⚪ Nissei no lo tiene" en vez de "sin medir" / "sin precio de Paraguay".
-- **Dónde vive:** `sync.mjs` `marcarAgotadosVuelta` (y `pyagotados[:go]`) · `index.html` tarjeta de Probados (`_mgP`).
+- **Dónde vive:** `sync.mjs` `marcarAgotadosVuelta` (y `pyagotados[:go]`; también mira lo que está en `cyc/pedidos_py` aunque la ficha no diga origen Paraguay: el Cuba Gold era eso) · `index.html` tarjeta de Probados (`_mgP`). El Cuba Gold quedó marcado a mano (`pyprecio:…=nohabia`).
 - **Qué chequear:** que una ficha sin código que el chat sí vio en Nissei (con `nisseiTs` de la vuelta) no quede marcada; que la marca se caiga sola al volver a verla.
 
 ### Etapa 3 · 26/10/2026 · 📷 Las fotos del ticket que me pasa por el chat se ven en el detalle
