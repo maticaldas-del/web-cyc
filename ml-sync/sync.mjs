@@ -16,7 +16,7 @@ import { createHmac, randomInt, generateKeyPairSync, privateDecrypt, createDecip
 // abren con la privada, que vive SÓLO en la base (`mlapi/comprobkey`). Devuelve el Buffer, o null si falta o no se pudo abrir.
 async function leerPrivado(db, nombre) {
   let e;
-  try { e = JSON.parse(readFileSync(new URL('./privado/' + nombre + '.enc', import.meta.url), 'utf8')); } catch { return null; }
+  try { e = JSON.parse(readFileSync(new URL('./privado/' + nombre + '.enc', import.meta.url), 'utf8')); } catch { console.log('❌ No encontré ml-sync/privado/' + nombre + '.enc (¿falta el .gz del nombre?)'); return null; }   // 04/11/2026: antes callaba y el comando decía "todos bien"
   const k = await db.get('mlapi/comprobkey');
   if (!k || !k.priv) { console.log('❌ No hay llave en la base (pvped:clave;go): no puedo abrir ' + nombre + '.'); return null; }
   try {
