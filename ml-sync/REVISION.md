@@ -2062,6 +2062,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Dónde vive:** `sync.mjs` → `bajastecho`.
 - **Qué chequear:** `bajastecho:1` después de una autorización: el renglón con ✓ 🔐, y una baja mía sin autorización sigue en ❌.
 
+- **Auditoría 03/11/2026 · el envío en pausa ya no sale como caja vieja en la sección 9 del `informe`.** Qué es: una caja con `pausado` (en la oficina, no cuenta días) salía "sin fecha" y se contaba en "9+ días en camino". Dónde: `ml-sync/sync.mjs`, bloque 9 del `informe` (`nPausI`). Qué chequear: con un envío en pausa, el renglón dice "⏸️ envío en pausa" y el título lo cuenta aparte ("· N en pausa"), no en los 9+ días.
+
 ## 6 · IDEAS NUEVAS (sábado)
 ### 🛍️ Tienda pública por encargo (30/10/2026, él eligió 1a 2a 3a 4a 5a; 4a en mayúsculas: *"NADIE SABE QUE LO TRAEMOS DE PARAGUAY… QUE SÓLO DIGA CYC Y LISTO"*)
 - **Qué es:** página aparte (`/tienda/`) para sus conocidos: buscador, rubros, foto y nombre de ML, precio en pesos, +/−, y "📋 Copiar pedido" (`Pedido CYC <código>: …`). Sin login, sin Firebase, sin pago. Botón WhatsApp apagado hasta que haya número en `cyc/mlconfig/tiendaWa`. Entra: candidatos de Para probar con el catálogo confirmado + fichas de origen Paraguay, de Nissei, con el precio mirado en 30 días, sin "no había" ni marca prohibida. Precio = US$ × `RECARGO_PAR` × dólar del panel × 1,25, para arriba a 90/990.
