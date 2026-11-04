@@ -26363,6 +26363,18 @@ async function main() {
     // guardada (`cyc/mlconfig/nisseiVuelta`): las fichas de Paraguay que no se vieron desde que arrancó quedan como "Nissei no lo tiene".
     // BILLING_PROBE=gemelade:<MLA>[,<MLA>…] (04/11/2026, sólo lee) → de cada publicación: si es Clásica o gemela (Premium / envío gratis) y
     // de quién, y sus gemelas, con precio y estado guardados. Para no analizar una gemela como si fuera la publicación que vende.
+    // BILLING_PROBE=pyarmado (04/11/2026, sólo lee) → los ✅ probados cargados en el pedido del momento (`cyc/py_armado`): unidades, código y
+    // precio de Nissei y hace cuántos días se miró (pasa sólo lo de menos de 2 días), y si Nissei no lo tiene.
+    if (/^pyarmado$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const A = (await db.get('cyc/py_armado')) || {}; const P = (await db.get('cyc/products')) || {}; const SS = (await db.get('cyc/py_sinstock')) || {};
+      const pi = {}; for (const x of Object.values(P)) if (x && x.id) pi[x.id] = x;
+      const rows = Object.entries(A).filter(([, e]) => e && (parseInt(e.u) || 0) > 0);
+      console.log(`=== ✅ PROBADOS EN EL PEDIDO DEL MOMENTO · ${rows.length} ===`);
+      for (const [pid, e] of rows) { const p = pi[pid] || {}; const d = Number(p.nisseiTs) ? ((Date.now() - Number(p.nisseiTs)) / 864e5).toFixed(1) : '?';
+        const vs = e.v ? ' · ' + Object.entries(e.v).filter(([, u]) => (parseInt(u) || 0) > 0).map(([k, u]) => k + '=' + u).join(' ') : '';
+        console.log(`  ${parseInt(e.u)} u. · ${String(p.name || pid).slice(0, 60)} · ${p.codPy || 'sin código'} · Nissei US$ ${p.nisseiUSD || '?'} hace ${d} d${SS[pid] ? ' · 🚫 Nissei no lo tiene' : ''}${Number(d) >= 2 ? ' · ⛔ mirado hace 2+ días' : ''}${vs}`); }
+      return;
+    }
     if (/^gemelade:/.test(String(process.env.BILLING_PROBE || ''))) {
       const L = (await db.get('cyc/mllinks')) || {}; const ms = String(process.env.BILLING_PROBE).slice(9).split(/[,;\s]+/).filter(Boolean);
       const des = (m) => { const x = L[m] || {}; return `${m} · ${x.cuenta || '?'} · ${x.gemelaDe ? `gemela ${x.gemelaTipo === 'envio' ? '📦 envío gratis' : '💳 Premium'} de ${x.gemelaDe}` : 'Clásica (principal)'} · ${String(x.title || '').slice(0, 45)}`; };
