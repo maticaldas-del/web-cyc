@@ -10345,6 +10345,7 @@ async function bajarParaMover(db, accounts, labels, products, opts = {}) {
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
         if (b.status !== 'active') continue;        // pausada: no está a la venta, no hay nada que mover
+        if (links[mla].gemelaDe) continue;          // 04/11/2026: una gemela (Premium / envío gratis) sigue sola a su Clásica cada hora: se juzga la Clásica
         const p = pIdx[links[mla].prodId]; if (!p) continue;
         // El stock que importa es el que ML tiene A LA VENTA en esta publicación, no el del panel:
         // acá la pregunta es "hay mercadería esperando comprador", y eso lo sabe ML.
