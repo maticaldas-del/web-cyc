@@ -11,10 +11,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ### 🔎 Proveedores a revisar (búsqueda de la noche del 03 al 04/11) — para el aviso de las 12:30
 - Se cargaron ~61 mayoristas de internet (~62.000 productos) en Listas → 🔎 Proveedores a revisar. Los que dan poco no aparecen.
 - De los que dan 35%+ con 2+ vendedores en ML se miraron TODAS las fotos (1.960 comparaciones): sólo **82 son el mismo producto** (90% seguro; lo dudoso, afuera).
-- Mejores: **ABC Accesorios** (13, lavado de autos Sonax, 83-183%) · **Juguetería Che** (14, Funko Pop 40-193%: confirmar que sean ORIGINALES antes de comprar) · **Carlos Benassi** (10, Nivea/Glade/Colgate/Elvive, 35-120%) · **CYM** (5, máscaras coreanas 67-91%) · **Torres y Liva** (10, bazar: Hudson, Rigolleau, sahumerios Sagrada Madre, Giesso, Crivea; 37-101%) · **Migluz** (4, pilas Philips, Kalop) · **Limpos** (4) · **Lenid**, **Naccarato**, **Tienda Móvil Rosario** (3 c/u) · otros 9 con 1-2.
+- Mejores: **ABC Accesorios** (13, lavado de autos Sonax, 83-183%) · ~~Juguetería Che (Funko)~~ **descartado el 04/11** (él: *"no me interesa"*) · **Carlos Benassi** (10, Nivea/Glade/Colgate/Elvive, 35-120%) · **CYM** (5, máscaras coreanas 67-91%) · **Torres y Liva** (10, bazar: Hudson, Rigolleau, sahumerios Sagrada Madre, Giesso, Crivea; 37-101%) · **Migluz** (4, pilas Philips, Kalop) · **Limpos** (4) · **Lenid**, **Naccarato**, **Tienda Móvil Rosario** (3 c/u) · otros 9 con 1-2.
 - Ojo: **Distribuidora Pop** (Mantecol 214%, Mogul 167%) es golosina, vence. **Bazar y Más** 0 de 250 · **Madu** 0 de 169. Gas para encendedor y una maceta de 80 cm daban, pero no van a Full.
 - Quedaron sin cargar: Soifer y Sanity (el archivo no se pudo leer).
-- Decidir: (a) que Tito pida precio y condiciones (mínimo de compra, envío, factura) a ABC Accesorios, Juguetería Che, Benassi y Torres y Liva · (b) esperar a la próxima pasada del domingo.
+- Decidir: (a) que Tito pida precio y condiciones (mínimo de compra, envío, factura) a ABC Accesorios, Benassi y Torres y Liva · (b) esperar a la próxima pasada del domingo.
 
 ### ✅ Contestó "resolvamos" del 03/11 — APLICANDO
 - **Revisión de Datos del 01/11:** 1a 2a 3a 4a 5a 6a 7a 8a 9a 10a 11a · 12: guardar **365 días** (no 180) y archivar lo viejo · 13a 14a 15a · 16b (dejar "plata por día" como está).
