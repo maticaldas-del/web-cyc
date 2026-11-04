@@ -92,7 +92,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/no escribo nada|DATOS INCOMPLETOS|^❌ Usá/i.test(t)) _seNego++; } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['listagz', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
@@ -11737,13 +11737,17 @@ const BAJAR_MIN_PCT_JOVEN = 35, EDAD_LIBERA_CERO = 90;
 // tengan, ocultarlos"). Misma regla que la web (`_listaDa`): 25% a 80% en ML, con foto de ML y sin reparo de nombre. `pend` = nunca medidos.
 // `fechaProv` = la fecha de la lista guardada del proveedor (revisión etapa 3, 29/10/2026): lo de una lista anterior no da ni está
 // "por medir" (`viejos`); sin `fechaProv` cuenta como antes.
+// Las dos varas de una fila de lista (04/11/2026: salen de `cuentaLista` para que `listasvale` cuente con la MISMA cuenta).
+// m25 = da el % de compra contra ML con catálogo válido · da = eso + confirmado por mí (fotos) + ventas suficientes.
+function listaM25Fila(e, fechaProv) { return !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && listaFilaVigente(e, fechaProv) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < 1 && !e.svm); }
+function listaDaFila(e, fechaProv) { return listaM25Fila(e, fechaProv) && vendOk(e.mv, e.vend, e.svm, e.res) && listaOkVale(e) && !pocasVentas(e.vend, e.res); }
 function cuentaLista(cat, fechaProv) {
   const v = Object.values(cat || {}).filter((e) => e && e.n);
   // 2+ vendedores en el catálogo de ML (20/10/2026, eligió la 1a; reemplaza el mínimo de 100 ventas del 18/10): con 1 solo queda afuera.
-  const m25 = (e) => !listaNoEsVale(e) && !e.sacado && !e.noWeb && !e.noFull && e.m != null && Number(e.m) >= listaVaraDe(e) && listaCostoVigente(e) && listaFilaVigente(e, fechaProv) && /^https:\/\//.test(e.mf || '') && !(e.mv != null && Number(e.mv) < 1 && !e.svm);   // 43a (24/10): 🌟 sin competencia (svm) entra como en Paraguay
+  const m25 = (e) => listaM25Fila(e, fechaProv);
   // DESDE EL 20/10/2026 (eligió la a) sólo da lo que el chat de compras confirmó mirando ML (`ok`, de `listadato`) para ESE catálogo
   // (`okCat`, o el catálogo fijado con `mi=`). Antes también entraba lo que el robot emparejó solo y "parecía" bien: 21 de 36 estaban mal.
-  const da = (e) => m25(e) && vendOk(e.mv, e.vend, e.svm, e.res) && listaOkVale(e) && !pocasVentas(e.vend, e.res);
+  const da = (e) => listaDaFila(e, fechaProv);
   // `pend` = falta medir: nunca medidos y también los medidos con un costo que ya cambió (etapa 3, 20/10/2026; si no, una lista a la que
   // le cambió el costo entero quedaba con 0 que dan y 0 pendientes, y la web la escondía).
   return { n: v.length, med: v.filter((e) => e.m != null).length, pend: v.filter((e) => listaFilaVigente(e, fechaProv) && (!e.t || (e.m != null && !e.noWeb && !e.sacado && !listaCostoVigente(e)))).length, dan: v.filter(da).length, revisar: v.filter((e) => m25(e) && !da(e) && !pocasVentas(e.vend)).length, viejos: v.filter((e) => !listaFilaVigente(e, fechaProv)).length, tMed: Date.now() };
@@ -26228,6 +26232,39 @@ async function main() {
       return;
     }
     // BILLING_PROBE=listamedir[:<proveedor>][:<cuántos>][:go] → mide contra ML las listas guardadas (la misma cuenta que Paraguay).
+    // BILLING_PROBE=listasvale[:go] (04/11/2026, él: "los que tienen pocos productos sacalos… o mejor armá un sistema, porque quizás hay un
+    // mayorista que tiene solo un producto pero es un producto genial, le ganamos mucho y vende mucho"). NO cuenta productos: cada proveedor
+    // se juzga por lo que PUEDE DEJAR. ✅ se queda si tiene al menos 1 producto que da (35%+ contra ML, confirmado por foto, con ventas) ·
+    // ⏳ se queda mientras falte medir algo o mirar fotos de lo que da el % · ❌ se saca (descartado, `desc`) si ya está todo medido y
+    // revisado y no tiene NINGUNO que dé. Ordena por 💰 la suma de la ganancia por unidad de lo que da. Con `:go` descarta los ❌
+    // (`descAuto`) y vuelve a mostrar los que se habían sacado solos y ahora sí tienen algo (`|volver` los manuales los decide él).
+    if (/^listasvale(:go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GO = /:go$/.test(String(process.env.BILLING_PROBE)); const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      const filas = [];
+      for (const [k, pv] of Object.entries(provs)) {
+        if (!pv || (pv.desc && !pv.descAuto)) continue;   // los que sacó él a mano no se tocan
+        let cat; try { cat = (await db.get('mlapi/listas/' + k)) || {}; } catch { console.log(`⚠️ no pude leer la lista de ${pv.nombre || k}: no la juzgo`); continue; }
+        const c = cuentaLista(cat, pv.fecha); const v = Object.values(cat).filter((e) => e && e.n);
+        const dan = v.filter((e) => listaDaFila(e, pv.fecha)).map((e) => ({ n: e.n, m: Number(e.m), g: Number(e.p) * Number(e.m) / 100, vend: e.vend }));
+        dan.sort((a, b) => b.g - a.g); const pot = dan.reduce((a, x) => a + (x.g > 0 ? x.g : 0), 0);
+        const est = dan.length ? 'queda' : (c.pend > 0 || c.revisar > 0) ? 'falta' : 'saca';
+        filas.push({ k, nom: pv.nombre || k, c, dan, pot, est, auto: !!pv.descAuto });
+      }
+      const ord = { queda: 0, falta: 1, saca: 2 }; filas.sort((a, b) => ord[a.est] - ord[b.est] || b.pot - a.pot);
+      console.log(`=== 🏪 ¿QUÉ PROVEEDOR VALE? · ${filas.length} listas · no se cuentan productos: vale lo que puede dejar ${GO ? '· APLICANDO' : '(prueba)'} ===`);
+      for (const f of filas) {
+        const ic = f.est === 'queda' ? '✅' : f.est === 'falta' ? '⏳' : '❌';
+        const mej = f.dan[0] ? ` · el mejor: ${String(f.dan[0].n).slice(0, 40)} (${Math.round(f.dan[0].m)}%, ${money(f.dan[0].g)} por unidad)` : '';
+        console.log(`${ic} ${f.nom} · ${f.c.n} productos · ${f.dan.length} dan${f.dan.length ? ` · 💰 ${money(f.pot)} sumando 1 de cada` : ''}${f.est === 'falta' ? ` · falta: ${f.c.pend} sin medir, ${f.c.revisar} para mirar fotos` : ''}${mej}${f.auto ? ' · (estaba sacado solo)' : ''}`);
+      }
+      if (GO) { let s = 0, v2 = 0;
+        for (const f of filas) {
+          if (f.est === 'saca' && !f.auto) { await db.patch('cyc/mlconfig/listasProv/' + f.k, { desc: true, descAuto: true, descTs: Date.now() }); s++; }
+          if (f.est !== 'saca' && f.auto) { await db.patch('cyc/mlconfig/listasProv/' + f.k, { desc: null, descAuto: null, descTs: null }); v2++; }
+        }
+        console.log(`\n${s} sacados (no tienen ningún producto que dé) · ${v2} vueltos a mostrar`); }
+      return;
+    }
     if (/^listamedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const _lm = String(process.env.BILLING_PROBE); const aplicar = /:go$/.test(_lm);
       const args = _lm.replace(/:go$/, '').split(':').slice(1);

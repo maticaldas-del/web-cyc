@@ -1734,6 +1734,11 @@ Error mío: `open('sw.js','w').write(open('sw.js').read()…)` en Python abre pa
 `sw.js` publicado estaba vacío y la app no abría (él: *"se rompió web cyc no ingresa"*); se repuso entero (CACHE cyc-v960).
 - **Qué chequear siempre:** después de subir el `CACHE`, `wc -c sw.js` > 0 y `node --check sw.js`. Leer y escribir un archivo en dos pasos.
 
+### Etapa 3 · 04/11/2026 · 🏪 `listasvale`: cada proveedor se juzga por lo que puede dejar, no por cuántos productos tiene
+- **Qué es:** él (*"los de menos de 5 productos… o mejor armá un sistema, porque quizás hay un mayorista que tiene solo un producto pero es genial"*): ✅ se queda con 1+ producto que da (35%+ contra ML, foto confirmada, ventas) · ⏳ se queda mientras falte medir o mirar fotos · ❌ se descarta solo (`descAuto`) si ya está todo medido y revisado y no da ninguno. Ordena por la suma de la ganancia por unidad de lo que da. Los descartados a mano (Juguetería Che) no los toca; los automáticos vuelven si después dan.
+- **Dónde vive:** `sync.mjs` probe `listasvale[:go]`; `listaM25Fila`/`listaDaFila` salen de `cuentaLista` (la misma cuenta).
+- **Qué chequear:** que un proveedor con 1 solo producto que da quede ✅; que ninguno con fotos sin mirar se descarte.
+
 ### Etapa 3 · 04/11/2026 · v28.124 · ⚪ Nissei no lo tiene: también lo que no tiene código
 - **Qué es:** él con el Cuba Gold (*"esto es porque no hay stock, no es que está sin medir"*): la marca automática de la vuelta completa (`marcarAgotadosVuelta`) sólo miraba fichas de Paraguay CON código; ahora también las que no tienen (salvo `soloLocal` y Elegancia). En Pedidos → Paraguay la tarjeta dice "⚪ Nissei no lo tiene" en vez de "sin medir" / "sin precio de Paraguay".
 - **Dónde vive:** `sync.mjs` `marcarAgotadosVuelta` (y `pyagotados[:go]`; también mira lo que está en `cyc/pedidos_py` aunque la ficha no diga origen Paraguay: el Cuba Gold era eso) · `index.html` tarjeta de Probados (`_mgP`). El Cuba Gold quedó marcado a mano (`pyprecio:…=nohabia`).
