@@ -26430,13 +26430,20 @@ async function main() {
       const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
       const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre));
       const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0);
-      const sal = (c) => { const v = candVentasDe(c); const r = Number(c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
+      const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
       const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
       const maxU = (c) => { const usd = parseFloat(c.usd) || 0; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
       let tcL = 0; try { tcL = parseFloat(((await db.get('cyc/finanzas/tipo_cambio')) || 0)) || 0; } catch { tcL = 0; }
       const ok = vivos.filter(([, c]) => !(Number(c.pedirU) > 0) && !candPorQueNoBot(c, '', tcL) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA
         && vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res) && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5 && star(c) >= 7)
         .sort((a, b) => star(b[1]) - star(a[1]));
+      // `pyllenar:<grupo>:<tope>:porque` (04/11/2026): además, los 25 de ⭐ más alta que NO entran y el motivo exacto (el mismo de `pedir`).
+      if (/:porque$/.test(String(process.env.BILLING_PROBE))) {
+        const motivo = (c) => candPorQueNoBot(c, '', tcL) || (!((parseFloat(c.usd) || 0) > 0) ? 'sin precio de Nissei' : (ahora - candVistoTsBot(c)) >= PY_VIEJO_DIAS * 864e5 ? `mirado en Nissei hace ${((ahora - candVistoTsBot(c)) / 864e5).toFixed(1)} días (pasa con menos de ${PY_VIEJO_DIAS})` : star(c) < 7 ? `⭐ ${star(c).toFixed(1)} (mínimo 7)` : '');
+        const no = vivos.filter(([, c]) => !(Number(c.pedirU) > 0) && Number(c.margen) >= CAND_VARA_COMPRA && motivo(c)).sort((a, b) => star(b[1]) - star(a[1])).slice(0, 25);
+        console.log('── LOS QUE NO ENTRAN (⭐ más alta primero) ──');
+        for (const [id, c] of no) console.log(`  ✗ ⭐ ${star(c).toFixed(1)} · ${Math.round(Number(c.margen))}% · US$ ${c.usd} · ${c.mlVendedores ?? '?'} vend. · ${candVentasDe(c) ?? '?'} vendidas · ${c.resCarga ?? c.res ?? '?'} reseñas · ${String(c.nombre).slice(0, 60)} → ${motivo(c)} [${id}]`);
+      }
       let libre = tope - ya; const elig = [];
       console.log(`=== 🪄 LLENAR ${grp.toUpperCase()} HASTA US$ ${tope} · ya cargado US$ ${ya.toFixed(2)} · libre US$ ${libre.toFixed(2)} · ${ok.length} que dan ===`);
       for (const [id, c] of ok) { const usd = parseFloat(c.usd); let u = Math.min(maxU(c), Math.floor((libre + 1e-6) / usd)); if (u < 1) continue;
