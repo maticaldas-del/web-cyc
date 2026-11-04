@@ -26329,12 +26329,13 @@ async function main() {
         console.log(n ? `(${n}) Para unirlas: listaprov:${kk};<ficha>=<cód>;…;go` : 'ninguna'); return;
       }
       const upd = {}; const malos = [];
-      for (const x of partes) { const i = x.indexOf('='); const pid = x.slice(0, i).trim(), cod = x.slice(i + 1).trim();
+      const xDe = {};   /* 04/11/2026 (él, 1a con el Aer de Pirineo): `<ficha>=<cód>*6` = la ficha es un pack de 6 sueltos de la lista (codListaX) */
+      for (const x0 of partes) { const mX = x0.match(/^(.*)\*(\d+)$/); const x = mX ? mX[1] : x0; const i = x.indexOf('='); const pid = x.slice(0, i).trim(), cod = x.slice(i + 1).trim(); if (mX) xDe[pid] = parseInt(mX[2], 10);
         if (i < 1 || !prods[pid]) { malos.push(x + ' (ficha desconocida)'); continue; } if (!cat[cod]) { malos.push(x + ' (código que no está en la lista)'); continue; }
-        upd[pid] = cod; console.log(`· ficha ${pid} "${String(prods[pid].name || '').slice(0, 50)}" ← ${kk} ${cod} "${String(cat[cod].n || '').slice(0, 45)}"`); }
+        upd[pid] = cod; console.log(`${xDe[pid] > 1 ? '· pack de ' + xDe[pid] + ' sueltos ' : ''}· ficha ${pid} "${String(prods[pid].name || '').slice(0, 50)}" ← ${kk} ${cod} "${String(cat[cod].n || '').slice(0, 45)}"`); }
       if (malos.length) { console.log('❌ no escribo nada: ' + malos.join(' | ')); return; }
       if (!APLICAR) { console.log('(prueba: con ;go se escribe)'); return; }
-      for (const [pid, cod] of Object.entries(upd)) await db.patch('cyc/products/' + pid, { listaProv: kk, codLista: String(cod) });
+      for (const [pid, cod] of Object.entries(upd)) await db.patch('cyc/products/' + pid, { listaProv: kk, codLista: String(cod), codListaX: xDe[pid] > 1 ? xDe[pid] : null });
       const re = (await db.get('cyc/products')) || {}; const ok = Object.entries(upd).filter(([pid, cod]) => re[pid] && re[pid].listaProv === kk && String(re[pid].codLista) === String(cod)).length;
       console.log(`✓ ${ok} de ${Object.keys(upd).length} fichas unidas a ${kk} (releído)`); return;
     }

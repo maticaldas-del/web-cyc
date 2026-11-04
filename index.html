@@ -3379,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.108';
+const APP_VERSION='28.109';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.109',f:'04/11',h:'01:20',c:[{n:2,t:'Pedidos → Listas: un pack armado con sueltos de la lista (el Aer x6 con los Aer Power Pocket de Pirineo) cuesta 6 sueltos y el mensaje a Tito pide los sueltos ("x12 (2 packs de 6)").'}]},
   {v:'28.108',f:'03/11',h:'23:45',c:[{n:3,t:'Pedidos → Listas de Bs As: ningún producto se puede pedir sin la ✅ de que la foto del mayorista y la de ML son el mismo producto (antes en Bs As entraba sin confirmar y muchos no pegaban ni cerca).'}]},
   {v:'28.107',f:'03/11',h:'22:20',c:[{n:1,t:'Pedidos → Bs As: el botón "Listas de Tito" ahora se llama "Listas".'}]},
   {v:'28.106',f:'03/11',h:'22:10',c:[{n:1,t:'Pedidos → Bs As: los proveedores conocidos tienen su botón al lado de De siempre: Dai Nippon, AnD Mitre, AVL 112 y Pirineo. Las demás listas del Once quedan en Listas de Tito.'}]},
@@ -23555,9 +23556,12 @@ function listaProbFilas(k){
     const vv=_pyArmV(v);
     const partes=vv?Object.entries(vv).map(([kk,x])=>({k:kk,c:String((x&&x.c)||kk),u:parseInt(x&&x.u)||0})).filter(x=>x.u>0):[{k:'',c:'',u}];
     // Lo que te sale: el de la lista de hoy (con el recargo del proveedor); si el código no está en la lista, el costo de la ficha.
-    const pc=e?_listaPuesto(k,e):(pr&&tc>0?Math.round(costUSDof(pr)*tc):0);
-    for(const pa of partes)out.push({pid,pr,u:pa.u,color:pa.c,key:pa.k,cod,nomL:e&&e.n?String(e.n):'',nom:pr?pr.name:'(ficha borrada)',
-      pc,p:e?Number(e.p)||0:0,pl:e?Number(e.pl||e.p)||0:0,sinCod:!e,mi:(e&&e.mi)||(pr&&pr.mlCatalogo)||''});
+    // PACK ARMADO CON SUELTOS DE LA LISTA (04/11/2026, él eligió 1a con el Aer de Pirineo: la ficha es un pack de 6 y la lista vende
+    // sueltos): `codListaX` = cuántos de la lista lleva cada unidad de la ficha. El costo del pack = lista × X y el mensaje pide u × X.
+    const X=Math.max(1,parseInt(pr&&pr.codListaX)||1);
+    const pc=e?_listaPuesto(k,e)*X:(pr&&tc>0?Math.round(costUSDof(pr)*tc):0);
+    for(const pa of partes)out.push({pid,pr,u:pa.u,color:pa.c,key:pa.k,cod,nomL:e&&e.n?String(e.n):'',nom:pr?pr.name:'(ficha borrada)',x:e?X:1,
+      pc,p:e?(Number(e.p)||0)*X:0,pl:e?(Number(e.pl||e.p)||0)*X:0,sinCod:!e,mi:(e&&e.mi)||(pr&&pr.mlCatalogo)||''});
   }
   return out.sort((a,b)=>a.nom.localeCompare(b.nom,'es')||String(a.color).localeCompare(String(b.color),'es'));
 }
@@ -24178,7 +24182,7 @@ async function renderListas(){
     // 21/10/2026, él con Dai Nippon: "copiar el mensaje y mandarlo por wsp. nombre, unidades y código si se puede". En las listas de
     // Bs As (las que compra Tito) cada renglón lleva el código de la lista; las demás quedan como las pidió (con el precio).
     const _cB=_listaEsBsas(k);
-    const msg=[...PB.map(f=>`${f.nomL||f.nom}${f.color?' · '+f.color:''} x${f.u}${_cB?(f.sinCod||!f.cod?'':' · cód '+f.cod):(f.pl>0?' · '+fmt(f.pl)+' c/u':'')}`),
+    const msg=[...PB.map(f=>`${f.nomL||f.nom}${f.color?' · '+f.color:''} x${f.u*(f.x||1)}${f.x>1?' ('+f.u+' packs de '+f.x+')':''}${_cB?(f.sinCod||!f.cod?'':' · cód '+f.cod):(f.pl>0?' · '+fmt(f.pl/(f.x||1))+' c/u':'')}`),
       ...A.map(x=>`${x.e.n} x${x.u}${_cB?' · cód '+x.cod:(Number(x.e.pl||x.e.p)>0?' · '+fmt(Number(x.e.pl||x.e.p))+' c/u':'')}`)].join('\n');
     const totL=A.reduce((t,x)=>t+(Number(x.e.pl||x.e.p)||0)*x.u,0)+PB.reduce((t,f)=>t+(f.pl||0)*f.u,0);
     const filaP=f=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;background:var(--surface);border:1px solid var(--green);border-radius:8px">
