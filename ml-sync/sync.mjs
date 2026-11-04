@@ -12016,7 +12016,7 @@ async function cuentaGemela({ b, P, tk, costo, envio, impPct, cuoMed, cuoPeor, f
 // archivo, con PISO_DURO todavía en su valor inicial (30): quedaba en 28 en vez de 33 y una Clásica a propósito entre 28% y 33% (sobra,
 // promo, !piso) arrastraba su gemela al 35% en vez de dejarla con la misma plata (CEREBRO §11).
 let GEMELA_CLA_OK = PISO_DURO - 2;
-const GEMELA_PCT_TOL = 0.3;   // 4a del 03/11/2026: la gemela queda al mismo % que la Clásica (peor caso) con 0,3 puntos de tolerancia
+const GEMELA_PCT_TOL = 0.3;   // 4a del 03/11/2026 (mismo %) — SIN USO desde el 04/11 (él: "que no haya precios absurdos"): la gemela vuelve a la misma plata
 // Una gemela que tiene que bajar más de 15% de una no se tira de golpe: baja hasta −15% por vuelta (cada hora) y llega sola en pocas horas
 // (24/10/2026, él: "en esos casos sí se permite abajo del 35% (…) todas las formas de venta deberían contribuir": antes quedaba "para revisar"
 // y no bajaba nunca). 90/990 como todo precio.
@@ -12058,7 +12058,9 @@ async function precioGemelaIgual(a) {
   const ev = async (Q) => { const cg = await cuentaGemela({ ...a, P: Q, fC }); if (!cg) return null; fC = cg.fC; base = cg; return cg.fP ? cg : null; };
   // 4a de la revisión de Datos (01/11, él el 03/11): la gemela va al MISMO % que la Clásica (peor caso), no sólo a la misma plata: con la misma
   // plata la Premium y la de envío gratis quedaban con menos % (más precio en el divisor). Pide las dos cosas (el % alcanza y la plata también).
-  const alcanza = (cg) => !!cg && cg.netaP >= cg.netaCla - 1 && (cg.mgCla == null || cg.mgP == null || cg.mgP >= cg.mgCla - GEMELA_PCT_TOL);
+  // 04/11/2026 (él: "a. que no haya precios absurdos"): vuelve a la MISMA PLATA que la Clásica (el 35% lo pone `precioGemelaAlPiso`). Con el
+  // mismo % del 03/11 lo de costo muy bajo quedaba absurdo (Rebarbador: Clásica $14.290, Premium $25.290, envío gratis $69.390, y no vendían).
+  const alcanza = (cg) => !!cg && cg.netaP >= cg.netaCla - 1;
   let lo = precio, hi = null, cgHi = null, Q = precio;
   for (const f of [1.05, 1.1, 1.2, 1.35, 1.5, 1.75, 2, 2.5, 3, 4, 6]) {
     let N = Math.round(precio * f); if (Q < 32990 && N >= UMBRAL_ENVIO_GRATIS) N = 32990; if (N > 650000) N = 650000; if (N <= Q) continue;
@@ -12208,7 +12210,7 @@ async function precioGemelaEnvioIgual(a) {
   const precio = Math.round(Number(a.b.price) || 0); if (!(precio > 0)) return null;
   const cache = a.cache || {}; let fC = a.fC || null, base = null, sinEnvio = false;
   const ev = async (Q) => { const cg = await cuentaGemelaEnvio({ ...a, cache, P: Q, fC }); if (!cg) return null; fC = cg.fC; base = cg; if (cg.sinEnvio) sinEnvio = true; return cg.fE ? cg : null; };
-  const alcanza = (cg) => !!cg && cg.netaE >= cg.netaCla - 1 && (cg.mgCla == null || cg.mgP == null || cg.mgP >= cg.mgCla - GEMELA_PCT_TOL);   // 4a del 03/11: mismo %
+  const alcanza = (cg) => !!cg && cg.netaE >= cg.netaCla - 1;   // 04/11 (él, "a"): misma plata, no el mismo % (el 35% lo pone precioGemelaAlPiso)
   let lo = precio, hi = null, cgHi = null, Q = precio;
   for (const f of [1.03, 1.07, 1.12, 1.2, 1.3, 1.45, 1.65, 2, 2.5, 3, 4, 6]) {
     let N = Math.round(precio * f); if (Q < 32990 && N >= UMBRAL_ENVIO_GRATIS) N = 32990; if (N > 650000) N = 650000; if (N <= Q) continue;
