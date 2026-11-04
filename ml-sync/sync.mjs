@@ -32518,7 +32518,7 @@ async function main() {
     if (/^validarml:/.test(String(process.env.BILLING_PROBE || ''))) {
       const partes = String(process.env.BILLING_PROBE).slice('validarml:'.length).split('|').map((x) => x.trim()).filter(Boolean);
       const cat = String(partes[0] || '').toUpperCase(); const kv = {}; for (const x of partes.slice(1)) { const m = x.match(/^([a-z]+)=(.*)$/i); if (m) kv[m[1].toLowerCase()] = m[2].trim(); }
-      const label = String(kv.cuenta || '').toLowerCase(), precio = Math.round(Number(String(kv.precio || '').replace(/\./g, '')) || 0);
+      const label = (Object.keys(accounts || {}).find((l) => l.toLowerCase() === String(kv.cuenta || '').toLowerCase())) || '', precio = Math.round(Number(String(kv.precio || '').replace(/\./g, '')) || 0);
       if (!/^MLA\d+$/.test(cat) || !label || !(precio > 0)) { console.log('❌ Va así: validarml:<catálogo MLA…>|cuenta=<cuenta>|precio=<pesos>'); return; }
       const acc = accounts[label]; if (!acc?.refresh_token) { console.log(`❌ ${label}: sin permiso cargado.`); return; }
       let tok; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; }
