@@ -43043,7 +43043,7 @@ async function main() {
       console.log(`  TOTAL activos:       ${u(stockUSD + otros).padStart(14)}   (${money(Math.round((stockUSD + otros) * tc))})`);
       console.log(`\n── LO QUE DEBE ──`);
       let deudas = 0;
-      for (const [k, lbl] of [['deuda_cyc', 'Deuda de CYC'], ['tarjeta', 'Tarjeta'],
+      for (const [k, lbl] of [['deuda_cyc', 'Dólares Abuela'], ['tarjeta', 'Tarjeta'],
         ['dolares_mati', 'Dólares de Mati'], ['dolares_tito', 'Dólares del viejo']]) {
         const v = Math.abs(n(k)); if (v) { console.log(`  ${lbl.padEnd(20)} ${u(v).padStart(14)}`); deudas += v; }
       }

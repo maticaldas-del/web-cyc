@@ -1415,7 +1415,7 @@ setTimeout(function _ldVigia(){try{
       <div class="arqueo-section negativo arq-plegada" id="arq-sec-debemos">
         <h3>📤 Lo que debemos</h3>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Tarjeta</span><span id="db_tarjeta"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_tarjeta" placeholder="US$ 0" onchange="saveFin('tarjeta',this.value)"></div>
-        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Deuda de CYC</span><span id="db_deuda_cyc"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_deuda_cyc" placeholder="US$ 0" onchange="saveFin('deuda_cyc',this.value)"></div>
+        <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Abuela</span><span id="db_deuda_cyc"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_deuda_cyc" placeholder="US$ 0" onchange="saveFin('deuda_cyc',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Mati</span><span id="db_dolares_mati"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_mati" placeholder="US$ 0" onchange="saveFin('dolares_mati',this.value)"></div>
         <div class="fin-field"><div class="fin-left"><span class="fin-label neg-label">Dólares Tito</span><span id="db_dolares_tito"></span></div><input class="fin-input negative money" type="text" inputmode="numeric" id="f_dolares_tito" placeholder="US$ 0" onchange="saveFin('dolares_tito',this.value)"></div>
         <!-- 29/10/2026 (él: "¿se podrá poner ahí? así lo saco de naranja"): ARCA y proveedores van como renglón propio, los calcula el panel (no se escriben). -->
@@ -2480,7 +2480,7 @@ const FIN_FIELDS=[
   {k:'tarjeta',     label:'Tarjeta',           pos:false},
   {k:'deben_cyc',   label:'Deben a CYC',      pos:true},   // desde el 28/10/2026 lo calcula la web: la suma de cyc/debencuotas
   {k:'vendedores',  label:'Vendedores',        pos:true},
-  {k:'deuda_cyc',   label:'Deuda CYC',        pos:false},
+  {k:'deuda_cyc',   label:'Dólares Abuela',        pos:false},
   {k:'dolares_mati',label:'Dólares Mati',     pos:false},
   {k:'dolares_tito',label:'Dólares Tito',     pos:false},
   {k:'corregir',    label:'Corregir',          pos:true, neutral:true},
@@ -3379,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.112';
+const APP_VERSION='28.113';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.113',f:'04/11',h:'12:05',c:[{n:1,t:'💰 Arqueo → Lo que debemos: "Deuda de CYC" ahora se llama "Dólares Abuela".'}]},
   {v:'28.112',f:'04/11',h:'05:40',c:[{n:1,t:'🔍 Revisión de las Reglas del cerebro: textos al día y 18 decisiones para "resolvamos".'}]},
   {v:'28.111',f:'04/11',h:'02:20',c:[{n:2,t:'Pedidos → 📋 Listas: solapa nueva 🔎 Proveedores a revisar, con los proveedores que encuentra Claude por internet. Sólo aparecen los que tienen productos que dan 35% o más y son el mismo producto que en ML (foto revisada).'}]},
   {v:'28.110',f:'04/11',h:'02:00',c:[{n:2,t:'Envíos a Full: cada caja tiene el botón ⚠️ no llegó bien para contar qué pasó (faltó algo, llegó rota…). El problema queda en la caja con un cartel y le llega a Claude por el buzón; ✅ resuelto lo saca.'}]},
