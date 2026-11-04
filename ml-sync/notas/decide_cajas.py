@@ -173,6 +173,8 @@ FIJO={
   ('p17934023969966','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
   ('p17934023971007','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
   ('p1792882870991','','Luciana'):(7,'Él 04/11 "armá caja": quedan 2 en Full y se aceleró (0,4 por día, alcanza ~5 días). Van las 7 de la oficina'),
+  ('p1793754280062','','Luciana'):(4,'Él 04/11 "pasala ya": Ayelen sin lugar en Full, nunca se mandó ni vendió: va a Luciana (las 4)'),
+  ('p1793754280062','','Ayelen'):(0,'Él 04/11: pasó a Luciana (la de Ayelen se cerró)'),
   ('p17936390139990','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
   ('p17936390141201','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
   ('p17936390142412','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
