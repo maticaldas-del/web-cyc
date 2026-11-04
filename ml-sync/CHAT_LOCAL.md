@@ -46,6 +46,7 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
       Bazar Once Mayorista, Ahmed Electrónica): la lista entera de su web de HOY, con `lista:<prov>|fecha=<hoy>;…;go`, sólo lo que dice
       que hay stock. Lo que ya no está en su web queda solo como "de una lista anterior" y no se pide (así sabemos qué tienen, como en
       Nissei). Después, si queda tiempo, 1 o 2 mayoristas nuevos. Si un domingo no te prenden, hacelo el primer día que te prendan.
+      NO recargues los DESCARTADOS (Matías los sacó): Juguetería Che (04/11, los Funko: "no me interesa").
    f) IMEGA → si hace 14 días o más.
    f3) MAYORISTAS WEB (AnD Mitre y AVL 112, los que visita Tito) → si hace 7 días o más (03/11/2026). El catálogo lo baja el robot (`listawoo`): vos lo actualizás, revisás que lo que da 35% sea el mismo producto en ML y anotás lo que la página no dice (IVA, mínimo, packs). Texto: PROMPT_MAYORISTAS_WEB.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
