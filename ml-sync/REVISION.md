@@ -1769,6 +1769,11 @@ venta muestra ese aroma marcado; elegir otro del desplegable cambia la línea.
 Él (con la tarjeta de la Waflera): *"que diga las unidades que hay en Full"*. Al lado de "precio hoy": "en Full N u." (suma de las 4
 cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
 
+### Etapa 1 · 04/11/2026 · ⚡ La vuelta del punto medio va a la caja si queda en el medio (2a)
+- **Qué es:** él eligió 2a: cuando una suba sale mal y ML pide para ganar la caja un precio entre el último que vendía y el que falló, la vuelta va al de la caja (terminado en 90, sin pasarlo). La 1a (bajar 4 a la caja) NO se aplicó: las 4 eran gemelas Premium y sus Clásicas ya ganan la caja.
+- **Dónde vive:** `sync.mjs` `vueltaAlaCaja` + `conCaja` dentro de `vueltaDeSuba` (lo usan `decido !vuelve` y la lista 📉 de `errores`, misma función).
+- **Qué chequear:** caja leída hace menos de 3 h (`cajaTs`) y perdiéndola; `decido` sigue frenando abajo del 35%; el texto de la vuelta dice "ML pide … para ganar la caja".
+
 ### Etapa 1 · 04/11/2026 · 🥊 `bajarcaja` ya no lista gemelas · `gemelade` · `pausadas` lista una por una
 - **Qué es:** analizando "apurar lo que pierde la caja", 10 de los 13 que salían eran gemelas (Premium / envío gratis): una gemela sigue sola a su Clásica cada hora, bajarla sola no sirve. `bajarParaMover` ahora las saltea. `gemelade:<MLA>,…` (sólo lee) dice si una publicación es Clásica o gemela y de quién. `pausadas` lista las pausadas a propósito una por renglón (las 34 eran Paulvic repetidas que comparten stock: las 198 u. no son aparte).
 - **Dónde vive:** `sync.mjs` `bajarParaMover`, probe `gemelade`, `pausadas` (`aProposito`).
