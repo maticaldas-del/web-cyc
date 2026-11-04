@@ -11930,9 +11930,12 @@ const CAND_MIN_VENTAS = 100;
 // cuanto el chat lo vuelve a ver con precio (pycat / pyprecio). Devuelve cuántas marcó.
 async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
   const prods = (await db.get('cyc/products')) || {}; const sinSt = (await db.get('cyc/py_sinstock')) || {}; const nuevos = [];
+  // También lo que está en un pedido de Paraguay aunque la ficha no diga origen Paraguay (04/11, el Cuba Gold: ficha de otro origen
+  // en el pedido de Paraguay, nunca se marcaba y quedaba "sin medir").
+  const enPedPy = new Set(Object.values((await db.get('cyc/pedidos_py')) || {}).map((x) => x && x.prodId).filter(Boolean));
   const cat = (await db.get('mlapi/pycat')) || {}; const vistoCod = new Set(); for (const [k, e] of Object.entries(cat)) if (e && Number(e.ts) >= desde) { vistoCod.add(String(k)); vistoCod.add(String(pycatCodDe(k))); }
   for (const p of Object.values(prods)) {
-    if (!p || !p.id || p.origen !== 'py' || p.soloLocal || p.sololocal || /elegancia/i.test(String(p.provPy || ''))) continue; // sin código también (04/11, él con el Cuba Gold: "es porque no hay stock, no es que está sin medir")
+    if (!p || !p.id || (p.origen !== 'py' && !enPedPy.has(p.id)) || p.soloLocal || p.sololocal || /elegancia/i.test(String(p.provPy || ''))) continue; // sin código también (04/11, él con el Cuba Gold: "es porque no hay stock, no es que está sin medir")
     if ((Number(p.nisseiTs) || 0) >= desde || vistoCod.has(String(p.codPy)) || sinSt[p.id]) continue;
     if (GO) await db.set('cyc/py_sinstock/' + p.id, { ts: ahora, auto: 'vuelta' }); nuevos.push(p.name);
   }
