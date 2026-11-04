@@ -1769,6 +1769,11 @@ venta muestra ese aroma marcado; elegir otro del desplegable cambia la línea.
 Él (con la tarjeta de la Waflera): *"que diga las unidades que hay en Full"*. Al lado de "precio hoy": "en Full N u." (suma de las 4
 cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
 
+### Etapa 1 · 04/11/2026 · 💳 Las gemelas vuelven a la MISMA PLATA que la Clásica (no el mismo %)
+- **Qué es:** él (*"a. que no haya precios absurdos"*): la 4a del 03/11 (gemela al mismo % que la Clásica) dejaba lo de costo muy bajo absurdo (Rebarbador: Clásica $14.290, Premium $25.290, envío gratis $69.390; Lupa 100 mm: $19.990 / $28.690 / $68.090) y esas gemelas no vendían. Ahora `alcanza` pide sólo la misma plata; el 35% del peor caso lo sigue poniendo `precioGemelaAlPiso`. Bajan solas cada hora de a −15% (`escalonGemela`). `gemelaalinear` (prueba) al cambiar: 79 Premium bajan, las de costo bajo entre −15% y −45%.
+- **Dónde vive:** `sync.mjs` `precioGemelaIgual` y `alinearGemelasEnvio` (`alcanza`); `GEMELA_PCT_TOL` queda sin uso.
+- **Qué chequear:** que ninguna gemela quede abajo del 35% del peor caso si su Clásica está en 35%+; que las de costo bajo bajen en pocas horas a cerca de su Clásica.
+
 ### Etapa 1 · 04/11/2026 · ⚡ La vuelta del punto medio va a la caja si queda en el medio (2a)
 - **Qué es:** él eligió 2a: cuando una suba sale mal y ML pide para ganar la caja un precio entre el último que vendía y el que falló, la vuelta va al de la caja (terminado en 90, sin pasarlo). La 1a (bajar 4 a la caja) NO se aplicó: las 4 eran gemelas Premium y sus Clásicas ya ganan la caja.
 - **Dónde vive:** `sync.mjs` `vueltaAlaCaja` + `conCaja` dentro de `vueltaDeSuba` (lo usan `decido !vuelve` y la lista 📉 de `errores`, misma función).
