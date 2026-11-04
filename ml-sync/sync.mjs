@@ -5117,7 +5117,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // antiguo, la liquidación de 30 días y el 🧨 remate siguen como siempre.
       // Revisión etapa 1, 03/11/2026: también cuando la exención que se usa es la de 📦 sobra aunque la etiqueta sea otra (#descuento, #bajando…:
       // antes saltaban F7/F8/F14 por sobra sin pasar por el 1,3×), y no frena renovar el mismo descuento (46a: no es una baja; si no, vencía y SUBÍA).
-      if ((tagNuevo === 'sobra' || tagNuevo === 'desobra' || (!tagNuevo && ult === 'sobra') || exento === 'sobra') && !renueva0 && !antiguo15 && lin && !suya('pideel') && !(ahora < PIDEEL_DESDE && /lo pide él|lo pidió él|elegido por él|él eligió|eligió él/i.test(String(fz.motivo || '')))) {   // 22a del 03/11/2026 (él: "a"): escribir "lo pide él" en el motivo ya no saltea esta regla; es la 🔐 !pideel, con su "autorizo"
+      if ((tagNuevo === 'sobra' || tagNuevo === 'desobra' || (!tagNuevo && ult === 'sobra') || exento === 'sobra' || exento === 'liquidando') && !renueva0 && !antiguo15 && lin && !suya('pideel') && !(ahora < PIDEEL_DESDE && /lo pide él|lo pidió él|elegido por él|él eligió|eligió él/i.test(String(fz.motivo || '')))) {   // 22a del 03/11/2026 (él: "a"): escribir "lo pide él" en el motivo ya no saltea esta regla; es la 🔐 !pideel, con su "autorizo"
         const k30s = kDia(ahora - 30 * 864e5); let dH = 0, uH = 0;
         for (const k of ks) { if (k < k30s) continue; const x = lin[k]; if (!diaConStock(x)) continue; const pp = [Number(x.p) || 0, Number(x.pLista) || 0]; if (!pp.some((n) => n > 0 && Math.abs(n - p0) <= p0 * 0.03)) continue; dH++; uH += Number(x.u) || 0; }
         if (uH > 0) {
@@ -51430,6 +51430,18 @@ async function main() {
           // que el precio en prueba YA es el techo (`cyc/techo95pct/<MLA>`, de la completa). Si eso es 50% o más, subir de ahí es más probable
           // que pierda que que gane: no se sube (se espera a que la prueba termine). No frena 🔥/⏳ (subir ahí es estirar el stock, no buscar
           // techo), ni volver a un precio de los últimos 90 días, ni !chico con "EXCEPCIÓN: …". Con el dato viejo (+4 días) o de otro precio no frena.
+          // Revisión etapa 8, 04/11/2026: `!chico` no saltea el punto medio (4): una suba 📈/🆕 chica después de otra suba sin confirmar se frena igual
+          // (si no, se podían encadenar subas de +45% sin esperar: las Cartas Casino otra vez). El freno 50% de abajo sí lo sigue salteando.
+          if (d.accion === 'sube' && exc('chico') && !vuelveA && (tg === 'techo' || tg === 'nuevo')) {
+            if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } }
+            const uC = globalThis._ccCache4a && Object.values(globalThis._ccCache4a).filter((r) => r && String(r.mla) === String(d.mla) && Number(r.ts) > Date.now() - 30 * 864e5 && r.por !== 'errores').sort((x, y) => Number(y.ts) - Number(x.ts))[0];
+            if (globalThis._ccCache4a === null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO punto medio: no pude leer mis cambios de precio para ver si la suba anterior se confirmó.'; continue; }
+            if (uC && Number(uC.a) > Number(uC.de) * 1.02) {
+              if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
+              if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
+              const SC = await subaConfirmada(db, d.mla, linksD, globalThis._ritmoCacheD.prods, Number(uC.ts), Number(uC.de));
+              if (SC == null || !SC.ok) { d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO punto medio (aunque sea !chico): ${SC ? SC.txt : 'no pude leer su línea o sus ventas'}`; continue; } }
+          }
           if (d.accion === 'sube' && !exc('chico') && !vuelveA && !['escasez', 'sinrepo'].includes(tg)) {
             if (globalThis._t95pct === undefined) { try { globalThis._t95pct = (await db.get('cyc/techo95pct')) || {}; } catch { globalThis._t95pct = null; } }
             // Revisión etapa 8, 28/10/2026: sin poder leer cyc/techo95pct no se sabe si ya hay 50% de que es el techo: no se sube a ciegas (como 4a).
