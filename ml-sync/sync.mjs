@@ -11705,6 +11705,8 @@ const CAND_PISO_PERFUME = 25;   // 17/10/2026: 25 (él: "tienen que llegar a 25,
 // Perfumería/belleza/salud de Nissei (pedido `pyb<fecha>`) vs el resto (`py<fecha>`): COPIA de `_PERF_RE` y `_BELLEZA_RE` de index.html
 // (si se toca una, se toca la otra). A nivel de módulo desde el 27/10/2026 para que `pedir` mida el tope de CADA pedido.
 const PY_PERF_RE = /perfum|\bedp\b|\bedt\b|parfum|eau de|body splash|body mist|col[oô]nia|fragr[aâ]n|\bsplash\b/i;
+// 04/11/2026: copia de `_BELLEZA_APARATO` de index.html (aparatos para el pelo van al pedido del Resto). Si se toca una, se toca la otra.
+const PY_BELLEZA_APARATO = /secador|secadora|hair ?dryer|(plancha|planchita|prancha|chapinha|alisador|alisadora)\b|rizador|modelador de (cachos|rizos|pelo|cabelo)|ondulador|(cepillo|escova) (secador|secadora|alisador|alisadora|rotativ|el[eé]tric)|hair straightener|curling/i;
 const PY_BELLEZA_RE = /maquill|maquiag|labial|batom|gloss|lip ?(tint|balm|oil)|b[aá]lsamo|rubor|blush|base (l[ií]quida|de maq|matte)|corrector|corretivo|delineador|delineado|r[ií]mel|m[aá]scara (de pesta|de c[ií]lios|para pesta)|cílios|pesta[ñn]as|sombra|paleta de|iluminador|polvo (compacto|suelto|facial)|p[oó] (compacto|facial)|pincel|esponja de maq|esmalte|u[ñn]as|crema|creme|s[eé]rum|hidratante|protector solar|protetor solar|bronceador|desodorante|antitranspirante|jab[oó]n|sabonete|shampo|shamp[uú]|xampu|acondicionador|condicionador|tratamiento capilar|m[aá]scara capilar|t[oó]nico|micelar|desmaquill|exfolia|loci[oó]n|lo[cç][aã]o|skin ?care|facial|cabello|cabelo|capilar|tintura|alisad|planchita|rizador|secador de pelo|depila|afeitad|barbear|rasurad|cortapelo|recortadora|cuidado personal|higiene|cepillo (de dientes|dental)|dental|bucal|masaje|massag|term[oóô]metro|tens[ií]metro|ox[ií]metro|balan[cç]a (corporal|de banheiro)|balanza (corporal|de ba[ñn]o|personal)|nebuliz|vitamina|suplemento|col[aá]geno|prote[ií]na|ortop[eé]d|plantilla|juanete|metatars|tal[oó]n|faja|rodillera|mu[ñn]equera|tobillera|corrector postural|salud/i;
 const RE_CAND_PERF = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|fragr|body splash|body mist|\bcolonia\b|\bsplash\b/i;
 // Lo que se puede vender en la perfumería del local (26/10/2026, él: "todo lo que es perfume se puede poner en la perfumería… intentemos
@@ -55358,7 +55360,9 @@ async function main() {
       // título de sus publicaciones) o el título del catálogo de ML del candidato con ese nombre.
       const esBellezaPy = (t, X) => {
         const n = String(t || '').trim(); if (!n) return false;
-        if (_PERF_RE_PY.test(n) || _BELLEZA_RE_PY.test(n)) return true;
+        if (_PERF_RE_PY.test(n)) return true;
+        if (PY_BELLEZA_APARATO.test(n)) return false;
+        if (_BELLEZA_RE_PY.test(n)) return true;
         const nl = n.toLowerCase();
         const cat = /belleza|cuidado personal|salud|equipamiento m[eé]dico/i;
         const dom = /BEAUTY|MAKEUP|LIPSTICK|FOUNDATION|MASCARA|EYESHADOW|EYELINER|NAIL|SKIN|HAIR|SHAMPOO|CONDITIONER|COSMETIC|DEODORANT|SOAP|MOISTUR|SUNSCREEN|HEALTH|THERMOMETER|BLOOD_PRESSURE|OXIMETER|MASSAG|VITAMIN|SUPPLEMENT|ORTHOP|INSOLE|SHAVER|TRIMMER/i;
