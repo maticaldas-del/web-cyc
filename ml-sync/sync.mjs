@@ -38776,11 +38776,16 @@ async function main() {
     }
     if (/^finsuma(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).slice('finsuma'.length).replace(/^:/, ''); const GOf = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
-      const mF = body.match(/^(dolares_mati|dolares_tito|deuda_cyc)=([+-])([\d.,]+)\|(.+)$/);
-      if (!mF) { console.log('❌ Usá: finsuma:<dolares_mati|dolares_tito|deuda_cyc>=<+pesos|-pesos>|<nota>;go'); return; }
-      const tcF = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tcF > 0)) { console.log('❌ sin dólar cargado: no escribo'); return; }
-      const ars = Math.round(pesosArg(mF[3])) * (mF[2] === '-' ? -1 : 1); if (!Number.isFinite(ars) || !ars) { console.log('❌ monto inválido'); return; }
-      const usd = Math.round(ars / tcF * 100) / 100, cur = parseFloat(await db.get('cyc/finanzas/' + mF[1])) || 0, neg = cur < 0;
+      // 04/11/2026 (él: "CYC pagó 100 dólares a la abuela… resta 4.860 dólares"): `=-u<dólares>` suma/resta DÓLARES exactos (sin pasar por
+      // el dólar de hoy) y `|esperado=<dólares>` sólo escribe si lo que había es ese número (no lo imprime: si no coincide, no toca nada).
+      const mF = body.match(/^(dolares_mati|dolares_tito|deuda_cyc)=([+-])(u?)([\d.,]+)\|(?:esperado=([\d.,]+)\|)?(.+)$/);
+      if (!mF) { console.log('❌ Usá: finsuma:<dolares_mati|dolares_tito|deuda_cyc>=<+pesos|-pesos|+u<dólares>|-u<dólares>>[|esperado=<dólares>]|<nota>;go'); return; }
+      mF.splice(3, 1, mF[4]); const enUSD = !!body.match(/=[+-]u/); const esperado = mF[5] != null ? parseFloat(String(mF[5]).replace(/\./g, '').replace(',', '.')) : null; mF.splice(4, 2, mF[6]);
+      const tcF = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tcF > 0) && !enUSD) { console.log('❌ sin dólar cargado: no escribo'); return; }
+      const usdArg = enUSD ? parseFloat(String(mF[3]).replace(/\./g, '').replace(',', '.')) * (mF[2] === '-' ? -1 : 1) : null;
+      const ars = enUSD ? Math.round(usdArg * (tcF || 0)) : Math.round(pesosArg(mF[3])) * (mF[2] === '-' ? -1 : 1); if (enUSD ? !(Number.isFinite(usdArg) && usdArg) : (!Number.isFinite(ars) || !ars)) { console.log('❌ monto inválido'); return; }
+      const usd = enUSD ? Math.round(usdArg * 100) / 100 : Math.round(ars / tcF * 100) / 100, cur = parseFloat(await db.get('cyc/finanzas/' + mF[1])) || 0, neg = cur < 0;
+      if (esperado != null) { const okE = Math.abs(Math.abs(cur) - esperado) < 0.5; console.log(okE ? `  ✓ lo que había coincide con lo esperado` : `  ❌ lo que había NO es lo esperado: no toco nada (mirarlo en el Arqueo)`); if (!okE) return; }
       const nuevo = Math.round((Math.abs(cur) + usd) * 100) / 100; if (nuevo < 0) { console.log('❌ quedaría en negativo: no escribo'); return; }
       const guardar = neg ? -nuevo : nuevo;
       console.log(`=== ${mF[1]} ${GOf ? '· APLICANDO' : '· PRUEBA'} === ${money(ars)} al dólar ${tcF} = ${usd >= 0 ? '+' : '−'}US$ ${Math.abs(usd).toFixed(2)} · ${String(mF[4]).slice(0, 80)}`);

@@ -4526,6 +4526,7 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
   `cyc/finsuma/<ts>` y relee; no imprime el total. Primer uso: +$600.000 a Dólares Mati del cobro de noviembre; los $1.000.000 restantes pagaron
   su deuda en Ver deudas (`debenmov`). Qué chequear: Dólares Mati en el Arqueo subió US$ ~385 y la deuda de $1.000.000 quedó en ✅ Pagadas.
 
+- **(04/11) Etapa 2 · Plata — `finsuma` acepta DÓLARES exactos y un control** (él: *"CYC pagó 100 dólares a la abuela… resta 4.860 dólares"*): `=-u<dólares>` resta dólares sin pasar por el dólar de hoy; `|esperado=<dólares>` sólo escribe si lo que había es ese número (si no, no toca nada y no imprime el valor). Primer uso: `finsuma:deuda_cyc=-u100|esperado=4960|…;go`. Qué chequear: en el Arqueo, Deuda de CYC en US$ 4.860.
 - **(01/11) Etapa 2 · Plata — el retiro adentro de Gastos y cargado solo el día 1** (él: *"el retiro que sea parte de gastos. así no nos olvidamos
   de cobrarlo… siempre el día 1 que se carguen automáticamente lo que dice que hay que cobrar según el cierre del mes anterior"*). Web: en la lista
   de Gastos del mes, un renglón por socio (💸 Retiro de Mati / de Tito) con ❌ falta cobrar / ✅ Ya lo cobró (`cyc/retiro_cobrado/<mes>/<socio>`,
