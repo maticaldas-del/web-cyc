@@ -25330,7 +25330,9 @@ async function main() {
       // ficha creada). No se filtra por margen: un candidato que anoche daba 40% y hoy da 12% es
       // justo el que hay que ver, y filtrando por el margen guardado desaparecería.
       let lista = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId);
-      if (filtro.length) lista = lista.filter(([, c]) => filtro.some((f) => _rvNorm(c.nombre).includes(_rvNorm(f))));
+      // `revisarcompra:pedido` (04/11/2026) = sólo lo cargado en el pedido del momento (pedirU > 0 y todavía no pedido).
+      if (filtro.length === 1 && filtro[0] === 'pedido') lista = lista.filter(([, c]) => (Number(c.pedirU) || 0) > 0 && !c.pedidoEn);
+      else if (filtro.length) lista = lista.filter(([, c]) => filtro.some((f) => _rvNorm(c.nombre).includes(_rvNorm(f))));
       // El orden es por la plata que deja cada unidad, que es como se decide qué entra al pedido.
       lista.sort((a, b) => (Number(b[1].ganancia) || 0) - (Number(a[1].ganancia) || 0));
 
