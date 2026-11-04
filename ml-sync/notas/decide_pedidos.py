@@ -1,7 +1,7 @@
 import re,sys,math,os,json
 # Arma los pedidos de TODO el catálogo a partir del log de `pedidostodo` (09/10/2026; revisión 9 del 13/10/2026).
 # Uso: python3 decide_pedidos.py <log de pedidostodo> <salida> → escribe <salida>, <salida>.json y pedidos.txt
-# Objetivo 30 días: ritmo (por día CON stock: dCS) menos Full + oficina + camino + viajando. Sin ganancia o sin costo = 0.
+# Objetivo 30 días (Bs As 60 desde el 03/11, Paulvic 45): ritmo (por día CON stock: dCS) menos Full + oficina + camino + viajando. Sin ganancia o sin costo = 0.
 src=sys.argv[1]; out=sys.argv[2]
 T=30
 # El log de GitHub trae la hora adelante de cada renglón ("2026-10-13T11:52:03.1234567Z "): se saca, si no no se lee nada.
@@ -24,6 +24,53 @@ def m35_de(t):
     return None
 # 🛍️ LO QUE PIDE LA PERFUMERÍA (29/10/2026, él: "si pide para perfumería que diga en chiquito en el nombre y que sume lo pedido para ML y para
 # perf"): pedidostodo trae `PERF <u>[@<color>]` (`cyc/pedperf`). Se SUMA a lo de ML aunque no llegue al 35% o haya stock de sobra en ML.
+# 🪜 LA ESCALERA DE COMPRA (03/11/2026, Tito por audio con el Kit Limpia: "al vender más caro se puede comprar más caro y eso está bien,
+# pero también tiene que poner el ritmo vendido a ese precio. o sea más barato más unidades, a comprar más caro menos"). pedidostodo trae
+# `ESC precio:pago:u:d:plataDía;…` (cada precio de venta medido en 365 días a precio normal, lo más que se puede pagar ahí para el 35%, lo
+# vendido y los días con stock a ESE precio, y la plata por día). Con 7+ días cuenta; con menos va "poco medido" y no entra al motivo. ⭐ =
+# el que más plata por día deja (el precio al que lo pensamos vender). Las unidades de cada escalón = ritmo de ESE precio × los días del
+# pedido − lo que hay. La cantidad que se pide NO cambia: esto es para que Tito sepa hasta cuánto pagar y cuántas traer según el precio.
+def esc_de(t):
+    m=re.search(r' · ESC (\S+)',t)
+    if not m: return None
+    out=[]
+    for x in m.group(1).split(';'):
+        a=x.split(':')
+        if len(a)==5 and all(re.fullmatch(r'-?\d+',y) for y in a): out.append(dict(p=int(a[0]),c=int(a[1]),u=int(a[2]),d=int(a[3]),gd=int(a[4])))
+    return out or None
+ESC_MIN_DIAS=7
+def esc_armar(esc,t,T):
+    if not esc: return None
+    filas=[]
+    for e in esc:
+        r=e['u']/e['d'] if e['d'] else 0
+        n=max(0,math.ceil(r*T-t-0.25)) if r>0 else 0
+        filas.append(dict(e,r=r,n=n,poco=e['d']<ESC_MIN_DIAS,s=0))
+    med=[f for f in filas if not f['poco']]
+    if med: max(med,key=lambda f:f['gd'])['s']=1
+    return filas
+def _pesos(v): return '$'+f"{int(round(v)):,}".replace(',','.')
+def esc_txt(filas,enUSD):
+    med=[f for f in (filas or []) if not f['poco']]
+    if len(med)<2: return ''
+    pl=(lambda v:f"US$ {v/tc:.2f}".replace('.',',')) if enUSD else _pesos
+    st=[f for f in med if f['s']][0]; med=sorted(med,key=lambda f:f['c'])
+    # Sólo si dice algo que sirve (03/11): con 0 en el ⭐ el renglón ya dice "no lo compres" o "no hace falta" por otro lado y la frase lo
+    # contradecía ("Te pido 74… conviene traer 0"); un escalón más barato sólo si deja traer MÁS, uno más caro sólo si pide MENOS.
+    if not (st['n']>0): return ''
+    x=f"Según lo que lo pagues: vendiéndolo a {_pesos(st['p'])} (el precio al que lo pensamos vender) conviene pagarlo hasta {pl(st['c'])} y traer {st['n']}."
+    baratos=[f for f in med if f['c']<st['c'] and f['n']>st['n']]; caros=[f for f in med if f['c']>st['c'] and f['n']<st['n']]
+    if baratos: x+=f" Si lo conseguís a menos de {pl(baratos[0]['c'])}, podés traer hasta {baratos[0]['n']}."
+    tope=max(f['c'] for f in med)
+    if caros and caros[0]['n']>0: x+=f" Si cuesta más de {pl(st['c'])}, como mucho {caros[0]['n']} y si pasa de {pl(tope)}, no lo compres."
+    else: x+=f" Si cuesta más de {pl(st['c'])}, no lo compres."
+    return x
+def esc_linea(key,filas):
+    if not filas: return None
+    return f"ped:{key}=esc|"+','.join(f"{f['p']}:{f['c']}:{f['r']:.4f}:{f['n']}:{f['d']}:{f['s']}" for f in filas)+"|escalera de compra"
+def T_de(p,r,obj):
+    if r and r>0 and obj: return obj/r
+    return 60 if p['g']=='BSAS' else 45 if p['g']=='PAULVIC' else 30
 def perf_de(t):
     m=re.search(r' · PERF (\d+)(?:@(\S+))?',t)
     return (int(m.group(1)),(m.group(2) or '').replace('_',' ')) if m else None
@@ -98,7 +145,7 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
           env=g(r' · envFull \$(\d+)'),   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
-          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest),soloPerf=soloperf_de(rest),ocy=(int(re.search(r' · OFICYC (\d+)',rest).group(1)) if re.search(r' · OFICYC (\d+)',rest) else 0))
+          cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest),soloPerf=soloperf_de(rest),esc=esc_de(rest),ocy=(int(re.search(r' · OFICYC (\d+)',rest).group(1)) if re.search(r' · OFICYC (\d+)',rest) else 0))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
@@ -115,7 +162,7 @@ for l in L:
         nc=re.search(r' · netoC \$(\d+) precioC \$(\d+) envC \$(\d+)',rv)
         cur['vars'].append(dict(v=m.group(1),v30=int(m.group(2)),v60=int(m.group(3)),v180=int(m.group(4)),ult=m.group(5),dcs=int(m.group(6)) if m.group(6) else cur['dcs'],cortes=int(m.group(7) or 0),full=int(m.group(8)),casa=int(m.group(9)),cam=int(m.group(10)),pv=int(pv.group(1)) if pv else 0,li=int(li.group(1)) if li else 0,nunca=(' · NUNCA' in rv),
           hist=hist_de(rv),cambios=(cv.group(1) if cv else None),mano=(int(mn.group(1)) if mn else None),manoVenc=bool(mn and mn.group(2)),nor=nor_de(rv),ultv=(int(re.search(r' · ultv \$(\d+)',rv).group(1)) if re.search(r' · ultv \$(\d+)',rv) else None),hoy=(int(re.search(r' · hoy \$(\d+)',rv).group(1)) if re.search(r' · hoy \$(\d+)',rv) else None),
-          netoC=int(nc.group(1)) if nc else None,precioC=int(nc.group(2)) if nc else None,envC=int(nc.group(3)) if nc else None,m35=m35_de(rv)))
+          netoC=int(nc.group(1)) if nc else None,precioC=int(nc.group(2)) if nc else None,envC=int(nc.group(3)) if nc else None,m35=m35_de(rv),esc=esc_de(rv)))
 # N DE M: que se hayan leído TODAS las fichas que imprimió pedidostodo (si no, un renglón con otro formato se pierde callado).
 for gr,n in esper.items():
     if gr in('BSAS','PY','PAULVIC'):
@@ -179,6 +226,12 @@ def ritmo(x,dcs=30):
         if esc and min(esc)<=30:
             rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
             if rPre>r: r=rPre; base+=f" · subí el precio por escasez hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
+        # 1a del 03/11/2026 (él, con Bs As a 60 días: "¿con ritmo nuevo del precio que más vende, viejo o mezcla?"): si el precio cambió hace
+        # menos de 7 días (2+ días con stock al precio nuevo), manda el MÁS BAJO entre el ritmo de antes y lo que vendió al precio nuevo, para
+        # no comprar de más. Reemplaza la 2b del 28/10 ("los primeros 7 días con el ritmo de antes"). La escasez sigue con su regla de arriba.
+        elif nr.get('hoyD') is not None and 2<=nr['hoyD']<7:
+            rN=nr['hoyU']/nr['hoyD']
+            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr['hoyU']} en {nr['hoyD']} días con stock: uso ese ritmo, el más bajo (1a del 03/11)"
         return r,tiene,base
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
@@ -214,6 +267,10 @@ def ritmo(x,dcs=30):
 def Tde(p,x,r,m=None):
     # PAULVIC: pedido cada 15 días para 45 días de su ritmo (análisis a fondo, 16/10/2026, idea 3 · CEREBRO.md).
     if p['g']=='PAULVIC' and r>0: return 45,'el Paulvic se pide cada 15 días'
+    # 🏬 BS AS A 60 DÍAS (03/11/2026, él: "Paulvic hay siempre. Nissei también y Bs As la mitad de las veces" → eligió 60 días): como en Bs
+    # As la mitad de los viajes no hay, todo lo de Bs As se pide para 60 días (aguanta ~8 viajes seguidos sin conseguirlo). Paraguay sigue
+    # en 30 (siempre hay y se pide ~1 por semana) y Paulvic en 45 (cada 15 días). Lo que no deja 35% sigue en 0 (no se repone).
+    if p['g']=='BSAS' and r>0: return 60,'en Bs As la mitad de las veces no hay: se pide para 60 días'
     if p['g']!='BSAS' or r<0.5: return T,''
     # Mismo % que la app (revisión etapa 1, 24/10; revisión etapa 3, 29/10/2026: con el envío de Full en el divisor y el peor caso, `margen`).
     # `m` = el del color cuando se juzga color por color; sin `m`, el del producto.
@@ -435,7 +492,7 @@ def venta_mot(p):
     if p.get('ultv'): return f"precio de hoy para el maximo de compra (la ultima venta fue a ${p['ultv']}, mas cara)"
     if p['v180']==0: return 'nunca vendio: precio de hoy para el maximo de compra'
     return 'precio normal de venta para el maximo de compra'
-N=[];avisos=[]
+N=[];avisos=[];ESCN=[]
 # EL MOTIVO LO LEE TITO (09/10/2026, Matías: "los pedidos los ve mi viejo y entra en el cerebrito (...) referite como
 # 'hola tito!' y explicale por qué le pediste ese producto y esas unidades. hablale con confianza y resumido").
 def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
@@ -538,7 +595,10 @@ for p,q,d,rent in res:
                 # antes se sumaba después del "no te lo pido más" y el pedido al Paulvic llevaba un aroma que no manda.
                 if (p['id'],v['v']) in BAJA_ML or v.get('nunca'): avisos.append(f"{p['n']} #{v['v']}: la perfumería pide {p['perf'][0]} pero no viene más: no lo pido (avisale a Matías)")
                 else: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
+            _ef=esc_armar(v.get('esc'),t,T_de(p,r,obj))
+            if _ef and qq>0 and not jv and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
+            if _ef: ESCN.append(esc_linea(f"{pid}#{v['v']}",_ef))
         if not filas:
             # Producto con colores sin ningún color con datos: no se puede escribir sin color (decido lo rechaza). Si había
             # una decisión mía vieja, se borra (=auto) para que no quede pidiendo unidades de otro momento.
@@ -582,6 +642,9 @@ for p,q,d,rent in res:
         # `|cub=` (revisión etapa 3, 29/10/2026): lo que esta cuenta ya restó fuera de Full (oficina + camino a Full + lo que viaja). `decido`
         # lo guarda aparte y la web resta de lo decidido sólo lo que ENTRÓ después; antes volvía a restar la oficina y el camino (Te pido 15
         # con 10 en la oficina y 5 en camino → la web lo dejaba en 0 y el renglón desaparecía de Pedidos).
+        _ef=esc_armar(p.get('esc'),t,T_de(p,r,obj))
+        if _ef and q>0 and not juDe(pid) and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
+        if _ef: ESCN.append(esc_linea(pid,_ef))
         if p.get('perf') and p['perf'][0]>0: q,mot=q+p['perf'][0],perf_mot(q,p['perf'][0],mot)
         # Revisión etapa 9, 30/10/2026: `cub` también lleva lo apartado para la perfumería en la oficina (`perfOfi`). La web resta (oficina +
         # camino − cub) como "lo que entró después": sin esto restaba otra vez lo apartado (Termómetro: Te pido 15 con 3 apartadas → la web 12 y
@@ -589,6 +652,7 @@ for p,q,d,rent in res:
         # 30/10/2026 (4a del Local): también lo que viaja para la perfumería (`perfVia`): la web lo ve en "lo que viaja" y si no lo restaría.
         N.append(f"ped:{pid}=u|{q}|{mot}|cub={max(0,round(t-p['full']))+p.get('perfOfi',0)+p.get('perfVia',0)}")
         if p['precio'] or p.get('med60'): N.append(f"ped:{pid}=venta|{venta(p)}|{venta_mot(p)}"); N.extend(ventas_color(p))
+N.extend(ESCN)   # 🪜 al final: `decido` aplica en orden y un `=auto` o el primer color no la borran
 bad=[n for n in N if ';' in n]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open('pedidos.txt','w').write('\n'.join(N)+'\n')

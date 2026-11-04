@@ -48,8 +48,14 @@ def r_de(v30,v60,v180,tiene,dcs=30,hoy=None):
     # con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio (`HOY u/d` de
     # pedidostodo), se manda con lo que se vende A ESE PRECIO. Si no, después de una suba se mandaban 37 días al ritmo del precio barato.
     if hoy and hoy[1]>=7: return hoy[0]/hoy[1],f"al precio de hoy vende {hoy[0]} en {hoy[1]} días con stock (desde el último cambio de precio)"
-    if hoy and len(hoy)>2 and hoy[2]: return 0,f"subió mucho de precio hace poco ({hoy[0]} vendidas en {hoy[1]} días a este precio): el ritmo de antes era a un precio más barato y no vale, sólo va el mínimo si está en cero"
+    # 5a de la revisión de Datos (01/11, él el 03/11): después de una suba, los primeros 7 días va el ritmo de ANTES, igual que Pedidos (antes ponía
+    # 0 y el 01/11 quedaron 12 renglones en 0, uno con 2 en Full). Con 2+ días con stock al precio nuevo, el más bajo de los dos (1a del 03/11).
+    suba=bool(hoy and len(hoy)>2 and hoy[2])
     d=max(7,min(30,dcs))
+    if suba:
+        rA,bA=r_de(v30,v60,v180,tiene,dcs,None)
+        if hoy[1]>=2 and hoy[0]/hoy[1]<rA: return hoy[0]/hoy[1],f"subió de precio hace poco: al precio nuevo vendió {hoy[0]} en {hoy[1]} días con stock (más bajo que el ritmo de antes: uso ése)"
+        return rA,(bA+" · subió de precio hace menos de 7 días: va el ritmo de antes, como Pedidos (5a del 03/11)") if rA>0 else bA
     if v30>=3: return max(v30/d,v60/60*0.8),(f"vende {v30} en {d} d con stock" if d<30 else f"vende {v30} en 30 d")
     if v60>=3: return v60/60,f"vendió {v60} en 60 d"
     if v180>=4 and tiene==0: return v180/180,f"agotado, vendía {v180} en 180 d"
@@ -149,6 +155,8 @@ BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}   # Paulvic
 # el Watch 5 Lite volvió a 2). Lo que él decidió para un producto (y color) en una cuenta va acá y NINGUNA vuelta lo cambia:
 # (id, color o '', cuenta) → (unidades, motivo). Las unidades nunca pasan lo que hay en la oficina. Se saca de acá cuando él lo cambia.
 FIJO={
+  ('p1793417351891','','Luciana'):(4,'Él 02/11: Ayelen no tiene lugar en Full y este nunca se mandó ni vendió: se pasó a Luciana (MLA2255755299). Nuevo sin ventas: van 4 de las 9'),
+  ('p1793417351891','','Ayelen'):(0,'Él 02/11: pasó a Luciana (la publicación de Ayelen se cerró)'),
   ('p1779912655490','Persea','Luciana'):(3,'Él 25/10: el Persea queda en Luciana y es el único perfume que vende ahí. Van las 3 de la oficina (etiquetadas JVUG50085)'),
   ('p17833581096733','','Matias'):(0,'Él eligió la 1a del 25/10: no va a Full porque deja ~10% (su única venta fue a $113.250). Se vende por otro lado'),
   ('p1779912656220','blanco','Ayelen'):(0,'En Ayelen no hay publicación de P47 blanco (sólo P47m Rosa), 25/10. Sin publicación de ese color no va'),
@@ -222,6 +230,8 @@ for p in P:
     _apT=f" y {p['perfR']} apartadas para la perfumería" if p.get('perfR') else ''   # revisión etapa 9, 30/10/2026
     if pv: cta='Adriana'
     elif len(ctas)==1: cta=ctas[0]
+    # 02/11/2026: si él fijó a qué cuenta va (FIJO con unidades), manda sobre las cuentas que "pueden" (una publicación recién cerrada sigue en el log)
+    elif any(a==p['id'] and q>0 and c in ctas for (a,_v,c),(q,_m) in FIJO.items()): cta=next(c for (a,_v,c),(q,_m) in FIJO.items() if a==p['id'] and q>0 and c in ctas)
     elif not ctas: sin.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): ninguna cuenta lo puede recibir (no publica o está en nomandar)"); continue
     else: amano.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): puede ir a {', '.join(ctas)} — decidir a mano"); continue
     if p['vars'] and any(x['casa']>0 for x in p['vars']):
