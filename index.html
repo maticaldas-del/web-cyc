@@ -2015,32 +2015,7 @@ setTimeout(function _ldVigia(){try{
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-line-mes" height="120" style="min-width:500px"></canvas></div>
   </div>
 
-  <!-- Gráfico % Ganancia -->
-  <div class="stitle" data-metc="1">% de Ganancia <span id="met-pct-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· sobre el costo</span></div>
-  <div class="chart-box" data-metc="1">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div class="ch-title" id="chart-pct-title" style="margin-bottom:0"></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <div style="display:flex;gap:4px">
-          <button id="met-pct-diario" class="pf-btn active-all" onclick="setMetPctMode('diario',this)">Diario</button>
-          <button id="met-pct-prom" class="pf-btn" onclick="setMetPctMode('promedio',this)">Promedio</button>
-        </div>
-        <!-- 04/11/2026 (él: "elegir entre esta forma y la forma de ver que el 0 sea el piso, se marque la línea del 35% y el techo sea el punto de % más alto") -->
-        <div style="display:flex;gap:4px">
-          <button id="met-pct-esc-aj" class="pf-btn active-all" onclick="setMetPctEscala('ajustada')" title="La escala se acomoda a los números (se ven mejor las subidas y bajadas)">Ajustada</button>
-          <button id="met-pct-esc-0" class="pf-btn" onclick="setMetPctEscala('cero')" title="Abajo 0%, la línea del 35% marcada y arriba el % más alto">Desde 0%</button>
-        </div>
-        <div style="display:flex;gap:4px">
-          <button id="met-pct-general" class="pf-btn active-all" onclick="setMetPctChartView('general',this)">General</button>
-          <button id="met-pct-cuentas" class="pf-btn" onclick="setMetPctChartView('cuentas',this)">Cuentas</button>
-        </div>
-      </div>
-    </div>
-    <div style="text-align:right;margin-bottom:8px"><button class="pf-btn" onclick="abrirGraficoFS('chart-pct-mes')">⛶ Pantalla completa</button></div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-pct-mes" height="120" style="min-width:500px"></canvas></div>
-    <div id="met-pct-avg" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px"></div>
-  </div>
-  <!-- ── Selector de período: debajo del % de Ganancia (04/11/2026, él eligió 1a: "lo de seleccionar período lo quiero ahí abajo, así es más fácil"; antes iba arriba de todo) ── -->
+  <!-- ── Selector de período: ENTRE la Tendencia y el % de Ganancia (04/11/2026, él: "que esto esté entremedio de los dos, así queda cómodo para ambas gráficas"; antes arriba de todo y un rato debajo del %) ── -->
   <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
     <!-- Un botón con el período elegido. Las opciones salen al tocarlo, agrupadas: por un lado
          los "últimos N días", por otro un día/mes/año concreto, y aparte el período a medida. -->
@@ -2096,6 +2071,31 @@ setTimeout(function _ldVigia(){try{
     </div>
   </div>
 
+  <!-- Gráfico % Ganancia -->
+  <div class="stitle" data-metc="1">% de Ganancia <span id="met-pct-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem">· sobre el costo</span></div>
+  <div class="chart-box" data-metc="1">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ch-title" id="chart-pct-title" style="margin-bottom:0"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;gap:4px">
+          <button id="met-pct-diario" class="pf-btn active-all" onclick="setMetPctMode('diario',this)">Diario</button>
+          <button id="met-pct-prom" class="pf-btn" onclick="setMetPctMode('promedio',this)">Promedio</button>
+        </div>
+        <!-- 04/11/2026 (él: "elegir entre esta forma y la forma de ver que el 0 sea el piso, se marque la línea del 35% y el techo sea el punto de % más alto") -->
+        <div style="display:flex;gap:4px">
+          <button id="met-pct-esc-aj" class="pf-btn active-all" onclick="setMetPctEscala('ajustada')" title="La escala se acomoda a los números (se ven mejor las subidas y bajadas)">Ajustada</button>
+          <button id="met-pct-esc-0" class="pf-btn" onclick="setMetPctEscala('cero')" title="Abajo 0%, la línea del 35% marcada y arriba el % más alto">Desde 0%</button>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button id="met-pct-general" class="pf-btn active-all" onclick="setMetPctChartView('general',this)">General</button>
+          <button id="met-pct-cuentas" class="pf-btn" onclick="setMetPctChartView('cuentas',this)">Cuentas</button>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right;margin-bottom:8px"><button class="pf-btn" onclick="abrirGraficoFS('chart-pct-mes')">⛶ Pantalla completa</button></div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-pct-mes" height="120" style="min-width:500px"></canvas></div>
+    <div id="met-pct-avg" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px"></div>
+  </div>
   <!-- Margen por rubro (21/09/2026) y reputación de las cuatro cuentas -->
   <div class="stitle">Margen por rubro <span id="met-rubro-period" style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;font-size:.65rem"></span></div>
   <div id="met-rubros"></div>
@@ -3385,7 +3385,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.117';
+const APP_VERSION='28.118';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3398,6 +3398,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.118',f:'04/11',h:'13:50',c:[{n:1,t:'📊 Métricas: el selector de período quedó entre el gráfico de Tendencia y el de % de Ganancia, cómodo para los dos.'}]},
   {v:'28.117',f:'04/11',h:'13:35',c:[{n:2,t:'💵 Plata por día: el promedio del mes en curso cuenta sólo los días terminados (hoy, que está a medio día, ya no lo baja). El día 1 usa el de hoy.'}]},
   {v:'28.116',f:'04/11',h:'13:20',c:[{n:2,t:'📊 Métricas → % de Ganancia: botón nuevo Ajustada / Desde 0%. Desde 0% arranca abajo en 0, marca la línea del 35% y arriba llega al % más alto (queda recordado).'}]},
   {v:'28.115',f:'04/11',h:'13:05',c:[{n:2,t:'📊 Métricas: el selector de período (Mes ▾, Total/Neto/Ganancia y las flechas) pasó abajo del gráfico de % de Ganancia.'}]},
