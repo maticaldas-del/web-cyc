@@ -2088,6 +2088,12 @@ setTimeout(function _ldVigia(){try{
     <div style="text-align:right;margin-bottom:8px"><button class="pf-btn" onclick="abrirGraficoFS('chart-pct-mes')">⛶ Pantalla completa</button></div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-pct-mes" height="120" style="min-width:500px"></canvas></div>
     <div id="met-pct-avg" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px"></div>
+    <!-- 04/11/2026 (él: "lo de seleccionar período lo quiero ahí abajo, así es más fácil"): ‹ › del período debajo del gráfico, el mismo de arriba. -->
+    <div id="ms-ctrl-pctnav" style="display:none;justify-content:center;align-items:center;gap:12px;margin-top:14px">
+      <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
+      <span id="met-pct-navlbl" style="font-size:.8rem;font-weight:700;min-width:140px;text-align:center"></span>
+      <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
+    </div>
   </div>
 
   <!-- Margen por rubro (21/09/2026) y reputación de las cuatro cuentas -->
@@ -3379,7 +3385,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.113';
+const APP_VERSION='28.114';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3398,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.114',f:'04/11',h:'12:55',c:[{n:1,t:'📊 Métricas → % de Ganancia: abajo del gráfico están las flechas ‹ › para cambiar de día, mes o año sin subir.'}]},
   {v:'28.113',f:'04/11',h:'12:05',c:[{n:1,t:'💰 Arqueo → Lo que debemos: "Deuda de CYC" ahora se llama "Dólares Abuela".'}]},
   {v:'28.112',f:'04/11',h:'05:40',c:[{n:1,t:'🔍 Revisión de las Reglas del cerebro: textos al día y 18 decisiones para "resolvamos".'}]},
   {v:'28.111',f:'04/11',h:'02:20',c:[{n:2,t:'Pedidos → 📋 Listas: solapa nueva 🔎 Proveedores a revisar, con los proveedores que encuentra Claude por internet. Sólo aparecen los que tienen productos que dan 35% o más y son el mismo producto que en ML (foto revisada).'}]},
@@ -26459,6 +26466,7 @@ function renderPctChartFromScope(scope){
   const canvas=document.getElementById('chart-pct-mes');if(!canvas||!window.Chart)return;
   const {labels,buckets,bucketsPrev,bucketsYear,title,sinPrev}=metScopeBuckets(scope);
   const t=document.getElementById('chart-pct-title');if(t)t.textContent=title+(metPctMode==='promedio'?' · promedio corriendo':'');
+  try{const nv=document.getElementById('ms-ctrl-pctnav'),nl=document.getElementById('met-pct-navlbl');if(nv){const ok=['dia','mes','ano'].includes(metScopeMode);nv.style.display=ok?'flex':'none';if(nl)nl.textContent=title;}_metNextApagar();}catch(e){}
   renderMetPctAvg(buckets,bucketsPrev,bucketsYear);
   const pct=(g,c)=>c>0?+(g/c*100).toFixed(1):null;
   // Promedio corriendo (ponderado): en el día N usa la ganancia y el costo ACUMULADOS de todo lo
