@@ -1770,7 +1770,7 @@ venta muestra ese aroma marcado; elegir otro del desplegable cambia la línea.
 cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
 
 ### Etapa 1 · 04/11/2026 · 💳 Las gemelas vuelven a la MISMA PLATA que la Clásica (no el mismo %)
-- **Qué es:** él (*"a. que no haya precios absurdos"*): la 4a del 03/11 (gemela al mismo % que la Clásica) dejaba lo de costo muy bajo absurdo (Rebarbador: Clásica $14.290, Premium $25.290, envío gratis $69.390; Lupa 100 mm: $19.990 / $28.690 / $68.090) y esas gemelas no vendían. Ahora `alcanza` pide sólo la misma plata; el 35% del peor caso lo sigue poniendo `precioGemelaAlPiso`. Bajan solas cada hora de a −15% (`escalonGemela`). `gemelaalinear` (prueba) al cambiar: 79 Premium bajan, las de costo bajo entre −15% y −45%.
+- **Qué es:** él (*"a. que no haya precios absurdos"*): la 4a del 03/11 (gemela al mismo % que la Clásica) dejaba lo de costo muy bajo absurdo (Rebarbador: Clásica $14.290, Premium $25.290, envío gratis $69.390; Lupa 100 mm: $19.990 / $28.690 / $68.090) y esas gemelas no vendían. Ahora `alcanza` pide sólo la misma plata; el 35% del peor caso lo sigue poniendo `precioGemelaAlPiso`. Bajan solas cada hora de a −15% (`escalonGemela`). `gemelaalinear` (prueba) al cambiar: 101 Premium bajan, las de costo bajo entre −15% y −45%.
 - **Dónde vive:** `sync.mjs` `precioGemelaIgual` y `alinearGemelasEnvio` (`alcanza`); `GEMELA_PCT_TOL` queda sin uso.
 - **Qué chequear:** que ninguna gemela quede abajo del 35% del peor caso si su Clásica está en 35%+; que las de costo bajo bajen en pocas horas a cerca de su Clásica.
 
