@@ -3559,6 +3559,11 @@ Se cruzaron las versiones de `APP_CAMBIOS` y los commits del robot desde el 13/1
    mide. La 3 suma Paulvic, Elegancia, el catálogo de Paraguay, las listas y "no lo consigo". La 8 suma la ficha médica y las
    estrategias.
 
+### Etapa 2 · 04/11/2026 · 🛒 El aviso de cada venta de $10.000+ vuelve a Telegram (canal privado) además del teléfono
+- **Qué es:** él (el Joystick Xbox del 04/11, $24.691 de ganancia, no le avisó por Telegram): `AVISO_VENTA_TELEGRAM = true`. Va por `sendTelegram(…,'venta')` → `sendAlerta` directo (el canal privado de Mati; el grupo de los resúmenes no). Mismo umbral ($10.000 por compra entera) y mismo horario (00:30-10:00 se junta para las 10:00).
+- **Dónde vive:** `sync.mjs` `AVISO_VENTA_TELEGRAM`, `avisarVentas`.
+- **Qué chequear:** que llegue UNA vez por compra (no doble con el teléfono) y nunca al grupo de los resúmenes.
+
 ### Etapa 2 · 17/10/2026 · "cuánto cobrar" proyecta a fin de mes (v24.21, pedido suyo)
  · Qué: `cobroProyMes(ym)` (index.html) lleva neto − mercadería del mes al mes entero (ritmo del mes por días transcurridos; la línea de los
    últimos 7 días se sacó en v24.22, pedido suyo) y resta los gastos del mes (lo cargado o lo del mes anterior si fue más). ÷ 3, a $1.000.
