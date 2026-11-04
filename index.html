@@ -1269,9 +1269,11 @@ setTimeout(function _ldVigia(){try{
   <div id="tab-arqueo">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px">
       <span style="font-size:.67rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Ver período</span>
+      <button class="vbtn" onclick="finViewNav(1)" style="padding:3px 13px;font-size:1.1rem;line-height:1" id="fin-nav-prev" title="Mes anterior">‹</button>
       <select id="fin-view-sel" class="cal-select" style="font-size:.72rem" onchange="loadFinView()">
         <option value="">Actual (en vivo)</option>
       </select>
+      <button class="vbtn" onclick="finViewNav(-1)" style="padding:3px 13px;font-size:1.1rem;line-height:1" id="fin-nav-next" title="Mes siguiente">›</button>
       <span id="fin-view-banner" style="font-size:.67rem;color:var(--amber);display:none">📋 Solo lectura — datos del cierre guardado</span>
     </div>
 
@@ -2371,6 +2373,8 @@ setTimeout(function _ldVigia(){try{
       <button class="vbtn active" id="cmp-s-mes" onclick="setCmpScope('mes',this)">Mes</button>
       <button class="vbtn" id="cmp-s-ano" onclick="setCmpScope('ano',this)">Año</button>
     </div>
+    <!-- 04/11/2026 (él: "acá poner flecha así es más fácil, y en arqueo también") -->
+    <div style="display:flex;gap:6px"><button class="vbtn" onclick="cmpNav(-1)" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button><button class="vbtn" onclick="cmpNav(1)" style="padding:3px 13px;font-size:1.1rem;line-height:1" id="cmp-nav-next">›</button></div>
     <div id="cmp-ctrl-dia" style="display:none;align-items:center;gap:8px">
       <input type="date" id="cmp-dia" class="cal-select" onchange="initComprasPage()">
     </div>
@@ -2561,6 +2565,17 @@ function enterResumen(){
   if(btn)setResScope('mes',btn);else renderResumen_page();
 }
 
+// ‹ › de Gastos (04/11/2026): un día, un mes o un año para atrás/adelante; la › se apaga en hoy.
+function cmpNav(d){
+  const g=id=>document.getElementById(id);
+  if(cmpScopeMode==='dia'){const el=g('cmp-dia');if(!el||!el.value)return;const t=new Date(el.value+'T12:00:00');t.setDate(t.getDate()+d);const n=t.toISOString().split('T')[0];if(d>0&&n>todayStr())return;el.value=n;}
+  else if(cmpScopeMode==='ano'){const el=g('cmp-ano-val');const y=(parseInt(el.value,10)||new Date().getFullYear())+d;if(d>0&&y>new Date().getFullYear())return;el.value=y;}
+  else{const ms=g('cmp-mes'),ma=g('cmp-anio');const t=new Date(parseInt(ma.value,10)||new Date().getFullYear(),(parseInt(ms.value,10)||1)-1+d,1);const n=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');if(d>0&&n>todayStr().slice(0,7))return;ms.value=String(t.getMonth()+1).padStart(2,'0');ma.value=t.getFullYear();}
+  initComprasPage();
+}
+function _cmpNavPintar(){try{const g=id=>document.getElementById(id);let sig=null;
+  if(cmpScopeMode==='dia')sig=_navSigTope('dia',g('cmp-dia')?.value);else if(cmpScopeMode==='ano')sig=_navSigTope('anio',g('cmp-ano-val')?.value);else sig=_navSigTope('mes',(g('cmp-anio')?.value||'')+'-'+String(g('cmp-mes')?.value||'').padStart(2,'0'));
+  _navNextPintar(g('cmp-nav-next'),sig);}catch(e){}}
 function setCmpScope(scope,btn){
   cmpScopeMode=scope;
   document.querySelectorAll('#cmp-s-dia,#cmp-s-mes,#cmp-s-ano').forEach(b=>b.classList.remove('active'));
@@ -3380,7 +3395,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.119';
+const APP_VERSION='28.120';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3393,6 +3408,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.120',f:'04/11',h:'14:15',c:[{n:1,t:'‹ › Flechas para cambiar de período en Gastos (día, mes o año) y en el Arqueo (mes cerrado anterior/siguiente).'}]},
   {v:'28.119',f:'04/11',h:'14:00',c:[{n:1,t:'📊 % de Ganancia: siempre desde 0% (con la línea del 35% y arriba el % más alto); se sacaron los botones Ajustada / Desde 0%.'}]},
   {v:'28.118',f:'04/11',h:'13:50',c:[{n:1,t:'📊 Métricas: el selector de período quedó entre el gráfico de Tendencia y el de % de Ganancia, cómodo para los dos.'}]},
   {v:'28.117',f:'04/11',h:'13:35',c:[{n:2,t:'💵 Plata por día: el promedio del mes en curso cuenta sólo los días terminados (hoy, que está a medio día, ya no lo baja). El día 1 usa el de hoy.'}]},
@@ -27792,8 +27808,12 @@ function initFinViewSel(){
   if(cur&&sel.querySelector(`option[value="${cur}"]`))sel.value=cur;
 }
 
+// ‹ › del Arqueo (04/11/2026, él): las opciones van de la más nueva (Actual) a la más vieja; ‹ = una más vieja, › = una más nueva.
+function finViewNav(d){const sel=document.getElementById('fin-view-sel');if(!sel)return;const i=sel.selectedIndex+d;if(i<0||i>=sel.options.length)return;sel.selectedIndex=i;loadFinView();}
+function _finNavPintar(){const sel=document.getElementById('fin-view-sel');if(!sel)return;const p=document.getElementById('fin-nav-prev'),n=document.getElementById('fin-nav-next');
+  const set=(b,off)=>{if(!b)return;b.disabled=off;b.style.opacity=off?'.35':'';};set(p,sel.selectedIndex>=sel.options.length-1);set(n,sel.selectedIndex<=0);}
 function loadFinView(){
-  initFinViewSel();
+  initFinViewSel();setTimeout(_finNavPintar,0);
   const sel=document.getElementById('fin-view-sel');
   const key=sel?.value;
   const banner=document.getElementById('fin-view-banner');
@@ -27826,6 +27846,7 @@ function loadFinView(){
 /* ═══════════ COMPRAS Y GASTOS ═══════════ */
 function getCompraTipo(x){return (x&&x.tipo==='mercaderia')?'mercaderia':'gasto';}
 function initComprasPage(){
+  setTimeout(_cmpNavPintar,0);
   _initScopeDefaults('cmp');
   onCmpTipo();
   renderComprasChecklist();renderComprasList();renderComprasCats();renderComprasHist();updateComprasTotals();renderComprasComp();
