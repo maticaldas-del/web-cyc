@@ -3395,7 +3395,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.120';
+const APP_VERSION='28.121';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3408,6 +3408,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.121',f:'04/11',h:'14:40',c:[{n:2,t:'🇵🇾 Pedido de Paraguay: un perfume que no da 35% en ML ya no entra "por la perfumería" (ni con 🪄 Llenar ni a mano sin confirmar): la perfumería ahora paga costo + 25%. Lo que pida la perfumería se carga aparte.'}]},
   {v:'28.120',f:'04/11',h:'14:15',c:[{n:1,t:'‹ › Flechas para cambiar de período en Gastos (día, mes o año) y en el Arqueo (mes cerrado anterior/siguiente).'}]},
   {v:'28.119',f:'04/11',h:'14:00',c:[{n:1,t:'📊 % de Ganancia: siempre desde 0% (con la línea del 35% y arriba el % más alto); se sacaron los botones Ajustada / Desde 0%.'}]},
   {v:'28.118',f:'04/11',h:'13:50',c:[{n:1,t:'📊 Métricas: el selector de período quedó entre el gráfico de Tendencia y el de % de Ganancia, cómodo para los dos.'}]},
@@ -17912,6 +17913,8 @@ async function candNoML(id,on){
 // 21/10/2026, él: "saca lo de 'no da en el local'": el botón ya no se dibuja (lo marcado antes sigue marcado).
 function perfNoLocalBtn(tipo,id,on){return '';return `<button class="btn" style="font-size:.6rem;padding:2px 8px;margin-left:4px" onclick="event.preventDefault();event.stopPropagation();perfNoLocal('${tipo}','${id}',${on?'false':'true'})" title="${on?'Volver a sugerirlo para la perfumería del local':'Ya lo probaron en la perfumería y no da: dejar de sugerirlo para el local'}">${on?'↩︎ 🏪 volver a sugerir':'🏪✕ no da en el local'}</button>`;}
 function candLocalPct(c){if(!candEsPerf(c)||c.noLocal)return null;const u=parseFloat(c.usd)||0,tc=curTC();return perfLocalPct(u*RECARGO_PY*tc,Number(c.mlPrecio)||0);}
+// 04/11/2026 (él, 1a): un perfume que no da 35% en ML ya no entra al pedido por la perfumería (ahora paga costo + 25%); lo que pide va por pedperf.
+const PERF_LOCAL_ENTRA=false;
 function candLocalOk(c){const l=candLocalPct(c);return l!=null&&l>=PERF_LOCAL_GAN;}
 // El % azul al lado del de ML (rojo si no llega: azul si da).
 function perfLocalHTML(pct,grande){if(pct==null||!isFinite(pct))return'';const ok=pct>=PERF_LOCAL_GAN;
@@ -18075,7 +18078,7 @@ function candPuedePedir(c,o){
   // ABAJO DEL PISO YA NO ES UN FRENO DURO (16/10/2026, él: "que deje agregar productos que no dan. pero que tenga que
   // confirmar al agregar uno de esos. asi no agrego sin querer"). Se siguen mirando los otros frenos (fotos, vendidas)
   // y, si sólo falla el margen, sale `bajoPiso:true`: candSetPedir pregunta antes de cargar. Llenar no los mete nunca.
-  const _bajo=(m<candPisoDe(c)&&!candLocalOk(c))?`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`:'';   // perfume que da en el local: entra igual
+  const _bajo=(m<candPisoDe(c)&&!(PERF_LOCAL_ENTRA&&candLocalOk(c)))?`da ${m.toFixed(1)}% y tu piso es ${candPisoDe(c)}%`:'';   // perfume que da en el local: entra igual
   // Sin las dos fotos no se compra (07/10/2026, "sin foto tampoco acepto"): no se puede ver que sea el mismo producto.
   if(!/^https:\/\//.test(String(c.foto||'')))return{ok:false,motivo:'falta la foto de comprasparaguay'};
   if(!/^https:\/\//.test(String(c.mlFoto||'')))return{ok:false,motivo:'falta la foto de ML'};
@@ -20137,7 +20140,7 @@ function candidatosHTML(){
   // LOS QUE NO LLEGAN AL PISO, JUNTOS ABAJO Y CERRADOS (02/10/2026, pedido suyo: *"todos los candidatos
   // que dan abajo de 25% (los rojos) ponerlos juntos ABAJO en un desplegable cerrado, así no molestan"*).
   // No se esconden: el robot los vuelve a medir y si cruzan el piso vuelven arriba solos.
-  const _esRojo=c=>c.noML?!candLocalOk(c):(c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c)&&!candLocalOk(c));
+  const _esRojo=c=>c.noML?!candLocalOk(c):(c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c)&&!(PERF_LOCAL_ENTRA&&candLocalOk(c)));
   const _card=c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;

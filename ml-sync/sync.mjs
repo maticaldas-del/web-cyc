@@ -11756,7 +11756,11 @@ function listaFilaVigente(e, fechaProv) {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(String(e.fl || '')) ? String(e.fl) : (Number(e.ts) > 0 ? new Date(Number(e.ts) - 3 * 36e5).toISOString().slice(0, 10) : '');
   return !d || d >= new Date(Date.parse(f + 'T12:00:00Z') - LISTA_GRACIA_DIAS * 864e5).toISOString().slice(0, 10);
 }
-const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 35;   // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
+const PERF_LOCAL_TIENDA = 30, PERF_LOCAL_GAN = 35;
+// 04/11/2026 (él eligió 1a con el Stella Dustin Our Love, 34%): desde el 29/10 la perfumería es otro negocio y paga costo + 25%, así que
+// un perfume que no da 35% en ML ya NO entra al pedido "por la perfumería" (la 44a del 24/10 queda sin efecto). Lo que pide la perfumería
+// va por `pedperf`, aparte. En `false` las cuatro puertas (pycat, candidatos, pedir, revisarcompra) dejan de abrirse.
+const PERF_LOCAL_ENTRA = false;   // 24/10/2026 (él): "quiero que todo quede en 35% o más, ventas y pedidos, no tenemos plata para todo"
 function perfLocalPct(costoPesos, precioML) {
   if (!(costoPesos > 0) || !(precioML > 0)) return null;
   return (precioML / (1 + PERF_LOCAL_TIENDA / 100) / costoPesos - 1) * 100;
@@ -13661,7 +13665,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
       // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
-      if (upd.m >= piso || (!esLista && loc != null && loc >= PERF_LOCAL_GAN)) { res.b25++; res.pasan.push({ cod, e, upd }); if (upd.m < piso) console.log(`     🏪 en ML no llega, pero en la perfumería del local deja ${loc.toFixed(0)}%: pasa`); } else if (upd.m >= 15) res.b15++; else res.bajo++;
+      if (upd.m >= piso || (PERF_LOCAL_ENTRA && !esLista && loc != null && loc >= PERF_LOCAL_GAN)) { res.b25++; res.pasan.push({ cod, e, upd }); if (upd.m < piso) console.log(`     🏪 en ML no llega, pero en la perfumería del local deja ${loc.toFixed(0)}%: pasa`); } else if (upd.m >= 15) res.b15++; else res.bajo++;
       if (aplicar) await db.patch(RUTA + '/' + cod, upd);
     } catch (err) { res.err++; console.log(`  ✗ ${e.n.slice(0, 60)}: ${String(err.message || err).slice(-120)}`); await fallaMedir(cod, e, err); if (/429/.test(String(err.message || err))) await espera(60000); }
   }
@@ -14343,8 +14347,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
     // se lo comía antes (ver el comentario largo de ese `if`). 27 candidatos se descartaron con
     // una sola lectura mientras esta línea afirmaba que no podía pasar.
     const _loc = (!c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${mlTit || ''}`)) ? perfLocalPct(puesto * tc, mlPrecio) : null;
-    if (_loc != null && _loc >= PERF_LOCAL_GAN && margen < candPisoDe({ ...c, mlTit })) console.log(`      🏪 en ML da ${margen.toFixed(1)}%, pero en la perfumería del local deja ${_loc.toFixed(0)}%: no se descarta`);
-    if (margen < candPisoDe({ ...c, mlTit }) && !(_loc != null && _loc >= PERF_LOCAL_GAN)) {
+    if (PERF_LOCAL_ENTRA && _loc != null && _loc >= PERF_LOCAL_GAN && margen < candPisoDe({ ...c, mlTit })) console.log(`      🏪 en ML da ${margen.toFixed(1)}%, pero en la perfumería del local deja ${_loc.toFixed(0)}%: no se descarta`);
+    if (margen < candPisoDe({ ...c, mlTit }) && !(PERF_LOCAL_ENTRA && _loc != null && _loc >= PERF_LOCAL_GAN)) {
       const antesM = (c.margen != null && isFinite(c.margen)) ? Number(c.margen) : null;
       const primera = antesM == null;
       // N3 de la segunda vuelta (25/09/2026): la segunda medición tiene que ser de OTRO momento.
@@ -25138,7 +25142,7 @@ async function main() {
           : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
           // Revisión etapa 1 (24/10): el 🌟 medido contra un precio visto que ya venció (30 días) no se pide.
           : (c.sinComp && !svpVigente(c)) ? '🌟 el precio que vio el chat en ML tiene más de 30 días: falta volver a mirarlo'
-          : (mg < candVaraDe(c) && !(_tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y la vara de compra es ${candVaraDe(c)}%`
+          : (mg < candVaraDe(c) && !(PERF_LOCAL_ENTRA && _tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y la vara de compra es ${candVaraDe(c)}%`
           : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
           // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
           // frenaba (`candPuedePedir`) y este comando no.
@@ -25533,7 +25537,7 @@ async function main() {
         // 44a (24/10/2026, él): un perfume que en ML no llega pero en la perfumería del local deja 25%+ entra al pedido (esa venta no pasa
         // por el tope de H, así que el local sigue en 25% aunque sea nuevo): la revisión acepta la misma excepción que la medición.
         const _locR = (!c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`)) ? perfLocalPct(r.costo, mlPrecio) : null;
-        if (r.margen < candVaraDe(c) && _locR != null && _locR >= PERF_LOCAL_GAN) { reparos.push(`en ML da ${r.margen.toFixed(1)}% (vara ${candVaraDe(c)}%): va para la perfumería del local, donde deja ${_locR.toFixed(0)}%`); console.log(`     🏪 en ML da ${r.margen.toFixed(1)}%, abajo de la vara de ${candVaraDe(c)}%, pero en la perfumería del local deja ${_locR.toFixed(0)}%: se puede pedir para el local`); }
+        if (PERF_LOCAL_ENTRA && r.margen < candVaraDe(c) && _locR != null && _locR >= PERF_LOCAL_GAN) { reparos.push(`en ML da ${r.margen.toFixed(1)}% (vara ${candVaraDe(c)}%): va para la perfumería del local, donde deja ${_locR.toFixed(0)}%`); console.log(`     🏪 en ML da ${r.margen.toFixed(1)}%, abajo de la vara de ${candVaraDe(c)}%, pero en la perfumería del local deja ${_locR.toFixed(0)}%: se puede pedir para el local`); }
         else if (r.margen < candVaraDe(c)) { frenos.push(`hoy da ${r.margen.toFixed(1)}%, abajo de la vara de compra de ${candVaraDe(c)}%`); console.log(`     ❌ ABAJO DE LA VARA DE COMPRA DE ${candVaraDe(c)}%`); }
         // UN MARGEN MUY ALTO NO ES UNA BUENA NOTICIA: ES UNA SEÑAL (19/09/2026).
         // Sale del DualSense. Cuando el catálogo de ML no es el mismo producto —una edición
