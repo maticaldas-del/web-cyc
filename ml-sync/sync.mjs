@@ -11962,6 +11962,26 @@ async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
 }
 const PY_VIEJO_DIAS = 2; // 2 o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él). Antes: mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
 // La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
+// Por qué un candidato NO se puede pedir ('' = se puede). La usan `pedir` y `pyllenar` (04/11/2026: la misma cuenta en los dos).
+function candPorQueNoBot(c, viajaF, _tcP) {
+  const mg = Number(c.margen);
+  return c.no ? 'está descartado de la lista'
+          : viajaF ? `ya está viajando en el pedido del ${viajaF}`
+          : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
+          // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
+          // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
+          : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
+          // Revisión etapa 1 (24/10): el 🌟 medido contra un precio visto que ya venció (30 días) no se pide.
+          : (c.sinComp && !svpVigente(c)) ? '🌟 el precio que vio el chat en ML tiene más de 30 días: falta volver a mirarlo'
+          : (mg < candVaraDe(c) && !(PERF_LOCAL_ENTRA && _tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y la vara de compra es ${candVaraDe(c)}%`
+          : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
+          // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
+          // frenaba (`candPuedePedir`) y este comando no.
+          : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
+          : !/^https:\/\//.test(String(c.mlFoto || '')) ? 'falta la foto de ML'
+          : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)'
+          : pocasVentas(candVentasDe(c), c.resCarga) ? `en ML vendió ${candVentasDe(c)} y tiene ${c.resCarga ?? '?'} reseñas: menos de ${CAND_MIN_VENTAS} vendidas y de ${CAND_MIN_RESENAS} reseñas` : '';
+}
 function candVistoTsBot(c) { let t = Math.max(Number(c && c.visto) || 0, Number(c && c.ts) || 0); if (c && Number(c.renovTs) > 0 && Math.abs(t - Number(c.renovTs)) < 5000) t = Number(c.renovDe) || 0; return t; }
 const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND_MIN_VENTAS && (Number(nv) || 0) >= CAND_MIN_VENDEDORES ? CAND_VARA_VENDE : CAND_VARA_COMPRA);
 const candVaraDe = (c) => (c ? varaCompra(candVentasDe(c), c.mlVendedores) : CAND_VARA_COMPRA);
@@ -25162,22 +25182,7 @@ async function main() {
         // pedido lo que se cargó cuando todavía daba.
         const mg = Number(c.margen);
         if (_tcP === undefined) { try { _tcP = parseFloat(((await db.get('cyc/finanzas/tipo_cambio')) || 0)) || 0; } catch { _tcP = 0; } }
-        const puede = c.no ? 'está descartado de la lista'
-          : _viaja(c) ? `ya está viajando en el pedido del ${_viaja(c)}`
-          : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
-          // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
-          // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
-          : (c.calcTs == null && Number(c.usdAntes) > 0) ? `cambió el precio de Paraguay (de US$ ${Number(c.usdAntes).toFixed(2)} a US$ ${(parseFloat(c.usd) || 0).toFixed(2)}): falta medirlo`
-          // Revisión etapa 1 (24/10): el 🌟 medido contra un precio visto que ya venció (30 días) no se pide.
-          : (c.sinComp && !svpVigente(c)) ? '🌟 el precio que vio el chat en ML tiene más de 30 días: falta volver a mirarlo'
-          : (mg < candVaraDe(c) && !(PERF_LOCAL_ENTRA && _tcP > 0 && !c.noLocal && RE_CAND_PERF.test(`${c.nombre || ''} ${c.mlTit || ''}`) && (perfLocalPct((parseFloat(c.usd) || 0) * RECARGO_PAR * _tcP, Number(c.mlPrecio) || 0) || 0) >= PERF_LOCAL_GAN)) ? `da ${mg.toFixed(1)}% y la vara de compra es ${candVaraDe(c)}%`
-          : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.resCarga) ? (Number(c.mlVendedores) === 1 ? 'en ML lo vende 1 solo vendedor: entra si vendió 100+ y ese dato falta o no llega' : 'no está medido contra un catálogo de ML con vendedores')
-          // Sin las dos fotos no se compra (regla suya del 07/10, "sin foto tampoco acepto"; etapa 3, 20/10/2026): la web ya lo
-          // frenaba (`candPuedePedir`) y este comando no.
-          : !/^https:\/\//.test(String(c.foto || '')) ? 'falta la foto de comprasparaguay'
-          : !/^https:\/\//.test(String(c.mlFoto || '')) ? 'falta la foto de ML'
-          : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)'
-          : pocasVentas(candVentasDe(c), c.resCarga) ? `en ML vendió ${candVentasDe(c)} y tiene ${c.resCarga ?? '?'} reseñas: menos de ${CAND_MIN_VENTAS} vendidas y de ${CAND_MIN_RESENAS} reseñas` : '';
+        const puede = candPorQueNoBot(c, _viaja(c), _tcP);
         if (puede && p.u > antes) { problemas.push(`"${p.busca}" → ${c.nombre}: NO se puede pedir, ${puede}`); continue; }
         cambios.push({ id, c, antes, u: p.u, baja: !!p.baja });
       }
@@ -26428,7 +26433,8 @@ async function main() {
       const sal = (c) => { const v = candVentasDe(c); const r = Number(c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
       const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
       const maxU = (c) => { const usd = parseFloat(c.usd) || 0; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
-      const ok = vivos.filter(([, c]) => !(Number(c.pedirU) > 0) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA
+      let tcL = 0; try { tcL = parseFloat(((await db.get('cyc/finanzas/tipo_cambio')) || 0)) || 0; } catch { tcL = 0; }
+      const ok = vivos.filter(([, c]) => !(Number(c.pedirU) > 0) && !candPorQueNoBot(c, '', tcL) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA
         && vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res) && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5 && star(c) >= 7)
         .sort((a, b) => star(b[1]) - star(a[1]));
       let libre = tope - ya; const elig = [];
