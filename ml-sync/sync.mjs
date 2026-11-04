@@ -13057,6 +13057,10 @@ const PY_TRAD = [
   [/\bt[eê]nis\b/gi, 'zapatillas'], [/\blanterna\b/gi, 'linterna'], [/\bbalan[cç]a\b/gi, 'balanza'], [/\btesoura\b/gi, 'tijera'],
   [/\bimpressora\b/gi, 'impresora'], [/\bconsole\b/gi, 'consola'], [/\bteclado\s+sem\s+fio\b/gi, 'teclado inalambrico'], [/\bcompat[ií]vel\b/gi, 'compatible'],
   [/\bsuporte\b/gi, 'soporte'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
+  // 04/11/2026 (control diario de la tienda): el \b de JS no ve una letra con acento al principio ("Óculos" quedaba en portugués) y faltaban
+  // palabras comunes (93 nombres de la tienda con "Elétrico/a", 31 con "Projetor", 33 con "Protetor").
+  [/(?<![\p{L}\p{N}])[oóÓ]culos(?![\p{L}])/giu, 'anteojos'], [/\bel[eé]tric([oa]s?)\b/giu, 'eléctric$1'], [/\bprojetor(es)?\b/gi, 'proyector$1'],
+  [/\bprotetor(es)?\b/gi, 'protector$1'], [/\bpulseira(s)?\b/gi, 'pulsera$1'], [/\bespremedor\b/gi, 'exprimidor'], [/\bt[oô]nico\b/giu, 'tónico'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE, CON EL CATÁLOGO DE ML EXACTO (inicio) ─────────────────────────────────
