@@ -8,8 +8,42 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### ⏳ 30/10 · Paulvic que salieron de la Oficina ML sin aroma
-- 15 Paulvic al costo a las perfumerías (repartidos 5/5/5, cargados como deuda el 30/10). **Falta restarlos de la Oficina ML**: el robot pide el aroma de cada uno y él dijo "no anotar por ahora aromas". Hasta que pase los aromas, la oficina muestra 15 Paulvic de más (Armar caja podría querer mandarlos). Pedírselos en el aviso de las 12:30.
+### 🔎 Proveedores a revisar (búsqueda de la noche del 03 al 04/11) — para el aviso de las 12:30
+- Se cargaron ~61 mayoristas de internet (~62.000 productos) en Listas → 🔎 Proveedores a revisar. Los que dan poco no aparecen.
+- De los que dan 35%+ con 2+ vendedores en ML se miraron TODAS las fotos (1.960 comparaciones): sólo **82 son el mismo producto** (90% seguro; lo dudoso, afuera).
+- Mejores: **ABC Accesorios** (13, lavado de autos Sonax, 83-183%) · **Juguetería Che** (14, Funko Pop 40-193%: confirmar que sean ORIGINALES antes de comprar) · **Carlos Benassi** (10, Nivea/Glade/Colgate/Elvive, 35-120%) · **CYM** (5, máscaras coreanas 67-91%) · **Torres y Liva** (10, bazar: Hudson, Rigolleau, sahumerios Sagrada Madre, Giesso, Crivea; 37-101%) · **Migluz** (4, pilas Philips, Kalop) · **Limpos** (4) · **Lenid**, **Naccarato**, **Tienda Móvil Rosario** (3 c/u) · otros 9 con 1-2.
+- Ojo: **Distribuidora Pop** (Mantecol 214%, Mogul 167%) es golosina, vence. **Bazar y Más** 0 de 250 · **Madu** 0 de 169. Gas para encendedor y una maceta de 80 cm daban, pero no van a Full.
+- Quedaron sin cargar: Soifer y Sanity (el archivo no se pudo leer).
+- Decidir: (a) que Tito pida precio y condiciones (mínimo de compra, envío, factura) a ABC Accesorios, Juguetería Che, Benassi y Torres y Liva · (b) esperar a la próxima pasada del domingo.
+
+### ✅ Contestó "resolvamos" del 03/11 — APLICANDO
+- **Revisión de Datos del 01/11:** 1a 2a 3a 4a 5a 6a 7a 8a 9a 10a 11a · 12: guardar **365 días** (no 180) y archivar lo viejo · 13a 14a 15a · 16b (dejar "plata por día" como está).
+- **Ideas del 02/11 (numeradas 17-31 en el chat):** 17 Tienda de Navidad y 18 ABEL en Navidad sin contestar · 19a edad real del stock (idea 7) · 20a lo más vendido de cada categoría (8) · 21a experiencia de compra (9) · 22a aviso de la barrera de $33.000 (10) · 23a ficha técnica en las preguntas (11) · 24a encargos de Tienda/ABEL en un paso (12) · 25a el buzón se carga solo (13) · 26 (14, cerrar la caja sola): **en vez de eso, tarea nueva para el chat local: mirar las cajas llegadas, si llegó todo bien o hubo problemas** · 27a el chat de Chrome carga por el panel (15) · 28 (16) sin contestar · 29a la mezcla de hoy en Ventas de hoy (17) · 30 y 31 (18, 19) sin contestar.
+- Las 4 fichas de Dai Nippon (Doree 20 y 30 vol., Otowil Lila, Calipso Nocturna) unidas a la lista el 03/11; él pidió revisar antes que sean las mismas (revisado: mismo catálogo de ML, mismo nombre y tamaño; Calipso mismo costo exacto).
+
+
+### ✅ Contestó la lista de las 12:30 del 03/11 (1a 2a 3a 4a 5 6a 7 8a 9 10b 11a 12 13a 14a 15a 16b 17b 18a 19a 20a 21a 22a 23b 24b 25b 26b) — APLICANDO
+- 1a cupo: mandar a medida que se libere lugar · 2a 3a 4a ideas de Navidad sí (escasez de Navidad antes · regalables nuevos primero el 9 y 16/11 · no liquidar del 15/11 al 24/12 lo que vende en Navidad)
+- 5 Paulvic a $21.990: **esperar hasta que pase Navidad** (los 15 días antes del stock antiguo siguen igual) · 6a Timer con descuento hasta el 16/11 · 7 Barbarella: **el que deje más plata por semana/mes** ($23.790: 3 en 11 d contra 1 en 12 d a $27.990) · 8a Kit Jade a $14.990 · 9 Indigo: **es uno solo, dejarlo** · 10b F9 vuelve al descuento de $8.590 · 11a mira títulos/fotos y no se compran más (salvo Switch) · 12 Tendedero: **que busque el mejor precio, donde venda bien y gane más**
+- 13a lanzamientos piden 3 ventas · 14a mira Mouse pad/Sacapelusas · 15a Brisa Marina sigue en el pedido
+- Revisión de Precios: 16b 17b 18a 19a 20a 21a 22a 23b 24b 25b 26b
+
+
+### 🎄 Pedido de Navidad adelantado (03/11, tarea de la 14a del 25/10) — para el aviso de las 12:30
+- **Decidido y cargado en Pedidos → Bs As** (`juicios.txt`, la noche no lo pisa):
+  - **P47:** azul 34 + blanco 24 = 58 (~$210.000). En 2025 pasó de 19 a 59, 80 y 103 por quincena; este año vende un tercio que entonces (6 por quincena), así que hasta fin de año van ~82 entre todos los colores (hay 24). Rojo y negro no se piden (no dejan 35% contra la competencia).
+  - **Filtro agua:** 280 (~$275.000). En 2025 pasó de 18 a 43 y 88 por quincena; este año vende el doble que entonces pero a precio más alto: cuento un 30% menos de ese pico.
+  - **Sábanas 2½:** con los 60 días ya pide 27 y eso cubre el pico (hasta fin de año van ~78 y hay 54): no hizo falta agregar.
+- ⚠️ **El cupo de Full no alcanza para que entre antes del Black Friday (24/11):** P47 va sólo en Ayelen (0 de lugar para chicos) y el Filtro está en Matías (12 de lugar). (a) sugerida: mandar a medida que se libere lugar (el chat de Chrome lo mira cada día) y lo que no entre queda en la oficina para ir reponiendo en diciembre · (b) retirar de Full de Ayelen y Matías lo que vende lento para hacerle lugar (un retiro sólo con tu OK).
+- ⚠️ **La completa de las 03:00 del 03/11 armó los pedidos con las reglas viejas** (30 días, Limón 59, sin el ritmo más bajo): los volví a cargar con las nuevas a las ~08:40 (736 de 736). Revisar que la de mañana use las reglas nuevas.
+
+
+### ✅ Contestó el 02/11 a la noche (1b · cupo Luciana · 4a · 5a)
+- 1b: el Paulvic Infinite Fame de Adriana (MLA1682456369, finalizado por ML por la factura) queda cerrado · el cupo de Luciana de 16.265 / 16.255 es REAL (cargado el de la rutina de hoy, 16.255/91 a las 14:38, con los otros tres) · 4a: Timer a $6.390 sin descuento · 5a: Animale For Men, escalón a $113.990 como descuento desde el 06/11 (autorizado; recordatorio para ese día).
+- Navidad, idea 1 (él, 02/11): *"paraguay pedimos cuando llega, o sea una por semana aprox. por las dudas"* → sin fechas fijas: cada pedido sale cuando llega el anterior (~1 por semana) y desde ahora lleva el pico de Navidad de cada producto (lo que vendió en la Navidad pasada). Faltan 2, 3 y 4.
+
+### ✅ Contestó la lista de las 12:30 del 02/11 (1a 2b 3a 5 6)
+- 1a los 7 tenders de Soares eran los Tender (local) de la Oficina Local (al costo, $22.000) · 2b la balanza de cocina no salió de ninguna oficina · 3a los ~90 USDT que sobran en Binance son de CYC para el próximo pedido · 5 los 15 Paulvic sin aroma restados de la Oficina ML como Paulvic general (`ofi:Paulvic=-15!gral`) · 6 Batidora Blanco: resuelto por él.
 
 ### ✅ Contestó la lista de las 12:30 del 30/10 (3a 4b 5b 6a 7a 8b 9a 10a 11a 12a 13a 14a 15a 16b 17b 18b 19a 20 después 21b 22a 23a 24a 25a+cupo 26a 27a 28 29a 30a)
 - **Hecho (v28.29):** 3a Bad Boy/212 fuera de "en camino" con `pylocal` (octubre NO se toca, 4b: "el arqueo de octubre ya cerró, no se modifica nada") · 9a dejar de la Oficina Local baja el valor a mano · 10a lo de la perfumería en papelera/no traer/sólo local se pide sólo para ella · 11a lo que viaja la cubre · 12a qué es la Oficina Local · 13a devolver de más queda en negativo · 14a % del local contra 25% · 15a el salto de `oficyc:listo` va a `cobro_corr` · 16b ¿Cierra el mes? hasta la hora del cierre · 23a sin etiqueta por cuenta · 24a Tenders en su caja · 25a envío pausado cuenta como en camino y ocupa cupo · 26a costos de Paraguay con el ticket · 27a la recompra más barata baja el costo · 28 lo que no había tachado en rojo, lo pagado y no llegado en rojo para reclamar (`pyped:reclamo`) · 29a compra de prueba sólo sin competencia medida · 8b Teikirisi, 1.4 Sexy Men y Rose vuelven a $14.990 hasta el 07/11.
@@ -60,7 +94,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ### De la completa del lunes 26/10
 - ~~Paulvic recién llegados a $21.990 y Blue Men~~: ya contestado el 26/10 a la tarde (2a: se miden con stock hasta 3 ventas esperadas y bajan en escalera los que no vendan).
 - ~~Cortapelo 4 en 1 y Panel solar~~: **27/10 él: vender al costo antes de retirar; se retira 3 días antes de pagar stock antiguo** (regla general, CLAUDE.md §5).
-- **Batidora Blanco:** 4 reclamos en 27 ventas ("faltan accesorios", "distinto a lo publicado"): hay que arreglar la descripción o las fotos de la publicación (lo tenés que hacer vos en ML).
+- ~~**Batidora Blanco:**~~ resuelto (02/11, él). 4 reclamos en 27 ventas ("faltan accesorios", "distinto a lo publicado"): hay que arreglar la descripción o las fotos de la publicación (lo tenés que hacer vos en ML).
 - **Paulvic Hot:** 0 ventas en 30 días con 9 en Full, aun a $14.360: mirar la publicación (fotos, título).
 - **Separador x2 MLA1474954957 (Ayelen):** ML le marca 62% de salud y no vende hace 60 días (la hermana MLA3207459664 sí vende con el mismo stock). (a) sugerida: revisarla en ML (fotos, ficha técnica, título) · (b) pausarla.
 - ~~Color del Centímetro~~ → **26/10 a la noche, él con capturas de ML: MLA3559540968 = Rosa · MLA1699834745 y MLA3112784736 (+ su Premium MLA2218757869) = Blanco.** Fijado con `fijarvar` (releído). No hay catálogo de ML por color (sólo "Surtido" MLA46897799). Resuelto el 27/10 (3: al precio más caro, como un solo producto).
@@ -200,7 +234,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 2. **Cómo queda armado:** (a) sugerida: sigue público y se saca del repo lo más sensible del negocio (montos de monotributo, costos, proveedores), que queda en la base con su cuenta · (b) privado y el robot se muda a un servidor propio (~US$ 5-10/mes, trabajo grande) · (c) privado pagándole a GitHub (cientos de dólares por mes, a medir).
 
 
-- **31/10 · Envío 81061560 (Ayelen):** ML no dejó modificarlo y salió con 1 P47 negro (YCAZ61507) que no estaba en la oficina. Cuando llegue a Full va a faltar esa unidad: marcarla con `cajallego:<seg>!P47 negro=0` (faltante real) y no esperar que entre. Oficina ML del P47 negro quedó en 0 (él: "no tengo ninguno").
+- **31/10 · Envío 81061560 (Ayelen):** ML no dejó modificarlo y salió con 1 P47 negro (YCAZ61507) que no estaba en la oficina. Cuando llegue a Full va a faltar esa unidad: marcarla con `cajallego:<seg>!P47 negro=0` (faltante real) y no esperar que entre. Oficina ML del P47 negro quedó en 0 (él: "no tengo ninguno"). Salió por Andreani el 31/10 12:15 (Chivilcoy, seguimiento del correo 360003146689760), por si hay que reclamar.
 
 ### Revisión de Diseño del 31/10 (13 decisiones, para cuando digas "resolvamos"; las fotos de cómo quedaría te las mandé por el chat)
 1. **Lo que hoy se corta o se corre** (medido en el teléfono y la PC): el Patrimonio total se corta ("US$ 89.3…"); Stock total abierto a 360 corta las tarjetas; en PERFUMERÍA · Mercadería no se ve qué producto es; Ventas de hoy cambia de alto y corre los botones; el número del Mes/Año pierde el último dígito; el Pedido del momento queda con una palabra por renglón; en Armar caja la plata de la cuenta elegida no se ve (verde sobre verde); la barra "🛒 N casillas sin agregar" tapa la última casilla; Rotación en la PC deja afuera "Caja ML" y "Estado"; botones de menos de 36 px para el dedo; letra Arial mezclada; textos que no se leen en el tema claro; Oficina ML no se redibuja sola cuando llegan datos nuevos. (a) sugerida: arreglarlos todos juntos sin cambiar cómo funciona nada · (b) elegís cuáles.
@@ -224,22 +258,70 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 4. **Paulvic Scarf, Green, Paradise y Gentleman a $21.990:** 15 días sin vender en la prueba, sin techo medido (no hay % de techo: falta ver si vende en las próximas semanas). (a) sugerida: lo mismo que elegiste para Transparent y Only Glow, esperar los 30 días sin vender · (b) primer escalón como descuento a $18.790 desde mañana.
 5. **Centímetro Rosa a $17.490:** 0 vendidas de ~29 esperadas en 2,6 días (antes ~9 por día); esperar al 03/11 cuesta ~$2.500 por día. (a) sugerida: esperar al 03/11 como elegiste (son 3 días) · (b) primer escalón como descuento a $14.890 ya.
 6. **Mazo de Poker x12 (1 u.):** el 06/11 cumple 30 días sin vender a $23.320 o más y ahí la escalera arranca sola (−15% como descuento, a $25.590). El 26/10 dijiste que no a bajarlo. (a) sugerida: dejar que arranque el 06/11 · (b) seguir esperando.
+- **31/10 · Pasada semanal de Nissei:** la vuelta completa ya la hizo el chat de Chrome el 30/10 (12.202 de 12.205), no se mandó texto nuevo. Probados que Nissei ya no tiene (el código no está en el catálogo): Pendrive Cruzer Blade 16gb (82788) · VS Bliss (142409) · Sennheiser CX 80s (151150) · Britney Midnight Fantasy (95416) · Tommy Men 100 ml (77482) · Revlon Colorstay 18 (115509) · Tiras nasales Gudsport (145978) · Auriculares Xiaomi tipo C (128646). Que los mire en la página por si cambió el código. Sin código: Ted Lapidus Rumba, Cuba Gold, Philips TAT2206 (no aparecen en Nissei).
 
-### 01/11 · De la completa del domingo (para cuando digas "resolvamos")
-1. **Stock antiguo: cuándo empieza el apuro.** Mercado Libre cobra $350 por mes por unidad chica de 120 a 180 días, y $3.250 desde los 180 días (9 veces más). Hoy el "ganar la caja hasta el 0%" y el "retirar 3 días antes" arrancan el día 105. Con el Pendrive 16 (27 u.), los Paulvic lentos (~80 u.) y las Cartas Españolas (34 u.) entrando a ese tramo, rematar a los 105 días regala ~$350.000 de ganancia para ahorrar ~$50.000 de cobro. (a) sugerida: en lo chico y mediano, los "15 días antes" se cuentan contra los 180 días; entre 120 y 180 se paga el cobro chico y se sigue vendiendo a su precio (lo que no vende sigue con la liquidación de 30 días). Lo confirmo con la factura de octubre · (b) dejarlo como está.
-2. **278 Centímetros "Gris" en la Oficina ML ($143.170 de costo):** no hay publicación Gris y nunca se vendió uno como Gris. Desde el 26/10 sabemos que la que creíamos Gris era Blanco. (a) sugerida: decime (o que lo mire el chat de Chrome) de qué color son. Si son Blanco los paso a Blanco; si son Gris, armo la ficha para publicarlos en Luciana · (b) dejarlos así.
-3. **Pendrive 64 (MLA1970353724) a $29.990:** 0 ventas en 14 días donde a $23.980 se esperaban ~12. El robot todavía no da el % de seguridad de techo porque compara contra la prueba de $32.990 que ya había fallado; contra $23.980, la seguridad de que $29.990 no rinde es 99%. Esperar cuesta ~$2.000 por día. (a) sugerida: primer escalón como descuento a $26.990 el 02/11 · (b) esperar al 17/11.
-4. **Gemelas que parecen sacarle ventas a la Clásica (5):** Premium de Persea, Limpia pantallas, Infusor y Cartas Casino, y la de envío gratis de la Lupa 100 mm. En las 5 la Clásica vende menos desde que existe la gemela, pero en las 5 la Clásica también subió de precio en esos días (prueba de techo): la caída es por la suba, no por la gemela. (a) sugerida: dejarlas y volver a medir el domingo 08/11 · (b) sacarlas.
-5. **Abismo (Paulvic, MLA1441622869):** perdió la caja de compra; ML pide entre $14.315 y $14.720. (a) descuento a $14.190 hasta el 07/11 · (b) esperar y, si no vende, al local el 07/11.
-6. **Auriculares Xiaomi M2413E1 (MLA2202431017):** 0 visitas en 9 días y el título dice "Modelo Desconhecido". (a) sugerida: cambiar el título (lo cambiás vos en ML) · (b) dejarlo.
-7. **Reclamos por el producto:** Batidor Blanco (4 de 19 ventas: "le faltan partes"), Batidor negro (4 de 52), Funda colchón (3 de 4). (a) sugerida: revisar qué trae la caja y la descripción antes de reponer · (b) dejarlo.
-8. **Codera talle Único (MLA2230551189):** pasarla de $33.090 a $20.290 cuando entre la caja, como elegiste, necesita tu "autorizo" (es una baja sin techo medido).
-9. **Ya hecho, sacar de la lista del 31/10:** el punto 3 (Dalí L'Ocelot) ya está en descuento a $153.990 desde el 31/10 con tu autorización.
+### 31/10 · RESPUESTAS a la lista de decisiones (él)
+- 1a **Recortadora 4 en 1** queda a $48.990 (38%) hasta que la unidad más vieja llegue a 90 días de stock; ahí lo vemos.
+- 2 · 3 · 4 **Redmi Watch 4, Disco WD 480, Adaptador TP-Link**: no bajar del **30%** hasta los 90 días de stock (después lo vemos). Pidió que le diga cuántos días tiene cada uno (pendiente: `antiguo` no los lista; sacarlos de la ficha en la completa).
+- 5 **Dalí L'Ocelot**: HECHO 31/10 — descuento propio a $153.990 (35,8% peor caso), lista sigue en $209.990 (🔐 73CH autorizada).
+- 6 · 7 · 8 **Paulvic Scarf (y Green/Paradise/Gentleman), Centímetro Rosa, Mazo Poker x12**: seguir las reglas (si tiene techo bajar en escalera hasta que venda; si vendió a ese precio, se queda).
+- 9a revisar qué se ve en público · 10a sigue público y se saca lo sensible SIN ROMPER NADA · 11a arreglar todo lo que se corta (él: "manejalo") · 12a mismos techos en 🧠/Rotación que la línea · 13a sí a todo el diseño 3-13 → PENDIENTE DE HACER (trabajo mío).
+- 14b la Tienda espera la revisión; lo que más le importa es que estén todos los productos cargados.
+
+### Revisión de Datos, historial y cerebro del 01/11 (16 decisiones, para cuando digas "resolvamos")
+1. **🔴 Las rayas no ven los descuentos** (la más importante): miden con el precio de LISTA, y después de un 📈 toda baja va como descuento. Ej.: 📈 a $20.000 sin vender 38 días y después descuento a $17.000 que vende → la línea dice 💰 $20.000 y ningún 🔴; el detector propone subir +50% arriba del precio que no vendió. (a) sugerida: que las rayas (web y robot) midan con el precio que vio el comprador (lista menos descuento) · (b) después de un 📈, bajar la lista en vez de poner descuento.
+2. **El 🔴 de 30 días sin vender se pierde cuando no hay 💰** (lo que tiene 1-2 u. en Full nunca junta días para el 💰): la línea lo dibuja pero el robot no lo guarda y lo trata como "sin techo". (a) sugerida: guardar el 🔴 aunque no haya 💰 · (b) dejarlo.
+3. **Liquidación antes de los 90 días:** la regla dice "hasta 0%", pero el 31/10 dijiste para la Recortadora, Redmi Watch 4, WD 480 y TP-Link "no bajar del 30% hasta los 90 días". (a) sugerida: regla general, piso 30% antes de los 90 días (al código) · (b) sólo esos cuatro.
+4. **Gemelas al mismo %:** hoy van a la misma PLATA con piso 35% (la de envío gratis queda con menos % que la Clásica). (a) que vayan al mismo % (suben, sobre todo la de envío) · (b) dejar misma plata y corregir el texto.
+5. **Cajas después de una suba:** con cada 📈 que vende, la caja pone 0 (el 01/11 quedaron 12 renglones en 0, uno con 2 en Full). En Pedidos elegiste lo contrario (7 días con el ritmo de antes). (a) sugerida: igual que Pedidos (7 días con el ritmo de antes) · (b) sólo con subas de ×2 o más.
+6. **Gemelas y descuentos:** cuando la Clásica baja con un descuento, la Premium y la de envío gratis se quedan al precio viejo (siguen la lista). (a) sugerida: que sigan el precio con descuento ("bajan todas juntas", 3a del 30/10) · (b) dejar.
+7. **Venta con cupón o plata de ML:** dijiste que cuenta a NUESTRO precio, pero el robot la compara con lo que pagó el comprador (Sábanas: 3 × $18.990 − $7.000 de ML = $16.657 c/u → "vendió barato"). (a) sugerida: sumarle lo que puso ML · (b) dejar.
+8. **Ritmo normal y liquidaciones:** las ventas liquidando/sobra se sacan, pero sus días no: algo que vende 1/día con 60 días liquidando queda en 0,84/día (Pedidos compra de menos). (a) sugerida: sacar también esos días · (b) dejar.
+9. **Lo que vende menos de 1 por semana en 💰:** `techo95` lo vuelve a 📈 y queda en ida y vuelta en la planilla. (a) sugerida: que quede 💰 (tu regla 4a) · (b) dejar.
+10. **Los juicios no ven los descuentos** (casi toda baja después del techo va como descuento y nunca se juzga). (a) sugerida: que entren al juicio · (b) dejar.
+11. **Ventas por la gemela:** el 🔬 dice "no hizo falta cambiar nada" aunque la Clásica se subió +50%, y las ✓ normales quedan anotadas como "esfuerzo máximo, mirada con su ficha". (a) sugerida: que mire la Clásica y diga el esfuerzo real · (b) dejar.
+12. **Historia que crece sin límite** (cambios de precio, estrategias, descuentos, análisis): la web los baja enteros. (a) sugerida: guardar 180 días y archivar lo viejo · (b) dejar.
+13. **El día de una suba cuenta como vendido al precio nuevo** (la venta que dispara el +50% es de antes de subir): Pedidos ve 1 venta al precio nuevo y Armar caja manda 3 a Full de algo que no vendió a ese precio. (a) sugerida: la misma regla que las rayas en todos lados (el precio más parecido a lo cobrado) · (b) dejar.
+14. **Rayas de la web con una sola publicación activa:** mezclan los colores y cuentas pausados (dice 💰 $15.000 de un color que esa publicación nunca tuvo), y el 🧠 dice otra cosa. (a) sugerida: medir sólo esa publicación y sus gemelas, como el robot · (b) dejar.
+15. **La completa de las 03:00 mide con la línea de anteayer** (la de ayer se escribe recién a las 6-7): techo, 30 días sin vender y la línea de las rayas llegan un día tarde. (a) sugerida: que la completa escriba la línea de ayer antes de medir (cambia la tarea de las 03:00) · (b) dejar.
+16. **"Plata por día" del mes cuenta hoy a medias** (el 1º de cada mes parece que cae fuerte). (a) sugerida: sacar el día de hoy del promedio · (b) dejar.
 - **01/11 · Rutina del chat de Chrome:**
-  - El cupo de Full de Luciana vino como "16265 chicos" (los otros: Adriana 487, Ayelen 0, Matías 9). Parece mal leído, así que no lo cargué. Que el chat lo vuelva a mirar mañana.
+  - ~~El cupo de Luciana 16.265~~ → es real (él, 02/11): cargado.
   - ML finalizó el Paulvic Infinite Fame de Adriana (MLA1682456369) por no subir la factura que comprueba que es original. (a) sugerida: subir la factura del pedido de Paulvic desde la cuenta de Adriana y pedir que la habiliten · (b) dejarla cerrada.
   - En Nissei no aparecen más el Pen Drive SanDisk Z530 (146208) ni los Redmi Buds 8 Pro (152527).
 
+## CyberMonday (01/11 a la noche) — los que NO entraron al Cyber
+- Sábanas 1½ Beige (MLA3233166504): quedó 1 sola unidad → ya no es sobra; sigue a $18.990 (41%). No entró.
+- Paulvic Silver (MLA3026476116): quedan 2 → ya no es sobra; sigue a $21.990. No entró.
+- Recortadora 4 en 1 (MLA1474502515): el freno de la liquidación de 30 días la frenó (ya bajó esta semana; el próximo escalón va a los 7 días). Sigue en $48.990 (41,7%). El 16/11 cumple 90 días y arranca su escalera (ya agendado).
+- Cortadora Sportsman (MLA2113762174): a $11.630 quedaba en 7,7% y su unidad más vieja tiene 75 días (abajo del 35% sólo con 90+). Sigue a $14.790 (39,8%). Para meterla igual hace falta su 🔐 autorizo.
+- Entraron: Paulvic Dream Way a $14.990 (~37%; ML pedía $16.480 o menos y abajo del escalón de comisión deja más) y Reflector solar a $8.720.
+
+### Ideas nuevas del 02/11 (19 ideas, todas juntas; (a) = hacerla · (b) = no; las fotos te las mandé por el chat)
+**💰 Plata de noviembre-diciembre**
+1. **🎄 Navidad en 4 tandas con el pico de cada producto** (estimo $1-2M): cada producto con pico medido en Navidad pasada se pide con su ritmo × ese pico hasta fin de año. Paraguay 9, 16, 23 y 30/11 (la del 9 llega a tiempo para Black Friday) · Tito 16 y 30/11 · Paulvic 12 y 25/11 · Reyes 7/12. En enero, Pedidos y cajas sin contar los días del pico. Reemplaza "el 14/11 para 45 días". (a) sí · (b) no.
+2. **🔥 Escasez de Navidad antes de que se note**: lo regalable que no llega a reponerse antes de Navidad y no alcanza con su pico sube en la vuelta (hoy recién se ve una semana tarde). Estimo $0,3-1M. (a) sí · (b) no.
+3. **🎁 Regalables nuevos primero en las tandas del 9 y 16/11** (perfumes, relojes, auriculares, joysticks de Para probar y 🌟 con 35%+). Estimo $0,3-0,9M. (a) sí · (b) no.
+4. **🧲 No liquidar del 15/11 al 24/12 lo que vende solo en Navidad** (se renueva el descuento que tiene, no baja más; el escalón del 23-26/11 se corre al viernes de Black Friday). Toca tu regla del 29/10; los 15 días antes del stock antiguo siguen igual. Ej.: un Paulvic que vendió 7 veces más en Navidad pasada llegaría al 3/12 ~35% más barato. (a) sí · (b) no.
+5. **🏬 Tienda "Regalos de Navidad"** con lo caro que no publicamos en ML (35 productos arriba de $550.000; ej. auriculares Sony a $893.990 contra $1.262.000 en ML; ~$140.000 por venta), pedidos hasta el 12/12 y cobrados antes de pedir a Nissei. (a) sí · (b) no (la Tienda con conocidos no anduvo).
+6. **🌸 ABEL en Navidad**: cartel "pedí hasta el 6/12 y lo retirás para Navidad", lo de ABEL viaja en el mismo envío de Nissei pagando su parte del correo, y los perfumes nuestros que igual van al local se muestran "en stock" a costo + 25%. (a) sí · (b) no.
+**🤖 Datos de ML que no usamos**
+7. **La edad REAL del stock en Full**: hoy todo lo que ya estaba antes de agosto figura "por lo menos 74 días"; la fecha real sale de los movimientos de ML que ya tenemos (controlada contra el Excel de ML). Llega a tiempo la regla de los 15 días antes de pagar stock antiguo (sólo 7 productos son ~$244.000/mes si pasan los 180 días). (a) sugerida: sí · (b) no.
+8. **Lo más vendido de cada categoría** (lo mira el chat de Chrome cada 7 días) cruzado con Nissei y las listas: productos nuevos con venta segura para llenar el lugar contra H. (a) sí · (b) no.
+9. **Experiencia de compra de cada publicación** (el puntaje de ML por reclamos: con 74 o menos pierde exposición o la pausa): verlo en la ficha para no confundir un castigo de ML con un techo, y arreglar antes de que la pausen. Primero una prueba sin escribir. (a) sí · (b) no.
+10. **Aviso si ML mueve la barrera de $33.000** (4 consultas por día; hay ~16 publicaciones esperando en $32.990). (a) sí · (b) no.
+11. **La ficha técnica de ML al lado de cada pregunta de comprador**, para contestar más en la vuelta (sólo si la ficha lo dice textual). (a) sí · (b) no.
+**🔧 Menos trabajo a mano**
+12. **Pedido de la Tienda o ABEL en un paso**: pegás el WhatsApp del cliente (o me lo pasás) y queda en el pedido de Paraguay como encargo, con el precio prometido, la seña en Ver deudas y la respuesta para el cliente lista para copiar. (a) sí · (b) no.
+13. **La RUTINA del buzón se carga sola** (cupo de Full, Mercado Pago y precios mirados): un "Ya lo pedí" de Paraguay se destraba en 2 minutos y no en la vuelta siguiente; lo raro (un cupo 3 veces más grande, un precio +40%) queda para mí. El 01/11 tres cuentas tenían el cupo de hace 12-13 días. (a) sugerida: sí · (b) no.
+14. **La caja se cierra con lo que ML confirmó**: el chat de Chrome lee el envío de ML después de tu "confirmé" y si coincide se cierra sola; si no, te muestra la diferencia antes de que salga. Cambia tu regla "sin seguimiento no se cierra". (a) sí · (b) no.
+15. **El chat de Chrome carga por el panel, no por GitHub** (una casilla "📥 Para el robot" en Mi oficina): una vuelta de Nissei pasa de 2-4 horas a minutos y no te lo piden a vos si GitHub se traba. (a) sí · (b) no.
+16. **Lo que ya contestaste no te vuelve**: la pregunta de un comprador que ya respondiste en esa ficha (el aumento del espejo, preguntado 5 veces) se contesta con tu respuesta guardada. (a) sí · (b) no.
+**✨ Comodidad en la web**
+17. **La mezcla de hoy dentro de Ventas de hoy**: barrita roja/naranja/verde de lo facturado hoy y "$X cada $100 (meta $22)", y cada venta abajo del 35% con lo que ya se hizo; un día sin rojo ni naranja brilla. (a) sí · (b) no.
+18. **🔔 "Te espera a vos" en Inicio**: una sola tarjeta con lo que necesita tu mano (publicación que ML cerró, autorizaciones 🔐 con botón para copiar el "autorizo", Paulvic que vence, ticket sin foto, cuota atrasada, cierre del mes); cada renglón lleva a su pantalla y se va solo al resolverse. (a) sí · (b) no.
+19. **Tito lee los "Hola Tito!" de corrido** (botón "Siguiente ›" dentro del 🧠 de Pedidos) · **ABEL con filtros Ella / Él / Unisex, marca y precio** (999 perfumes en una lista hoy) · **Tienda con cuotas, "Mandáselo a alguien" y parecidos** en cada producto. (a) las tres · (b) elegís.
+**⚠️ Para la próxima revisión de la Tienda (no es decisión, es aviso):** las fotos de la Tienda y de ABEL se cargan desde una dirección que dice `/fotos/produtos/` (portugués, choca con "que nadie sepa que viene de Paraguay"), y ABEL muestra 7 carteles de "más del 50% menos que en ML" que no son creíbles (el peor, 83%).
 ### 02/11 · De la completa (para cuando digas "resolvamos")
 1. ✅ **RESUELTO 02/11 (él: "dejalo al precio que está, nunca bajar el 35"): la vuelta no baja del 35%, se queda al precio de hoy.** ~~Punto medio cuando el precio que vendía queda abajo del 35%~~ (Cabotine 30 ml vendía a $43.990, Sony EX15AP, Halloween Man): la regla nueva dice volver de una al último precio que vendía, pero ahí deja menos del 35% y la unidad tiene menos de 90 días. (a) sugerida: volver de una al piso del 35% (lo más cerca del precio que vendía que permiten las reglas) · (b) escalera de a 15% como antes · (c) esperar a los 90 días.
 2. **Lanzamientos que venden 1 vez:** la regla del punto medio dice que una venta sola no alcanza para el +50%, pero el robot todavía deja subir un lanzamiento sin precio anterior con 1 venta y 24 h (Agua Oxigenada Doree). Hoy no lo subí. (a) sugerida: también pide 3 ventas (arreglo el robot) · (b) los lanzamientos siguen con 1 venta.
@@ -249,6 +331,23 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 6. **Timer (los dos, Ayelen) a $5.790 con descuento:** el 27/10 elegiste (3a) que siga con el descuento para vaciar la tanda antes del stock antiguo, y lo renové hoy hasta el 16/11. Pero el detector lo marca: a $5.790 deja 19% en el peor caso y la unidad más vieja tiene 75 días (la regla del 27/10 dice que abajo del 35% sólo desde los 90 días, faltan 15). (a) sugerida: autorizo que siga hasta el 16/11 · (b) que vuelva a $6.390 (36%) hasta los 90 días.
 7. **Centímetro Rosa:** el punto 5 del 31/10 se resolvió solo: vendió 2 a $17.490, así que no se baja. Queda en $17.490.
 
+## 🤖 Cómo viene la rutina del chat de Chrome (02/11, para el aviso de las 12:30)
+- Vuelta completa de Nissei hecha el 01/11 (12.132 de 12.135). Último mensaje RUTINA: el del 01/11; el de hoy todavía no llegó.
+- Cupos y saldos de MP del 01/11: cargados en Adriana, Ayelen y Matías. **El cupo de Luciana vino mal leído (16.265, imposible)** y quedó el de hace 14 días: que el chat lo vuelva a mirar. Ayelen tiene 0 de lugar y Matías 9: no entra nada de chicos en esas dos.
+- Los avisos de ML en Publicaciones ya son parte de la rutina (parte 3b).
+
+### Revisión de Precios del 03/11 (11 decisiones, para cuando digas "resolvamos")
+1. **🔥 escasez y ⏳ sin reposición suben +50% con UNA sola venta** (no esperan la confirmación del punto medio: el mismo patrón de las Cartas Casino). (a) sugerida: que esperen igual que 📈 (24 h y la mitad de lo esperado, o 3 ventas) · (b) que sigan subiendo con cada venta.
+2. **CyberMonday y las fechas especiales inflan la confirmación de las subas** (hoy es CyberMonday: una suba puede "confirmarse" por las ventas del evento). (a) sugerida: no contar esos días para confirmar ni para volver · (b) contarlos.
+3. **Los 10 días sin vender cuentan días con 0 visitas** (un 🆕 que nadie ve queda 🔴 a los 10 días aunque bajar no lo arregla). (a) sugerida: contar sólo días con visitas · (b) dejarlo así.
+4. **La prueba del mes (+20%) que vende pide otro +50%** sin mirar el 🔴 que ya conocemos. (a) sugerida: que se quede en ese precio, como dice la regla del mes · (b) +50%.
+5. **Lo que pediste "sin buscar techo" (la waflera, 🥊 mantener la caja):** las listas de subas igual lo proponen; hoy se salva por la marca 🧊. (a) sugerida: que 🥊 y lo 🔒 que pediste queden afuera de las subas automáticas · (b) seguir con nota + 🧊.
+6. **Gemelas abajo del 35%:** la Premium y la de envío bajan solas si la Clásica queda abajo de 33% aunque sea sin querer (subió el dólar o el costo). (a) sugerida: que acompañen sólo si la Clásica está abajo a propósito (sobra, liquidación, promo, `!piso`) · (b) dejarlo así.
+7. **"Lo pide él" en el motivo abre la regla de sobra** (cualquier texto que diga "él eligió" la saltea). (a) sugerida: que pase a ser una 🔐 tuya con "autorizo", como las otras salidas · (b) dejarlo así.
+8. **La liquidación de 30 días sin vender:** "un escalón por semana" hoy sólo se cumple abajo del 35%; arriba puede bajar cada 48 h. (a) sugerida: un escalón por semana siempre · (b) dejarlo así.
+9. **"Nunca abajo de 0%"** se mide con la ganancia normal, pero los 15 días antes del stock antiguo usan el peor caso. (a) sugerida: el peor caso en todos lados (más prudente) · (b) la ganancia normal.
+10. **`!bajopiso`** desde el 02/11 es tuya para bajar del 💰, pero la regla de escasez (F9) todavía me deja usarla. (a) sugerida: que también ahí sea tuya · (b) dejarlo así.
+11. **El control de ventas de cada hora** despierta la vuelta con cada venta de un 📈/🆕, aunque una sola venta ya no alcanza para subir. (a) sugerida: que toque sólo cuando la suba quedaría confirmada · (b) dejarlo así.
 ### 03/11 · De la completa (para cuando digas "resolvamos")
 1. **Paulvic a $21.990 (la prueba del 13-16/10):** en las 2 semanas siguientes (con el Día de la Madre) dejaron lo mismo que antes vendiendo un cuarto de las unidades, pero después casi no venden: ~15 aromas llevan 10 a 37 días sin vender (Good 22 en Full, Dream Way 30, Bella 10). Seguridad de que $21.990 es techo: 100% en Scarf, Free Love, Paradise, Green, Transparent y Only Glow · Dream Way 90% · Good 73% · Flores Rojas 19% · los demás venden muy poco para medir. Persea a $19.490 mañana cumple 10 días sin vender. (a) sugerida: primer escalón como descuento a $18.790 ya en los que llevan 10+ días sin vender, y uno por semana hasta la primera venta, nunca abajo del 35% ($14.990) · (b) dejarlos a $21.990 (el Good hasta el 16/11 como elegiste; los demás hasta 30 días sin vender).
 2. **Timer (corrige el punto 6 del 02/11):** la opción (b) decía volver a $6.390 (36%), pero hoy $6.390 da 34%: el 35% está en $6.490. (a) sugerida: las dos siguen con el descuento a $5.790 hasta el 16/11 (desde el 17/11 cumplen 90 días y ya no hace falta tu autorizo) · (b) las dos a $6.490 sin descuento hasta los 90 días.
@@ -259,6 +358,34 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 7. **Seis lanzamientos de Ayelen casi sin visitas** (Fifine, Sacapelusas, cable y basic de Xiaomi, Switch, Mouse pad): pierden la caja del catálogo por 18% a 49% y en catálogo sin la caja ML casi no los muestra. Sólo el Switch puede ganarla quedando en 35%+. (a) sugerida: que mires título y fotos en ML y no volver a comprar los otros · (b) dejarlos hasta la liquidación de 30 días.
 8. **Tendedero:** su descuento a $61.990 vence el 04/11 y el 27/10 elegiste "esperar a $67.990". (a) sugerida: dejarlo vencer y que quede a $67.990 · (b) renovarlo.
 
+## 04/11 · Mayoristas nuevos medidos enteros (AnD, AVL 112, Pirineo) — para la lista de las 12:30 (sólo informativo)
+- Revisado todo por foto o nombre, lo dudoso = no (regla del 04/11). Dan 35%+ y son el mismo producto: **AnD 2** (destornillador 6 en 1 con linterna 132%, adaptador enchufe universal 95%) · **AVL 112 0** · **Pirineo 10** (protector térmico Iyosei, shampoo Issue Saloon neutro 900 y 1000 ml, lima Mundial, pala Samantha, shampoo Fidelité 5 L, crema Otowil Hola Rulos, desodorante Algabo Foot, cepillo Dompel Sissi, desodorante Kevingston Rugby) + el **Aer en pack x6** (pedido a Tito el 04/11).
+- Esperan confirmación del chat de Chrome: 0 (todo quedó ✅ o ❌).
+
+### Revisión de las Reglas del cerebro del 04/11 (18 decisiones, para cuando digas "resolvamos")
+**Cómo se compara un precio contra otro**
+1. **Una sola vara para decidir entre dos precios:** hoy la vuelta usa la facturación ×1,5 (y la ganancia al día 10), la sobra la facturación ×1,3, la prueba del mes la ganancia por día y F14 "menos de la mitad". Ej. de sobra: a $10.990 dejaría +10% de ganancia por día y igual se frena porque no factura 1,3×. (a) sugerida: todas con la ganancia por día neta · (b) dejarlas como están.
+2. **El 🎯 objetivo (el precio que más ganancia da) contra F14 (lo que vendió a su precio no se baja):** (a) sugerida: el objetivo vale para buscar arriba (pruebas, vueltas) y F14 queda para las bajas · (b) también para abajo: un escalón si con 95% deja menos plata por día.
+3. **La vuelta de una suba se decide con ~80% de seguridad** (1 venta de 3 esperadas), pero "bajar pide 95%". (a) sugerida: dejarlo así (vuelve a un precio que ya vendió) y escribirlo como excepción · (b) que la vuelta pida 95% (0 de 3).
+4. **F14 mira 30 días; la regla del 02/11 dice 10 días sin vender.** (a) sugerida: 10 días con visitas desde la última venta · (b) 30.
+**Lo que se prueba y cuándo**
+5. **La prueba del mes pasa una sola vez:** después de probar, el producto queda ↘️ o 📈 y al mes siguiente no vuelve a entrar. (a) sugerida: que entre todo lo que lleva 30+ días sin cambio de precio con 💰 o 🔴, sin mirar la etiqueta · (b) dejarlo así.
+6. **Después de volver de una suba no hay dónde quedarse:** no puede quedar 💰 porque "vende mucho sin 🔴", y a los 30 días sólo puede volver a probar el mismo +50% que falló (el medio, ej. $7.290-7.990, no se prueba nunca). (a) sugerida: el precio que no rindió cuenta como techo medido (como ya hace ventasraras) y la próxima prueba va al medio · (b) dejarlo así.
+7. **Prueba del mes con sobra:** hoy corre igual. (a) sugerida: con sobra no hay prueba · (b) corre igual.
+8. **Lo lento (1 cada 14 días):** la prueba de +50% se juzga a los 10 días, y la mitad de las veces sale 🔴 sólo por azar y bloquea las próximas. (a) sugerida: juzgarla por 3 ventas esperadas, con 10 días como mínimo · (b) 10 días.
+9. **🔥 escasez con la caja a 8 días:** sigue subiendo +50% con cada venta ($10.000 → $29.990 → $44.990 → $67.490) aunque el stock ya alcanza hasta que llegue. (a) sugerida: frenar cuando el stock alcanza hasta la reposición · (b) dejarlo.
+10. **Llega la caja después de una escasez:** la bajada queda frenada ~12 días esperando el 95%. (a) sugerida: con 30+ días de stock, la escalera arranca sin esperar · (b) dejarlo.
+11. **La gemela de envío gratis vendió a $33.490:** la Clásica sube a $50.290 (+50%) y vuelve a $25.990; nunca se prueba la Clásica a $33.490 (el mismo precio para el comprador). (a) sugerida: probar la Clásica al precio de la gemela · (b) dejarlo.
+12. **Black Friday (25-30/11) en medio de una prueba:** las ventas del evento hacen que un precio que deja −24% quede trabado 45-60 días. (a) sugerida: no arrancar pruebas 📈 esos días y medir la vuelta sin ellos · (b) dejarlo.
+**Bajas y liquidación**
+13. **Lo que nadie ve (0 visitas) se liquida igual a los 30 días**, aunque la regla dice "si casi no lo ven, bajar no lo arregla". (a) sugerida: la liquidación cuenta sólo días con visitas · (b) dejarlo.
+14. **Caja ganada a 15 días del stock antiguo:** hoy no se puede bajar (la ventana sólo abre si se pierde la caja) y paga stock antiguo. (a) sugerida: abrir un escalón de ≤15% · (b) pagar o retirar.
+15. **Perfumes que no se venden:** hoy se liquidan en ML hasta el 10%, y la perfumería paga costo +25%. (a) sugerida: el piso es lo que deja la perfumería (menos lo que cuesta retirarlo de Full) y ahí se te pide retirarlo · (b) seguir hasta el 10%.
+16. **"1-2 unidades no se tocan más"** choca con "sin reposición que vende, sube". (a) sugerida: borrarla (para dejar una quieta está 🧊 congelar) · (b) dejarla.
+**Tus salidas y tus marcas**
+17. **🔒 no bajar y 🥊 mantener la caja:** el texto dice "una suba ahí sólo con tu OK" pero el robot sube igual. (a) sugerida: que esa suba pida tu "autorizo" · (b) que queden afuera sólo de las listas, como hoy, y se corrige el texto.
+18. **`!golpe` con "precio mal puesto"** se usó para bajar −39% una liquidación (la Recortadora). (a) sugerida: que pase a ser 🔐 tuya · (b) dejarlo.
+(Además: el "14/11 pedido de Navidad para 45 días" ya lo reemplazó el pico de Navidad en cada pedido y el adelantado del 03/11; si para Bs As y Paulvic sigue valiendo el del 14/11, decímelo.)
 ### 04/11 · De la completa (para cuando digas "resolvamos")
 1. **Paulvic Libre ($28.590, 2 en Full) y Blue Men ($24.990, 5 en Full):** quedaron arriba de los $21.990 donde elegiste esperar hasta Navidad. Libre lleva 8 días sin vender y Blue Men 10; hay un competidor con Full a $19.845. Seguridad de techo: Blue Men 100%, Libre sin medir (el punto medio ya la da por mala). (a) sugerida: los dos a $21.990 ya, para llegar al Black Friday (27/11) y a Navidad con el precio de la familia · (b) dejarlos como están.
 2. **Paulvic Silver (2 en Full, 159 días, pagando stock antiguo):** el descuento a $13.590 que le renové el 03/11 el control lo sigue marcando como baja de golpe. (a) sugerida: dejarlo con el descuento (vendió 1 a ese precio hace 8 días) · (b) dejarlo a $21.990 con los demás Paulvic hasta Navidad.
