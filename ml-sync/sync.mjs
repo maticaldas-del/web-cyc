@@ -5659,9 +5659,19 @@ async function subaConfirmada(db, mla, links, prods, desde, viejo, ahora = Date.
 // 1+2 · ¿LA SUBA SALIÓ MAL? → VOLVER AL ÚLTIMO PRECIO QUE VENDÍA BIEN (!vuelve). Salió mal = 24 h+ a este precio y vendió menos de la mitad de
 // lo esperado al ritmo del precio de antes (3+ esperadas), o 10 días sin vender. El destino: de la cadena de subas seguidas, el precio más
 // nuevo que vendía al menos la mitad que el de antes de él. {ok, target, txt} · null = no leí.
+// 2a del 04/11/2026 (él: "1a2a"): la vuelta del punto medio, si ML pide para ganar la caja un precio ENTRE el último que vendía y el que
+// falló, va al de la caja (más caro que el de antes y gana la caja). Sólo con la caja leída en las últimas 3 h y perdiéndola; terminado en
+// 90 sin pasar el que pide ML. El 35% del peor caso lo sigue controlando `decido` (el de la caja es más caro que el de antes: deja más %).
+function vueltaAlaCaja(e, target, fallo, ahora = Date.now()) {
+  if (!e || e.caja === 'winning' || !(Number(e.cajaTs) > ahora - 3 * 36e5)) return null;
+  const ptw = Number(e.cajaPtw) || 0; if (!(ptw > target * 1.02) || !(ptw < fallo * 0.98)) return null;
+  const r = ptw >= 100000 ? Math.floor((ptw + 10) / 1000) * 1000 - 10 : Math.floor((ptw + 10) / 100) * 100 - 10; const t = r > ptw ? r - (ptw >= 100000 ? 1000 : 100) : r;
+  return t > target * 1.02 ? t : null;
+}
 async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(), pedido = 0) {
   const ch = []; for (const c of camb.filter((c) => !c.rev && c.ts < ahora).sort((x, y) => y.ts - x.ts)) { if (c.a > c.de * 1.02) ch.push(c); else break; }
   if (!ch.length) return { ok: false, txt: 'el último cambio no fue una suba: no hay a qué volver' };
+  const conCaja = (r) => { const t = vueltaAlaCaja(links && links[mla], r.target, ch[0].a, ahora); return t ? { ...r, target: t, txt: r.txt + ` · ML pide ${money(Number((links[mla] || {}).cajaPtw) || 0)} para ganar la caja, entre los dos: vuelve a ${money(t)} (2a del 04/11)` } : r; };
   if (Math.abs(p0 - ch[0].a) > ch[0].a * 0.03) return { ok: false, txt: `hoy está a ${money(p0)} y la última suba fue a ${money(ch[0].a)}: no es la misma` };
   let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; } catch { return null; }
   const J = await lineaJuntaStock(links, prods || {}, mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } }); lin = J.d;
@@ -5716,11 +5726,11 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
     const gU = await ganUnidadModelo(db, mla, links, prods, ahora); const g = gU || ((p) => p);
     const gHoy = uds0 / (Math.max(24, h0V) / 24) * g(ch[0].a), gAntes = Rt.r * g(ch[i].de);
     if (gHoy >= gAntes) return { ok: false, txt: `a los ${Math.round(h0 / 24)} días a ${money(ch[0].a)} deja ~${money(gHoy)} por día contra ~${money(gAntes)} a ${money(ch[i].de)}: rinde igual o más arriba, se queda (10 días como máximo, él 02/11)` };
-    return { ok: true, sinVenta10: uds0 === 0, target: ch[i].de, txt: `a los ${Math.round(h0 / 24)} días a ${money(ch[0].a)} vendió ${uds0} y deja ~${money(gHoy)} por día contra ~${money(gAntes)} a ${money(ch[i].de)} → vuelve a ${money(ch[i].de)} (10 días como máximo en decidir, él 02/11)` };
+    return conCaja({ ok: true, sinVenta10: uds0 === 0, target: ch[i].de, txt: `a los ${Math.round(h0 / 24)} días a ${money(ch[0].a)} vendió ${uds0} y deja ~${money(gHoy)} por día contra ~${money(gAntes)} a ${money(ch[i].de)} → vuelve a ${money(ch[i].de)} (10 días como máximo en decidir, él 02/11)` });
   }
   if (mal && uds0 > 0 && facAntes < facHoy * 1.5) return { ok: false, txt: `a ${money(ch[0].a)} vende menos unidades pero factura ${money(facHoy)} por día contra ~${money(facAntes)} a ${money(ch[i].de)}: deja más plata arriba, se queda (punto medio, él 02/11)` };
   if (!mal) return { ok: false, txt: `desde que dejó ${money(ch[i].de)} vendió ${uds} en ${Math.round(horas)} h (se esperaban ~${esp.toFixed(1)}): no salió mal todavía` };
-  return { ok: true, sinVenta10: horasV >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)}${noMedido ? ' (vendió ahí pero no se llegó a medir: primero se mide ese escalón)' : ' (el que más ganancia por día dejó de los escalones medidos)'} (punto medio, él 02/11)` };
+  return conCaja({ ok: true, sinVenta10: horasV >= TECHO_DIAS_SIN_VENTA * 24 && uds === 0, target: ch[i].de, txt: `desde que dejó ${money(ch[i].de)} (${ch.length - i > 1 || i > 0 ? (i + 1) + ' subas' : 'la suba'} hasta ${money(ch[0].a)}) vendió ${uds} en ${Math.round(horas)} h y a su ritmo (${Rt.r.toFixed(2)} por día) se esperaban ~${esp.toFixed(1)} → vuelve a ${money(ch[i].de)}${noMedido ? ' (vendió ahí pero no se llegó a medir: primero se mide ese escalón)' : ' (el que más ganancia por día dejó de los escalones medidos)'} (punto medio, él 02/11)` });
 }
 // Ganancia por unidad a un precio P, con las ventas del grupo de los últimos 90 días: neto/precio y costo de mercadería medianos, menos
 // impuestos de la cuenta y el trabajo por unidad (como la plata por día). Sólo sirve para comparar escalones entre sí. null sin ventas con costo.
