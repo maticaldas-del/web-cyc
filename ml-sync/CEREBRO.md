@@ -161,7 +161,7 @@ Después de los 3 Protectores de talón (22/10: el freno "sin línea de techo no
    sin reposición con su motivo. La lista queda vacía. Lo que NO vende no pasa por acá: eso lo barre la completa (📏/🔎/📦).
 6. Activar pausadas con stock en Full (`activarfull:go:25`); lo que no se activa va a `notas/para_mati.md` con motivo.
 7. Preguntas de compradores que sé sin duda (`contesto:`). Mis descuentos que vencen en 2 días: renovar o dejar terminar.
-8. 📋 Listas: confirmar el mismo producto (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`); con duda no se toca.
+8. 📋 Listas: confirmar el mismo producto (`listarevisar` → `listadato:<prov>;<cód>=ok|no|mi=MLA…;go`); con duda no se toca. Después `listasvale:go` (04/11, él: un proveedor vale por lo que puede dejar, no por cuántos productos tiene): se descarta solo el que, medido y revisado entero, no tiene ninguno que dé; vuelve solo si después da.
    **Sin foto ni código de barras (Dai Nippon y las demás listas, 21/10/2026, él: *"nippon sólo trae lo que viste vos"*): `ok` sólo si
    el título de ML coincide en marca, línea, variante/aroma, tamaño y cantidad.** Si ML agrega algo que la lista no dice (una línea
    como "80+", "1 minuto", "Intense", una edición, "pack", "3x", "x2", otro aroma) → `no`. Casos que la dejaron escrita: Lux orquídea
