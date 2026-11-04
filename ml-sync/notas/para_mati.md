@@ -353,3 +353,28 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 ## 04/11 · Mayoristas nuevos medidos enteros (AnD, AVL 112, Pirineo) — para la lista de las 12:30 (sólo informativo)
 - Revisado todo por foto o nombre, lo dudoso = no (regla del 04/11). Dan 35%+ y son el mismo producto: **AnD 2** (destornillador 6 en 1 con linterna 132%, adaptador enchufe universal 95%) · **AVL 112 0** · **Pirineo 10** (protector térmico Iyosei, shampoo Issue Saloon neutro 900 y 1000 ml, lima Mundial, pala Samantha, shampoo Fidelité 5 L, crema Otowil Hola Rulos, desodorante Algabo Foot, cepillo Dompel Sissi, desodorante Kevingston Rugby) + el **Aer en pack x6** (pedido a Tito el 04/11).
 - Esperan confirmación del chat de Chrome: 0 (todo quedó ✅ o ❌).
+
+### Revisión de las Reglas del cerebro del 04/11 (18 decisiones, para cuando digas "resolvamos")
+**Cómo se compara un precio contra otro**
+1. **Una sola vara para decidir entre dos precios:** hoy la vuelta usa la facturación ×1,5 (y la ganancia al día 10), la sobra la facturación ×1,3, la prueba del mes la ganancia por día y F14 "menos de la mitad". Ej. de sobra: a $10.990 dejaría +10% de ganancia por día y igual se frena porque no factura 1,3×. (a) sugerida: todas con la ganancia por día neta · (b) dejarlas como están.
+2. **El 🎯 objetivo (el precio que más ganancia da) contra F14 (lo que vendió a su precio no se baja):** (a) sugerida: el objetivo vale para buscar arriba (pruebas, vueltas) y F14 queda para las bajas · (b) también para abajo: un escalón si con 95% deja menos plata por día.
+3. **La vuelta de una suba se decide con ~80% de seguridad** (1 venta de 3 esperadas), pero "bajar pide 95%". (a) sugerida: dejarlo así (vuelve a un precio que ya vendió) y escribirlo como excepción · (b) que la vuelta pida 95% (0 de 3).
+4. **F14 mira 30 días; la regla del 02/11 dice 10 días sin vender.** (a) sugerida: 10 días con visitas desde la última venta · (b) 30.
+**Lo que se prueba y cuándo**
+5. **La prueba del mes pasa una sola vez:** después de probar, el producto queda ↘️ o 📈 y al mes siguiente no vuelve a entrar. (a) sugerida: que entre todo lo que lleva 30+ días sin cambio de precio con 💰 o 🔴, sin mirar la etiqueta · (b) dejarlo así.
+6. **Después de volver de una suba no hay dónde quedarse:** no puede quedar 💰 porque "vende mucho sin 🔴", y a los 30 días sólo puede volver a probar el mismo +50% que falló (el medio, ej. $7.290-7.990, no se prueba nunca). (a) sugerida: el precio que no rindió cuenta como techo medido (como ya hace ventasraras) y la próxima prueba va al medio · (b) dejarlo así.
+7. **Prueba del mes con sobra:** hoy corre igual. (a) sugerida: con sobra no hay prueba · (b) corre igual.
+8. **Lo lento (1 cada 14 días):** la prueba de +50% se juzga a los 10 días, y la mitad de las veces sale 🔴 sólo por azar y bloquea las próximas. (a) sugerida: juzgarla por 3 ventas esperadas, con 10 días como mínimo · (b) 10 días.
+9. **🔥 escasez con la caja a 8 días:** sigue subiendo +50% con cada venta ($10.000 → $29.990 → $44.990 → $67.490) aunque el stock ya alcanza hasta que llegue. (a) sugerida: frenar cuando el stock alcanza hasta la reposición · (b) dejarlo.
+10. **Llega la caja después de una escasez:** la bajada queda frenada ~12 días esperando el 95%. (a) sugerida: con 30+ días de stock, la escalera arranca sin esperar · (b) dejarlo.
+11. **La gemela de envío gratis vendió a $33.490:** la Clásica sube a $50.290 (+50%) y vuelve a $25.990; nunca se prueba la Clásica a $33.490 (el mismo precio para el comprador). (a) sugerida: probar la Clásica al precio de la gemela · (b) dejarlo.
+12. **Black Friday (25-30/11) en medio de una prueba:** las ventas del evento hacen que un precio que deja −24% quede trabado 45-60 días. (a) sugerida: no arrancar pruebas 📈 esos días y medir la vuelta sin ellos · (b) dejarlo.
+**Bajas y liquidación**
+13. **Lo que nadie ve (0 visitas) se liquida igual a los 30 días**, aunque la regla dice "si casi no lo ven, bajar no lo arregla". (a) sugerida: la liquidación cuenta sólo días con visitas · (b) dejarlo.
+14. **Caja ganada a 15 días del stock antiguo:** hoy no se puede bajar (la ventana sólo abre si se pierde la caja) y paga stock antiguo. (a) sugerida: abrir un escalón de ≤15% · (b) pagar o retirar.
+15. **Perfumes que no se venden:** hoy se liquidan en ML hasta el 10%, y la perfumería paga costo +25%. (a) sugerida: el piso es lo que deja la perfumería (menos lo que cuesta retirarlo de Full) y ahí se te pide retirarlo · (b) seguir hasta el 10%.
+16. **"1-2 unidades no se tocan más"** choca con "sin reposición que vende, sube". (a) sugerida: borrarla (para dejar una quieta está 🧊 congelar) · (b) dejarla.
+**Tus salidas y tus marcas**
+17. **🔒 no bajar y 🥊 mantener la caja:** el texto dice "una suba ahí sólo con tu OK" pero el robot sube igual. (a) sugerida: que esa suba pida tu "autorizo" · (b) que queden afuera sólo de las listas, como hoy, y se corrige el texto.
+18. **`!golpe` con "precio mal puesto"** se usó para bajar −39% una liquidación (la Recortadora). (a) sugerida: que pase a ser 🔐 tuya · (b) dejarlo.
+(Además: el "14/11 pedido de Navidad para 45 días" ya lo reemplazó el pico de Navidad en cada pedido y el adelantado del 03/11; si para Bs As y Paulvic sigue valiendo el del 14/11, decímelo.)

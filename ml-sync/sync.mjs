@@ -6085,6 +6085,7 @@ async function detectarErrores(db, o = {}) {
       // 4 del punto medio (02/11/2026, él): la próxima +50% de una 📈/🆕 espera a que este precio se confirme (mitad de lo esperado al ritmo del
       // de antes con 3+ esperadas, o 3 ventas, y 24 h): mientras tanto no es un error que no haya subido.
       if ((ult === 'techo' || ult === 'nuevo') && !cruzaE) { const SC = await subaConfirmada(db, m, links, prods, tsU, viejoU, ahora); if (SC && !SC.ok) { lzC.espera = (lzC.espera || 0) + 1; continue; } }
+      if (noRindio(m, obj)) { lzC.convenir++; continue; }   // revisión etapa 8, 04/11/2026: un precio que no rindió en 30 días (techofreno) no se vuelve a pedir
       lanza.push({ mla: m, e, primera, uds, P, obj, tsU, ult, cruzaE, pEnv });
     }
   }
