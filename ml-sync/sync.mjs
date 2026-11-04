@@ -26414,6 +26414,32 @@ async function main() {
         console.log(`  ${parseInt(e.u)} u. · ${String(p.name || pid).slice(0, 60)} · ${p.codPy || 'sin código'} · Nissei US$ ${p.nisseiUSD || '?'} hace ${d} d${SS[pid] ? ' · 🚫 Nissei no lo tiene' : ''}${Number(d) >= 2 ? ' · ⛔ mirado hace 2+ días' : ''}${vs}`); }
       return;
     }
+    // BILLING_PROBE=pyllenar:<resto|perf>[:<tope US$>] (04/11/2026, él: "llenalo hasta 600 dólares"; SÓLO LEE) → lo mismo que el botón
+    // 🪄 de la web para los NUEVOS: de ⭐ "gana mucho y sale mucho" para abajo (% × log10(🚀+1) ÷ 10, mínimo 7), 35%+, 2+ vendedores
+    // (o 1 con 100+ vendidas), mirado en Nissei hace menos de 2 días, hasta US$ 20 por producto (máx 4 u.), hasta llenar el tope.
+    // Imprime el `pedir:` listo para cargarlo. No elige lo dudoso: eso lo miro yo antes de cargar.
+    if (/^pyllenar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [, grp = 'resto', topeS = '600'] = String(process.env.BILLING_PROBE).split(':'); const tope = parseFloat(topeS) || 600;
+      const esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+      const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
+      const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
+      const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre));
+      const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0);
+      const sal = (c) => { const v = candVentasDe(c); const r = Number(c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
+      const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
+      const maxU = (c) => { const usd = parseFloat(c.usd) || 0; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
+      const ok = vivos.filter(([, c]) => !(Number(c.pedirU) > 0) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA
+        && vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res) && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5 && star(c) >= 7)
+        .sort((a, b) => star(b[1]) - star(a[1]));
+      let libre = tope - ya; const elig = [];
+      console.log(`=== 🪄 LLENAR ${grp.toUpperCase()} HASTA US$ ${tope} · ya cargado US$ ${ya.toFixed(2)} · libre US$ ${libre.toFixed(2)} · ${ok.length} que dan ===`);
+      for (const [id, c] of ok) { const usd = parseFloat(c.usd); let u = Math.min(maxU(c), Math.floor((libre + 1e-6) / usd)); if (u < 1) continue;
+        elig.push({ id, c, u }); libre -= u * usd;
+        console.log(`  +${u} u. · US$ ${(u * usd).toFixed(2)} · ⭐ ${star(c).toFixed(1)} · ${Math.round(Number(c.margen))}% · ${c.mlVendedores ?? '?'} vend. · ${candVentasDe(c) ?? '?'} vendidas · ${c.res ?? 0} reseñas · ${String(c.nombre).slice(0, 70)} [${id}]`); }
+      console.log(`\nqueda en US$ ${(tope - libre).toFixed(2)} de US$ ${tope}`);
+      if (elig.length) console.log('▶️ pedir:' + elig.map((x) => `${x.c.nombre.replace(/[;=]/g, ' ')}=${x.u}`).join(';') + ';go');
+      return;
+    }
     if (/^gemelade:/.test(String(process.env.BILLING_PROBE || ''))) {
       const L = (await db.get('cyc/mllinks')) || {}; const ms = String(process.env.BILLING_PROBE).slice(9).split(/[,;\s]+/).filter(Boolean);
       const des = (m) => { const x = L[m] || {}; return `${m} · ${x.cuenta || '?'} · ${x.gemelaDe ? `gemela ${x.gemelaTipo === 'envio' ? '📦 envío gratis' : '💳 Premium'} de ${x.gemelaDe}` : 'Clásica (principal)'} · ${String(x.title || '').slice(0, 45)}`; };
