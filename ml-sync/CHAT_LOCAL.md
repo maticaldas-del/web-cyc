@@ -88,6 +88,13 @@ MÁS VENDIDOS (la tarea f2, cada 7 días; 03/11/2026, idea 8 que eligió Matías
   `<categoría> · #<puesto> · <nombre corto> · ML $<precio del más barato nuevo> · Nissei <código> US$ <precio>`
   y al final "no encontré en Nissei: N".
 - Con eso Claude lo mide (la vara de 35%) y lo agrega a Para probar.
+- **BUSCAR QUIÉN LO TRAE** (04/11/2026, Matías: "lo importante es conseguir proveedores"): de los que NO están en Nissei, elegí los
+  que tengan POCOS vendedores (3 o menos en la página del producto) y sean de MARCA REAL (no genéricos). Para cada uno buscá en Google
+  "<marca> distribuidor oficial Argentina" / "<marca> mayorista" y en la web de la marca ("dónde comprar", "distribuidores",
+  "comercializa"). Anotá el que venda por mayor en Buenos Aires o mande a todo el país, con su web o lista de precios si la tiene.
+  En el mismo mensaje, abajo de todo, un renglón por producto:
+  `QUIÉN LO TRAE · <nombre corto> · <marca> · <cuántos vendedores en ML> · <distribuidor> · <web> · <tiene lista de precios: sí/no>`
+  No pidas precios ni dejes datos tuyos en ningún lado: sólo anotá. Claude decide si se le pide la lista (lo hace Tito).
 
 REVISAR LA TIENDA (la tarea g; es lo que hacés cuando no queda nada más)
 - Abrí https://tiendacyc.github.io y andá página por página desde donde quedaste la última vez (lo dice tu último mensaje "TIENDA: …";
