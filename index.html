@@ -1957,61 +1957,7 @@ setTimeout(function _ldVigia(){try{
     </div>
   </div>
 
-  <!-- ── Selector de período (queda quieto en su lugar, no sigue el scroll) ── -->
-  <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
-    <!-- Un botón con el período elegido. Las opciones salen al tocarlo, agrupadas: por un lado
-         los "últimos N días", por otro un día/mes/año concreto, y aparte el período a medida. -->
-    <div class="dd-wrap" id="ms-dd-wrap">
-      <button class="vbtn active" id="ms-dd-btn" onclick="toggleMetScopeMenu(event)">Mes ▾</button>
-      <div class="dd-menu" id="ms-dd-menu">
-        <div class="dd-grp">Últimos días</div>
-        <button class="dd-opt" id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
-        <button class="dd-opt" id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
-        <button class="dd-opt" id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
-        <button class="dd-opt" id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
-        <button class="dd-opt" id="ms-90d"  onclick="setMetScope('90d',this)">90 días</button>
-        <button class="dd-opt" id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
-        <button class="dd-opt" id="ms-todo" onclick="setMetScope('todo',this)">Desde el primer registro</button>
-        <div class="dd-grp">Fecha puntual</div>
-        <button class="dd-opt" id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
-        <button class="dd-opt active" id="ms-mes" onclick="setMetScope('mes',this)">Mes</button>
-        <button class="dd-opt" id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
-        <div class="dd-grp">A medida</div>
-        <button class="dd-opt" id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
-      </div>
-    </div>
-    <div class="view-toggle" style="margin:0">
-      <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
-      <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
-      <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
-      <!-- 🏢 Ganancia CYC se sacó el 29/10/2026 (él: "sacar ganancia de CYC, ya que es ganancia dividido 3") -->
-    </div>
-    <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
-    <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
-      <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
-      <input type="date" id="met-date" class="cal-select" onchange="renderMetricas()">
-      <span style="font-size:.66rem;color:var(--muted)" id="met-date-label"></span>
-    </div>
-    <div id="ms-ctrl-mes" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
-      <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
-      <select id="met-mes" class="cal-select" onchange="renderMetricas()">
-        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-      </select>
-      <input type="number" id="met-anio" class="cal-select" style="width:88px" onchange="renderMetricas()">
-    </div>
-    <div id="ms-ctrl-ano" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
-      <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
-      <input type="number" id="met-ano-val" class="cal-select" style="width:88px" onchange="renderMetricas()">
-    </div>
-    <div id="ms-ctrl-rango" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
-      <input type="date" id="met-from" class="cal-select" onchange="renderMetricas()">
-      <span style="font-size:.8rem;color:var(--muted)">→</span>
-      <input type="date" id="met-to" class="cal-select" onchange="renderMetricas()">
-    </div>
-  </div>
+
 
   <!-- ÍNDICE (01/10/2026, idea 11 de diseño): Métricas es una pantalla muy larga; cada botón baja
        derecho a su sección. Si se agrega una sección nueva, sumarle su botón acá. -->
@@ -2088,11 +2034,60 @@ setTimeout(function _ldVigia(){try{
     <div style="text-align:right;margin-bottom:8px"><button class="pf-btn" onclick="abrirGraficoFS('chart-pct-mes')">⛶ Pantalla completa</button></div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><canvas id="chart-pct-mes" height="120" style="min-width:500px"></canvas></div>
     <div id="met-pct-avg" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px"></div>
-    <!-- 04/11/2026 (él: "lo de seleccionar período lo quiero ahí abajo, así es más fácil"): ‹ › del período debajo del gráfico, el mismo de arriba. -->
-    <div id="ms-ctrl-pctnav" style="display:none;justify-content:center;align-items:center;gap:12px;margin-top:14px">
+  </div>
+  <!-- ── Selector de período: debajo del % de Ganancia (04/11/2026, él eligió 1a: "lo de seleccionar período lo quiero ahí abajo, así es más fácil"; antes iba arriba de todo) ── -->
+  <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
+    <!-- Un botón con el período elegido. Las opciones salen al tocarlo, agrupadas: por un lado
+         los "últimos N días", por otro un día/mes/año concreto, y aparte el período a medida. -->
+    <div class="dd-wrap" id="ms-dd-wrap">
+      <button class="vbtn active" id="ms-dd-btn" onclick="toggleMetScopeMenu(event)">Mes ▾</button>
+      <div class="dd-menu" id="ms-dd-menu">
+        <div class="dd-grp">Últimos días</div>
+        <button class="dd-opt" id="ms-7d"   onclick="setMetScope('7d',this)">7 días</button>
+        <button class="dd-opt" id="ms-15d"  onclick="setMetScope('15d',this)">15 días</button>
+        <button class="dd-opt" id="ms-30d"  onclick="setMetScope('30d',this)">30 días</button>
+        <button class="dd-opt" id="ms-60d"  onclick="setMetScope('60d',this)">60 días</button>
+        <button class="dd-opt" id="ms-90d"  onclick="setMetScope('90d',this)">90 días</button>
+        <button class="dd-opt" id="ms-365d" onclick="setMetScope('365d',this)">365 días</button>
+        <button class="dd-opt" id="ms-todo" onclick="setMetScope('todo',this)">Desde el primer registro</button>
+        <div class="dd-grp">Fecha puntual</div>
+        <button class="dd-opt" id="ms-dia"  onclick="setMetScope('dia',this)">Día</button>
+        <button class="dd-opt active" id="ms-mes" onclick="setMetScope('mes',this)">Mes</button>
+        <button class="dd-opt" id="ms-ano"  onclick="setMetScope('ano',this)">Año</button>
+        <div class="dd-grp">A medida</div>
+        <button class="dd-opt" id="ms-rango" onclick="setMetScope('rango',this)">📅 Período</button>
+      </div>
+    </div>
+    <div class="view-toggle" style="margin:0">
+      <button class="vbtn active" id="met-field-total"    onclick="setMetField('total')"    title="Precio total de venta (lo que pagó el comprador)">💵 Total</button>
+      <button class="vbtn"        id="met-field-neto"     onclick="setMetField('neto')"     title="Neto que queda después de comisiones ML">💚 Neto</button>
+      <button class="vbtn"        id="met-field-ganancia" onclick="setMetField('ganancia')" title="Ganancia = Neto − Costo">💰 Ganancia</button>
+      <!-- 🏢 Ganancia CYC se sacó el 29/10/2026 (él: "sacar ganancia de CYC, ya que es ganancia dividido 3") -->
+    </div>
+    <!-- Para comparar: se clickean las métricas de arriba. Cada una prendida dibuja su línea. -->
+    <div id="ms-ctrl-dia" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
       <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
-      <span id="met-pct-navlbl" style="font-size:.8rem;font-weight:700;min-width:140px;text-align:center"></span>
       <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
+      <input type="date" id="met-date" class="cal-select" onchange="renderMetricas()">
+      <span style="font-size:.66rem;color:var(--muted)" id="met-date-label"></span>
+    </div>
+    <div id="ms-ctrl-mes" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
+      <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
+      <select id="met-mes" class="cal-select" onchange="renderMetricas()">
+        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+      </select>
+      <input type="number" id="met-anio" class="cal-select" style="width:88px" onchange="renderMetricas()">
+    </div>
+    <div id="ms-ctrl-ano" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="vbtn" onclick="metNavPrev()" style="padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
+      <button class="vbtn" onclick="metNavNext()" style="padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
+      <input type="number" id="met-ano-val" class="cal-select" style="width:88px" onchange="renderMetricas()">
+    </div>
+    <div id="ms-ctrl-rango" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+      <input type="date" id="met-from" class="cal-select" onchange="renderMetricas()">
+      <span style="font-size:.8rem;color:var(--muted)">→</span>
+      <input type="date" id="met-to" class="cal-select" onchange="renderMetricas()">
     </div>
   </div>
 
@@ -3385,7 +3380,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.114';
+const APP_VERSION='28.115';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3398,7 +3393,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.114',f:'04/11',h:'12:55',c:[{n:1,t:'📊 Métricas → % de Ganancia: abajo del gráfico están las flechas ‹ › para cambiar de día, mes o año sin subir.'}]},
+  {v:'28.115',f:'04/11',h:'13:05',c:[{n:2,t:'📊 Métricas: el selector de período (Mes ▾, Total/Neto/Ganancia y las flechas) pasó abajo del gráfico de % de Ganancia.'}]},
   {v:'28.113',f:'04/11',h:'12:05',c:[{n:1,t:'💰 Arqueo → Lo que debemos: "Deuda de CYC" ahora se llama "Dólares Abuela".'}]},
   {v:'28.112',f:'04/11',h:'05:40',c:[{n:1,t:'🔍 Revisión de las Reglas del cerebro: textos al día y 18 decisiones para "resolvamos".'}]},
   {v:'28.111',f:'04/11',h:'02:20',c:[{n:2,t:'Pedidos → 📋 Listas: solapa nueva 🔎 Proveedores a revisar, con los proveedores que encuentra Claude por internet. Sólo aparecen los que tienen productos que dan 35% o más y son el mismo producto que en ML (foto revisada).'}]},
@@ -26466,7 +26461,6 @@ function renderPctChartFromScope(scope){
   const canvas=document.getElementById('chart-pct-mes');if(!canvas||!window.Chart)return;
   const {labels,buckets,bucketsPrev,bucketsYear,title,sinPrev}=metScopeBuckets(scope);
   const t=document.getElementById('chart-pct-title');if(t)t.textContent=title+(metPctMode==='promedio'?' · promedio corriendo':'');
-  try{const nv=document.getElementById('ms-ctrl-pctnav'),nl=document.getElementById('met-pct-navlbl');if(nv){const ok=['dia','mes','ano'].includes(metScopeMode);nv.style.display=ok?'flex':'none';if(nl)nl.textContent=title;}_metNextApagar();}catch(e){}
   renderMetPctAvg(buckets,bucketsPrev,bucketsYear);
   const pct=(g,c)=>c>0?+(g/c*100).toFixed(1):null;
   // Promedio corriendo (ponderado): en el día N usa la ganancia y el costo ACUMULADOS de todo lo
