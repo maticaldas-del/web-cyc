@@ -26348,6 +26348,16 @@ async function main() {
     // le pone a la ficha `listaProv` y `codLista` (pasa a la solapa de esa lista y a ✅ Probados). Solo lee sin `go`.
     // BILLING_PROBE=pyagotados[:go] (03/11/2026) → lo mismo que hace solo el cierre de una vuelta completa de Nissei, con la última vuelta
     // guardada (`cyc/mlconfig/nisseiVuelta`): las fichas de Paraguay que no se vieron desde que arrancó quedan como "Nissei no lo tiene".
+    // BILLING_PROBE=gemelade:<MLA>[,<MLA>…] (04/11/2026, sólo lee) → de cada publicación: si es Clásica o gemela (Premium / envío gratis) y
+    // de quién, y sus gemelas, con precio y estado guardados. Para no analizar una gemela como si fuera la publicación que vende.
+    if (/^gemelade:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const L = (await db.get('cyc/mllinks')) || {}; const ms = String(process.env.BILLING_PROBE).slice(9).split(/[,;\s]+/).filter(Boolean);
+      const des = (m) => { const x = L[m] || {}; return `${m} · ${x.cuenta || '?'} · ${x.gemelaDe ? `gemela ${x.gemelaTipo === 'envio' ? '📦 envío gratis' : '💳 Premium'} de ${x.gemelaDe}` : 'Clásica (principal)'} · ${String(x.title || '').slice(0, 45)}`; };
+      for (const m of ms) { const x = L[m]; if (!x) { console.log(`${m}: no está en cyc/mllinks`); continue; }
+        const base = x.gemelaDe || m; console.log('── ' + des(m)); if (x.gemelaDe) console.log('   principal: ' + des(base));
+        for (const g of Object.keys(L).filter((g) => (L[g] || {}).gemelaDe === base && g !== m)) console.log('   gemela: ' + des(g)); }
+      return;
+    }
     if (/^pyagotados(:go)?$/.test(String(process.env.BILLING_PROBE || ''))) {
       const GO = /:go$/.test(String(process.env.BILLING_PROBE)); const v = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
       if (!(Number(v.desde) > 0) || !(Number(v.pct) >= 90)) { console.log('❌ no hay una vuelta completa guardada'); return; }
