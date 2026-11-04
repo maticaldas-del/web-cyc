@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Valhalla Barbería · Chivilcoy</title>
+<meta name="description" content="Valhalla Barbería en Chivilcoy. Sacá tu turno online.">
+<meta property="og:title" content="Valhalla Barbería">
+<meta property="og:description" content="Sacá tu turno online · Av. Ceballos 19, Chivilcoy">
+<meta property="og:image" content="logo.jpg">
+<meta name="theme-color" content="#0b0b0b">
+<link rel="icon" href="logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b0b;--card:#151515;--line:#2a2a2a;--tx:#f2f2f2;--mut:#9a9a9a;--acc:#e8e2d4;--ok:#7bd88f;--bad:#ff7b7b}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font:16px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.w{max-width:720px;margin:0 auto;padding:0 16px}
+h1,h2,.cz{font-family:Cinzel,serif;letter-spacing:.06em}
+h2{font-size:22px;margin:0 0 16px;text-align:center}
+section{padding:40px 0;border-top:1px solid var(--line)}
+.hero{text-align:center;padding:28px 0 36px}
+.hero img{width:min(300px,75vw);aspect-ratio:1;object-fit:cover;border-radius:50%;border:1px solid var(--line);box-shadow:0 10px 40px #000}
+.hero h1{font-size:28px;margin:18px 0 4px}
+.hero p{color:var(--mut)}
+.abierto{display:inline-block;margin-top:10px;font-size:14px;padding:4px 12px;border-radius:99px;border:1px solid var(--line)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--acc);color:#111;border:0;border-radius:12px;padding:14px 22px;font:600 16px Inter,sans-serif;cursor:pointer;text-decoration:none;min-height:48px}
+.btn.sec{background:transparent;color:var(--tx);border:1px solid var(--line)}
+.btn:disabled{opacity:.35;cursor:default}
+.acc{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.serv{display:grid;gap:10px}
+.sv{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:left;color:var(--tx);font:inherit;width:100%}
+.sv small{display:block;color:var(--mut);font-size:13px}
+.sv b{white-space:nowrap}
+.sv.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.paso{color:var(--mut);font-size:13px;text-transform:uppercase;letter-spacing:.1em;margin:22px 0 10px}
+.dias{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.dias::-webkit-scrollbar{display:none}
+.dia{flex:0 0 64px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 0;text-align:center;color:var(--tx);font:inherit;cursor:pointer}
+.dia small{display:block;color:var(--mut);font-size:12px;text-transform:capitalize}
+.dia b{font-size:20px}
+.dia.sel{background:var(--acc);color:#111}.dia.sel small{color:#333}
+.dia:disabled{opacity:.3;cursor:default}
+.horas{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.hr{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 0;color:var(--tx);font:500 15px Inter,sans-serif;cursor:pointer}
+.hr.sel{background:var(--acc);color:#111}
+.hr:disabled{opacity:.25;text-decoration:line-through;cursor:default}
+.vacio{color:var(--mut);text-align:center;padding:14px;background:var(--card);border-radius:10px}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
+input{width:100%;background:var(--card);border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:12px;font:16px Inter,sans-serif}
+input:focus{outline:2px solid var(--acc);border-color:transparent}
+.resumen{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:16px 0;font-size:15px}
+.msg{margin-top:12px;font-size:15px;text-align:center}
+.msg.ok{color:var(--ok)}.msg.bad{color:var(--bad)}
+.horario{display:grid;grid-template-columns:1fr auto;gap:6px 16px;max-width:360px;margin:0 auto;font-size:15px}
+.horario .hoy{color:var(--acc);font-weight:600}
+.horario span:nth-child(even){text-align:right;color:var(--mut)}
+.horario .hoy+span{color:var(--acc)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gal img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.mapa{width:100%;height:260px;border:0;border-radius:12px;filter:grayscale(1) invert(.9) contrast(.9)}
+.dir{text-align:center;margin-top:12px;color:var(--mut)}
+footer{text-align:center;color:var(--mut);font-size:13px;padding:30px 0 40px;border-top:1px solid var(--line)}
+.demo{background:#3a2f00;color:#ffd866;font-size:13px;text-align:center;padding:6px 16px}
+.ok-box{text-align:center;padding:24px 16px;background:var(--card);border:1px solid var(--ok);border-radius:12px}
+.ok-box h3{font-family:Cinzel,serif;margin-bottom:8px}
+/* panel de la barbería */
+.adm-t{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0}
+.tu{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.tu div{min-width:0}
+.tu small{color:var(--mut);display:block;overflow-wrap:anywhere}
+.tu .b{display:flex;gap:6px;flex-shrink:0}
+.mini{background:transparent;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:8px 10px;font:14px Inter,sans-serif;cursor:pointer;text-decoration:none}
+.mini.r{border-color:#5a2a2a;color:var(--bad)}
+.dh{font-family:Cinzel,serif;margin:18px 0 8px;font-size:16px;text-transform:capitalize}
+</style>
+</head>
+<body>
+<div id="demo" class="demo" hidden>Muestra: los turnos se guardan sólo en este teléfono hasta conectar la base.</div>
+
+<main id="pub">
+  <header class="hero w">
+    <img src="logo.jpg" alt="Valhalla Barbería">
+    <h1>VALHALLA</h1>
+    <p>Barbería · Chivilcoy</p>
+    <div id="abierto" class="abierto"></div>
+    <div class="acc">
+      <a class="btn" href="#turnos">Sacá tu turno</a>
+      <a class="btn sec" id="btnWa" href="#" target="_blank" rel="noopener" hidden>WhatsApp</a>
+      <a class="btn sec" id="btnIg" href="#" target="_blank" rel="noopener" hidden>Instagram</a>
+    </div>
+  </header>
+
+  <section id="turnos"><div class="w">
+    <h2>Sacá tu turno</h2>
+    <div id="reserva">
+      <div class="paso">1 · Elegí el servicio</div>
+      <div class="serv" id="servs"></div>
+      <div class="paso">2 · Elegí el día</div>
+      <div class="dias" id="dias"></div>
+      <div class="paso">3 · Elegí la hora</div>
+      <div class="horas" id="horas"><div class="vacio">Elegí un servicio y un día.</div></div>
+      <div class="paso">4 · Tus datos</div>
+      <label for="nom">Nombre y apellido</label>
+      <input id="nom" autocomplete="name" maxlength="60">
+      <label for="tel">Teléfono (WhatsApp)</label>
+      <input id="tel" type="tel" inputmode="tel" autocomplete="tel" maxlength="25">
+      <div class="resumen" id="res">Todavía falta elegir.</div>
+      <button class="btn" id="conf" style="width:100%" disabled>Confirmar turno</button>
+      <div class="msg" id="msg"></div>
+    </div>
+  </div></section>
+
+  <section id="servicios"><div class="w">
+    <h2>Servicios</h2>
+    <div class="serv" id="lista"></div>
+  </div></section>
+
+  <section id="galsec" hidden><div class="w">
+    <h2>Trabajos</h2>
+    <div class="gal" id="gal"></div>
+  </div></section>
+
+  <section><div class="w">
+    <h2>Horarios</h2>
+    <div class="horario" id="hor"></div>
+  </div></section>
+
+  <section><div class="w">
+    <h2>Dónde estamos</h2>
+    <iframe class="mapa" loading="lazy" title="Mapa" src="https://www.google.com/maps?q=Av.+Ceballos+19,+Chivilcoy,+Buenos+Aires&output=embed"></iframe>
+    <p class="dir">Av. Ceballos 19, Chivilcoy</p>
+    <div class="acc"><a class="btn sec" href="https://www.google.com/maps/dir/?api=1&destination=Av.+Ceballos+19,+Chivilcoy,+Buenos+Aires" target="_blank" rel="noopener">Cómo llegar</a></div>
+  </div></section>
+
+  <footer>Valhalla Barbería · Chivilcoy<br><a href="#admin" style="color:#444;text-decoration:none">·</a></footer>
+</main>
+
+<main id="adm" hidden><div class="w" style="padding-top:24px">
+  <h2>Turnos · Valhalla</h2>
+  <div id="login">
+    <label for="ae">Correo</label><input id="ae" type="email" autocomplete="username">
+    <label for="ap">Contraseña</label><input id="ap" type="password" autocomplete="current-password">
+    <button class="btn" id="alog" style="width:100%;margin-top:14px">Entrar</button>
+    <div class="msg bad" id="amsg"></div>
+  </div>
+  <div id="panel" hidden>
+    <div class="adm-t">
+      <span id="acant" style="color:var(--mut)"></span>
+      <span><button class="mini" id="abloq">Cerrar un día</button> <button class="mini" id="aout">Salir</button></span>
+    </div>
+    <div id="alist"></div>
+  </div>
+  <p style="margin:24px 0"><a href="#" style="color:var(--mut)">← Volver a la página</a></p>
+</div></main>
+
+<script>
+/* ====== LO QUE SE CAMBIA ====== */
+const NEGOCIO = {
+  whatsapp: '',            // ej. '5492346123456' (con 549 y sin el 0 ni el 15)
+  instagram: '',           // ej. 'valhalla.barberia'
+  turnoMin: 30,            // de a cuántos minutos se dan los turnos
+  diasAdelante: 14,        // cuántos días se pueden reservar
+  // 0 domingo … 6 sábado: [desde, hasta] en horas; null = cerrado
+  horario: {0:null, 1:null, 2:[14,21], 3:[14,21], 4:[14,21], 5:[14,21], 6:[14,21]},
+  servicios: [             // precio null = "Consultar"
+    {id:'corte',  nom:'Corte',          min:30, precio:null},
+    {id:'cbarba', nom:'Corte + barba',  min:60, precio:null},
+    {id:'barba',  nom:'Barba',          min:30, precio:null},
+    {id:'nino',   nom:'Corte niño',     min:30, precio:null},
+  ],
+  fotos: [],               // ej. ['fotos/foto1.jpg','fotos/foto2.jpg']
+};
+const FIREBASE = null;     // {apiKey:'…', authDomain:'…', databaseURL:'…', projectId:'…', appId:'…'}
+/* ============================== */
+
+const $ = id => document.getElementById(id);
+const DN = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const hm = m => pad(Math.floor(m/60))+':'+pad(m%60);
+const plata = p => p==null ? 'Consultar' : '$'+Number(p).toLocaleString('es-AR');
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fechaLinda = s => { const [y,m,d]=s.split('-').map(Number); const f=new Date(y,m-1,d); return DN[f.getDay()]+' '+d+'/'+m; };
+
+/* ---- dónde se guardan los turnos: Firebase o, en la muestra, este teléfono ---- */
+let db=null, auth=null;
+const local = {
+  get(){ try{return JSON.parse(localStorage.getItem('valhalla')||'{}')}catch(e){return {}} },
+  set(o){ try{localStorage.setItem('valhalla',JSON.stringify(o))}catch(e){} }
+};
+async function leer(path){
+  if(db){ const s=await db.ref(path).get(); return s.val(); }
+  let o=local.get(); for(const k of path.split('/')){ if(o==null) return null; o=o[k]; } return o??null;
+}
+async function escribir(upd){ // upd = {ruta: valor}; todo o nada
+  if(db) return db.ref().update(upd);
+  const o=local.get();
+  for(const [p,v] of Object.entries(upd)){
+    const ks=p.split('/'); let x=o;
+    ks.slice(0,-1).forEach(k=>{ x[k]=x[k]||{}; x=x[k]; });
+    if(v===null) delete x[ks.at(-1)]; else x[ks.at(-1)]=v;
+  }
+  local.set(o);
+}
+
+/* ---- página pública ---- */
+const st = {serv:null, dia:null, hora:null, ocup:{}, bloq:null};
+
+function pintarFijo(){
+  const hoy=new Date(), dow=hoy.getDay(), h=NEGOCIO.horario[dow], ahora=hoy.getHours()+hoy.getMinutes()/60;
+  const ab=h && ahora>=h[0] && ahora<h[1];
+  $('abierto').textContent = ab ? 'Abierto ahora · hasta las '+h[1]+' h' : 'Cerrado ahora';
+  $('abierto').style.color = ab ? 'var(--ok)' : 'var(--mut)';
+  if(NEGOCIO.whatsapp){ $('btnWa').hidden=false; $('btnWa').href='https://wa.me/'+NEGOCIO.whatsapp; }
+  if(NEGOCIO.instagram){ $('btnIg').hidden=false; $('btnIg').href='https://instagram.com/'+NEGOCIO.instagram; }
+  $('hor').innerHTML=[2,3,4,5,6,0,1].map(d=>{
+    const x=NEGOCIO.horario[d], c=d===dow?' class="hoy"':'';
+    return `<span${c}>${DN[d][0].toUpperCase()+DN[d].slice(1)}</span><span>${x?x[0]+':00 a '+x[1]+':00':'Cerrado'}</span>`;
+  }).join('');
+  $('lista').innerHTML=NEGOCIO.servicios.map(s=>`<div class="sv" style="cursor:default"><span>${esc(s.nom)}<small>${s.min} min</small></span><b>${plata(s.precio)}</b></div>`).join('');
+  if(NEGOCIO.fotos.length){ $('galsec').hidden=false; $('gal').innerHTML=NEGOCIO.fotos.map(f=>`<img loading="lazy" src="${esc(f)}" alt="Trabajo de Valhalla">`).join(''); }
+  $('servs').innerHTML=NEGOCIO.servicios.map(s=>`<button class="sv" data-s="${s.id}"><span>${esc(s.nom)}<small>${s.min} min</small></span><b>${plata(s.precio)}</b></button>`).join('');
+  $('servs').onclick=e=>{ const b=e.target.closest('[data-s]'); if(!b) return; st.serv=NEGOCIO.servicios.find(s=>s.id===b.dataset.s); st.hora=null; marcar('servs','data-s',st.serv.id); pintarHoras(); };
+  const dias=[]; for(let i=0;i<NEGOCIO.diasAdelante;i++){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+i); dias.push(d); }
+  $('dias').innerHTML=dias.map(d=>`<button class="dia" data-d="${ymd(d)}" ${NEGOCIO.horario[d.getDay()]?'':'disabled'}><small>${DN[d.getDay()].slice(0,3)}</small><b>${d.getDate()}</b></button>`).join('');
+  $('dias').onclick=e=>{ const b=e.target.closest('[data-d]'); if(!b||b.disabled) return; st.dia=b.dataset.d; st.hora=null; marcar('dias','data-d',st.dia); pintarHoras(); };
+  $('horas').onclick=e=>{ const b=e.target.closest('[data-h]'); if(!b||b.disabled) return; st.hora=+b.dataset.h; marcar('horas','data-h',String(st.hora)); resumen(); };
+  ['nom','tel'].forEach(i=>$(i).oninput=resumen);
+  $('conf').onclick=confirmar;
+}
+function marcar(cont,attr,val){ document.querySelectorAll(`#${cont} [${attr}]`).forEach(b=>b.classList.toggle('sel',b.getAttribute(attr)===val)); resumen(); }
+
+async function pintarHoras(){
+  resumen();
+  if(!st.serv||!st.dia){ $('horas').innerHTML='<div class="vacio">Elegí un servicio y un día.</div>'; return; }
+  $('horas').innerHTML='<div class="vacio">Buscando horarios…</div>';
+  const dia=st.dia;
+  const [ocup,bloq]=await Promise.all([leer('ocupado/'+dia).catch(()=>null), leer('bloqueos/'+dia).catch(()=>null)]);
+  if(dia!==st.dia) return;
+  st.ocup=ocup||{}; st.bloq=bloq;
+  const [y,m,d]=dia.split('-').map(Number), f=new Date(y,m-1,d), h=NEGOCIO.horario[f.getDay()];
+  if(!h||bloq===true){ $('horas').innerHTML='<div class="vacio">Ese día no se atiende.</div>'; return; }
+  const ahora=new Date(), esHoy=ymd(ahora)===dia, minAhora=ahora.getHours()*60+ahora.getMinutes()+30;
+  const paso=NEGOCIO.turnoMin, largo=Math.ceil(st.serv.min/paso);
+  let html='', libres=0;
+  for(let t=h[0]*60; t+st.serv.min<=h[1]*60; t+=paso){
+    let ok=!(esHoy&&t<minAhora);
+    for(let k=0;k<largo&&ok;k++){ const s=hm(t+k*paso).replace(':',''); if(st.ocup[s]||(bloq&&bloq[s])) ok=false; }
+    if(ok) libres++;
+    html+=`<button class="hr" data-h="${t}" ${ok?'':'disabled'}>${hm(t)}</button>`;
+  }
+  $('horas').innerHTML=libres?html:'<div class="vacio">No quedan horarios ese día. Probá con otro.</div>';
+}
+function resumen(){
+  const ok=st.serv&&st.dia&&st.hora!=null&&$('nom').value.trim().length>=2&&$('tel').value.replace(/\D/g,'').length>=8;
+  $('conf').disabled=!ok;
+  $('res').innerHTML = st.serv||st.dia ? `${st.serv?'<b>'+esc(st.serv.nom)+'</b> · '+plata(st.serv.precio):'Falta el servicio'}<br>${st.dia?fechaLinda(st.dia):'Falta el día'}${st.hora!=null?' a las <b>'+hm(st.hora)+'</b>':''}` : 'Todavía falta elegir.';
+}
+async function confirmar(){
+  const b=$('conf'); b.disabled=true; $('msg').className='msg'; $('msg').textContent='Guardando…';
+  const nom=$('nom').value.trim(), tel=$('tel').value.trim(), dia=st.dia, s=st.serv, t=st.hora;
+  const id=dia.replace(/-/g,'')+'_'+hm(t).replace(':','')+'_'+Math.random().toString(36).slice(2,7);
+  const upd={}, largo=Math.ceil(s.min/NEGOCIO.turnoMin), slots=[];
+  for(let k=0;k<largo;k++){ const x=hm(t+k*NEGOCIO.turnoMin).replace(':',''); slots.push(x); upd[`ocupado/${dia}/${x}`]=true; }
+  // en la muestra, revisar a mano que siga libre (en Firebase lo frena la regla)
+  if(!db){ const o=await leer('ocupado/'+dia)||{}; if(slots.some(x=>o[x])) return ocupado(); }
+  upd['turnos/'+id]={nombre:nom, tel, dia, hora:hm(t), servicio:s.nom, slots:slots.join(','), ts:Date.now()};
+  try{ await escribir(upd); }catch(e){ return ocupado(); }
+  const txt=`Hola! Saqué turno por la página:%0A${encodeURIComponent(s.nom)} · ${encodeURIComponent(fechaLinda(dia))} a las ${hm(t)}%0A${encodeURIComponent(nom)}`;
+  $('reserva').innerHTML=`<div class="ok-box"><h3>¡Turno reservado!</h3><p>${esc(s.nom)}<br><b>${fechaLinda(dia)} a las ${hm(t)}</b></p>
+    ${NEGOCIO.whatsapp?`<p style="color:var(--mut);margin:12px 0">Avisale a la barbería por WhatsApp:</p><a class="btn" href="https://wa.me/${NEGOCIO.whatsapp}?text=${txt}" target="_blank" rel="noopener">Mandar por WhatsApp</a>`:''}
+    <p style="margin-top:14px"><a href="" style="color:var(--mut)">Sacar otro turno</a></p></div>`;
+}
+function ocupado(){ $('msg').className='msg bad'; $('msg').textContent='Ese horario se acaba de ocupar. Elegí otro.'; st.hora=null; pintarHoras(); }
+
+/* ---- panel de la barbería (#admin) ---- */
+async function adminLista(){
+  const tur=await leer('turnos')||{}, bloq=await leer('bloqueos')||{}, hoy=ymd(new Date());
+  const arr=Object.entries(tur).map(([id,t])=>({id,...t})).filter(t=>t.dia>=hoy).sort((a,b)=>(a.dia+a.hora).localeCompare(b.dia+b.hora));
+  $('acant').textContent=arr.length+' turnos de hoy en adelante';
+  let html='', dia='';
+  for(const t of arr){
+    if(t.dia!==dia){ dia=t.dia; html+=`<div class="dh">${fechaLinda(dia)}${dia===hoy?' · hoy':''}</div>`; }
+    const tel=String(t.tel||'').replace(/\D/g,'');
+    html+=`<div class="tu"><div><b>${esc(t.hora)}</b> · ${esc(t.servicio)}<small>${esc(t.nombre)} · ${esc(t.tel)}</small></div>
+      <div class="b">${tel?`<a class="mini" target="_blank" rel="noopener" href="https://wa.me/${tel.length<=10?'549'+tel:tel}">WhatsApp</a>`:''}<button class="mini r" data-c="${esc(t.id)}">Cancelar</button></div></div>`;
+  }
+  const cerr=Object.keys(bloq).filter(d=>d>=hoy&&bloq[d]===true).sort();
+  if(cerr.length) html+=`<div class="dh">Días cerrados</div>`+cerr.map(d=>`<div class="tu"><div>${fechaLinda(d)}</div><button class="mini" data-a="${d}">Abrir</button></div>`).join('');
+  $('alist').innerHTML=html||'<div class="vacio">No hay turnos todavía.</div>';
+  $('alist').onclick=async e=>{
+    const c=e.target.closest('[data-c]'), a=e.target.closest('[data-a]');
+    if(c){ const t=tur[c.dataset.c]; if(!confirm('¿Cancelar el turno de '+t.nombre+' ('+fechaLinda(t.dia)+' '+t.hora+')?')) return;
+      const u={['turnos/'+c.dataset.c]:null}; String(t.slots||t.hora.replace(':','')).split(',').forEach(x=>u[`ocupado/${t.dia}/${x}`]=null);
+      await escribir(u); adminLista(); }
+    if(a){ await escribir({['bloqueos/'+a.dataset.a]:null}); adminLista(); }
+  };
+}
+function adminInit(){
+  $('alog').onclick=async()=>{
+    $('amsg').textContent='';
+    if(!db){ if($('ap').value==='demo') return entrar(); $('amsg').textContent='En la muestra la contraseña es: demo'; return; }
+    try{ await auth.signInWithEmailAndPassword($('ae').value.trim(),$('ap').value); }catch(e){ $('amsg').textContent='Correo o contraseña incorrectos.'; }
+  };
+  $('aout').onclick=()=>{ if(auth) auth.signOut(); $('panel').hidden=true; $('login').hidden=false; };
+  $('abloq').onclick=async()=>{
+    const f=prompt('¿Qué día cerrás? (ej. 24/12)'); if(!f) return;
+    const [d,m]=f.split('/').map(Number); if(!d||!m) return alert('Escribilo así: 24/12');
+    const hoy=new Date(); let y=hoy.getFullYear(); if(new Date(y,m-1,d)<new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate())) y++;
+    await escribir({['bloqueos/'+y+'-'+pad(m)+'-'+pad(d)]:true}); adminLista();
+  };
+  if(auth) auth.onAuthStateChanged(u=>{ if(u) entrar(); });
+}
+function entrar(){ $('login').hidden=true; $('panel').hidden=false; adminLista(); }
+function ruta(){ const a=location.hash==='#admin'; $('adm').hidden=!a; $('pub').hidden=a; if(a) window.scrollTo(0,0); }
+
+/* ---- arranque ---- */
+function cargar(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=no; document.head.appendChild(s); }); }
+(async()=>{
+  if(FIREBASE){
+    try{
+      const v='https://www.gstatic.com/firebasejs/10.12.2/';
+      await cargar(v+'firebase-app-compat.js'); await Promise.all([cargar(v+'firebase-database-compat.js'),cargar(v+'firebase-auth-compat.js')]);
+      firebase.initializeApp(FIREBASE); db=firebase.database(); auth=firebase.auth();
+    }catch(e){ db=null; }
+  }
+  $('demo').hidden=!!db;
+  pintarFijo(); adminInit(); ruta(); window.addEventListener('hashchange',ruta);
+})();
+</script>
+</body>
+</html>
