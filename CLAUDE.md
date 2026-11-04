@@ -346,7 +346,7 @@
   Una cuenta sin publicación no recibe el mínimo si otra tiene stock de ese color en Full. **Tenders (grandes) en su propia caja** cuando juntan una llena o se cortan en 14 días (24a del 30/10). **Envío pausado cuenta como en camino y ocupa cupo** (25a). Caja 70×70×70, 30 kg; costo de mandar una
   caja `cyc/mlconfig/costoCaja` ($17.500, `cajacosto`).
 - **Cupo de Full por cuenta** (ML no lo da por API): desde el 26/10 lo lee cada día el chat de Chrome (`PROMPT_RUTINA_LOCAL.md`, 2a) y yo lo cargo del buzón con `cupo:<cuenta>=<chicos>/<grandes>@<AAAA-MM-DD HH:MM>` (la hora en que lo leyó, como `ancla`; 29/10: si no, lo que se mandó en el medio no se resta); "grande" = sólo los Tenders
-  (`cupoGrandes`). Lo vendido NO devuelve cupo (18/10). Avisa, no frena. **Cupo lleno → vender lo lento** (descuento/escalera), retirar
+  (`cupoGrandes`). Lo vendido NO devuelve cupo (18/10). Avisa, no frena (salvo al publicar: **nunca se publica en una cuenta donde lo que entra pasa el lugar que le queda**, 04/11, él: *"necesitamos máxima velocidad. no esperar la cuenta de Ayelen"*; freno en `publicar`). **Cupo lleno → vender lo lento** (descuento/escalera), retirar
   sólo si él lo pide (21/10). **Lo de Navidad que no entra se manda a medida que se libera lugar** y lo demás espera en la oficina (1a del 03/11).
 - **Código de etiqueta de Full** (`inventory_id`, `cyc/mllinks/<MLA>/inv`): se muestra en Armar caja por cuenta y color; **nunca se
   adivina** (sin color en el título → `fijarvar:<MLA>=<color>:go`). No es el MLA.

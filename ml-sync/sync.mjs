@@ -32597,6 +32597,21 @@ async function main() {
       // Caso: el P47 negro en Ayelen (MLA2244146707), que él después dijo que se quedaba ("esta es la buena").
       const otraCta = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta && e.cuenta !== label && e.status !== 'closed');
       if (otraCta.length && !partes.includes('!otracuenta')) frenos.push(`esa ficha ya se publica en ${[...new Set(otraCta.map(([, e]) => e.cuenta))].join(', ')}: un producto va en una sola cuenta. Si él lo pidió igual, agregá |!otracuenta`);
+      // NUNCA PUBLICAR DONDE NO ENTRA (04/11/2026, él con la Koleston en Ayelen sin lugar: "necesitamos máxima velocidad. no esperar la cuenta
+      // de Ayelen. nunca publicar si las unidades entrantes son más que el lugar que tiene disponible la cuenta"): lo de la oficina + lo en
+      // camino de esta ficha tiene que entrar en lo que le queda del cupo de Full a ESA cuenta (`cupoRestanteBot`, chicos o grandes). Sin cupo
+      // cargado no se frena (se avisa).
+      try {
+        const [cfgK, envK, invK] = await Promise.all([db.get('cyc/mlconfig'), db.get('cyc/envios_full'), db.get('cyc/inventory')]);
+        const prIdxK = {}; for (const x of products) if (x && x.id) prIdxK[x.id] = x;
+        const cuK = cupoRestanteBot(cfgK || {}, envK || {}, label, prIdxK);
+        const entran = Math.max(0, parseInt((invK || {})[P.id + '__Oficina_Mati']) || 0);
+        const grande = esGrandeFullBot(P, palabrasGrandesDe(cfgK || {}));
+        const lugar = cuK ? (grande ? cuK.estGra : cuK.estPeq) : null;
+        if (lugar == null) avisos.push(`no sé cuánto lugar le queda en Full a ${label} (cupo sin cargar): no lo pude chequear`);
+        else if (entran > lugar) frenos.push(`a ${label} le quedan ${lugar} u. de lugar en Full (${grande ? 'grandes' : 'chicos y medianos'}) y entrarían ${entran}: publicalo en una cuenta con lugar (él, 04/11)`);
+        else console.log(`   lugar en Full de ${label}: ${lugar} u. · entran ${entran} ✓`);
+      } catch (e) { avisos.push('no pude chequear el lugar en Full: ' + String(e.message || e).slice(0, 80)); }
       // El catálogo CONFIRMADO.
       const confP = new Set(); if (P.mlCatalogo) confP.add(String(P.mlCatalogo).toUpperCase());
       try { for (const c of Object.values((await db.get('cyc/candidatos_py')) || {})) if (c && c.prodId === P.id && candCatChequeado(c)) confP.add(candCatDe(c)); }
