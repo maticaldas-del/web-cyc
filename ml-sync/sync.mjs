@@ -11925,14 +11925,14 @@ async function ofertaVista(svp, nombre, get) {
 const CAND_MIN_VENTAS = 100;
 // 🚫 LO QUE NO APARECIÓ EN LA VUELTA COMPLETA DE NISSEI = AGOTADO (03/11/2026, él: "lo que no aparece con stock o que el chat local no vio
 // es porque no tiene stock. porque el chat local corre todos los días completo al 100%"). Al cerrarse una vuelta completa (90%+), toda
-// ficha de Paraguay (Nissei) con código que no se vio desde que arrancó la vuelta queda marcada `cyc/py_sinstock/<id>` (auto:'vuelta'):
+// ficha de Paraguay (Nissei), con código o sin él (04/11), que no se vio desde que arrancó la vuelta queda marcada `cyc/py_sinstock/<id>` (auto:'vuelta'):
 // la misma marca de "Nissei no lo tiene" que usan escasez (⏳ sin reposición: se estira el stock), Pedidos y la web. Se cae sola en
 // cuanto el chat lo vuelve a ver con precio (pycat / pyprecio). Devuelve cuántas marcó.
 async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
   const prods = (await db.get('cyc/products')) || {}; const sinSt = (await db.get('cyc/py_sinstock')) || {}; const nuevos = [];
   const cat = (await db.get('mlapi/pycat')) || {}; const vistoCod = new Set(); for (const [k, e] of Object.entries(cat)) if (e && Number(e.ts) >= desde) { vistoCod.add(String(k)); vistoCod.add(String(pycatCodDe(k))); }
   for (const p of Object.values(prods)) {
-    if (!p || !p.id || p.origen !== 'py' || !p.codPy || /elegancia/i.test(String(p.provPy || ''))) continue;
+    if (!p || !p.id || p.origen !== 'py' || p.soloLocal || p.sololocal || /elegancia/i.test(String(p.provPy || ''))) continue; // sin código también (04/11, él con el Cuba Gold: "es porque no hay stock, no es que está sin medir")
     if ((Number(p.nisseiTs) || 0) >= desde || vistoCod.has(String(p.codPy)) || sinSt[p.id]) continue;
     if (GO) await db.set('cyc/py_sinstock/' + p.id, { ts: ahora, auto: 'vuelta' }); nuevos.push(p.name);
   }
