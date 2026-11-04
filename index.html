@@ -3379,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.107';
+const APP_VERSION='28.108';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.108',f:'03/11',h:'23:45',c:[{n:3,t:'Pedidos → Listas de Bs As: ningún producto se puede pedir sin la ✅ de que la foto del mayorista y la de ML son el mismo producto (antes en Bs As entraba sin confirmar y muchos no pegaban ni cerca).'}]},
   {v:'28.107',f:'03/11',h:'22:20',c:[{n:1,t:'Pedidos → Bs As: el botón "Listas de Tito" ahora se llama "Listas".'}]},
   {v:'28.106',f:'03/11',h:'22:10',c:[{n:1,t:'Pedidos → Bs As: los proveedores conocidos tienen su botón al lado de De siempre: Dai Nippon, AnD Mitre, AVL 112 y Pirineo. Las demás listas del Once quedan en Listas de Tito.'}]},
   {v:'28.105',f:'03/11',h:'21:00',c:[{n:1,t:'Arqueo en el teléfono: el Patrimonio total ya no se corta (va solo en su renglón, entero, y el ▼% abajo).'}]},
@@ -23508,11 +23509,11 @@ function _listaUnVend(e){return !!e&&Number(e.mv)===1;}
 // "parecía" bien: 21 de 36 eran otro producto. Lo demás de 25%+ queda en 🔎 Para revisar. Misma regla en el robot (`cuentaLista`).
 // 20/10/2026 · etapa 4: con `miFijo`, vale sólo si lo medido (`mi`) es ese catálogo (misma regla que `listaOkVale` del robot).
 function _listaOkVale(e){return !!(e&&e.ok&&(e.miFijo?String(e.miFijo).toUpperCase()===String(e.mi||'').toUpperCase():(!e.okCat||String(e.okCat).toUpperCase()===String(e.mi||'').toUpperCase())));}
-// EN LAS LISTAS DE BS AS NO HACE FALTA EL ✓ (21/10/2026, con 🛒 Para comprar en el local): ahí compra Tito en persona mirando la
-// foto de ML, así que con 25%+ medido y 2+ vendedores alcanza para cargarlo (la tarjeta del local dice "sin confirmar: mirá bien la
-// foto"). Lo marcado otro producto (`noEs`), fuera de la web o fuera de Full sigue sin poder pedirse (lo frena `_listaMed25`).
+// (21/10/2026 en Bs As no hacía falta el ✓; desde el 03/11/2026 sí, ver abajo.)
 // `k` = la lista; sin `k` queda la regla de siempre.
-function _listaDa(e,k){return _listaMed25(e,k)&&(_vendOk(e.mv,e.vend,e.res)||!!e.svm)&&(_listaOkVale(e)||(k!=null&&_listaEsBsas(k)))&&!pocasVentasN(e.vend,e.res);}
+// 03/11/2026, él con la Pila AA x10 de AnD pegada a otra cosa: "que ningún producto pase a pedido sin haberse revisado una por una las
+// comparaciones de fotos". Se SACA la excepción de Bs As: de 524 de 25%+ en AnD/AVL/Pirineo, 19 eran el mismo producto. Sin ✅ no entra a Pedidos.
+function _listaDa(e,k){return _listaMed25(e,k)&&(_vendOk(e.mv,e.vend,e.res)||!!e.svm)&&_listaOkVale(e)&&!pocasVentasN(e.vend,e.res);}
 function _listaRevisar(e,k){return _listaMed25(e,k)&&!_listaDa(e,k)&&!pocasVentasN(e.vend,e.res);}
 // pasó todo lo demás pero las vendidas cargadas no llegan a 100 (21/10/2026)
 function _listaPocasV(e,k){return _listaMed25(e,k)&&pocasVentasN(e.vend,e.res);}
