@@ -3395,7 +3395,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.122';
+const APP_VERSION='28.123';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3408,6 +3408,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.123',f:'04/11',h:'15:40',c:[{n:2,t:'📦 Armar caja: el ❌ no da 35% sale sólo si la competencia no da y ninguna venta de los últimos 60 días da 35% (antes miraba sólo la más cara). Arriba de $33.000 usa el envío de ese producto, no el del más pesado.'}]},
   {v:'28.122',f:'04/11',h:'15:05',c:[{n:1,t:'🇵🇾 Pedido de Paraguay: los aparatos para el pelo (secador, planchita, rizador, cepillo secador) van en el pedido del Resto, no en Perfumería.'}]},
   {v:'28.121',f:'04/11',h:'14:40',c:[{n:2,t:'🇵🇾 Pedido de Paraguay: un perfume que no da 35% en ML ya no entra "por la perfumería" (ni con 🪄 Llenar ni a mano sin confirmar): la perfumería ahora paga costo + 25%. Lo que pida la perfumería se carga aparte.'}]},
   {v:'28.120',f:'04/11',h:'14:15',c:[{n:1,t:'‹ › Flechas para cambiar de período en Gastos (día, mes o año) y en el Arqueo (mes cerrado anterior/siguiente).'}]},
@@ -10478,14 +10479,19 @@ function _cajaPct35(p){try{
   const precio=Math.round(r.precio),gest=Number(r.gest)||0,comHoy=precio-(Number(r.neto)||0)-gest,merc=costFullP(p),impPct=(Number(r.mlExtra)||0)/precio;
   const pctEn=P=>{if(!(P>0))return null;if(P===precio)return r.margen-r.precio*PEOR_RET_PCT/r.costo*100;
     const c2=comisionEnPrecio(comHoy,precio,P);if(!c2)return null;
-    const gP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
+    // 04/11/2026: arriba de la barrera, el envío de ESTE producto si ML ya lo cobró (`netoCalcEnvio`); el peor de todo el catálogo sólo si no hay
+    // (el Aer x6 daba −26% a $33.090 con el envío del producto más pesado).
+    const gP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((Number(p.netoCalcEnvio)>=3000?Number(p.netoCalcEnvio):0)||(envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
     const imp=P*impPct,div=merc+imp+gP;return div>0?(P-c2.com-gP-merc-imp-P*PEOR_RET_PCT)/div*100:null;};
   const out={META:metaMargenML(),hoy:{P:precio,m:pctEn(precio)}};
-  // la venta más cara (por unidad) de los últimos 90 días, sin canceladas
-  {const fk=dateToKey(new Date(Date.now()-90*864e5));let best=null;
+  // 04/11/2026 (él: "que aparezca el no da si la competencia no da y si tampoco da ninguna venta de los últimos 60 días"): de TODAS las
+  // ventas de 60 días (por unidad, sin canceladas) vale la que MÁS % da (antes sólo la más cara de 90 días: con la barrera de $33.000 la
+  // más cara puede dar menos que una de $32.990).
+  {const fk=dateToKey(new Date(Date.now()-60*864e5));let best=null;const vistos={};
     for(const [k,dia] of Object.entries(state.ventaprod||{})){if(k<fk)continue;for(const v of Object.values(dia||{})){if(!v||!ventaEsDe(v,p)||_esCancelada(v))continue;
-      const q=Number(v.qty)||1,P=Math.round((Number(v.total)||0)/q);if(P>0&&(!best||P>best.P))best={P,k};}}
-    if(best)out.venta={P:best.P,k:best.k,m:pctEn(best.P)};}
+      const q=Number(v.qty)||1,P=Math.round((Number(v.total)||0)/q);if(!(P>0))continue;if(vistos[P]&&vistos[P]>=k)continue;vistos[P]=k;
+      const m=pctEn(P);if(m!=null&&(!best||m>best.m))best={P,k,m};}}
+    if(best)out.venta=best;}
   // la competencia (lo que mide el robot de noche en cyc/techofull)
   {const T=state.techoFull||{};let t=null;for(const [mla,e] of Object.entries(state.mllinks||{})){if(!e||e.prodId!==p.id||e.ignored||(e.status||'')==='closed')continue;
       const x=T[mla];if(!x||!(x.t>0)||Date.now()-(Number(x.ts)||0)>4*864e5)continue;if(!t||x.t>t.t)t=x;}
@@ -10496,10 +10502,10 @@ function _cajaPct35(p){try{
   let ms=[out.venta,out.comp].filter(x=>x&&x.m!=null);out.soloHoy=!ms.length;if(!ms.length)ms=[out.hoy].filter(x=>x&&x.m!=null);if(!ms.length)return null;
   out.mejor=ms.reduce((a,b)=>b.m>a.m?b:a);return out;}catch(e){return null;}}
 function _cajaNo35(p){const o=_cajaPct35(p);if(!o||!(o.mejor.m<o.META))return'';
-  return ` <span title="${o.soloHoy?'Sin ventas ni competencia medida: al precio de hoy':'Ni a la venta más alta ni contra la competencia'} no llega al ${o.META}% (peor caso). El mejor: ${Math.round(o.mejor.m)}% a ${fmt(o.mejor.P)}. Pensá si conviene mandarlo a Full o venderlo por otro lado. El detalle, al abrir el renglón." style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 6px;font-size:.62rem;font-weight:700;white-space:nowrap">❌ no da ${o.META}% · ${Math.round(o.mejor.m)}%</span>`;}
+  return ` <span title="${o.soloHoy?'Sin ventas ni competencia medida: al precio de hoy':'Ni con ninguna venta de 60 días ni contra la competencia'} no llega al ${o.META}% (peor caso). El mejor: ${Math.round(o.mejor.m)}% a ${fmt(o.mejor.P)}. Pensá si conviene mandarlo a Full o venderlo por otro lado. El detalle, al abrir el renglón." style="background:rgba(239,68,68,.14);color:var(--red);border-radius:5px;padding:1px 6px;font-size:.62rem;font-weight:700;white-space:nowrap">❌ no da ${o.META}% · ${Math.round(o.mejor.m)}%</span>`;}
 function _cajaNo35Det(p){const o=_cajaPct35(p);if(!o)return'';const f=(x,txt)=>x?`${txt} <b>${fmt(x.P)}</b> → <b style="color:${x.m!=null&&x.m>=o.META?'var(--green)':'var(--red)'}">${x.m==null?'?':Math.round(x.m)+'%'}</b>`:`${txt} <span style="color:var(--muted)">sin dato</span>`;
   const fk=k=>k?String(k).split('_').reverse().slice(0,2).join('/'):'';
-  return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0">💯 % en el peor caso (meta ${o.META}%): ${f(o.hoy,'hoy en ML')} · ${f(o.venta,'venta más alta'+(o.venta?' ('+fk(o.venta.k)+')':'')+' a')} · ${f(o.comp,'competencia'+(o.comp&&o.comp.ts?' (medida el '+new Date(o.comp.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+')':'')+' a')}${o.mejor.m<o.META?' · <b style="color:var(--red)">no llega en ninguno</b>':''}</div>`;}
+  return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0">💯 % en el peor caso (meta ${o.META}%): ${f(o.hoy,'hoy en ML')} · ${f(o.venta,'la venta de 60 días que más da'+(o.venta?' ('+fk(o.venta.k)+')':'')+' a')} · ${f(o.comp,'competencia'+(o.comp&&o.comp.ts?' (medida el '+new Date(o.comp.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+')':'')+' a')}${o.mejor.m<o.META?' · <b style="color:var(--red)">no llega en ninguno</b>':''}</div>`;}
 function cajasVerdes(filas){
   return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});
 }
