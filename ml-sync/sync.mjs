@@ -3165,6 +3165,8 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
   const aProposito = noLlegan.filter((x) => /pausada a mano con el comando pausar/.test(String(x.why || '')));
   for (const x of noLlegan) if (!aProposito.includes(x)) console.log(`   ⏸️ ${x.nom} · ${x.label} · ${x.stock} u. → ${x.why}`);
   if (aProposito.length) console.log(`   (${aProposito.length} pausadas a propósito por él con \`pausar\`: no se avisan ni se activan · ${aProposito.reduce((a, x) => a + (Number(x.stock) || 0), 0)} u. en Full)`);
+  // 04/11/2026 (él: "no entiendo eso, deben ser gemelas"): la lista entera de las pausadas a propósito, una por renglón.
+  for (const x of aProposito) console.log(`      · ${x.mla || ''} ${String(x.nom || '').slice(0, 60)} · ${x.label} · ${x.stock} u.`);
   // Para el botón 🧠 de la web (08/10/2026): qué decidió esta vuelta con cada pausada con stock en Full.
   if (!DRY && (activadas.length || noLlegan.length)) {
     const act = {};
