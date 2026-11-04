@@ -32510,6 +32510,33 @@ async function main() {
       }
       return;
     }
+    // BILLING_PROBE=validarml:<catálogo MLA…>|cuenta=<cuenta>|precio=<pesos> → ¿ML NOS DEJA PUBLICAR ESTO? SIN PUBLICAR NADA (04/11/2026,
+    // él con el Bad Boy Cobalt Elixir: "si publicamos antes de pedir sabemos si ML nos deja o no… no lo publiques, sólo mirá si te deja
+    // avanzar hasta el final"). Arma la misma publicación de catálogo que `publicar` (Clásica, me2, 1 u.) y se la pasa a ML por
+    // `POST /items/validate`, que revisa todo y NO crea nada. No necesita ficha. OJO: una marca que denuncia (las quejas del dueño de la
+    // marca) no aparece acá: eso llega DESPUÉS de publicar; esto sólo dice si ML la frena de entrada (categoría, marca bloqueada, cuenta).
+    if (/^validarml:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const partes = String(process.env.BILLING_PROBE).slice('validarml:'.length).split('|').map((x) => x.trim()).filter(Boolean);
+      const cat = String(partes[0] || '').toUpperCase(); const kv = {}; for (const x of partes.slice(1)) { const m = x.match(/^([a-z]+)=(.*)$/i); if (m) kv[m[1].toLowerCase()] = m[2].trim(); }
+      const label = String(kv.cuenta || '').toLowerCase(), precio = Math.round(Number(String(kv.precio || '').replace(/\./g, '')) || 0);
+      if (!/^MLA\d+$/.test(cat) || !label || !(precio > 0)) { console.log('❌ Va así: validarml:<catálogo MLA…>|cuenta=<cuenta>|precio=<pesos>'); return; }
+      const acc = accounts[label]; if (!acc?.refresh_token) { console.log(`❌ ${label}: sin permiso cargado.`); return; }
+      let tok; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; }
+      catch { console.log(`❌ ${label}: no pude renovar el permiso.`); return; }
+      let prodML = null, ofs = []; try { prodML = await mlGet('/products/' + cat, tok); } catch (e) { console.log(`❌ ML no me dio el catálogo ${cat}: ${String(e.message || e).slice(0, 120)}`); return; }
+      try { ofs = ((await mlGet('/products/' + cat + '/items', tok)) || {}).results || []; } catch { ofs = []; }
+      const categoria = (ofs.find((o) => o && o.category_id) || {}).category_id || null;
+      console.log(`=== ¿ML NOS DEJA PUBLICAR? (sólo valida, NO crea nada) · ${label} · ${cat} «${String(prodML.name || '').slice(0, 70)}» · ${money(precio)} · categoría ${categoria || '?'} · ${ofs.length} vendedor(es) ===`);
+      const body = { site_id: 'MLA', title: String(prodML.name || '').slice(0, 60), category_id: categoria, price: precio, currency_id: 'ARS', available_quantity: 1, buying_mode: 'buy_it_now', listing_type_id: 'gold_special', condition: 'new', catalog_product_id: cat, catalog_listing: true,
+        shipping: { mode: 'me2', local_pick_up: false, free_shipping: precio >= UMBRAL_ENVIO_GRATIS } };
+      const val = async () => { try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); return [r.status, (await r.text()).slice(0, 1500)]; } catch (e) { return [0, String(e.message || e).slice(0, 200)]; } };
+      let [st, tx] = await val();
+      if (st === 400 && /fields \[title\] are invalid/i.test(tx)) { body.family_name = body.title; delete body.title; [st, tx] = await val(); }
+      let soloAvisos = false; if (st === 400) { try { const j = JSON.parse(tx); const cs = Array.isArray(j.cause) ? j.cause : []; soloAvisos = cs.length > 0 && cs.every((c) => c && c.type === 'warning'); } catch { /* no es JSON */ } }
+      if (st === 204 || st === 200 || soloAvisos) console.log(`✓ ML LA ACEPTARÍA${soloAvisos ? ' (sólo avisos, no errores)' : ''}: no la frena de entrada. Lo de las denuncias de la marca no se puede saber sin publicar.`);
+      else console.log(`✗ ML NO LA ACEPTA (${st || 'sin respuesta'}): ${tx}`);
+      return;
+    }
     // BILLING_PROBE=publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]
     // (etapa 6 · A1, 21/10/2026, él: "probemos y me decís") → CLAUDE PUBLICA EN ML LO NUEVO DE UN PEDIDO, UNA POR VEZ.
     // Hasta hoy la publicación la creaba él (*"solo armar la publicacion en cyc. ml la hago yo"*, 26/09). Esto la crea PAUSADA, en el
