@@ -13705,7 +13705,11 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
   // Empate (nunca medidos): primero los recién cargados (16/10/2026: los 36 de Elegancia quedaban detrás de ~960 del catálogo).
   // Antes que todo, los medidos con OTRA cuenta (`calcVer` ≠ CAND_CALC_VER, 28/10/2026): la cuenta con los de afuera se probó 25
   // minutos y se postergó (él: "dejá eso para después"); los 37 medidos con ella eran los más recientes y quedaban últimos en la fila.
-  entradas.sort((x, y) => ((Number(x[1].calcVer) === CAND_CALC_VER) - (Number(y[1].calcVer) === CAND_CALC_VER)) || (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0) || (Number(y[1].ts) || 0) - (Number(x[1].ts) || 0));
+  // 04/11/2026 (él eligió 1a con el Bad Boy Cobalt Elixir: el pedido decía 75% medido contra $591.000 y ML ya lo vendía a $295.500 en
+  // promo): LO QUE ESTÁ EN EL PEDIDO DEL MOMENTO (`pedirU` > 0) SE MIDE PRIMERO y con su medición de más de 6 h se vuelve a medir
+  // (los demás, 20 h). Así el % que se ve al pedir tiene horas, no días.
+  const _enPed = (c) => (Number(c && c.pedirU) || 0) > 0 && !(c && c.pedidoEn);
+  entradas.sort((x, y) => (_enPed(y[1]) - _enPed(x[1])) || ((Number(x[1].calcVer) === CAND_CALC_VER) - (Number(y[1].calcVer) === CAND_CALC_VER)) || (Number(x[1].calcTs) || 0) - (Number(y[1].calcTs) || 0) || (Number(y[1].ts) || 0) - (Number(x[1].ts) || 0));
   if (prueba) [].concat(prueba).forEach((x, i) => entradas.unshift(['__prueba' + i + '__', x]));
   const fin = (await db.get('cyc/finanzas')) || {};
   // Etapa 2 (20/10/2026): sin dólar NO se mide (antes un $1.500 inventado entraba en el costo de cada candidato y en su margen,
@@ -13923,7 +13927,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       && Number(c.margen) >= candPisoDe(c) && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
     // Fresca (menos de 20 h) o sin consultas disponibles esta vuelta: se usa la guardada. Vieja o
     // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
-    if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < CAND_FRESCO_MS || consultas >= CAND_MAX_ML)) {
+    if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < ((Number(c.pedirU) || 0) > 0 && !c.pedidoEn ? 6 * 3600e3 : CAND_FRESCO_MS) || consultas >= CAND_MAX_ML)) {
       yaCalc++;
       // Los que no se vuelven a medir igual pasan por el chequeo de "¿es el mismo producto?" con el
       // título guardado: no cuesta ninguna consulta a ML y así los ya medidos no esperan días.
