@@ -3379,7 +3379,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.109';
+const APP_VERSION='28.110';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3392,6 +3392,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.110',f:'04/11',h:'02:00',c:[{n:2,t:'Envíos a Full: cada caja tiene el botón ⚠️ no llegó bien para contar qué pasó (faltó algo, llegó rota…). El problema queda en la caja con un cartel y le llega a Claude por el buzón; ✅ resuelto lo saca.'}]},
   {v:'28.109',f:'04/11',h:'01:20',c:[{n:2,t:'Pedidos → Listas: un pack armado con sueltos de la lista (el Aer x6 con los Aer Power Pocket de Pirineo) cuesta 6 sueltos y el mensaje a Tito pide los sueltos ("x12 (2 packs de 6)").'}]},
   {v:'28.108',f:'03/11',h:'23:45',c:[{n:3,t:'Pedidos → Listas de Bs As: ningún producto se puede pedir sin la ✅ de que la foto del mayorista y la de ML son el mismo producto (antes en Bs As entraba sin confirmar y muchos no pegaban ni cerca).'}]},
   {v:'28.107',f:'03/11',h:'22:20',c:[{n:1,t:'Pedidos → Bs As: el botón "Listas de Tito" ahora se llama "Listas".'}]},
@@ -10884,6 +10885,26 @@ async function marcarCajaRecibida(id,i,valor){
   });
   if(ok)await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
 }
+// ⚠️ LA CAJA NO LLEGÓ BIEN (04/11/2026, él: "quiero agregar un botón de que la caja no llegó bien. y que pueda detallar el problema"):
+// guarda el problema en la caja (`problema` = {t, ts}) y lo manda al 📬 buzón para que Claude lo lea en la próxima vuelta.
+// ✅ Resuelto lo saca (queda en `problemaHist`).
+async function cajaProblema(id,i,resolver){
+  const e=(state.envios_full||{})[id];if(!e)return;
+  const c=cajasDe(e)[i]||{};
+  if(resolver){
+    if(!confirm('¿El problema de esta caja ya está resuelto?'))return;
+    const ok=await _editarCajaTx(id,i,x=>{const p=x.problema;if(p){x.problemaHist=(x.problemaHist||[]).concat([{...p,resuelto:Date.now()}]);}x.problema=null;});
+    if(ok){toast('✅ Marcado como resuelto','ok',3000);renderCajasEnCamino();}return;
+  }
+  const t=prompt('¿Qué pasó con la caja '+(c.track||'')+'? (faltó algo, llegó rota, ML rechazó unidades, otra cosa)',(c.problema&&c.problema.t)||'');
+  if(t==null)return;const tt=String(t).trim().slice(0,600);if(!tt){toast('No escribiste el problema: no guardé nada','warn',3500);return;}
+  const ts=Date.now();
+  const ok=await _editarCajaTx(id,i,x=>{x.problema={t:tt,ts};});
+  if(!ok)return;
+  try{await fbSet('buzon/'+ts,{t:'CAJA CON PROBLEMA · '+(e.cuenta||'')+' · envío del '+(e.fecha||'')+' · seguimiento '+(c.track||'sin número')+'\n'+tt,ts});}catch(_){}
+  await log('Caja '+(i+1)+' del envío '+e.fecha+' ('+(e.cuenta||'')+'): problema anotado');
+  toast('⚠️ Problema anotado: Claude lo ve en el buzón','ok',4000);renderCajasEnCamino();
+}
 async function setCajaTrack(id,i,val){
   await _editarCajaTx(id,i,c=>{c.track=String(val||'').replace(/[^0-9]/g,'');});
 }
@@ -11011,12 +11032,14 @@ function renderCajasEnCamino(){
         ${uEnt>0?`<span style="font-size:.64rem;color:var(--green)" title="ML ya dio de alta estas unidades: se cuentan en Full y no en camino, para no contarlas dos veces">📥 ya entraron ${uEnt} a Full</span>`:''}
       </div>
       ${cajaViajeHTML(e,c,uu,uEnt)}
+      ${c.problema&&c.problema.t?`<div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;background:rgba(245,158,11,.12);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:.7rem"><span style="flex:1;min-width:180px;overflow-wrap:anywhere"><b style="color:var(--amber)">⚠️ No llegó bien</b> <span style="color:var(--muted)">· ${new Date(c.problema.ts).toLocaleDateString('es-AR')}</span><br>${escHtml(c.problema.t)}</span><button class="btn" style="padding:5px 10px;font-size:.64rem;flex:none" onclick="cajaProblema('${e.id}',${i},true)">✅ resuelto</button></div>`:''}
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
         <input type="text" inputmode="numeric" value="${c.track||''}" placeholder="nº de seguimiento"
           style="flex:1;min-width:130px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;padding:7px 9px;outline:none"
           onchange="setCajaTrack('${e.id}',${i},this.value);renderCajasEnCamino()">
         <button class="btn" style="padding:7px 12px;font-size:.66rem;${c.recibida?'background:transparent;border:1px solid var(--border2);color:var(--muted)':''}"
           onclick="marcarCajaRecibida('${e.id}',${i},${c.recibida?'false':'true'}).then(renderCajasEnCamino)">${c.recibida?'no llegó':'llegó'}</button>
+        <button class="btn" style="padding:7px 12px;font-size:.66rem;background:transparent;border:1px solid var(--amber);color:var(--amber)" title="La caja no llegó bien: contá qué pasó" onclick="event.stopPropagation();cajaProblema('${e.id}',${i})">⚠️ ${c.problema?'editar problema':'no llegó bien'}</button>
         ${c.recibida?'':uEnt>0?`<span style="font-size:.62rem;color:var(--muted)" title="Lo que ya entró a Full no puede volver a la oficina: se contaría dos veces">marcala como llegada (o esperá: la marco yo, Claude, en la próxima vuelta)</span>`:`<button class="btn btn-del" style="padding:7px 12px;font-size:.66rem" title="Deshacer: las unidades vuelven a tu oficina" onclick="deshacerCaja('${e.id}',${i})">deshacer</button>`}
       </div>
       ${items.length&&!_ab?`<div onclick="cajaToggle('${_ck}')" style="font-size:.68rem;color:var(--blue,#38bdf8);cursor:pointer">▸ ver contenido · ${items.length} ${items.length===1?'renglón':'renglones'} · ${uu} u.</div>`:items.length?`<div style="display:flex;flex-direction:column;gap:4px">${items.map(x=>{

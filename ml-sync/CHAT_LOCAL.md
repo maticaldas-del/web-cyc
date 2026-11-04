@@ -29,7 +29,7 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Mayoristas del Once con precios en internet.  → ONCE
 - Imega (mayorista que conoce Tito).  → IMEGA
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
-- "cajas llegadas" (cada vez que te prenden, después de la RUTINA): sólo las cajas que el robot no pudo cerrar (`cajasmirar`) y el porqué de lo que falta.  → CAJAS LLEGADAS
+- "cajas llegadas" (cada vez que te prenden, después de la RUTINA): sólo las cajas que el robot no pudo cerrar (`cajasmirar`) y el porqué de lo que falta.  → CAJAS LLEGADAS Si una caja llegó mal (rota, faltante, ML rechazó unidades), además tocá ⚠️ "no llegó bien" en esa caja (Pedidos → Envíos a Full) y escribí qué pasó (04/11).
 - "más vendidos" (cada 7 días): lo más vendido de cada categoría de ML cruzado con Nissei y las listas.  → MÁS VENDIDOS
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
