@@ -2025,6 +2025,11 @@ setTimeout(function _ldVigia(){try{
           <button id="met-pct-diario" class="pf-btn active-all" onclick="setMetPctMode('diario',this)">Diario</button>
           <button id="met-pct-prom" class="pf-btn" onclick="setMetPctMode('promedio',this)">Promedio</button>
         </div>
+        <!-- 04/11/2026 (él: "elegir entre esta forma y la forma de ver que el 0 sea el piso, se marque la línea del 35% y el techo sea el punto de % más alto") -->
+        <div style="display:flex;gap:4px">
+          <button id="met-pct-esc-aj" class="pf-btn active-all" onclick="setMetPctEscala('ajustada')" title="La escala se acomoda a los números (se ven mejor las subidas y bajadas)">Ajustada</button>
+          <button id="met-pct-esc-0" class="pf-btn" onclick="setMetPctEscala('cero')" title="Abajo 0%, la línea del 35% marcada y arriba el % más alto">Desde 0%</button>
+        </div>
         <div style="display:flex;gap:4px">
           <button id="met-pct-general" class="pf-btn active-all" onclick="setMetPctChartView('general',this)">General</button>
           <button id="met-pct-cuentas" class="pf-btn" onclick="setMetPctChartView('cuentas',this)">Cuentas</button>
@@ -3380,7 +3385,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.115';
+const APP_VERSION='28.116';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3393,6 +3398,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.116',f:'04/11',h:'13:20',c:[{n:2,t:'📊 Métricas → % de Ganancia: botón nuevo Ajustada / Desde 0%. Desde 0% arranca abajo en 0, marca la línea del 35% y arriba llega al % más alto (queda recordado).'}]},
   {v:'28.115',f:'04/11',h:'13:05',c:[{n:2,t:'📊 Métricas: el selector de período (Mes ▾, Total/Neto/Ganancia y las flechas) pasó abajo del gráfico de % de Ganancia.'}]},
   {v:'28.113',f:'04/11',h:'12:05',c:[{n:1,t:'💰 Arqueo → Lo que debemos: "Deuda de CYC" ahora se llama "Dólares Abuela".'}]},
   {v:'28.112',f:'04/11',h:'05:40',c:[{n:1,t:'🔍 Revisión de las Reglas del cerebro: textos al día y 18 decisiones para "resolvamos".'}]},
@@ -26419,6 +26425,14 @@ function setMetPctChartView(v,btn){
   if(metChartPct){metChartPct.destroy();metChartPct=null;}
   renderPctChartFromScope(metScopeMode);
 }
+let metPctEscala=(()=>{try{return localStorage.getItem('metPctEscala')==='cero'?'cero':'ajustada';}catch(e){return 'ajustada';}})();
+function setMetPctEscala(m){
+  metPctEscala=m==='cero'?'cero':'ajustada';try{localStorage.setItem('metPctEscala',metPctEscala);}catch(e){}
+  _metPctEscBtns();if(metChartPct){metChartPct.destroy();metChartPct=null;}renderMetricas();
+}
+function _metPctEscBtns(){const a=document.getElementById('met-pct-esc-aj'),c=document.getElementById('met-pct-esc-0');if(a)a.className='pf-btn'+(metPctEscala==='ajustada'?' active-all':'');if(c)c.className='pf-btn'+(metPctEscala==='cero'?' active-all':'');}
+// "Desde 0%": abajo 0, arriba el % más alto que se ve (y nunca menos que la meta, así la línea del 35% siempre aparece).
+function _metPctEscY(datasets,meta){if(metPctEscala!=='cero')return {};let mx=meta;datasets.forEach(ds=>(ds.data||[]).forEach(v=>{if(v!=null&&isFinite(v)&&v>mx)mx=v;}));return {min:0,max:Math.ceil(mx/5)*5};}
 function setMetPctMode(m,btn){
   metPctMode=(m==='promedio')?'promedio':'diario';
   document.querySelectorAll('#met-pct-diario,#met-pct-prom').forEach(b=>b.className='pf-btn');
@@ -26485,10 +26499,11 @@ function renderPctChartFromScope(scope){
   datasets.push({label:'Meta '+_mP+'%',data:labels.map(()=>_mP),borderColor:'#6b6b7a',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false,tension:0});}
   metCortarEnHoy(datasets,buckets);
   if(sinPrev)datasets=datasets.filter(ds=>ds.label!==CMP_LBL_PREV);
-  if(metChartPct){metChartPct.data.labels=labels;metChartPct.data.datasets=datasets;metChartPct.update();return;}
+  const _escY=_metPctEscY(datasets,_vLoc()?LOCAL_PCT:vpMinPct());_metPctEscBtns();
+  if(metChartPct){metChartPct.data.labels=labels;metChartPct.data.datasets=datasets;metChartPct.options.scales.y.min=_escY.min;metChartPct.options.scales.y.max=_escY.max;metChartPct.update();return;}
   Chart.defaults.color='#6b6b7a';Chart.defaults.borderColor='#2a2a30';
   metChartPct=new Chart(canvas,{type:'line',data:{labels,datasets},
-    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:item=>' '+item.dataset.label+': '+(item.raw==null?'s/costo':item.raw.toFixed(1)+'%'),afterBody:items=>{if(metPctLineView!=='general')return '';const dif=_metTipDifs(items,true);return dif.length?['',...dif]:'';}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{grid:{color:'#2a2a30'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
+    options:{responsive:true,aspectRatio:innerWidth<=640?1.3:undefined,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:item=>' '+item.dataset.label+': '+(item.raw==null?'s/costo':item.raw.toFixed(1)+'%'),afterBody:items=>{if(metPctLineView!=='general')return '';const dif=_metTipDifs(items,true);return dif.length?['',...dif]:'';}},titleFont:{size:13,weight:'bold'},bodyFont:{size:11},titleColor:'#f1f1f3',bodyColor:'#9b9ba8'}},scales:{y:{..._escY,grid:{color:'#2a2a30'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
   });
 }
 
