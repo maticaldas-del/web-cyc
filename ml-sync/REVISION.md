@@ -1734,6 +1734,11 @@ Error mío: `open('sw.js','w').write(open('sw.js').read()…)` en Python abre pa
 `sw.js` publicado estaba vacío y la app no abría (él: *"se rompió web cyc no ingresa"*); se repuso entero (CACHE cyc-v960).
 - **Qué chequear siempre:** después de subir el `CACHE`, `wc -c sw.js` > 0 y `node --check sw.js`. Leer y escribir un archivo en dos pasos.
 
+### Etapa 3 · 04/11/2026 · 🪄 `pyllenar:<resto|perf>[:<tope>]` (sólo lee): llenar el pedido del momento desde el chat
+- **Qué es:** él (*"llenalo hasta 600 dólares"*): lo mismo que el botón 🪄 de la web para los nuevos (⭐ gana mucho y sale mucho, 35%+, 2+ vendedores, mirado hace menos de 2 días, hasta US$ 20 por producto), con el `pedir:` listo. Yo reviso la lista antes de cargarla.
+- **Dónde vive:** `sync.mjs` probe `pyllenar`.
+- **Qué chequear:** que dé lo mismo que el botón de la web (misma ⭐, mismo tope por grupo).
+
 ### Etapa 3 · 04/11/2026 · 🏪 `listasvale`: cada proveedor se juzga por lo que puede dejar, no por cuántos productos tiene
 - **Qué es:** él (*"los de menos de 5 productos… o mejor armá un sistema, porque quizás hay un mayorista que tiene solo un producto pero es genial"*): ✅ se queda con 1+ producto que da (35%+ contra ML, foto confirmada, ventas) · ⏳ se queda mientras falte medir o mirar fotos · ❌ se descarta solo (`descAuto`) si ya está todo medido y revisado y no da ninguno. Ordena por la suma de la ganancia por unidad de lo que da. Los descartados a mano (Juguetería Che) no los toca; los automáticos vuelven si después dan.
 - **Dónde vive:** `sync.mjs` probe `listasvale[:go]`; `listaM25Fila`/`listaDaFila` salen de `cuentaLista` (la misma cuenta).
