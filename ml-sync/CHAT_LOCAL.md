@@ -41,7 +41,11 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    b) CAJAS → NUNCA por tu cuenta (31/10/2026, él: "puede haber mercadería que sé que está por llegar y la arma, y no quiero aún"). Sólo cuando Matías te diga "arrancá" o "armá la caja". Si ves "MANDALA YA", como mucho avisale en el chat que hay una caja lista; no cargues nada en ML.
    c) GUAY → TODOS LOS DÍAS, después de la RUTINA (31/10/2026, él: "para la tienda quiero que esté actualizado al día qué hay y qué no… voy a dejar la PC prendida siempre"). Seguís desde la página donde quedaste; al llegar a la última cerrás con `;fin=<productos que dice la web>` y la próxima vez empezás otra vuelta desde la página 1. Lo que Nissei ya no tiene sale solo de la Tienda cuando termina una vuelta sin verlo.
    d) LISTAS → si hace 7 días o más.
-   e) ONCE → si hace 7 días o más (1 o 2 mayoristas nuevos, una hora como mucho).
+   e) ONCE → TODOS LOS DOMINGOS (04/11/2026, Matías: "mayoristas del Once cada 7 días, todos los domingos"). Primero RECARGÁ ENTEROS
+      los que ya están cargados (CX Mayorista, Lanlan Once, M-Once Mayorista, Next Cell, Once Mayorista, Rapi Mayorista, Star Mayorista,
+      Bazar Once Mayorista, Ahmed Electrónica): la lista entera de su web de HOY, con `lista:<prov>|fecha=<hoy>;…;go`, sólo lo que dice
+      que hay stock. Lo que ya no está en su web queda solo como "de una lista anterior" y no se pide (así sabemos qué tienen, como en
+      Nissei). Después, si queda tiempo, 1 o 2 mayoristas nuevos. Si un domingo no te prenden, hacelo el primer día que te prendan.
    f) IMEGA → si hace 14 días o más.
    f3) MAYORISTAS WEB (AnD Mitre y AVL 112, los que visita Tito) → si hace 7 días o más (03/11/2026). El catálogo lo baja el robot (`listawoo`): vos lo actualizás, revisás que lo que da 35% sea el mismo producto en ML y anotás lo que la página no dice (IVA, mínimo, packs). Texto: PROMPT_MAYORISTAS_WEB.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
