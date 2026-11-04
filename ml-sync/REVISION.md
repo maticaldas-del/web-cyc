@@ -1769,6 +1769,11 @@ venta muestra ese aroma marcado; elegir otro del desplegable cambia la línea.
 Él (con la tarjeta de la Waflera): *"que diga las unidades que hay en Full"*. Al lado de "precio hoy": "en Full N u." (suma de las 4
 cuentas, `getQ`; rojo en 0). Qué chequear: coincide con Full de ML de esa ficha.
 
+### Etapa 1 · 04/11/2026 · 🥊 `bajarcaja` ya no lista gemelas · `gemelade` · `pausadas` lista una por una
+- **Qué es:** analizando "apurar lo que pierde la caja", 10 de los 13 que salían eran gemelas (Premium / envío gratis): una gemela sigue sola a su Clásica cada hora, bajarla sola no sirve. `bajarParaMover` ahora las saltea. `gemelade:<MLA>,…` (sólo lee) dice si una publicación es Clásica o gemela y de quién. `pausadas` lista las pausadas a propósito una por renglón (las 34 eran Paulvic repetidas que comparten stock: las 198 u. no son aparte).
+- **Dónde vive:** `sync.mjs` `bajarParaMover`, probe `gemelade`, `pausadas` (`aProposito`).
+- **Qué chequear:** que `bajarcaja` muestre sólo Clásicas; antes de analizar una publicación, mirar con `gemelade` si es gemela.
+
 ### Etapa 1 · 26/10/2026 · v27.10 · 🧠 Cambios de precio: el total sólo con resultado claro
 Él (con "−$194.100"): *"¿quiere decir que todo lo que hicimos fue al pedo? yo veo que estamos ganando como nunca"*; eligió la 1a. El total
 de Métricas sumaba todo cambio medido, también los que juzgué "todavía no se sabe" (Waflera sin stock −$56.593, Redmi Watch 4 −$48.722) y
