@@ -32271,6 +32271,22 @@ async function main() {
         console.log(`🌸 ABEL (Nissei × dólar × ${ABEL_ENVIO} × ${ABEL_EFECTIVO} efectivo / × ${ABEL_TARJETA} tarjeta · mirado hace ${ABEL_DIAS} días o menos): ${outAbel.length} perfumes · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
     }
+    // BILLING_PROBE=listafotos:<prov> → SOLO LEE (04/11/2026, él con la Pila AA x10 de AnD pegada a otra cosa de ML: "no pegan ni con moco.
+    // revisa las fotos"). De la lista, lo que da 25%+ y no tiene el ✅: código · nombre · % · catálogo de ML · título · FOTO del proveedor
+    // · FOTO de ML (primera del catálogo). Para armar la lámina, mirarlas y descartar con `listadato:<prov>;<cód>=no;go`.
+    if (/^listafotos:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const k = String(process.env.BILLING_PROBE).slice('listafotos:'.length).trim().toLowerCase();
+      const cat = (await db.get('mlapi/listas/' + k)) || {}; let tk = null;
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la que sigue */ } }
+      if (!tk) { console.log('❌ sin token'); return; }
+      const L = Object.entries(cat).filter(([, e]) => e && e.mi && e.m != null && Number(e.m) >= 25 && !listaOkVale(e) && !e.sacado && !listaNoEsVale(e)).sort((x, y) => Number(y[1].m) - Number(x[1].m));
+      const fotoML = {}; console.log(`=== ${k} · ${L.length} de 25%+ sin ✅ ===`); console.log('@@FOTOS');
+      for (const [cod, e] of L) { const mi = String(e.mi).toUpperCase();
+        if (!(mi in fotoML)) { try { const pr = await mlGet('/products/' + mi, tk); const x = (pr.pictures || [])[0] || {}; fotoML[mi] = String(x.secure_url || x.url || '').replace(/^http:\/\//, 'https://'); } catch { fotoML[mi] = ''; } }
+        console.log([cod, String(e.n || '').replace(/\|/g, '/').slice(0, 60), Math.round(Number(e.m)) + '%', Number(e.mv) || 0, mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 70), e.f || '', fotoML[mi] || ''].join('|')); }
+      console.log('@@FIN'); return;
+    }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
     // Nombre y fotos (direcciones de mlstatic) del catálogo de ML, para mirar si es el mismo producto antes de publicar en él.
     if (/^fotocat:/.test(String(process.env.BILLING_PROBE || ''))) {
