@@ -26453,6 +26453,16 @@ async function main() {
       if (elig.length) console.log('▶️ pedir:' + elig.map((x) => `${x.c.nombre.replace(/[;=]/g, ' ')}=${x.u}`).join(';') + ';go');
       return;
     }
+    // BILLING_PROBE=candfotos:<palabras,…> (05/11/2026, él: "revisá que estén bien esos productos"; SÓLO LEE) → de cada candidato de
+    // Paraguay que coincide: nombre de Nissei, código, foto de Nissei, catálogo de ML, título y foto de ML. Para armar la lámina y mirar uno por uno.
+    if (/^candfotos:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ws = String(process.env.BILLING_PROBE).slice(10).split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+      const cands = (await db.get('cyc/candidatos_py')) || {};
+      for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre) continue; const n = String(c.nombre).toLowerCase();
+        if (!ws.some((w) => n.includes(w))) continue;
+        console.log(`FOTO|${id}|${c.cod || ''}|${String(c.nombre).replace(/\|/g, ' ')}|${c.foto || ''}|${c.mlCat || c.mlLink || ''}|${String(c.mlTit || '').replace(/\|/g, ' ')}|${c.mlFoto || ''}|${c.pedidoEn || ''}|${c.revClaude || ''}`); }
+      return;
+    }
     if (/^gemelade:/.test(String(process.env.BILLING_PROBE || ''))) {
       const L = (await db.get('cyc/mllinks')) || {}; const ms = String(process.env.BILLING_PROBE).slice(9).split(/[,;\s]+/).filter(Boolean);
       const des = (m) => { const x = L[m] || {}; return `${m} · ${x.cuenta || '?'} · ${x.gemelaDe ? `gemela ${x.gemelaTipo === 'envio' ? '📦 envío gratis' : '💳 Premium'} de ${x.gemelaDe}` : 'Clásica (principal)'} · ${String(x.title || '').slice(0, 45)}`; };
