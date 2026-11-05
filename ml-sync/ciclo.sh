@@ -56,7 +56,7 @@ while [ "$(date +%s)" -lt "$fin" ]; do
       cortado
       id=$(basename "$f" .cmd)
       cmd=$(cat "$f"); rm -f "$f"
-      echo "##### 📥 del panel ($id): ${cmd:0:80}"
+      echo "##### 📥 del panel ($id): ${cmd%%[:;|=]*}"   # revisión etapa 2 (05/11/2026): sólo el nombre (el texto podía traer saldos)
       if corre env BILLING_PROBE="$cmd" node ml-sync/sync.mjs > "/tmp/cyc-cola/$id.log" 2>&1; then echo 0 > "/tmp/cyc-cola/$id.rc"; else echo 1 > "/tmp/cyc-cola/$id.rc"; fi
       tail -n 60 "/tmp/cyc-cola/$id.log"
       tail -n 400 "/tmp/cyc-cola/$id.log" > "/tmp/cyc-cola/$id.out"

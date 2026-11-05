@@ -396,3 +396,22 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 6. **ML les marca experiencia de compra mala (30 de 100) y les baja la exposición:** P47 rojo de Matías (MLA1459816555) y Auriculares Philips TAT2206 (MLA3528738632), además del Batidor negro. (a) sugerida: revisar los reclamos de cada uno antes de reponer · (b) seguir igual.
 - **Dato:** la liquidación de 30 días casi no actúa antes de los 90 días: lo que está en el piso del 35% baja a 27-29% con el descuento mínimo de ML (5%) y la regla del 30% (3a del 03/11) lo frena. Hoy sólo baja lo que tiene 90+ días o mucho margen.
 7. **Codera talle Único de Matías (MLA2230551189):** hoy aparece a $61.690 y yo la había dejado en $32.990; no hay ningún cambio mío anotado. Nunca vendió, así que no hace daño, pero quiero saber si la cambiaste vos en ML. Sigue esperando tu "autorizo" para dejar las tres Coderas a $20.290 (17a del 29/10). (a) sugerida: autorizo, las tres a $20.290 · (b) dejarla a $61.690.
+
+### Revisión de la Plata del 05/11 (16 decisiones, para cuando digas "resolvamos")
+Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (19 cosas, ver abajo del todo).
+1. **Mes que da negativo:** si un mes CYC achica $2M y al siguiente crece $4M, hoy se cobra el segundo entero (como si hubiera crecido $4M). (a) sugerida: lo negativo se descuenta del mes siguiente · (b) cada mes por su cuenta, como hoy.
+2. **El dólar en el crecimiento:** con $20M en pesos y el dólar +5%, CYC "achica" ~$1M sin que pase nada (y al revés si baja). (a) sugerida: dejarlo así (CYC se mide en dólares) · (b) sacar el efecto del dólar.
+3. **Cuándo queda fijo el retiro:** hoy se congela apenas cerrás el mes; si rehacés el cierre 5 minutos después, el arreglo recién va al mes siguiente. (a) sugerida: queda fijo 48 h después del cierre · (b) como hoy.
+4. **Retiro que no se sacó antes del arqueo:** el cobro supone que el retiro entero ya salió de CYC. Si uno no lo sacó y quedó en la caja, se cuenta dos veces. (a) sugerida: al cerrar el mes avisa si falta algún ✅ "Ya lo cobró" · (b) el cobro cuenta sólo lo marcado ✅.
+5. **Lo que sobra del redondeo** (de a $100.000, ~$50.000 c/u por mes): (a) sugerida: queda en CYC como ahora (ya entra en el patrimonio) · (b) se suma al cobro del mes siguiente.
+6. **Envío en ventas de menos de $33.000 que SÍ lo pagamos** (la gemela de envío gratis, o 2+ unidades que cruzan): hoy el % no lo cuenta y se ven más verdes de lo que son (ej. 41,8% que en realidad es 32,1%). Lo arreglo igual; la duda es (a) sugerida: rehacer también el % de las ventas viejas · (b) sólo de ahora en adelante.
+7. **El % del monotributo del mes en curso** se recalcula cada 2 minutos y mueve la ganancia de días ya pasados. (a) sugerida: guardar el % en cada venta el día que se vende (como el dólar) · (b) dejarlo.
+8. **Costo en pesos que cambia** (un pedido de Paulvic nuevo): hoy mueve la ganancia de las ventas de antes en el mismo mes (~$500 por venta). (a) sugerida: cada venta queda con el costo en pesos que tenía · (b) dejarlo.
+9. **Listas: una recompra más barata** no baja el costo (en Paraguay sí, desde el 30/10). (a) sugerida: igual que Paraguay · (b) dejarlo.
+10. **Pedidos de Bs As arrancan "sin pagar":** si Tito paga en el mostrador y nadie toca 💵 Ya lo pagué, mientras viaja no está en el Arqueo. (a) sugerida: arrancan pagados (se desmarca si no) · (b) como hoy.
+11. **Paulvic a los 7 días hábiles** sin pagar (+10%): (a) sugerida: la deuda sube sola y te aviso · (b) a mano.
+12. **Lo que se deja en la perfumería desde la Oficina ML** (`de=ml`): (a) sugerida: se resta solo de la Oficina ML · (b) a mano, como hoy.
+13. **Intereses:** el renglón de Gastos pide uno y dice "ya no se paga", pero está el del préstamo de Tito (~$127.000/mes). (a) sugerida: renglón aparte "Intereses · Papá" · (b) uno solo.
+14. **Datos fiscales por cuenta en el registro público** (lo facturado, el IIBB por provincia, el lugar contra el tope de H salen cada mañana). (a) sugerida: taparlos como los saldos de MP · (b) dejarlos.
+15. **El cobro de cada socio en el registro público** (sale cada mañana). (a) sugerida: taparlo · (b) dejarlo.
+16. **La Mercadería inicial que corregiste el 31/10** (+$452.000, de $1.613.400 a $2.065.400): era deuda vieja, no crecimiento, pero entra al cobro de noviembre (~$150.000 más c/u). (a) sugerida: cargarla como "lo viejo cargado tarde" de noviembre · (b) dejarla. (Desde hoy esto se anota solo.)

@@ -83,7 +83,15 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 const _MASCARA_PLATA = /^(ancla|dispo|saldoml)(:|;|$)/.test(String(process.env.BILLING_PROBE || ''));
 if (_MASCARA_PLATA) {
   const _ol = console.log.bind(console);
-  console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')) : x)));
+  // Revisión etapa 2 (05/11/2026): también "<cuenta>=1.250.000" (el renglón que `ancla` rechaza mostraba el saldo tal cual).
+  console.log = (...a) => _ol(...a.map((x) => (typeof x === 'string' ? x.replace(/(US\$\s?|\$)\s?-?\d[\d.,]*/g, (m) => (m.startsWith('US') ? 'US$ •••' : '$•••')).replace(/([A-Za-zÁÉÍÓÚáéíóúñ]=)\s?-?\$?\s?\d[\d.,]{3,}/g, '$1•••') : x)));
+}
+// Revisión etapa 2 (05/11/2026): `capital`, `licua` y `cierrevs` muestran mucha plata que sí sirve, pero los renglones de Mercado Pago (disponible,
+// a liquidar) salían con el saldo. Sólo en esos renglones se tapa el número.
+if (/^(capital|licua|cierrevs)(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+  const _olM = console.log.bind(console);
+  const _esMP = /mercado\s*pago|\bmp\b|a liquidar|disponible|\bdisp\b/i;
+  console.log = (...a) => _olM(...a.map((x) => (typeof x === 'string' ? x.split('\n').map((ln) => (_esMP.test(ln) ? ln.replace(/(US\$\s?|\$|−\$|-\$)\s?-?\d[\d.,]*/g, (m) => (/US/.test(m) ? 'US$ •••' : '$•••')).replace(/(^|[\s:(])[+−-]?\d{1,3}(\.\d{3})+(,\d+)?/g, '$1•••') : ln)).join('\n') : x)));
 }
 // ⚠️ UN COMANDO QUE SE NIEGA NO QUEDA COMO "BIEN" (revisión etapa 4, 30/10/2026): el bucle de los workflows escribe "✓ terminó" si node sale
 // con 0, y un comando que dice "No escribo nada" o "DATOS INCOMPLETOS" sale con 0. Al terminar se deja un renglón que se ve en el registro.
@@ -1102,6 +1110,16 @@ function pesosArg(txt) {
   }
   const n = Number(ent.replace(/\D/g, '') + '.' + (dec || '0'));
   return isFinite(n) ? Math.round(n) : 0;
+}
+// EL MES DEL PRÓXIMO CIERRE (revisión etapa 2, 05/11/2026): a qué cierre va una corrección del cobro (`cyc/cobro_corr`). Si el mes pasado
+// (desde octubre 2026) todavía no tiene cierre, va a ÉSE (el botón ahora lo cierra aunque sea después del día 5); si no, al mes de hoy, o al
+// siguiente si el de hoy ya está cerrado. Antes un recuento el 01/12 con noviembre abierto iba a diciembre y subía el cobro de noviembre.
+async function ymProxCierre(db) {
+  const cur = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
+  const [y, m] = cur.split('_').map(Number), prev = m === 1 ? (y - 1) + '_12' : y + '_' + String(m - 1).padStart(2, '0');
+  if (prev >= '2026_10') { const sp = await db.get('cyc/snapshots/' + prev); if (!(sp && sp.total != null)) return prev; }
+  const sh = await db.get('cyc/snapshots/' + cur);
+  return sh && sh.total != null ? (m === 12 ? y + 1 : y) + '_' + String(m === 12 ? 1 : m + 1).padStart(2, '0') : cur;
 }
 // Revisión etapa 2 (05/11/2026): lo mismo pero SIN redondear (dólares con centavos: "88.50" = 88,5; "8.800" = 8800).
 function numArg(txt) {
@@ -14645,7 +14663,8 @@ async function colaParaRobot(db, labels) {
       await db.patch('cyc/pararobot/' + id, x.reintento ? { estado: 'falló', fin: Date.now(), res: 'se cortó el ciclo dos veces mientras corría: volvé a cargarlo' } : { estado: 'nuevo', reintento: 1 }); continue; }
     if (x.estado && x.estado !== 'nuevo') continue;
     const t = String(x.t || '').replace(/\r/g, '').trim(); const nom = t.split(/[:;|=]/)[0].trim().toLowerCase();
-    const malo = !t ? 'vacío' : t.length > 60000 ? 'muy largo (más de 60.000 letras): partilo' : /\n/.test(t) ? 'un comando por mensaje (sin renglones)' : !COLA_OK.has(nom) ? `"${nom}" no lo puede pedir el panel (sólo: ${[...COLA_OK].join(', ')})` : '';
+    // Revisión etapa 2 (05/11/2026): `ancla` desde el panel SÓLO como `ancla:buzon=<ts>;go` (el saldo a mano viajaba en el texto del comando).
+    const malo = nom === 'ancla' && !/^ancla:buzon=\d+(;go)?$/i.test(t) ? 'ancla desde el panel va sólo como ancla:buzon=<ts>;go (el saldo no va en el texto)' : !t ? 'vacío' : t.length > 60000 ? 'muy largo (más de 60.000 letras): partilo' : /\n/.test(t) ? 'un comando por mensaje (sin renglones)' : !COLA_OK.has(nom) ? `"${nom}" no lo puede pedir el panel (sólo: ${[...COLA_OK].join(', ')})` : '';
     if (malo) { await db.patch('cyc/pararobot/' + id, { estado: 'rechazado', fin: Date.now(), res: '❌ ' + malo }); R.rechazados++; continue; }
     try { fs.writeFileSync(`${COLA_DIR}/${id}.cmd`, t); await db.patch('cyc/pararobot/' + id, { estado: 'tomado', tomado: Date.now() }); R.tomados++; } catch { /* la próxima vuelta */ }
   }
@@ -22491,7 +22510,7 @@ async function main() {
         if (m) extra[m[1].toLowerCase()] = m[2];
       }
       if (!/^\d{4}_\d{2}_\d{2}$/.test(dayKey) || !(monto > 0) || !cat) {
-        console.log('Usá: cargargasto:2026_08_13|100000|Honorarios contables|Contador|prov=Cavallo|fact=C 00001-00000929|go');
+        console.log('Usá: cargargasto:2026_08_13|100000|Honorarios contables|Contador|prov=<proveedor>|fact=C 00001-00000123|go');
         return;
       }
       const compras = (await db.get('cyc/compras')) || {};
@@ -39922,12 +39941,13 @@ async function main() {
     // servicio de almacenamiento y se carga acá, en pesos por unidad por día. Sin número muestra lo
     // cargado. Sin `:go` no escribe. "Grande" = la misma lista del cupo de Full (`cupoGrandes`).
     if (/^almactarifa(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const $c = (n) => '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });   // revisión etapa 2 (05/11): con centavos ($0,60, no $1)
       const partes = String(process.env.BILLING_PROBE).split(':').slice(1);
       const go = partes[partes.length - 1] === 'go' && !DRY;
       const arg = partes.filter((x) => x !== 'go')[0] || '';
       const cfgA = (await db.get('cyc/mlconfig')) || {};
       const hoy = cfgA.almacTarifa || {};
-      console.log(`Tarifa de almacenamiento cargada: chico ${hoy.chico ? money(hoy.chico) : 'NO'} · grande ${hoy.grande ? money(hoy.grande) : 'NO'} (por unidad por día)`);
+      console.log(`Tarifa de almacenamiento cargada: chico ${hoy.chico ? $c(hoy.chico) : 'NO'} · grande ${hoy.grande ? $c(hoy.grande) : 'NO'} (por unidad por día)`);
       if (!arg) return;
       // Con centavos (24/10/2026): la tarifa medida da ~$0,60 por unidad por día y `pesosArg` redondea a pesos enteros ($1).
       const [c, g] = arg.split('/').map((x) => { const n = Number(String(x).replace(/[^\d.,]/g, '').replace(',', '.')); return isFinite(n) ? Math.round(n * 100) / 100 : 0; });
@@ -42772,8 +42792,8 @@ async function main() {
       // `oficyc:listo` (se suma a lo que haya): si no, entraba entera al cobro del mes (31/10: +$452.000 en la Mercadería inicial).
       const _corrCobro = async (delta, nota) => {
         if (!(Math.abs(delta) >= 1)) return;
-        let ym = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
-        try { const sn = await db.get('cyc/snapshots/' + ym); if (sn && sn.total != null) { const [yy, mm] = ym.split('_').map(Number); ym = (mm === 12 ? yy + 1 : yy) + '_' + String(mm === 12 ? 1 : mm + 1).padStart(2, '0'); } } catch { console.log('  ⚠️ no pude leer el cierre del mes: la corrección del cobro NO se anotó (cargala con cobrocorr:<mes>=+' + Math.round(delta) + '|<nota>;go)'); return; }
+        let ym;
+        try { ym = await ymProxCierre(db); } catch { console.log('  ⚠️ no pude leer el cierre del mes: la corrección del cobro NO se anotó (cargala con cobrocorr:<mes>=+' + Math.round(delta) + '|<nota>;go)'); return; }
         let cc; try { cc = (await db.get('cyc/cobro_corr/' + ym)) || null; } catch { console.log('  ⚠️ no pude leer cyc/cobro_corr: la corrección del cobro NO se anotó (cargala con cobrocorr)'); return; }
         const arsN = (Number(cc && cc.ars) || 0) + Math.round(delta), notaN = [cc && cc.nota, nota].filter(Boolean).join(' + ').slice(0, 240);
         if (!GO) { console.log(`  → con ;go, corrección del cobro de ${ym.replace('_', '/')}: ${money(Number(cc && cc.ars) || 0)} → ${money(arsN)} (no es crecimiento)`); return; }
@@ -43142,7 +43162,7 @@ async function main() {
           // 01/11/2026 (él: "¿no era 1,6M cada uno?"): el salto entra al crecimiento del PRÓXIMO cierre, no del mes calendario. El de octubre se hizo
           // el 29/10 y el recuento fue después: la corrección cayó en el cobro de octubre (que no tenía el salto) y lo subió de 1,6M a 1,9M.
           // Si el mes de hoy ya tiene su cierre, va al mes siguiente.
-          try { const snH = await db.get('cyc/snapshots/' + ymL); if (snH && snH.total != null) { const [yy, mm] = ymL.split('_').map(Number); ymL = (mm === 12 ? yy + 1 : yy) + '_' + String(mm === 12 ? 1 : mm + 1).padStart(2, '0'); } } catch { console.log('❌ no pude leer el cierre de este mes: no guardo nada'); return; }
+          try { ymL = await ymProxCierre(db); } catch { console.log('❌ no pude leer el cierre de este mes: no guardo nada'); return; }
           let ccL = null; try { ccL = (await db.get('cyc/cobro_corr/' + ymL)) || null; } catch { ccL = undefined; }
           const conSalto = !cfgO && Math.abs(saltoA) >= 1;
           if (conSalto && !(tcL > 0)) { console.log('❌ sin dólar cargado no puedo pasar el salto a pesos para el cobro: no guardo nada (cargá el tipo de cambio).'); return; }
@@ -55080,7 +55100,8 @@ async function main() {
       // `ver=<ts>[,<ts>]` (26/10/2026): el mensaje ENTERO (la lista lo corta en 600 letras y el chat de compras deja 120 dudas en uno).
       const mV = raw.match(/ver=([\d,]+)/);
       // Los saldos de Mercado Pago del renglón "mp:" no se imprimen (registro público, 1a del 29/10): se cargan con ancla:buzon=<ts>;go.
-      const _tapaMP = (t) => String(t || '').replace(/(^|\n)(\s*mp:)[^\n]*/gi, (m0, a, b) => `${a}${b} (saldos ocultos · cargar con ancla:buzon=<ts>;go)`);
+      // Revisión etapa 2 (05/11/2026): también "- mp:", "**mp:**" o "mp:" en el medio del renglón (antes sólo al principio).
+      const _tapaMP = (t) => String(t || '').replace(/(^|\n)([^\n]*?\bmp\b\W{0,3}:)[^\n]*/gi, (m0, a, b) => `${a}${b} (saldos ocultos · cargar con ancla:buzon=<ts>;go)`);
       if (mV) { for (const t of mV[1].split(',').filter(Boolean)) { const z = B[t] ? _taparBz(_tapaMP(B[t].t)) : null; console.log(z ? `=== [${t}] ===\n${z.t}\n${z.nota}` : `  ${t}: no existe`); } return; }
       const mL = raw.match(/leido=([\d,]+)/);
       if (mL) {

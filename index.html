@@ -3395,7 +3395,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.126';
+const APP_VERSION='28.127';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3408,6 +3408,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.127',f:'05/11',h:'04:53',c:[{n:3,t:'📸 Arqueo: pasado el día 5, si el mes anterior sigue sin cerrar, el botón cierra ÉSE (antes cerraba el mes en curso y el otro quedaba sin cierre). Y no deja cerrar mientras la app muestra la copia del teléfono (decía guardado sin guardar).'},{n:3,t:'💸 La tarjeta del cobro dice el MISMO retiro que Gastos (el fijo, con el ajuste del mes pasado).'},{n:2,t:'📥 Ver deudas: las cuotas que cargo yo cuentan en "pagó X de N" y en el vencimiento; se sacó el botón 💵 Pagó que no hacía nada.'},{n:2,t:'🇵🇾 Ya llegó: lo de la 🏬 Tienda no entra a la Oficina ML y su ficha queda sólo para el local.'},{n:1,t:'🧾 Gastos: los cargos de Full no tienen casilla (los carga el robot solo).'}]},
   {v:'28.126',f:'05/11',h:'00:45',c:[{n:2,t:'⏱️ Ventas de hoy se actualiza solo cada minuto y al volver a abrir la app: "a esta hora", lo normal de cada cuenta, la curva y el cambio de día a la medianoche ya no quedan congelados hasta la próxima venta'}]},
   {v:'28.125',f:'05/11',h:'00:30',c:[{n:2,t:'📱 Ventas de hoy ya no se va para el costado al bajar la pantalla: el deslizar de día a día pide un gesto claramente de costado, y si la pantalla se mueve la tarjeta vuelve a su lugar'}]},
   {v:'28.124',f:'04/11',h:'16:20',c:[{n:1,t:'🇵🇾 Pedidos Paraguay: lo que Nissei no tiene dice ⚪ Nissei no lo tiene (no "sin medir" ni "sin precio de Paraguay"); la marca automática de la vuelta completa ahora agarra también las fichas sin código (el Cuba Gold)'}]},
@@ -5672,6 +5673,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:2,t:'05/11 · 16 decisiones de la Plata',que:'mes negativo · el dólar · cuándo se fija el retiro · retiro no sacado · redondeo · envío abajo de $33.000 · % del monotributo · costo en pesos · recompra de listas · Bs As pagado · Paulvic +10% · de=ml · intereses de Papá · datos fiscales en el registro · cobro en el registro · Mercadería inicial del 31/10',pedi:'resolvamos'},
   {etapa:8,t:'04/11 · 18 decisiones de las Reglas del cerebro',que:'una sola vara · objetivo y F14 · la vuelta con 80% · F14 10 días · prueba del mes · después de volver · prueba con sobra · lo lento · escasez con caja · caja después de escasez · gemela de envío · Black Friday · lo que nadie ve · caja ganada a 15 días · perfumes · 1-2 unidades · 🔒/🥊 · !golpe',pedi:'resolvamos'},
   {etapa:1,t:'03/11 · 11 decisiones de Precios',que:'escasez con una venta · fechas especiales · días sin visitas · prueba del mes · lo que pediste sin techo · gemelas abajo del 35% · "lo pide él" · liquidación semanal · 0% en el peor caso · !bajopiso · el timbre',pedi:'resolvamos'},
   {etapa:6,t:'02/11 · 19 ideas nuevas para elegir',que:'Navidad en 4 tandas · escasez de Navidad · regalables nuevos · no liquidar lo de Navidad · Tienda de regalos · ABEL en Navidad · edad real del stock · más vendidos · experiencia de compra · barrera de $33.000 · ficha en las preguntas · pedido de la Tienda · rutina sola · caja con lo de ML · carga por el panel · respuestas guardadas · mezcla de hoy · Te espera a vos · Tito de corrido',pedi:'resolvamos'},
@@ -5699,7 +5701,7 @@ const REV_HIST={
      {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'},
      {f:'2026-10-24',t:'4 revisores en máximo (frenos y escritura, gemelas y publicar, techo y listas, web y vara de compra): ~45 arreglos (v26.41: frenos que no se apagan si la base no contesta, gemelas sin datos en $0 ni 🔒, publicar sin doble retención y con la barrera, rayas con toda la línea, máximo de compra sin la gemela, vara de 35% en las listas de Bs As). Quedan 11 decisiones suyas (36-46).'},
      {f:'2026-11-03',t:'4 revisores en máximo (punto medio, bajas, subas y gemelas, detector): ~11 arreglos (la vuelta ya no saltea 🔒, la 2ª suba ya no se confirma con 1 venta, el detector propone lo que decido acepta, no se vuelve a pedir un precio que falló); 11 decisiones para él.'}],
-  2:[{f:'2026-10-27',t:'4 revisores en máximo (Arqueo, Mercado Pago, gastos y cobro, dólar y tope de H): ~40 hallazgos, ~25 arreglados; 6 decisiones a para_mati.'},{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
+  2:[{f:'2026-11-05',t:'4 revisores en máximo (cobro y cierre, ganancia y costos, deudas y proveedores, ARCA/MP/gastos/privacidad): ~35 hallazgos, 21 arreglados (cerrar el mes pasado después del día 5, Tienda a la Oficina ML, montos con punto decimal, cuotas por comando, saldos de MP en el registro); 16 decisiones a para_mati.'},{f:'2026-10-27',t:'4 revisores en máximo (Arqueo, Mercado Pago, gastos y cobro, dólar y tope de H): ~40 hallazgos, ~25 arreglados; 6 decisiones a para_mati.'},{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
@@ -28023,8 +28025,8 @@ const GASTOS_DEL_MES=[
   // marcas viejas y del «⚠️ VENDE» que saltaba en todos.
   {n:'Intereses financieros',  cat:'Intereses financieros',
    nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro'},
-  {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'],
-   nota:'Lo cargo yo el 15 de cada mes con cargosmes (sale de la factura de ML por tipo de cargo, las 4 cuentas): no hace falta que me pases el reporte. El período de un mes entra en los gastos del mes siguiente. '
+  {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'], auto:true,   // revisión etapa 2 (05/11/2026): sin casilla: un monto escrito acá dejaba al robot creer que ya estaba cargado y nunca entraban los cargos reales
+   nota:'Lo carga el robot solo a principio de cada mes con cargosmes (sale de la factura de ML por tipo de cargo, las 4 cuentas): no hace falta que me pases el reporte. El período de un mes entra en los gastos del mes siguiente. '
       + 'Son almacenamiento + stock antiguo + retiro de stock + multas (ej. caja mal mandada). Julio fueron $127.835. Van SÓLO acá: desde el 26/09 el % de cada venta ya no los incluye. '
       + 'OJO: NO se carga el total de la factura de ML — casi toda son percepciones de IIBB y comisiones, que ya se descuentan en cada venta.'},
 ];
@@ -28150,7 +28152,7 @@ function renderComprasChecklist(){
              :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
                :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
       ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>`}
-      ${(f.hay||f.noVa)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}" style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn" style="font-size:.66rem;padding:3px 10px" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
+      ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}" style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn" style="font-size:.66rem;padding:3px 10px" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
     </div>`).join('')}
     ${filasRet.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':'❌'}</span>
