@@ -1734,6 +1734,11 @@ Error mío: `open('sw.js','w').write(open('sw.js').read()…)` en Python abre pa
 `sw.js` publicado estaba vacío y la app no abría (él: *"se rompió web cyc no ingresa"*); se repuso entero (CACHE cyc-v960).
 - **Qué chequear siempre:** después de subir el `CACHE`, `wc -c sw.js` > 0 y `node --check sw.js`. Leer y escribir un archivo en dos pasos.
 
+### Etapa 3 · 05/11/2026 · 🪄 Lo del pedido del momento se vuelve a medir cada hora
+- **Qué es:** él usó el botón 🪄 Llenar de la web y entraron perfumes que con el precio de ML de ese día ya no daban (Jimmy Choo 25%, VS Love Spell 33%, Stella Homme Elixir 30%, Givenchy Amarige y Jacques Bogart sin vendedores/catálogo): el botón usa la medición guardada, que era de la noche (`candidatos:go` corre una vez por día en ml-daily). Ahora la vuelta de cada hora corre `correrCandidatos(…, {soloPed:true})`: vuelve a medir contra ML sólo lo cargado (pedirU > 0, no pedido) con medición de más de 3 h (antes 6 h).
+- **Dónde vive:** `sync.mjs` `correrCandidatos` (opción `soloPed`), vuelta horaria (antes de "CAJAS QUE LLEGARON").
+- **Qué chequear:** en el log de la vuelta horaria "🪄 Pedido del momento: N producto(s) vueltos a medir"; que lo que bajó del 35% salga en rojo en el pedido y la revisión antes de pagar (`revisarcompra:pedido`) siga siendo la última palabra.
+
 ### Etapa 3 · 04/11/2026 · 🪄 `pyllenar:<resto|perf>[:<tope>]` (sólo lee): llenar el pedido del momento desde el chat
 - **Qué es:** él (*"llenalo hasta 600 dólares"*): lo mismo que el botón 🪄 de la web para los nuevos (⭐ gana mucho y sale mucho, 35%+, 2+ vendedores, mirado hace menos de 2 días, hasta US$ 20 por producto), con el `pedir:` listo. Yo reviso la lista antes de cargarla.
 - **Dónde vive:** `sync.mjs` probe `pyllenar`.

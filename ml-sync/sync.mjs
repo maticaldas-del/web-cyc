@@ -13740,9 +13740,10 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
 // `prueba` es un candidato INVENTADO que se le pasa desde el probe para correr el camino entero
 // —consulta al catálogo de ML, comisión al precio real, la cuenta— sin tener que cargar nada en la
 // base. Que el comando no se rompa con la lista vacía no prueba nada de lo que importa.
-async function correrCandidatos(db, products, labels, accounts, soloPrueba, prueba) {
+async function correrCandidatos(db, products, labels, accounts, soloPrueba, prueba, opc = {}) {
   const cands = (await db.get('cyc/candidatos_py')) || {};
-  const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre);
+  // `opc.soloPed` (05/11/2026): la vuelta de cada hora vuelve a medir SÓLO lo cargado en el pedido del momento (ver abajo).
+  const entradas = Object.entries(cands).filter(([, c]) => c && c.nombre && (!opc.soloPed || ((Number(c.pedirU) || 0) > 0 && !c.pedidoEn && !c.prodId)));
   // La medición más vieja primero: con el tope de consultas, así ninguno se queda sin medir días.
   // Empate (nunca medidos): primero los recién cargados (16/10/2026: los 36 de Elegancia quedaban detrás de ~960 del catálogo).
   // Antes que todo, los medidos con OTRA cuenta (`calcVer` ≠ CAND_CALC_VER, 28/10/2026): la cuenta con los de afuera se probó 25
@@ -13969,7 +13970,7 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       && Number(c.margen) >= candPisoDe(c) && Math.abs((Number(c.puestoUSD) || 0) - puesto) < 0.01;
     // Fresca (menos de 20 h) o sin consultas disponibles esta vuelta: se usa la guardada. Vieja o
     // con el precio de Paraguay cambiado: sigue de largo y se vuelve a medir.
-    if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < ((Number(c.pedirU) || 0) > 0 && !c.pedidoEn ? 6 * 3600e3 : CAND_FRESCO_MS) || consultas >= CAND_MAX_ML)) {
+    if (_cacheOk && (Date.now() - (Number(c.calcTs) || 0) < ((Number(c.pedirU) || 0) > 0 && !c.pedidoEn ? 3 * 3600e3 : CAND_FRESCO_MS) || consultas >= CAND_MAX_ML)) {
       yaCalc++;
       // Los que no se vuelven a medir igual pasan por el chequeo de "¿es el mismo producto?" con el
       // título guardado: no cuesta ninguna consulta a ML y así los ya medidos no esperan días.
@@ -60076,6 +60077,12 @@ async function main() {
     try { await alinearGemelasEnvio(db, map, tokensRun, DRY, products); } catch (e) { console.log('No pude alinear las gemelas de envío gratis: ' + e.message); }
   }
 
+  // 🪄 LO DEL PEDIDO DEL MOMENTO SE VUELVE A MEDIR CADA HORA (05/11/2026, él con el botón de llenar: entraron el Jimmy Choo, el VS Love Spell
+  // y otros que con el precio de ML de ese día ya no daban el 35%; la medición era de la noche anterior). Sólo lo cargado (pedirU > 0) con
+  // su medición de más de 3 h; el resto sigue con la de la noche. Así lo que se carga con el botón queda medido antes de pagar.
+  if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1' && !DRY) {
+    try { const rp = await correrCandidatos(db, products, labels, accounts, false, undefined, { soloPed: true }); if (rp && rp.calculados) console.log(`🪄 Pedido del momento: ${rp.calculados} producto(s) vueltos a medir contra ML`); } catch (e) { console.log('No pude volver a medir el pedido del momento: ' + e.message); }
+  }
   // CAJAS QUE LLEGARON A FULL. Va en la vuelta horaria (no en las de 2 minutos): preguntarle a ML
   // las operaciones de cada inventario todo el tiempo sería mucha llamada para un dato que cambia
   // una vez por día. Va FUERA del bloque de arriba a propósito: eso está apagado por `robot:off`,
