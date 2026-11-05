@@ -11933,7 +11933,7 @@ const CAND_VARA_VENDE = 35;   // 24/10/2026 (él): "quiero que todo quede en 35%
 // el número de unidades/piezas/pack que dice un título, o null si no lo dice. Sirve para no medir 1 unidad contra un pack de 2.
 function unidadesPackTit(t) {
   const s = String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const m = s.match(/\b(\d{1,2})\s*-?\s*(?:unidades|unidade|unidad|unids?|piezas?|pecas?|pack)\b/) || s.match(/\bpack[\s-]*(?:de\s*|x\s*)?(\d{1,2})\b/) || s.match(/\bpaquete\s*de\s*(\d{1,2})\b/);
+  const m = s.match(/\b(\d{1,2})\s*-?\s*(?:unidades|unidade|unidad|unids?|un|piezas?|pecas?|pack)\b/) || s.match(/\bpack[\s-]*(?:de\s*|x\s*)?(\d{1,2})\b/) || s.match(/\bpaquete\s*de\s*(\d{1,2})\b/);
   if (!m) return null;
   const n = parseInt(m[1], 10);
   return n > 0 && n <= 24 ? n : null;
@@ -13148,6 +13148,10 @@ const PY_TRAD = [
   // palabras comunes (93 nombres de la tienda con "Elétrico/a", 31 con "Projetor", 33 con "Protetor").
   [/(?<![\p{L}\p{N}])[oóÓ]culos(?![\p{L}])/giu, 'anteojos'], [/\bel[eé]tric([oa]s?)\b/giu, 'eléctric$1'], [/\bprojetor(es)?\b/gi, 'proyector$1'],
   [/\bprotetor(es)?\b/gi, 'protector$1'], [/\bpulseira(s)?\b/gi, 'pulsera$1'], [/\bespremedor\b/gi, 'exprimidor'], [/\bt[oô]nico\b/giu, 'tónico'],
+  // 05/11/2026 (control diario): "Processador … Até 4.6 GHZ", "Gaiola", "Limpeza", "Ferramentas", "Dobrável", "Variável", "Parafusos", "Em 1".
+  [/\bprocessador(es)?\b/gi, 'procesador$1'], [/(?<![\p{L}])at[eé](?![\p{L}])(?=\s*\d)/giu, 'hasta'], [/\bgaiola\b/gi, 'jaula'], [/\blimpeza\b/gi, 'limpieza'],
+  [/\bferramentas?\b/gi, 'herramientas'], [/\bdobr[aá]vel\b/giu, 'plegable'], [/\bvari[aá]vel\b/giu, 'variable'], [/\bparafusos?\b/gi, 'tornillos'],
+  [/\b(\d+)\s+em\s+1\b/gi, '$1 en 1'], [/\bautom[oó]vel\b/giu, 'auto'], [/\bautomotivo\b/gi, 'automotor'], [/\bempunhadura\b/gi, 'empuñadura'], [/\best[uú]dio\b/giu, 'estudio'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE, CON EL CATÁLOGO DE ML EXACTO (inicio) ─────────────────────────────────
@@ -13383,6 +13387,7 @@ function _tmCaps(s, unidad, ram) {   // las capacidades (GB/TB de almacenamiento
 function tiendaMismoProducto(nNissei, nML, blando = false) {
   const A = _tmTexto(nNissei, true), B = _tmTexto(nML, false);
   if (!A || !B) return 'sin nombre';
+  if ((unidadesPackTit(nML) || 1) !== (unidadesPackTit(nNissei) || 1)) return 'otra cantidad de unidades';   // 05/11/2026: el pack de 2 de ML no es 1 de Nissei
   const tA = _tmTokens(A), tB = _tmTokens(B), SA = new Set(tA), SB = new Set(tB);
   for (const [re, marca] of _TM_IMPLICA) if (re.test(A)) SA.add(marca);
   // Los códigos de Casio llevan al final la letra de la caja según el país ("GA-2100-1A1" = "GA-2100-1A1DR"): es el mismo reloj.
@@ -13485,6 +13490,8 @@ const PERF_VACIAS = new Set('perfume perfumes perf eau de du la le les el los th
 function perfPalabras(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' ').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && w.length > 1 && !PERF_VACIAS.has(w) && !/^\d+(ml)?$/.test(w)); }
 function tiendaPerfumeSeguro(nn, n) {
   if (tiendaPerfumeDistinto(nn, n)) return false;
+  // 05/11/2026 (control diario): "2 Un. Perfume River Of Love" de ML contra UN River Of Love de Nissei. Otra cantidad de unidades = otro producto.
+  if ((unidadesPackTit(n) || 1) !== (unidadesPackTit(nn) || 1)) return false;
   // 01/11/2026: lo de ML que no es UN perfume original (set/kit/piezas/combo, "esotérico"/"inspirado"/"alternativa" = imitación, decant, tester,
   // miniatura) no sirve, salvo que lo del proveedor también sea un kit/set.
   if (/\b(set|kit|pzas|piezas|estuche|combo|cofre|coffret|decant|tester|miniatura|mini)\b|\+|esoter|inspirad|similar|alternativ|replica|r[eé]plica|arabe inspir/i.test(n) && !/\b(kit|set|coffret|estojo|mini)\b|\+/i.test(nn)) return false;
