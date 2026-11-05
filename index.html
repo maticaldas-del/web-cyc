@@ -5001,7 +5001,7 @@ function _cobroCrec(ym){
 }
 function renderCobroCrec(){
   try{_retiroAutoGuardar();}catch(_){}
-  try{if(!_arqViewYM)Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&!(state.costocongelado||{})[k]).forEach(k=>congelarMes(k));}catch(_){}
+  try{if(!_arqViewYM&&!(window._deCopia&&window._deCopia()))Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&!(window._congHecho=window._congHecho||{})[k]).forEach(k=>{if((state.costocongelado||{})[k]&&k<_curYM())window._congHecho[k]=1;congelarMes(k);});}catch(_){}   // una vez por mes terminado al abrir la app
   const el=document.getElementById('arq-cobro-crec');if(!el)return;
   if(_arqViewYM){el.innerHTML='';return;}
   const ks=Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE).sort();
@@ -5010,7 +5010,10 @@ function renderCobroCrec(){
   const $=n=>(n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('es-AR');
   const sig=_mesSigYM(k);
   el.innerHTML='<div class="card" style="padding:12px 14px;border-left:3px solid var(--green,#22c55e)">'
-    +'<div style="font-weight:600">💸 Cobro de '+_ymLabel(sig)+': '+$(c.porSocio)+' cada uno <span style="color:var(--muted);font-weight:400">('+$(c.porSocio*2)+' el retiro)</span></div>'
+    +(()=>{const ra=_retiroAuto(sig);const r=ra!=null?ra:c.porSocio*2;   // revisión etapa 2 (05/11/2026): el MISMO número que Gastos y el robot (congelado / con el ajuste del mes pasado)
+      const dif=ra!=null&&ra!==c.porSocio*2;
+      return '<div style="font-weight:600">💸 Cobro de '+_ymLabel(sig)+': '+$(r/2)+' cada uno <span style="color:var(--muted);font-weight:400">('+$(r)+' el retiro)</span></div>'
+      +(dif?'<div style="font-size:.74rem;color:var(--amber,#f59e0b);margin-top:2px">'+(_retiroCongelado(sig)!=null?'Ya quedó fijo cuando empezó '+_ymLabel(sig)+' (lo de este cierre: '+$(c.porSocio)+' c/u; la diferencia va al mes siguiente).':'Con el ajuste del mes pasado: este cierre solo daría '+$(c.porSocio)+' c/u.')+'</div>':'');})()
     +'<div style="font-size:.74rem;color:var(--muted);margin-top:4px;line-height:1.5">Lo que creció CYC en '+_ymLabel(k)+' (todo: ML, local, perfumerías, deudas): '+$(c.crecio)+' (US$ '+Math.round(c.crecioUSD).toLocaleString('es-AR')+' al dólar '+c.tc+')'
     +' + lo que ya sacaron ese mes '+$(c.retiro)+(c.retCargado?'':' (supuesto)')
     +(c.corr?' − lo viejo cargado tarde '+$(c.corr)+(c.corrNota?' ('+_esc(c.corrNota)+')':''):'')
@@ -5022,12 +5025,13 @@ function renderCobroCrec(){
 // se congela la primera vez que se calcula (`cyc/retiro_congelado/<AAAA_MM>` = {v,ts}). Si después se corrige el cierre de antes (un
 // `cobro_corr`, un arqueo rehecho), la diferencia NO cambia lo que ya se retiró: va al retiro del mes siguiente (`_retiroCalc`).
 function _retiroCongelado(ym){const z=(state.retiro_congelado||{})[ym];return z&&z.v!=null&&isFinite(Number(z.v))?Math.round(Number(z.v)):null;}
-function _retiroCalc(ym,_prof){
+function _retiroCalc(ym,_prof,_crudo){
   if(!ym||(_prof||0)>24)return null;const pr=_puntMesPrev(ym);
   if(pr<COBRO_CRECE_DESDE)return null;
   const c=_cobroCrec(pr);if(!c)return null;let v=2*c.porSocio;
-  const fz=_retiroCongelado(pr);if(fz!=null){const cp=_retiroCalc(pr,(_prof||0)+1);if(cp!=null)v+=cp-fz;}   // lo que quedó corto o de más el mes pasado
-  return Math.max(0,v);
+  // revisión etapa 2 (05/11/2026): el de adentro va sin el piso de 0, así un mes que debía dar negativo se descuenta del siguiente (antes se perdía)
+  const fz=_retiroCongelado(pr);if(fz!=null){const cp=_retiroCalc(pr,(_prof||0)+1,true);if(cp!=null)v+=cp-fz;}   // lo que quedó corto o de más el mes pasado
+  return _crudo?v:Math.max(0,v);
 }
 function _retiroAuto(ym){
   if(!ym||_puntMesPrev(ym)<COBRO_CRECE_DESDE)return null;
@@ -5047,12 +5051,17 @@ function _retiroAutoGuardar(){
 // Congela el costo de cada venta del mes (2a del 29/10). Se llama al cerrar el mes; los cierres de octubre en adelante que
 // todavía no lo tienen se congelan solos la primera vez que se abre el Arqueo.
 async function congelarMes(ym){
-  if(!ym||(state.costocongelado||{})[ym])return;
+  // Revisión etapa 2 (05/11/2026): lo ya congelado no se toca, pero una vez TERMINADO el mes se suman las ventas que faltan (las de después del
+  // cierre si se cerró antes de fin de mes, y las que eran provisorias y ya se arreglaron). Antes, con el mapa hecho, no se agregaba nada más.
+  if(!ym)return;const ya=(state.costocongelado||{})[ym];
+  if(ya&&ym>=_curYM())return;
   const m={};
   Object.keys(state.ventaprod||{}).filter(k=>k.startsWith(ym)).forEach(k=>Object.entries(state.ventaprod[k]||{}).forEach(([id,v])=>{
     // Revisión etapa 4, 30/10/2026: lo PROVISORIO no se congela (sigue vivo hasta que se arregle): una venta sin costo o sin vincular (quedaba con
     // ganancia $0 para siempre aunque después se cargara el costo) y una con el neto estimado (al llegar el real, el envío quedaba restado dos veces).
     if(!v||v.cancelada)return;const vv={...v,id,_dateKey:k};if(ventaSinCostoVP(vv)||ventaEstimadaVP(vv))return;m[id]=Math.round(efectivoCostoVP(vv)*100)/100;}));
+  if(ya){const nuevos={};for(const id of Object.keys(m))if(ya[id]==null)nuevos['costocongelado/'+ym+'/'+id]=m[id];
+    if(!Object.keys(nuevos).length)return;try{await fbUpdate(nuevos);for(const k of Object.keys(nuevos))ya[k.split('/').pop()]=nuevos[k];}catch(_){}return;}
   if(!Object.keys(m).length)return;
   state.costocongelado=state.costocongelado||{};state.costocongelado[ym]=m;
   try{await fbSet('costocongelado/'+ym,m);}catch(_){delete state.costocongelado[ym];}
@@ -7511,7 +7520,11 @@ function cuotaMovsSuma(d){return Object.values(d.movs||{}).reduce((s,x)=>s+(Numb
 function cuotasLista(){return Object.entries(state.debencuotas||{}).filter(([,d])=>d&&typeof d==='object'&&d.nom).map(([id,d])=>{const n=Math.max(1,Number(d.n)||1),monto=Number(d.monto)>0?Number(d.monto):(Number(d.cuota)||0)*n,pagadas=Math.min(n,Number(d.pagadas)||0),cuota=monto/n;
     // 8a de la revisión del Local (30/10/2026, él): si devuelven de más, queda EN NEGATIVO (lo que le debemos), no se recorta a 0 (el resto se
     // perdía). Una deuda en negativo no está "pagada": sigue arriba, en rojo. Misma cuenta que `saldo` de `debenmov` (sync.mjs).
-    const resta=monto-pagadas*cuota+cuotaMovsSuma(d);return{id,...d,n,monto,cuota,pagadas,resta,fin:Math.abs(resta)<=0.5};}).sort((a,b)=>(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0));}
+    const resta=monto-pagadas*cuota+cuotaMovsSuma(d);
+    // Revisión etapa 2 (05/11/2026): lo cobrado por comando (`debenmov:<id>=-N`) va como movimiento, no como cuota: "pagó X de N" y el vencimiento
+    // cuentan también esas cuotas (antes 2 cuotas cobradas así seguían "pagó 0 de 24 · ⚠️ vencía" y llevaban a marcarlas otra vez).
+    const _pagMv=n>1&&cuota>0?Object.values(d.movs||{}).reduce((t,x)=>t+(x&&Number(x.m)<0?-Number(x.m):0),0):0,pagEf=Math.min(n,pagadas+Math.floor(_pagMv/cuota+1e-6));
+    return{id,...d,n,monto,cuota,pagadas,pagEf,resta,fin:Math.abs(resta)<=0.5};}).sort((a,b)=>(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0));}
 // Lo que falta cobrar NETO: lo que nos deben menos lo que le debemos a quien devolvió de más (8a, 30/10/2026). Es el número que va a "Deben a
 // CYC" del Arqueo (`deben_cyc`, con su signo: si diera negativo resta del patrimonio, no suma).
 function cuotasRestaPesos(){return cuotasLista().reduce((s,d)=>s+d.resta,0);}
@@ -7579,9 +7592,9 @@ function _isoMas(f,frec,k,dias){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // LA PRÓXIMA CUOTA SE CUENTA DESDE EL ÚLTIMO PAGO (28/10/2026, él: "que la fecha de siguiente pago sea siempre un mes o semana después del
 // último pago"): sin pagos, la primera vence en `vence1`; con pagos fechados, último pago + un período; pagos viejos sin fecha, vence1 + N períodos.
-function cuotaVence(d){if(d.fin||d.pagadas>=d.n)return null;if(d.n<=1)return d.vence1||null;
-  const fs=cuotaPagosFechas(d);if(d.pagadas>0&&fs.length)return _isoMas(fs[fs.length-1],d.frec,1,d.cadaDias);
-  return d.vence1?_isoMas(d.vence1,d.frec,d.pagadas,d.cadaDias):null;}
+function cuotaVence(d){const pE=d.pagEf!=null?d.pagEf:d.pagadas;if(d.fin||pE>=d.n)return null;if(d.n<=1)return d.vence1||null;
+  const fs=cuotaPagosFechas(d);if(d.pagadas>0&&fs.length&&pE===d.pagadas)return _isoMas(fs[fs.length-1],d.frec,1,d.cadaDias);
+  return d.vence1?_isoMas(d.vence1,d.frec,pE,d.cadaDias):null;}
 function cuotaPagosFechas(d){return Object.entries(d.pagos||{}).map(([k,v])=>(v&&v.f)?v.f:(()=>{const t=new Date(Number(k));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';})()).filter(Boolean).sort();}
 // Abrir/cerrar el detalle de un renglón del Stock total (29/10/2026, él: "que se abra al clickearlo"); queda abierto al redibujar.
 function arqDet(k){const A=window._arqDetAb=window._arqDetAb||{};A[k]=!A[k];_arqDetPinta();}
@@ -7615,7 +7628,7 @@ function renderCuotas(){
   const fila=d=>{const fin=d.fin,resta=d.resta,cq=d.n>1,ab=window._cuotaAbierta===d.id;
     const v=cuotaVence(d),atr=v&&v<hoy,fr=cuotaFrecTxt(d.frec,d.cadaDias),costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
     const fechas=cuotaPagosFechas(d);
-    const lin1=fin?(cuotaFija(d)?'✅ al día · 📌 siempre a la vista':'✅ pagada'):cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:(cuotaFija(d)?'📌 cuenta corriente':`sin cuotas · total ${_pesos(d.monto)}`);
+    const lin1=fin?(cuotaFija(d)?'✅ al día · 📌 siempre a la vista':'✅ pagada'):cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagEf!=null?d.pagEf:d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:(cuotaFija(d)?'📌 cuenta corriente':`sin cuotas · total ${_pesos(d.monto)}`);
     const lin2=[
       d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${colPctLocal(gan,costo)}">${_pesos(gan)}</b>${costo>0?` (${Math.round(gan/costo*100)}% sobre el costo)`:''}`:'',
       fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
@@ -7633,7 +7646,7 @@ function renderCuotas(){
     const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">
         ${d.det?`<div style="word-break:break-word">🛍️ se llevó: <span style="color:var(--text)">${_escC(d.det)}</span></div>`:''}
         <div>${lin1}</div>${lin2?`<div style="font-size:.66rem">${lin2}</div>`:''}${venceTxt?`<div style="font-size:.66rem">${venceTxt}</div>`:''}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${fin?'':cq?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:`<button class="btn" style="font-size:.68rem" onclick="cuotaMovAbrir('${d.id}',-1)">💵 Pagó</button>`}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.68rem" onclick="cuotasEditar('${d.id}')">✏️ Editar</button></div></div>`:'';
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${fin?'':cq?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:''}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.68rem" onclick="cuotasEditar('${d.id}')">✏️ Editar</button></div></div>`:'';
     return `<div style="border:1px solid ${bord};${bg}border-radius:var(--r)">
       <div onclick="cuotaToggle('${d.id}')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 12px" title="Tocá para ver el detalle y la historia">
       <b style="flex:1;min-width:0;font-size:.8rem;word-break:break-word;${fin?'color:var(--green)':''}">${ab?'▾':'▸'} ${_escC(d.nom)}${atr?' <span style="font-size:.62rem;color:var(--red)">⚠️ atrasada</span>':''}</b>
@@ -11847,7 +11860,10 @@ function _mesACerrar(){
   const kHoy=y+'_'+String(m).padStart(2,'0');
   let py=y,pm=m-1;if(pm<1){pm=12;py--;}
   const kAnt=py+'_'+String(pm).padStart(2,'0');
-  const anterior=now.getDate()<=5&&!(state.snapshots&&state.snapshots[kAnt]);
+  // Revisión etapa 2 (05/11/2026): pasado el día 5, si el mes anterior tuvo ventas y sigue sin cerrar (el aviso rojo de Inicio lo pide), el
+  // botón cierra ÉSE. Antes cerraba el mes en curso y el anterior quedaba sin cierre para siempre (sin cobro ni retiro de los dos meses).
+  const _vpAnt=Object.keys(state.ventaprod||{}).some(k=>k.startsWith(kAnt));
+  const anterior=!(state.snapshots&&state.snapshots[kAnt])&&(now.getDate()<=5||_vpAnt);
   const [yy,mm]=(anterior?kAnt:kHoy).split('_');
   return{key:anterior?kAnt:kHoy,label:(MONTHS[parseInt(mm,10)-1]||'')+' '+yy,anterior,dia:now.getDate()};
 }
@@ -11856,6 +11872,7 @@ function _mesACerrar(){
 function _btnCerrarTxt(){const b=document.getElementById('btn-cerrar-mes');if(!b)return;const x=_mesACerrar();const ya=!!(state.snapshots&&state.snapshots[x.key]);b.textContent=ya?'✅ '+x.label+' ya está cerrado':'📸 Cerrar '+x.label+' y guardar';b.style.opacity=ya?'.6':'';}
 async function saveSnapshot(){
   if(_arqViewYM){alert('Estás viendo un cierre pasado (solo lectura). Volvé a "Actual (en vivo)" arriba para cerrar el mes.');return;}
+  if(window._deCopia&&window._deCopia()){alert('Todavía se están bajando los datos nuevos (la app muestra la copia del teléfono). Esperá unos segundos y volvé a tocar: si cerrás ahora no se guarda nada.');return;}   // revisión etapa 2 (05/11/2026)
   const _mc=_mesACerrar();
   const key=_mc.key, label=_mc.label;
   if(state.snapshots&&state.snapshots[key]){alert('Ya existe un cierre de '+label+'. Si necesitás corregirlo, primero borrá ese cierre desde "Meses cerrados" y volvé a cerrarlo.');return;}
@@ -18876,7 +18893,7 @@ async function _pyPedidoLlego(id){
     // Etapa 3 (20/10/2026): el proveedor, el link y la foto viajan con el renglón (del candidato si sigue vivo; si no, del
     // pedido: los renglones agregados del ticket `x<cód>` no tienen candidato). Sin `prov` la ficha de Elegancia nacía Nissei.
     const src={id:it.id,nombre:(k&&k.nombre)||it.nom||'',usd:_uP,cod:(k&&k.cod)||it.cod||'',ts:k&&k.ts,
-      prov:(k&&k.prov)?pyProvDe(k):it.prov?pyProvDe(it):(/^pyel/.test(id)?'elegancia':pyProvDe(c)),link:(k&&k.link)||it.link||'',foto:(k&&k.foto)||it.foto||''};
+      prov:(k&&k.prov)?pyProvDe(k):it.prov?pyProvDe(it):(/^pyel/.test(id)?'elegancia':pyProvDe(c)),link:(k&&k.link)||it.link||'',foto:(k&&k.foto)||it.foto||'',tienda:!!it.tienda};
     if(k&&k.prodId)return{src,estado:'ya'};
     if(!String(src.nombre).trim())return{src,estado:'nonombre'};
     const misma=candFichaMisma(src);
@@ -18929,7 +18946,7 @@ async function _pyPedidoLlego(id){
   const _ofiLl={};for(const it of _repIts)if(!(it.prodId in _ofiLl))_ofiLl[it.prodId]=getQ(it.prodId,OFI);
   const _fichaDe=it=>it.id?(hechasP[it.id]||(repe.find(x=>x.src.id===it.id)||{rep:[]}).rep[0]||prodById(((state.candidatos||{})[it.id]||{}).prodId)||null):prodById(it.prodId);
   // 1a de la revisión del Local (30/10/2026): lo marcado `paraLocal` (`pylocal`) ya es del local (está en Lo que nos deben): no entra a la oficina.
-  const R=_todo?await llegadaSumarOfi([...items,..._repIts].filter(it=>it&&!it.paraLocal).map(it=>({p:_fichaDe(it),variante:it.variante||'',u:parseInt(it.u)||0,nom:it.nom||''}))):{sum:[],mano:[]};
+  const R=_todo?await llegadaSumarOfi([...items,..._repIts].filter(it=>it&&!it.paraLocal&&!it.tienda).map(it=>({p:_fichaDe(it),variante:it.variante||'',u:parseInt(it.u)||0,nom:it.nom||''}))):{sum:[],mano:[]};
   if(_repIts.length){
     const _quedan={};for(const [pid,q] of Object.entries(_ofiLl))if(!_todo||!R.sum.some(x=>x.prodId===pid)||R.mano.some(x=>x.p&&x.p.id===pid))_quedan[pid]=q;
     try{await fbSet('compraspy/'+id+'/ofiAlLlegar',Object.keys(_quedan).length?_quedan:null);c.ofiAlLlegar=Object.keys(_quedan).length?_quedan:undefined;}catch(e){}
@@ -20512,6 +20529,7 @@ async function candFichaDesde(src,opts){
   if(usd>0){p.nisseiUSD=usd;p.nisseiTs=src.ts||Date.now();}
   if(/^https:\/\//.test(String(src.link||'')))p.pyLink=String(src.link).slice(0,300);
   if(/^https:\/\//.test(String(src.foto||'')))p.pyFoto=String(src.foto).slice(0,300);
+  if(src.tienda)p.soloLocal=true;   // 🏬 revisión etapa 2 (05/11/2026): igual que el robot, lo de la Tienda no se publica en ML
   // A2 (etapa 6, 21/10/2026): el catálogo de ML confirmado del candidato (✅ o revisión de fotos) viaja a la ficha. El robot activa
   // lo nuevo sólo si la publicación está en ESE catálogo. Misma regla en `pyped:llego` del robot.
   if(_cML&&candCatChequeado(_cML))p.mlCatalogo=candCatId(_cML);
@@ -28148,6 +28166,7 @@ function renderComprasChecklist(){
 }
 
 async function setRetiroCobrado(ym,q,val){
+  if(window._deCopia&&window._deCopia()){toast('Todavía se están bajando los datos: no se guardó. Probá en unos segundos','err');renderComprasChecklist();return;}   // revisión etapa 2 (05/11/2026)
   state.retiro_cobrado=state.retiro_cobrado||{};state.retiro_cobrado[ym]=state.retiro_cobrado[ym]||{};
   const prev=state.retiro_cobrado[ym][q];const v=val?{ts:Date.now(),v:Math.round((_retiroAuto(ym)||0)/2)}:null;
   if(v)state.retiro_cobrado[ym][q]=v;else delete state.retiro_cobrado[ym][q];

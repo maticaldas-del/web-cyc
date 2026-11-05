@@ -682,7 +682,11 @@ async function armarCostoWeb(db, vp) {
     const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
     return g > 0 ? g * q : 0;
   };
-  const congel = (await db.get('cyc/costocongelado').catch(() => null)) || {};   // 🧊 mes cerrado congelado (2a del 29/10), igual que la web
+  // Revisión etapa 2 (05/11/2026): si no se pudo leer lo congelado NO se sigue como si no hubiera (los meses cerrados se recalculaban sin avisar).
+  let congel; try { congel = (await db.get('cyc/costocongelado')) || {}; } catch (e) { console.log('  ⚠️ no pude leer los meses cerrados congelados (cyc/costocongelado): los números de meses cerrados pueden salir distintos de la web'); congel = {}; }
+  // Revisión etapa 2 (05/11/2026): sin el % de reclamos cargado (el `timbre` de cada hora, `widgethoy`) el costo salía sin los reclamos y una venta
+  // de 31-34% en la web se leía 35%+. Se carga acá con TODAS las ventas, igual que el ciclo.
+  if (!Object.keys(DEV_LIVE).length) { try { setDevLive((await db.get('cyc/ventaprod')) || {}); } catch (e) { console.log('  ⚠️ no pude leer las ventas para el % de reclamos'); } }
   return (v, dk) => {
     if (!v || v.cancelada) return { costo: 0, sinCosto: false, gest: 0 };
     const ym = String(dk || '').slice(0, 7);
@@ -1098,6 +1102,16 @@ function pesosArg(txt) {
   }
   const n = Number(ent.replace(/\D/g, '') + '.' + (dec || '0'));
   return isFinite(n) ? Math.round(n) : 0;
+}
+// Revisión etapa 2 (05/11/2026): lo mismo pero SIN redondear (dólares con centavos: "88.50" = 88,5; "8.800" = 8800).
+function numArg(txt) {
+  const t = String(txt == null ? '' : txt).replace(/[^\d.,]/g, '');
+  if (!t) return NaN;
+  let ent = t, dec = '';
+  const iCom = t.lastIndexOf(',');
+  if (iCom >= 0) { ent = t.slice(0, iCom); dec = t.slice(iCom + 1).replace(/\D/g, ''); }
+  else { const iPun = t.lastIndexOf('.'); if (iPun >= 0 && t.length - iPun - 1 <= 2) { ent = t.slice(0, iPun); dec = t.slice(iPun + 1); } }
+  return Number(ent.replace(/\D/g, '') + '.' + (dec || '0'));
 }
 const UMBRAL_ENVIO_GRATIS = 33000;
 // UNA COMPRA QUE CRUZA LA BARRERA POR CANTIDAD NO MIDE EL ENVÍO DE UNA VENTA SUELTA (revisión max #4,
@@ -31138,7 +31152,7 @@ async function main() {
         console.log(`\n(para cambiarlo: cajacosto:<pesos> — ej cajacosto:17500)`);
         return;
       }
-      const nuevo = parseFloat(String(_cc).replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+      const nuevo = pesosArg(_cc) || 0;
       if (!(nuevo > 0)) { console.log('Usá: cajacosto:<pesos> — ej cajacosto:17500'); return; }
       await db.set('cyc/mlconfig/costoCaja', nuevo);
       // Releído de la base: que el comando no dé error no prueba que haya quedado.
@@ -38926,8 +38940,10 @@ async function main() {
         const tc = parseFloat(B.tipoCambio) || 0; if (!tc) return null; const crecio = Math.round((Number(B.total) - Number(A.total)) * tc);
         const retiro = retiroMesVal(ym); if (retiro == null) return null; const corr = Number((corrA[ym] || {}).ars) || 0; const base = crecio + retiro - corr;
         return { crecio, retiro, corr, base, porSocio: base > 0 ? Math.floor(base / 3 / 100000) * 100000 : 0 }; }
-      function retiroCalc(ym, prof = 0) { if (prof > 24) return null; const pr = prevYM(ym); if (pr < DESDE) return null; const c = cobroCrec(pr); if (!c) return null;
-        let v = 2 * c.porSocio; const fz = congV(pr); if (fz != null) { const cp = retiroCalc(pr, prof + 1); if (cp != null) v += cp - fz; } return Math.max(0, v); }
+      // Revisión etapa 2 (05/11/2026): el de adentro va SIN el piso de 0 (`crudo`): si el mes pasado debía dar negativo, esa parte se descuenta
+      // del siguiente; antes se perdía (quedaba en 0 y el mes de después cobraba de más). Igual que `_retiroCalc` de la web.
+      function retiroCalc(ym, prof = 0, crudo = false) { if (prof > 24) return null; const pr = prevYM(ym); if (pr < DESDE) return null; const c = cobroCrec(pr); if (!c) return null;
+        let v = 2 * c.porSocio; const fz = congV(pr); if (fz != null) { const cp = retiroCalc(pr, prof + 1, true); if (cp != null) v += cp - fz; } return crudo ? v : Math.max(0, v); }
       function retiroAuto(ym) { if (prevYM(ym) < DESDE) return null; const fz = congV(ym); return fz != null ? fz : retiroCalc(ym); }
       // `retiroauto:cobro:<mes>:<mati|tito>|<nota>;go` = el ✅ "Ya lo cobró" de Gastos, por comando (él lo dice en el chat).
       const mCob = body.match(/^cobro:(\d{4}_\d{2}):(mati|tito)\|(.+)$/i);
@@ -38961,9 +38977,9 @@ async function main() {
       // el dólar de hoy) y `|esperado=<dólares>` sólo escribe si lo que había es ese número (no lo imprime: si no coincide, no toca nada).
       const mF = body.match(/^(dolares_mati|dolares_tito|deuda_cyc)=([+-])(u?)([\d.,]+)\|(?:esperado=([\d.,]+)\|)?(.+)$/);
       if (!mF) { console.log('❌ Usá: finsuma:<dolares_mati|dolares_tito|deuda_cyc>=<+pesos|-pesos|+u<dólares>|-u<dólares>>[|esperado=<dólares>]|<nota>;go'); return; }
-      mF.splice(3, 1, mF[4]); const enUSD = !!body.match(/=[+-]u/); const esperado = mF[5] != null ? parseFloat(String(mF[5]).replace(/\./g, '').replace(',', '.')) : null; mF.splice(4, 2, mF[6]);
+      mF.splice(3, 1, mF[4]); const enUSD = !!body.match(/=[+-]u/); const esperado = mF[5] != null ? numArg(mF[5]) : null; mF.splice(4, 2, mF[6]);
       const tcF = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; if (!(tcF > 0) && !enUSD) { console.log('❌ sin dólar cargado: no escribo'); return; }
-      const usdArg = enUSD ? parseFloat(String(mF[3]).replace(/\./g, '').replace(',', '.')) * (mF[2] === '-' ? -1 : 1) : null;
+      const usdArg = enUSD ? numArg(mF[3]) * (mF[2] === '-' ? -1 : 1) : null;   // revisión etapa 2 (05/11): "u88.00" daba US$ 8.800
       const ars = enUSD ? Math.round(usdArg * (tcF || 0)) : Math.round(pesosArg(mF[3])) * (mF[2] === '-' ? -1 : 1); if (enUSD ? !(Number.isFinite(usdArg) && usdArg) : (!Number.isFinite(ars) || !ars)) { console.log('❌ monto inválido'); return; }
       const usd = enUSD ? Math.round(usdArg * 100) / 100 : Math.round(ars / tcF * 100) / 100, cur = parseFloat(await db.get('cyc/finanzas/' + mF[1])) || 0, neg = cur < 0;
       if (esperado != null) { const okE = Math.abs(Math.abs(cur) - esperado) < 0.5; console.log(okE ? `  ✓ lo que había coincide con lo esperado` : `  ❌ lo que había NO es lo esperado: no toco nada (mirarlo en el Arqueo)`); if (!okE) return; }
@@ -38980,16 +38996,19 @@ async function main() {
       const raw = String(process.env.BILLING_PROBE).slice('cobrocorr'.length).replace(/^:/, ''); const GOc = /;go$/i.test(raw); const body = raw.replace(/;go$/i, '').trim();
       const all = (await db.get('cyc/cobro_corr')) || {};
       if (!body) { console.log('=== LO VIEJO CARGADO TARDE (cyc/cobro_corr) ==='); const ks = Object.keys(all).sort(); if (!ks.length) console.log('  (nada cargado)'); for (const k of ks) console.log(`  ${k}: ${money(Number(all[k].ars) || 0)}${all[k].nota ? ' · ' + all[k].nota : ''}`); console.log('Usá: cobrocorr:<AAAA_MM>=<pesos>|<nota>;go (=0 lo saca)'); return; }
-      const mC = body.match(/^(\d{4}_\d{2})=(-?[\d.,]+)(?:\|(.*))?$/);
-      if (!mC) { console.log('❌ Usá: cobrocorr:<AAAA_MM>=<pesos>|<nota>;go (el mes del CIERRE, ej. 2026_10; =0 lo saca)'); return; }
+      const mC = body.match(/^(\d{4}_\d{2})=([+-]?[\d.,]+)(?:\|(.*))?$/);
+      if (!mC) { console.log('❌ Usá: cobrocorr:<AAAA_MM>=<pesos>|<nota>;go (el mes del CIERRE, ej. 2026_10; =0 lo saca; =+<pesos> suma a lo que ya había)'); return; }
       const ymC = mC[1], ars = Math.round(pesosArg(mC[2].replace(/^-/, '')) * (mC[2].startsWith('-') ? -1 : 1)), nota = String(mC[3] || '').trim().slice(0, 120);
       if (!Number.isFinite(ars)) { console.log('❌ monto inválido'); return; }
+      // Revisión etapa 2 (05/11/2026): `=+<pesos>` SUMA a lo que ya había en ese mes (ej. lo que dejó `oficyc:listo`); sin el + lo reemplaza.
+      let ars2 = ars, nota2 = nota;
+      if (mC[2].startsWith('+') && all[ymC]) { ars2 = (Number(all[ymC].ars) || 0) + ars; nota2 = ((all[ymC].nota ? all[ymC].nota + ' + ' : '') + nota).slice(0, 240); console.log(`  (suma a lo que había: ${money(Number(all[ymC].ars) || 0)} + ${money(ars)})`); }
       if (ars !== 0 && !nota) { console.log('❌ falta |<nota>: qué es lo viejo que se cargó tarde'); return; }
       console.log(`=== LO VIEJO CARGADO TARDE EN EL CIERRE DE ${ymC.replace('_', '/')} ${GOc ? '· APLICANDO' : '· PRUEBA'} ===\n  hoy: ${all[ymC] ? money(Number(all[ymC].ars) || 0) + (all[ymC].nota ? ' · ' + all[ymC].nota : '') : '(nada)'} → ${ars ? money(ars) + ' · ' + nota : '(se saca)'}\n  el cobro de ese cierre baja ${money(Math.abs(ars) / 3)} por socio (antes del redondeo de a $100.000); si el retiro del mes siguiente ya empezó, la diferencia va al retiro del otro mes`);
       if (!GOc) { console.log('No se guardó nada (falta ;go).'); return; }
-      await db.set('cyc/cobro_corr/' + ymC, ars ? { ars, nota, ts: Date.now() } : null);
+      await db.set('cyc/cobro_corr/' + ymC, ars2 ? { ars: ars2, nota: nota2, ts: Date.now() } : null);
       const rC = await db.get('cyc/cobro_corr/' + ymC);
-      console.log((ars ? rC && Number(rC.ars) === ars : !rC) ? '  ✓ guardado y releído (la web rehace el cobro al abrir el Arqueo)' : '  ⚠️ no lo pude releer');
+      console.log((ars2 ? rC && Number(rC.ars) === ars2 : !rC) ? '  ✓ guardado y releído (la web rehace el cobro al abrir el Arqueo)' : '  ⚠️ no lo pude releer');
       return;
     }
     if (String(process.env.BILLING_PROBE || '').startsWith('retiromes')) {
@@ -41588,7 +41607,7 @@ async function main() {
       for (let i = N - 1; i >= 0; i--) {
         const d = new Date(ar.getTime() - i * 864e5); const k = `${d.getUTCFullYear()}_${String(d.getUTCMonth() + 1).padStart(2, '0')}_${String(d.getUTCDate()).padStart(2, '0')}`;
         let c = 0, f = 0, g = 0, cH = 0, fH = 0, gH = 0;
-        for (const v of Object.values(vp[k] || {})) { if (!v || v.cancelada) continue; const x = cw(v, k); const gan = (Number(v.neto) || 0) - (Number(x.costo) || 0);
+        for (const v of Object.values(vp[k] || {})) { if (!v || v.cancelada) continue; const x = cw(v, k); const gan = x.sinCosto ? 0 : (Number(v.neto) || 0) - (Number(x.costo) || 0);   // revisión etapa 2 (05/11): sin costo = $0, como la web
           c++; f += Number(v.total) || 0; g += gan;
           const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts) { const t = new Date(ts - 3 * 36e5); if (t.getUTCHours() * 60 + t.getUTCMinutes() <= minHoy) { cH++; fH += Number(v.total) || 0; gH += gan; } } }
         filas.push({ k, dw: DS[d.getUTCDay()], c, f, g, cH, fH, gH, hoy: i === 0 });
@@ -42717,7 +42736,7 @@ async function main() {
       // |frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD|pagos=AAAA-MM-DD,…|costo=<pesos>;go`. Las fechas de `pagos` = cuotas ya pagadas.
       if (_n(quien) === 'nueva') {
         const kv = {}; for (const x of String(resto).split('|')) { const i2 = x.indexOf('='); if (i2 > 0) kv[x.slice(0, i2).trim().toLowerCase()] = x.slice(i2 + 1).trim(); else if (!kv.nom) kv.nom = x.trim(); }
-        const nom = String(kv.nom || '').slice(0, 80), nC = parseInt(kv.cuotas, 10) || 1, cuota = Math.round(parseFloat(String(kv.cuota || '').replace(/\./g, '').replace(',', '.')) || 0);
+        const nom = String(kv.nom || '').slice(0, 80), nC = parseInt(kv.cuotas, 10) || 1, cuota = Math.round(pesosArg(kv.cuota) || 0);
         const fr = String(kv.frec || (nC > 1 ? 'men' : '')).toLowerCase(), mDias = fr.match(/^dias:(\d+)$/);
         const frec = mDias ? 'dias' : (['sem', 'men', 'quin'].includes(fr) ? fr : null);
         const fOk = (f) => /^\d{4}-\d{2}-\d{2}$/.test(f);
@@ -42732,7 +42751,7 @@ async function main() {
         if (kv.fecha && !fOk(kv.fecha)) { console.log('❌ fecha=AAAA-MM-DD (el día en que se vendió)'); return; }
         const f0N = kv.fecha || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         const ts0 = Date.now(), pagos = {}; pagosF.forEach((f, i) => { pagos[String(Date.parse(f + 'T12:00:00-03:00') + i)] = { f }; });
-        const costo = Math.round(parseFloat(String(kv.costo || '').replace(/\./g, '').replace(',', '.')) || 0);
+        const costo = Math.round(pesosArg(kv.costo) || 0);
         const dN = { nom, ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1 } : {}), fecha0: f0N, ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
         console.log(`=== DEUDA NUEVA "${_tapaNom({ nom })}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'con lo que se llevó anotado (no se imprime) · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · vendida el ${f0N} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
@@ -42748,22 +42767,37 @@ async function main() {
       // ARRANCAR DE CERO (29/10/2026, él: "en deuda perfumería cargá 1.132.000, eso deben hoy. Lo que está anotado borralo. Arrancamos de
       // cero"): `=desde <pesos>` deja la deuda en ese monto, sin cuotas, sin pagos y sin movimientos. Lo de antes no se pierde del todo: se
       // guarda una copia en `cyc/debencuotas_archivo/<id>/<ts>` (no se ve en la web), por si hay que mirar qué había.
+      // LA CORRECCIÓN NO ES CRECIMIENTO (revisión etapa 2, 05/11/2026): `=inicial` y `=desde` cambian lo que nos deben sin que haya pasado
+      // nada nuevo (es lo de antes contado mejor). Esa diferencia se anota sola en `cyc/cobro_corr/<mes del próximo cierre>`, igual que
+      // `oficyc:listo` (se suma a lo que haya): si no, entraba entera al cobro del mes (31/10: +$452.000 en la Mercadería inicial).
+      const _corrCobro = async (delta, nota) => {
+        if (!(Math.abs(delta) >= 1)) return;
+        let ym = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
+        try { const sn = await db.get('cyc/snapshots/' + ym); if (sn && sn.total != null) { const [yy, mm] = ym.split('_').map(Number); ym = (mm === 12 ? yy + 1 : yy) + '_' + String(mm === 12 ? 1 : mm + 1).padStart(2, '0'); } } catch { console.log('  ⚠️ no pude leer el cierre del mes: la corrección del cobro NO se anotó (cargala con cobrocorr:<mes>=+' + Math.round(delta) + '|<nota>;go)'); return; }
+        let cc; try { cc = (await db.get('cyc/cobro_corr/' + ym)) || null; } catch { console.log('  ⚠️ no pude leer cyc/cobro_corr: la corrección del cobro NO se anotó (cargala con cobrocorr)'); return; }
+        const arsN = (Number(cc && cc.ars) || 0) + Math.round(delta), notaN = [cc && cc.nota, nota].filter(Boolean).join(' + ').slice(0, 240);
+        if (!GO) { console.log(`  → con ;go, corrección del cobro de ${ym.replace('_', '/')}: ${money(Number(cc && cc.ars) || 0)} → ${money(arsN)} (no es crecimiento)`); return; }
+        await db.set('cyc/cobro_corr/' + ym, arsN ? { ars: arsN, nota: notaN, ts: Date.now() } : null);
+        const r = await db.get('cyc/cobro_corr/' + ym); console.log((arsN ? r && Number(r.ars) === arsN : !r) ? `  ✓ corrección del cobro de ${ym.replace('_', '/')} = ${money(arsN)} (no se cobra como crecimiento)` : '  ⚠️ no pude releer la corrección del cobro: cargala con cobrocorr');
+      };
       const mds = String(resto).trim().match(/^desde\s*\$?\s*([\d.,]+)$/i);
       if (mds) {
         let cand2 = lista.filter(([id]) => id === quien);
         if (!cand2.length) { const pal = _n(quien).split(' ').filter(Boolean); cand2 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
         if (cand2.length !== 1) { console.log(`❌ "${quien}" agarra ${cand2.length} deudas${cand2.length ? ': ' + cand2.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
-        const [id, d] = cand2[0]; const nD = Math.round(parseFloat(mds[1].replace(/\./g, '').replace(',', '.')) || 0);
+        const [id, d] = cand2[0]; const nD = Math.round(pesosArg(mds[1]) || 0);
         // 11a de la revisión etapa 9 (30/10/2026, él): en MERCADERÍA Perfumería no se arranca de cero: borraría qué producto se dejó, en qué
         // perfumería y su ganancia. Lo que vuelve se saca con `=devuelve|prod=|local=|u=|a=`; lo que pagan, con `=-N|prod=|local=`.
         if (/perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom))) { console.log(`❌ ${_tapaNom(d)} no se arranca de cero (se perdería qué se dejó y dónde). Lo que vuelve: =devuelve|prod=<ficha>|local=<…>|u=<n>|a=<local|ml>;go · lo que pagan: =-N|prod=<ficha>|local=<…>;go. No escribo nada.`); return; }
         if (!(nD >= 0)) { console.log('❌ monto inválido'); return; }
         console.log(`=== "${_tapaNom(d)}" ARRANCA DE CERO ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  falta hoy ${money(Math.round(saldo(d)))} → ${money(nD)} · se sacan ${Object.keys(d.movs || {}).length} movimiento(s) y ${Object.keys(d.pagos || {}).length} pago(s) (copia en el archivo)`);
-        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        const _difD = nD - Math.round(saldo(d));
+        if (!GO) { await _corrCobro(_difD, ''); console.log('No se guardó nada (falta ;go).'); return; }
         const tsA = Date.now(); await db.set(`cyc/debencuotas_archivo/${id}/${tsA}`, d);
         await db.patch(`cyc/debencuotas/${id}`, { monto: nD, n: 1, pagadas: 0, pagos: null, movs: null, vence1: null, frec: null, cadaDias: null, costo: null, ts: tsA, fecha0: new Date(tsA - 3 * 3600e3).toISOString().slice(0, 10), editado: tsA });
         const r2 = await db.get(`cyc/debencuotas/${id}`);
         console.log(r2 && Number(r2.monto) === nD && !r2.movs ? `  ✓ guardado y releído: falta ${money(nD)}` : '  ⚠️ no lo pude releer bien');
+        if (r2 && Number(r2.monto) === nD) await _corrCobro(_difD, `deuda ${id} arrancó de cero`);
         return;
       }
       // VER Y CORREGIR LA DEUDA INICIAL (31/10/2026, él: "1.907.400 ahí saqué bien la cuenta y eso nos debe la perfumería de mercadería… hoy
@@ -42782,14 +42816,15 @@ async function main() {
           for (const [k, x] of Object.entries(d.movs || {}).sort((a, b) => Number(a[0]) - Number(b[0]))) if (x) console.log(`  ${x.f || '?'} · ${Number(x.m) > 0 ? '+' : '−'}${money(Math.abs(Math.round(Number(x.m) || 0)))}${x.u ? ' · ' + x.u + ' u.' : ''}${x.prodNom ? ' · ' + String(x.prodNom).slice(0, 50) : ''}${x.local ? ' · ' + x.local : ''}${x.nota ? ' · ' + String(x.nota).slice(0, 60) : ''}`);
           return;
         }
-        const nI = Math.round(parseFloat(mvi[2].replace(/\./g, '').replace(',', '.')) || 0), gP = mvi[3] ? parseFloat(mvi[3].replace(',', '.')) : 25;
+        const nI = Math.round(pesosArg(mvi[2]) || 0), gP = mvi[3] ? parseFloat(mvi[3].replace(',', '.')) : 25;
         if (!(nI > 0) || !(gP >= 0) || Math.max(1, Number(d.n) || 1) > 1) { console.log('❌ monto o % inválido (o la deuda va en cuotas). No escribo nada.'); return; }
         const cI2 = Math.round(nI / (1 + gP / 100)), dif = nI - (Number(d.monto) || 0);
         console.log(`=== DEUDA INICIAL DE ${_tapaNom(d)} ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${money(Math.round(Number(d.monto) || 0))} → ${money(nI)} · costo ${money(cI2)} (gana ${gP}% = ${money(nI - cI2)}) · falta ${money(Math.round(saldo(d)))} → ${money(Math.round(saldo(d) + dif))}`);
-        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        if (!GO) { await _corrCobro(dif, ''); console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { monto: nI, costo: cI2, sinGan: null, editado: Date.now() });
         const rI = await db.get(`cyc/debencuotas/${id}`);
         console.log(rI && Number(rI.monto) === nI && Number(rI.costo) === cI2 ? `  ✓ guardado y releído: falta ${money(Math.round(saldo(rI)))}` : '  ⚠️ no lo pude releer bien');
+        if (rI && Number(rI.monto) === nI) await _corrCobro(dif, `deuda inicial ${id} corregida`);
         return;
       }
       // VENTA O PRÉSTAMO (29/10/2026, él: "los que tienen ganancia son Ventas y los que no tienen son deudores… primo, gastón, seba son ventas
@@ -42825,7 +42860,7 @@ async function main() {
         let cand0 = lista.filter(([id]) => id === quien);
         if (!cand0.length) { const pal = _n(quien).split(' ').filter(Boolean); cand0 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
         if (cand0.length !== 1) { console.log(`❌ "${quien}" agarra ${cand0.length} deudas${cand0.length ? ': ' + cand0.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
-        const [id, d] = cand0[0]; const nC = parseFloat(mc[1].replace(/\./g, '').replace(',', '.')) || 0;
+        const [id, d] = cand0[0]; const nC = numArg(mc[1]) || 0;   // revisión etapa 2 (05/11): "12.50" (dólares) daba 1250
         const tcC = mc[2] ? (parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0) : 1;
         if (!(tcC > 0)) { console.log('❌ sin dólar cargado en el Arqueo: no puedo pasar los dólares a pesos.'); return; }
         const costo = Math.round(nC * tcC); if (!(costo > 0)) { console.log('❌ costo en cero'); return; }
@@ -42867,10 +42902,13 @@ async function main() {
         if (pcD.length !== 1) { console.log(`❌ producto "${extra.prod}" agarra ${pcD.length} fichas${pcD.length ? ': ' + pcD.slice(0, 8).map((x) => `${x.name} (${x.id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const pD = pcD[0], uD = parseInt(extra.u, 10), fD = mDev[1] || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         // Pago por plata (30/10/2026): "sin pagar" = lo que la plata pagada todavía no cubre entero, del más viejo al más nuevo (`deudaFifoBot`).
-        const fifoD = deudaFifoBot(dD);
-        const ab = Object.entries(dD.movs || {}).filter(([k, x]) => x && Number(x.m) > 0 && x.prod === pD.id && !(fifoD.por[k] && fifoD.por[k].full) && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(a[0]) - Number(b[0]));
+        // Revisión etapa 2 (05/11/2026): se pueden devolver también los que la plata ya "tachó": se paga por plata, del más viejo al más nuevo, así
+        // que los viejos sin vender (justo lo que vuelve) siempre figuraban pagados y la devolución se negaba. La cuenta se rehace sola y lo pagado
+        // de más queda a favor.
+        const fifoD = deudaFifoBot(dD); void fifoD;
+        const ab = Object.entries(dD.movs || {}).filter(([k, x]) => x && Number(x.m) > 0 && x.prod === pD.id && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(a[0]) - Number(b[0]));
         const hay = ab.reduce((t, [, x]) => t + Number(x.u), 0);
-        if (hay < uD) { console.log(`❌ en ${locD} hay ${hay} sin pagar de ${pD.name}${hay ? '' : ' (o ya está pagado: lo pagado no se devuelve por acá)'}; pidió devolver ${uD}. No escribo nada.`); return; }
+        if (hay < uD) { console.log(`❌ en ${locD} hay ${hay} sin pagar de ${pD.name}${hay ? '' : ' (de ese producto en esa perfumería)'}; pidió devolver ${uD}. No escribo nada.`); return; }
         console.log(`=== DEVOLUCIÓN EN "${_tapaNom(dD)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
         let falta = uD, bajaM = 0, bajaG = 0; const cambios = [];
         for (const [k, x] of ab) { if (!falta) break; const uX = Number(x.u), q = Math.min(falta, uX), pu = Number(x.pu) > 0 ? Number(x.pu) : Number(x.m) / uX;
@@ -42905,7 +42943,7 @@ async function main() {
       // renglones de ese producto ya dejados (monto y ganancia se rehacen; las unidades y el día quedan).
       if (/^precio$/i.test(String(numF).trim())) {
         const LOCp = ['soares', 'sarmiento', 'ceballos'];
-        const pu = Math.round(parseFloat(String(extra.pu || (notaP.find((x) => /^pu=/i.test(x)) || '').replace(/^pu=/i, '')).replace(/\./g, '').replace(',', '.')) || 0);
+        const pu = pesosArg(String(extra.pu || (notaP.find((x) => /^pu=/i.test(x)) || '').replace(/^pu=/i, ''))) || 0;
         if (!extra.prod || !(pu > 0)) { console.log('❌ Usá: debenmov:mercaderia perfumeria=precio|prod=<ficha>|pu=<lo que paga c/u>[|local=…];go'); return; }
         let cP = lista.filter(([id]) => id === quien); if (!cP.length) { const pal = _n(quien).split(' ').filter(Boolean); cP = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
         if (cP.length !== 1) { console.log(`❌ "${quien}" agarra ${cP.length} deudas. No escribo nada.`); return; }
@@ -42951,7 +42989,7 @@ async function main() {
       // Revisión etapa 9, 30/10/2026: un `u=` que no es un número entero de 1 o más (u=abc, u=0) se frena; antes pasaba a 1 sin avisar.
       if (extra.u != null && !/^[1-9]\d*$/.test(String(extra.u).trim())) { console.log(`❌ u="${extra.u}": va un número entero de 1 o más. No escribo nada.`); return; }
       const u = Math.max(1, parseInt(extra.u, 10) || 1);
-      let montoU = mPct ? null : Math.round(parseFloat(m[2].replace(/\./g, '').replace(',', '.'))); if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
+      let montoU = mPct ? null : pesosArg(m[2]);   // revisión etapa 2 (05/11): "158000.00" daba $15.800.000 if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
       const LOCALES = ['soares', 'sarmiento', 'ceballos'];
       // `local=reparto` (30/10/2026, él con 16 Alfaparf: "se reparten así, no sé exacto a cuál va"): se deja sin perfumería (en Métricas
       // Local sale como "Sin perfumería").
@@ -42979,8 +43017,11 @@ async function main() {
       // `debenmov:perfumeria=-N|nota;go` → primero a Deuda Perfumería (MercadoPago) hasta dejarla en 0, lo que sobra a Mercadería Perfumería
       // (del producto más viejo al más nuevo, `deudaFifoBot`). Se mira el saldo de MercadoPago EN CADA cobro: si volvió a deber, vuelve a ir primero ahí.
       if (m[1] === '-' && _n(quien) === 'perfumeria') {
-        const dMP = lista.find(([, d]) => /perfumer/.test(_n(d.nom)) && !/mercader/.test(_n(d.nom)));
-        const dMe = lista.find(([, d]) => /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
+        // Revisión etapa 2 (05/11/2026): tiene que haber UNA de cada una (antes agarraba la primera: una tercera deuda con "perfumería" en el
+        // nombre podía llevarse el cobro sin avisar).
+        const _lMP = lista.filter(([, d]) => /perfumer/.test(_n(d.nom)) && !/mercader/.test(_n(d.nom))), _lMe = lista.filter(([, d]) => /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
+        if (_lMP.length > 1 || _lMe.length > 1) { console.log(`❌ hay ${_lMP.length} deudas de MercadoPago y ${_lMe.length} de Mercadería con "perfumería" en el nombre: decime a cuál va. No escribo nada.`); return; }
+        const dMP = _lMP[0], dMe = _lMe[0];
         if (!dMP || !dMe) { console.log('❌ no encuentro las dos deudas de la perfumería (MercadoPago y Mercadería). No escribo nada.'); return; }
         const sMP = Math.max(0, Math.round(saldo(dMP[1]))), aMP = Math.min(monto, sMP), aMe = monto - aMP;
         console.log(`=== COBRO DE PERFUMERÍA ${money(monto)} · ${f} ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
