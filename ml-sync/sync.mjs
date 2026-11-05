@@ -13241,6 +13241,8 @@ const PY_TRAD = [
   [/\bprocessador(es)?\b/gi, 'procesador$1'], [/(?<![\p{L}])at[eé](?![\p{L}])(?=\s*\d)/giu, 'hasta'], [/\bgaiola\b/gi, 'jaula'], [/\blimpeza\b/gi, 'limpieza'],
   [/\bferramentas?\b/gi, 'herramientas'], [/\bdobr[aá]vel\b/giu, 'plegable'], [/\bvari[aá]vel\b/giu, 'variable'], [/\bparafusos?\b/gi, 'tornillos'],
   [/\b(\d+)\s+em\s+1\b/gi, '$1 en 1'], [/\bautom[oó]vel\b/giu, 'auto'], [/\bautomotivo\b/gi, 'automotor'], [/\bempunhadura\b/gi, 'empuñadura'], [/\best[uú]dio\b/giu, 'estudio'],
+  // 05/11/2026 (ABEL día 3): 5 perfumes con "Recarregável" y uno con "Exilir" (Elixir mal escrito en el proveedor).
+  [/\brecarreg[aá]ve(l|is)\b/giu, (m, x) => (x === 'l' ? 'recargable' : 'recargables')], [/\bexilir\b/gi, 'Elixir'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE, CON EL CATÁLOGO DE ML EXACTO (inicio) ─────────────────────────────────
