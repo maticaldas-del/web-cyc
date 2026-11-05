@@ -26476,7 +26476,7 @@ async function main() {
       const esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
       const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
       const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
-      const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre));
+      const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre) && !(PY_ELEGANCIA_OFF && (provPyDeBot(c) === 'elegancia' || /^EL_/i.test(String(c.cod || '')))));   // 05/11/2026: Elegancia está apagada (26/10): sus candidatos no se miran más y salían como "mirado hace 12 días"
       const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0);
       const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
       const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
