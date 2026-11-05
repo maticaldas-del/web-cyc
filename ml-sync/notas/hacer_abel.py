@@ -19,6 +19,7 @@ s = re.sub(r'<meta property="og:image" content="[^"]*">', '<meta property="og:im
 rep('<meta name="theme-color" content="#e8590c">', '<meta name="theme-color" content="#111111">')
 rep('<meta name="apple-mobile-web-app-title" content="CYC">', '<meta name="apple-mobile-web-app-title" content="ABEL">')
 rep('<h1 class="logo">CYC</h1>', '<h1 class="logo">ABEL</h1>')
+rep('<option value="ahorro">Más ahorro contra ML</option>', '')   # 05/11/2026: ABEL no se compara con ML
 rep('<footer id="pie">CYC</footer>', '<footer id="pie">ABEL</footer>')
 rep('$("pie").textContent = "CYC · precios', '$("pie").textContent = "ABEL · precios')
 rep('fetch("detalles/d" + b', 'fetch("../detalles/d" + b')
