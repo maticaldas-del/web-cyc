@@ -12021,6 +12021,95 @@ function candPorQueNoBot(c, viajaF, _tcP) {
           : !candCatChequeado(c) ? 'nadie confirmó todavía que el catálogo de ML sea el mismo producto (✅ en el panel o la revisión de fotos)'
           : pocasVentas(candVentasDe(c), c.resCarga) ? `en ML vendió ${candVentasDe(c)} y tiene ${c.resCarga ?? '?'} reseñas: menos de ${CAND_MIN_VENTAS} vendidas y de ${CAND_MIN_RESENAS} reseñas` : '';
 }
+// 🔒 EXTRACTOS DE MERCADO PAGO QUE LLEGAN CERRADOS DESDE EL PANEL (05/11/2026, él: "quiero que sea automático. que pueda mandártelo a vos
+// directo"). La web los cierra con la llave pública del robot (`mlapi/privado_in/<ts>` = {k, iv, tag, d, cuenta, per}); acá se abren con
+// `mlapi/ticketllave` y se guardan SÓLO totales por cuenta y mes en `cyc/rendimientos_mp/<cuenta>/<AAAA_MM>` (rendimientos, filas, si el
+// saldo encadena, saldo del primer y último renglón). El archivo trae nombres de terceros: no se imprime NADA de su contenido (ni montos:
+// los saldos de MP no van al registro público, `_MASCARA_PLATA`) y, procesado, se borra.
+function _csvFilas(txt) {
+  const lineas = String(txt || '').replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
+  if (!lineas.length) return { cab: [], filas: [] };
+  const sep = ['\t', ';', ','].map((s) => [s, (lineas[0].match(new RegExp(s === '\t' ? '\t' : '\\' + s, 'g')) || []).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const partir = (l) => { const out = []; let cur = '', q = false; for (let i = 0; i < l.length; i++) { const ch = l[i]; if (q) { if (ch === '"') { if (l[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; } else if (ch === '"') q = true; else if (ch === sep) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out.map((x) => x.trim()); };
+  const todas = lineas.map(partir);
+  // la cabecera: el primer renglón con una columna de fecha y otra de monto o saldo
+  const esCab = (r) => r.some((c) => /date|fecha/i.test(c)) && r.some((c) => /amount|monto|importe|valor|credit|debit|cr[eé]dito|d[eé]bito|balance|saldo/i.test(c));
+  const ic = todas.findIndex(esCab);
+  if (ic < 0) return { cab: [], filas: [] };
+  return { cab: todas[ic], filas: todas.slice(ic + 1).filter((r) => r.length >= Math.min(3, todas[ic].length)) };
+}
+function _numAr(x) {
+  let s = String(x == null ? '' : x).replace(/[^\d,.\-]/g, ''); if (!s || s === '-') return null;
+  const c = s.lastIndexOf(','), p = s.lastIndexOf('.');
+  if (c > p) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/,/g, '');
+  const v = parseFloat(s); return isFinite(v) ? v : null;
+}
+function _fechaYm(x) {
+  const s = String(x || ''); let m = s.match(/(\d{4})-(\d{2})-(\d{2})/); if (m) return `${m[1]}_${m[2]}`;
+  m = s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/); if (m) return `${m[3]}_${String(m[2]).padStart(2, '0')}`;
+  return null;
+}
+function extractoMpResumen(txt) {
+  if (/^PK/.test(String(txt || ''))) return { err: 'es un Excel (.xlsx), no texto: hay que bajarlo en CSV' };
+  const { cab, filas } = _csvFilas(txt);
+  if (!cab.length) return { err: 'no encontré la cabecera (fecha + monto/saldo)' };
+  const idx = (re, no) => cab.findIndex((c) => re.test(c) && !(no && no.test(c)));
+  const iF = idx(/release_date|date|fecha/i), iCr = idx(/net_credit|credit|cr[eé]dito|ingreso/i), iDb = idx(/net_debit|debit|d[eé]bito|egreso/i);
+  const iM = idx(/amount|monto|importe|valor/i, /gross|bruto|fee|comisi/i), iS = idx(/partial_balance|balance|saldo/i, /initial|final|inicial/i);
+  const iTxt = cab.map((c, i) => (/description|descrip|record_type|type|tipo|concept|detalle/i.test(c) ? i : -1)).filter((i) => i >= 0);
+  if (iF < 0 || (iCr < 0 && iDb < 0 && iM < 0)) return { err: 'faltan columnas de fecha o de monto', cols: cab.length };
+  const meses = {}; let prev = null, enc = 0, rotas = 0, n = 0;
+  for (const r of filas) {
+    const ym = _fechaYm(r[iF]); if (!ym) continue;
+    const monto = iCr >= 0 || iDb >= 0 ? (_numAr(iCr >= 0 ? r[iCr] : 0) || 0) - Math.abs(_numAr(iDb >= 0 ? r[iDb] : 0) || 0) : _numAr(r[iM]);
+    if (monto == null) continue;
+    n++;
+    const M = meses[ym] || (meses[ym] = { filas: 0, rend: 0, nRend: 0, saldoIni: null, saldoFin: null });
+    M.filas++;
+    if (iTxt.some((i) => /rendim/i.test(String(r[i] || '')))) { M.rend += monto; M.nRend++; }
+    const sal = iS >= 0 ? _numAr(r[iS]) : null;
+    if (sal != null) {
+      if (M.saldoIni == null) M.saldoIni = Math.round((sal - monto) * 100) / 100;
+      M.saldoFin = sal;
+      if (prev != null) { if (Math.abs(prev + monto - sal) <= 1) enc++; else rotas++; }
+      prev = sal;
+    }
+  }
+  for (const M of Object.values(meses)) M.rend = Math.round(M.rend * 100) / 100;
+  return { meses, n, enc, rotas, conSaldo: iS >= 0, cols: cab.length };
+}
+async function procesarExtractosMp(db, GO) {
+  const inp = (await db.get('mlapi/privado_in')) || {};
+  const ids = Object.keys(inp).filter((k) => inp[k] && inp[k].tipo === 'extracto_mp');
+  if (!ids.length) return { n: 0 };
+  const ll = await db.get('mlapi/ticketllave');
+  if (!ll || !ll.priv) { console.log('🔒 Extractos de MP: hay archivos cerrados pero no está la llave del robot (ticketllave;go).'); return { n: 0 }; }
+  let ok = 0;
+  for (const id of ids) {
+    const e = inp[id]; const cta = String(e.cuenta || '').trim();
+    let txt = '';
+    try {
+      const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+      const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
+      txt = Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8');
+    } catch (er) { console.log(`🔒 ${cta || '?'} · ${e.per || ''}: no se pudo abrir (${String(er.message || er).slice(0, 60)})`); continue; }
+    const R = extractoMpResumen(txt); txt = '';
+    if (R.err) {
+      console.log(`🔒 ${cta} · ${e.per || ''}: ${R.err}`);
+      if (GO) await db.patch('mlapi/privado_in/' + id, { error: R.err, errTs: Date.now() });
+      continue;
+    }
+    const ms = Object.keys(R.meses).sort();
+    console.log(`🔒 ${cta} · ${e.per || ''}: ${R.n} movimientos · ${ms.length} mes(es) ${ms[0] ? ms[0].replace('_', '-') + ' a ' + ms[ms.length - 1].replace('_', '-') : ''} · saldo ${R.conSaldo ? (R.rotas ? `NO encadena en ${R.rotas} renglón(es) de ${R.enc + R.rotas}` : `encadena ✓ (${R.enc} renglones)`) : 'sin columna de saldo'} · rendimientos en ${ms.filter((m) => R.meses[m].nRend).length} mes(es) (los montos se ven en el panel)`);
+    if (!GO || !/^(Adriana|Luciana|Ayelen|Matias)$/.test(cta)) { if (GO) console.log('   (sin cuenta válida: no se guarda)'); continue; }
+    const upd = {}; for (const m of ms) upd[cta + '/' + m] = { ...R.meses[m], ts: Date.now(), encadena: R.conSaldo ? !R.rotas : null };
+    await db.patch('cyc/rendimientos_mp', upd);
+    await db.set('mlapi/privado_in/' + id, null);
+    ok++;
+  }
+  return { n: ok };
+}
+
 function candVistoTsBot(c) { let t = Math.max(Number(c && c.visto) || 0, Number(c && c.ts) || 0); if (c && Number(c.renovTs) > 0 && Math.abs(t - Number(c.renovTs)) < 5000) t = Number(c.renovDe) || 0; return t; }
 const varaCompra = (vend, nv) => (vend != null && isFinite(vend) && vend >= CAND_MIN_VENTAS && (Number(nv) || 0) >= CAND_MIN_VENDEDORES ? CAND_VARA_VENDE : CAND_VARA_COMPRA);
 const candVaraDe = (c) => (c ? varaCompra(candVentasDe(c), c.mlVendedores) : CAND_VARA_COMPRA);
@@ -26465,6 +26554,15 @@ async function main() {
       for (const [pid, e] of rows) { const p = pi[pid] || {}; const d = Number(p.nisseiTs) ? ((Date.now() - Number(p.nisseiTs)) / 864e5).toFixed(1) : '?';
         const vs = e.v ? ' · ' + Object.entries(e.v).filter(([, u]) => (parseInt(u) || 0) > 0).map(([k, u]) => k + '=' + u).join(' ') : '';
         console.log(`  ${parseInt(e.u)} u. · ${String(p.name || pid).slice(0, 60)} · ${p.codPy || 'sin código'} · Nissei US$ ${p.nisseiUSD || '?'} hace ${d} d${SS[pid] ? ' · 🚫 Nissei no lo tiene' : ''}${Number(d) >= 2 ? ' · ⛔ mirado hace 2+ días' : ''}${vs}`); }
+      return;
+    }
+    // BILLING_PROBE=extractomp[:go] (05/11/2026) → abre los extractos de Mercado Pago que llegaron cerrados desde el panel (🔒 Archivo para
+    // Claude) y guarda sólo los totales por cuenta y mes en `cyc/rendimientos_mp`. Sin `:go` sólo dice qué hay. No imprime ningún monto ni texto
+    // del archivo. Corre solo cada hora (ver "🔒 Extractos de MP" en el ciclo).
+    if (/^extractomp(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GOx = /:go$|;go$/.test(String(process.env.BILLING_PROBE));
+      const r = await procesarExtractosMp(db, GOx);
+      console.log(GOx ? `✓ ${r.n} extracto(s) procesado(s) y borrado(s)` : 'PRUEBA: no guardé ni borré nada. Para aplicar: extractomp:go');
       return;
     }
     // BILLING_PROBE=pyllenar:<resto|perf>[:<tope US$>] (04/11/2026, él: "llenalo hasta 600 dólares"; SÓLO LEE) → lo mismo que el botón
@@ -60157,6 +60255,7 @@ async function main() {
   // y otros que con el precio de ML de ese día ya no daban el 35%; la medición era de la noche anterior). Sólo lo cargado (pedirU > 0) con
   // su medición de más de 3 h; el resto sigue con la de la noche. Así lo que se carga con el botón queda medido antes de pagar.
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && process.env.SKIP_PRICES !== '1' && !DRY) {
+    try { const rx = await procesarExtractosMp(db, true); if (rx && rx.n) console.log(`🔒 Extractos de MP: ${rx.n} procesado(s) (totales en cyc/rendimientos_mp)`); } catch (e) { console.log('No pude procesar los extractos de MP: ' + e.message); }
     try { const rp = await correrCandidatos(db, products, labels, accounts, false, undefined, { soloPed: true }); if (rp && rp.calculados) console.log(`🪄 Pedido del momento: ${rp.calculados} producto(s) vueltos a medir contra ML`); } catch (e) { console.log('No pude volver a medir el pedido del momento: ' + e.message); }
   }
   // CAJAS QUE LLEGARON A FULL. Va en la vuelta horaria (no en las de 2 minutos): preguntarle a ML

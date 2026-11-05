@@ -1737,6 +1737,7 @@ setTimeout(function _ldVigia(){try{
       <summary style="cursor:pointer;font-size:.72rem;color:var(--muted);padding:6px 0">🤖 Chat de Chrome y Claude <span style="font-weight:400">(se hablan entre ellos: no hace falta mirarlo)</span></summary>
       <div style="margin-top:8px">
         <div id="ofi-buzon-card"></div>
+        <div id="ofi-privado-card"></div>
         <div id="ofi-pararobot-card"></div>
         <div id="ofi-prompts-card"></div>
       </div>
@@ -2725,7 +2726,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','extracto_mp','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','extracto_mp','rendimientos_mp','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2781,7 +2782,8 @@ function startApp(){
     state.retiro_mes=d.retiro_mes||{};
     state.retiro_congelado=d.retiro_congelado||{};
     state.retiro_cobrado=d.retiro_cobrado||{};   // 01/11/2026: ✅ cobrado de cada socio en Gastos
-    state.extracto_mp=d.extracto_mp||{};   // 05/11/2026: ✅ extracto de MP pasado a Claude (Gastos del mes)
+    state.extracto_mp=d.extracto_mp||{};
+    state.rendimientos_mp=d.rendimientos_mp||{};   // 05/11/2026: totales que saca el robot del extracto cerrado (🔒)   // 05/11/2026: ✅ extracto de MP pasado a Claude (Gastos del mes)
     state.afip_fact=d.afip_fact||{};   // revisión etapa 4, 30/10/2026: "Facturado real AFIP" de Ajustes se guardaba y nunca se volvía a leer   // 9a del 30/10: el retiro de un mes ya empezado no se mueve
     state.cobro_corr=d.cobro_corr||{};
     state.costocongelado=d.costocongelado||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
@@ -3403,7 +3405,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.130';
+const APP_VERSION='28.131';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3416,6 +3418,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.131',f:'05/11',h:'17:20',c:[{n:3,t:'🔒 Mi oficina → Chat de Chrome y Claude: "Archivo para Claude". El chat de Chrome pega ahí el extracto de Mercado Pago; queda cerrado con candado, el robot saca solo lo que rindió cada cuenta y si el saldo cierra, y en Gastos del mes se tilda solo con el monto.'}]},
   {v:'28.130',f:'05/11',h:'16:40',c:[{n:2,t:'📄 Gastos del mes: nuevo renglón para acordarte de pasarle a Claude el extracto completo de Mercado Pago del mes anterior (las 4 cuentas), con botón ✅ Ya se lo pasé.'}]},
   {v:'28.129',f:'05/11',h:'16:05',c:[{n:1,t:'🤖 Mi oficina → Contar lo que hay: el buzón, Para el robot y los textos del chat de Chrome van juntos abajo de todo, cerrados en "Chat de Chrome y Claude". Ya no se abren solos.'}]},
   {v:'28.128',f:'05/11',h:'13:10',c:[{n:2,t:'💵 Pedidos de Paraguay: cada pedido sin pagar dice cuántos pesos tener en Binance (mercadería + cambista, con lo que de verdad costó cada dólar por Binance en los últimos 3 pedidos y el dólar de hoy). El que retira y el correo van por Mercado Pago y no entran.'}]},
@@ -9022,6 +9025,7 @@ function renderOfiContar(){
   const cont=document.getElementById('ofi-contar-list');if(!cont)return;
   try{renderSinEtiqCard();}catch(e){console.warn('sinetiq',e);}
   try{renderBuzonCard();}catch(e){console.warn('buzon',e);}
+  try{renderPrivadoCard();}catch(e){console.warn('privado',e);}
   try{renderParaRobotCard();}catch(e){console.warn('pararobot',e);}
   try{renderPromptsCard();}catch(e){console.warn('prompts',e);}
   const fcc=document.getElementById('ofi-contar-cuentas');
@@ -9231,6 +9235,50 @@ async function buzonEnviar(){
   const ts=Date.now();
   try{await fbSet('buzon/'+ts,{t,ts});}catch(e){toast('⚠️ No se mandó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
   (state.buzon=state.buzon||{})[ts]={t,ts};el.value='';toast('📬 Mensaje dejado para Claude','ok',2500);renderBuzonCard();
+}
+// 🔒 ARCHIVO PARA CLAUDE, CERRADO (05/11/2026, él: "quiero que sea automático. que pueda mandártelo a vos directo. porque va a haber
+// veces que no esté yo"): el chat de Chrome (o él) pega el extracto de Mercado Pago (o elige el archivo) y la página lo CIERRA acá mismo con
+// la llave pública del robot (la misma de las fotos de tickets: RSA-OAEP 3072 + AES-256-GCM). Se guarda en `mlapi/privado_in/<ts>`, fuera de
+// `cyc/`; sólo el robot lo puede abrir (`extractomp`, cada hora) y de ahí guarda únicamente totales. Trae nombres de terceros: nunca en claro.
+const CLAUDE_PUB_B64='MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAmhSnhYxPogVDLc8bNmbmU725gm4HnYq/FqUy0FsJwFbMz5hUqzKRmEz8bXwUzsqsEfreC1to/Kqhnkp+T4KrnvCQ0h0YTL/r2qnDfkbCiDP/n+d3qN3dfZ+w4dSTU7QVV321Zp/Mq5F6pl+Cim5afyUfaTEubyLlasx+wrMqoSr+BXrCxwDwt9Vgeq6FMlvbh7vPvDwCotqWm0APR2Vi8K9JHWET8foC/frcc4nB+yAXdkuq1LTc9n+MOIx9P2rK7bJtbpeuDxuiCcQ54u1xkC+teCuR/QYiJ3iY7tl9ZubRF72cdZQ/COectKQptn0TRTp6fVq86WRDhq+qZwaX4uU4h1AgyePMKiMyYBmoJ91phhaxBgW30J/mSGkn0C3YrfwsNQLwwM7hVfJSOl12CtfOZZ2/Dt4+SDffKivau+ao9HNT9ifuvmQdeJ+JPjiuIo8e/qxMeakYenlbzq8lwZG11pY7Us/QwRkypo2sAqjHwsZcOnQnbPSpiPwr7nHjAgMBAAE=';
+async function privadoCerrar(txt){
+  const raw=Uint8Array.from(atob(CLAUDE_PUB_B64),c=>c.charCodeAt(0));
+  const pub=await crypto.subtle.importKey('spki',raw,{name:'RSA-OAEP',hash:'SHA-256'},false,['encrypt']);
+  const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt']);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(txt)));
+  const kRaw=new Uint8Array(await crypto.subtle.exportKey('raw',key));
+  const wk=new Uint8Array(await crypto.subtle.encrypt({name:'RSA-OAEP'},pub,kRaw));
+  const b=(u)=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);};
+  return{v:1,k:b(wk),iv:b(iv),tag:b(ct.slice(ct.length-16)),d:b(ct.slice(0,ct.length-16))};
+}
+async function privadoGuardar(){
+  const cta=document.getElementById('priv-cta')?.value||'',per=String(document.getElementById('priv-per')?.value||'').trim();
+  const ta=document.getElementById('priv-txt'),fi=document.getElementById('priv-file');
+  let txt=String(ta&&ta.value||'');
+  if(!txt&&fi&&fi.files&&fi.files[0])txt=await fi.files[0].text();
+  if(!cta){toast('Elegí de qué cuenta es','err');return;}
+  if(txt.length<50){toast('Pegá el contenido del archivo (o elegilo)','err');return;}
+  if(txt.length>6e6){toast('Muy grande: partilo en dos (por meses)','err',6000);return;}
+  const ts=Date.now();
+  try{const e=await privadoCerrar(txt);await db.ref('mlapi/privado_in/'+ts).set({...e,tipo:'extracto_mp',cuenta:cta,per,ts,len:txt.length});}
+  catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+  if(ta)ta.value='';if(fi)fi.value='';
+  toast(`🔒 Guardado cerrado (${Math.round(txt.length/1024)} KB, ${cta}${per?' · '+per:''}). El robot lo procesa en la próxima hora.`,'ok',5000);
+}
+function renderPrivadoCard(){
+  const el=document.getElementById('ofi-privado-card');if(!el||el.dataset.ok)return;el.dataset.ok='1';
+  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px">
+    <summary style="cursor:pointer;font-size:.8rem;font-weight:700">🔒 Archivo para Claude (queda cerrado)</summary>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el extracto de Mercado Pago ("Todas las transacciones"). Se cierra con candado acá mismo: sólo el robot lo puede abrir y guarda únicamente los totales (rendimientos, saldo). Trae nombres de otras personas: nunca lo pegues en otro lado.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      <select id="priv-cta" class="cal-select" style="font-size:.72rem"><option value="">¿De qué cuenta?</option><option>Adriana</option><option>Luciana</option><option>Ayelen</option><option>Matias</option></select>
+      <input id="priv-per" class="fin-input" placeholder="período (ej. 2026-10)" style="width:150px;font-size:.72rem">
+      <input id="priv-file" type="file" accept=".csv,.txt,text/csv,text/plain" style="font-size:.66rem">
+    </div>
+    <textarea id="priv-txt" rows="4" placeholder="…o pegá acá TODO el contenido del archivo" style="width:100%;font-size:.66rem;font-family:'DM Mono',monospace"></textarea>
+    <button class="btn" style="margin-top:6px" onclick="privadoGuardar()">🔒 Guardar cerrado para Claude</button>
+  </details>`;
 }
 function renderBuzonCard(){
   const el=document.getElementById('ofi-buzon-card');if(!el)return;
@@ -28159,7 +28207,12 @@ function renderComprasChecklist(){
   // cuando se lo pasó a Claude (`cyc/extracto_mp/<mes de la lista>`). Sólo recordatorio: no es un gasto.
   const _ex=(state.extracto_mp||{})[ymL];
   const _exMes=(()=>{const [y,m]=ymL.split('_').map(Number);const d=new Date(y,m-2,1);return ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][d.getMonth()]+' '+d.getFullYear();})();
-  const filaEx={hay:!!_ex,mes:_exMes,nota:(_ex||{}).nota||''};
+  // Con el extracto procesado por el robot (🔒 Archivo para Claude → `cyc/rendimientos_mp/<cuenta>/<mes>`) se tilda solo y dice lo que rindió.
+  const _exYm=(()=>{const [y,m]=ymL.split('_').map(Number);const d=new Date(y,m-2,1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');})();
+  const _rmp=state.rendimientos_mp||{},_ctasR=['Adriana','Luciana','Ayelen','Matias'].filter(c=>(_rmp[c]||{})[_exYm]);
+  const _rTot=_ctasR.reduce((t,c)=>t+(Number(_rmp[c][_exYm].rend)||0),0);
+  const _rTxt=_ctasR.length?`rindió ${fmt(_rTot)} (${_ctasR.map(c=>c+' '+fmt(Number(_rmp[c][_exYm].rend)||0)+(_rmp[c][_exYm].encadena===false?' ⚠️ saldo no cierra':'')).join(' · ')})${_ctasR.length<4?` · faltan ${4-_ctasR.length} cuenta(s)`:''}`:'';
+  const filaEx={hay:!!_ex||_ctasR.length===4,mes:_exMes,nota:(_ex||{}).nota||'',rTxt:_rTxt};
   const faltan=filas.filter(f=>!f.hay).length+filasRet.filter(f=>!f.hay).length+(filaEx.hay?0:1);
   const buscar=(g)=>gastos.filter(x=>{
     if(g.cat&&(x.cat||'')!==g.cat)return false;
@@ -28201,6 +28254,7 @@ function renderComprasChecklist(){
       <span style="font-family:'DM Mono',monospace;font-size:.76rem;color:${filaEx.hay?'var(--text)':'var(--red)'}">${filaEx.hay
         ?`<span style="font-size:.6rem;color:var(--green)">pasado</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" onclick="setExtractoMp('${ymL}',false)">deshacer</button>`
         :`<span style="font-size:.6rem">falta</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px" onclick="setExtractoMp('${ymL}',true)">✅ Ya se lo pasé</button>`}</span>
+      ${filaEx.rTxt?`<span style="font-size:.64rem;color:var(--green);flex-basis:100%">💰 ${filaEx.rTxt}</span>`:''}
       ${filaEx.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">El completo: todos los movimientos de las 4 cuentas. Con eso salen los rendimientos de Mercado Pago y se controla que el saldo cierre al peso. El chat de Chrome lo baja con el texto EXTRACTO.</span>`}
     </div>
     ${faltan?`<div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">

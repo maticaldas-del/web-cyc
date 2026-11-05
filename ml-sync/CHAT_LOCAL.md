@@ -22,7 +22,7 @@ REGLAS QUE NO SE ROMPEN
 - Nunca confirmes una compra, un envío a Full ni un pago: lo confirma Matías.
 
 LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
-- "extracto" (una vez por mes, cuando lo pide Matías): bajar el extracto de cuenta de Mercado Pago de las 4 cuentas (ver PROMPT_EXTRACTO.md). Nada de su contenido va a ningún lado.
+- "extracto" (una vez por mes; si Gastos del mes muestra en rojo el renglón 📄 del extracto, hacelo aunque no lo pida): bajar el extracto de Mercado Pago de las 4 cuentas y pegarlo en el panel en "🔒 Archivo para Claude", que lo cierra con candado (ver PROMPT_EXTRACTO.md). Nada de su contenido va a ningún otro lado.
 - "rutina" (todos los días): cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei + los de "⏳ Para volver a mirar" (lo que da y se miró hace 2+ días; todos los días, 01/11) → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
 - "arrancá" (cajas): SÓLO cuando Matías lo pide, armar en ML las cajas de Full que el panel marca "MANDALA YA" (cargar Planificación de envíos, sin confirmar).  → CAJAS
 - "PROMPT GUAY" / pasada de los sábados: copiar el catálogo de Nissei de comprasparaguay y los precios de lo que pide el panel.  → GUAY
