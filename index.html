@@ -3395,7 +3395,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.127';
+const APP_VERSION='28.128';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3408,6 +3408,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.128',f:'05/11',h:'13:10',c:[{n:2,t:'💵 Pedidos de Paraguay: cada pedido sin pagar dice cuántos pesos tener en Binance (mercadería + cambista, con lo que de verdad costó cada dólar por Binance en los últimos 3 pedidos y el dólar de hoy). El que retira y el correo van por Mercado Pago y no entran.'}]},
   {v:'28.127',f:'05/11',h:'04:53',c:[{n:3,t:'📸 Arqueo: pasado el día 5, si el mes anterior sigue sin cerrar, el botón cierra ÉSE (antes cerraba el mes en curso y el otro quedaba sin cierre). Y no deja cerrar mientras la app muestra la copia del teléfono (decía guardado sin guardar).'},{n:3,t:'💸 La tarjeta del cobro dice el MISMO retiro que Gastos (el fijo, con el ajuste del mes pasado).'},{n:2,t:'📥 Ver deudas: las cuotas que cargo yo cuentan en "pagó X de N" y en el vencimiento; se sacó el botón 💵 Pagó que no hacía nada.'},{n:2,t:'🇵🇾 Ya llegó: lo de la 🏬 Tienda no entra a la Oficina ML y su ficha queda sólo para el local.'},{n:1,t:'🧾 Gastos: los cargos de Full no tienen casilla (los carga el robot solo).'}]},
   {v:'28.126',f:'05/11',h:'00:45',c:[{n:2,t:'⏱️ Ventas de hoy se actualiza solo cada minuto y al volver a abrir la app: "a esta hora", lo normal de cada cuenta, la curva y el cambio de día a la medianoche ya no quedan congelados hasta la próxima venta'}]},
   {v:'28.125',f:'05/11',h:'00:30',c:[{n:2,t:'📱 Ventas de hoy ya no se va para el costado al bajar la pantalla: el deslizar de día a día pide un gesto claramente de costado, y si la pantalla se mueve la tarjeta vuelve a su lugar'}]},
@@ -19003,6 +19004,23 @@ function pyBaseUSD(c){const pg=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0,w=
 function pyPersonalARS(c){const pu=parseFloat(c&&c.personal&&c.personal.usd)||0;if(!(pu>0))return 0;
   const p=(c&&c.pagos)||{},cyc=parseFloat(c&&c.ticket&&c.ticket.usdPagado)||0,dol=(Number(p.mercaderia)||0)+(Number(p.cambista)||0);
   return cyc+pu>0?Math.round(dol*pu/(cyc+pu)):0;}
+// 💵 CUÁNTOS PESOS TENER EN BINANCE (05/11/2026, él: "quiero que me diga cuantos pesos tengo que tener en binance para pagar… lo unico
+// que se paga con binance es el costo de la mercaderia y el cambista… binance te cobra por transferir y por comprar y el dolar esta mas
+// caro"): lo de Binance (mercadería + cambista y envío de los dólares) de los últimos 3 pedidos con esos dos cargados, dividido el dólar
+// del panel de ESE día y los dólares del pedido = cuánto más que el dólar del panel cuesta cada dólar por Binance (compra, transferencia y
+// cambista adentro). Por el dólar del panel de HOY y los dólares de este pedido. El que retira y el correo van por MP: no entran.
+function pyBinanceMult(){
+  const L=Object.values(state.compraspy||{}).filter(c=>c&&c.pagos&&Number(c.pagos.mercaderia)>0&&pyGastoCargado(c,PY_GASTOS[3])&&(parseFloat(c.tcPedido)||parseFloat(c.tcPanel))>0&&pyBaseUSD(c)>0)
+    .sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,3);
+  const m=L.map(c=>((Number(c.pagos.mercaderia)||0)+(Number(c.pagos.cambista)||0)+(Number(c.pagos.otros)||0))/(parseFloat(c.tcPedido)||parseFloat(c.tcPanel))/pyBaseUSD(c)).filter(x=>x>0.9&&x<1.5);
+  return m.length?{m:m.reduce((a,b)=>a+b,0)/m.length,n:m.length}:null;
+}
+function pyBinancePesos(c){
+  if(!c||(c.pagos&&Number(c.pagos.mercaderia)>0))return null;
+  const usd=pyBaseUSD(c),tc=parseFloat(state.finanzas&&state.finanzas['tipo_cambio'])||0,B=pyBinanceMult();
+  if(!(usd>0)||!(tc>0)||!B)return null;
+  return{pesos:Math.ceil(usd*tc*B.m/1000)*1000,mult:B.m,n:B.n,usd,tc};
+}
 function pyRecargoReal(c){
   const falta=PY_GASTOS.filter(g=>!pyGastoCargado(c,g)).map(g=>g.nom);
   const tc=parseFloat(c&&c.tcPedido)||parseFloat(c&&c.tcPanel)||0,usd=pyBaseUSD(c);   // contra lo pagado (1a del 30/10/2026)
@@ -19211,7 +19229,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
       <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
       ${/* 21/10/2026, él: "quiero que en la tarjeta de pedidos marque si están todos los gastos cargados o faltan" */''}
-      <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>${c.llegoOk?`<div style="font-size:.64rem;font-weight:800;margin-top:2px;color:var(--green)" title="Me pasaste las fotos de lo que llegó (${new Date(Number(c.llegoOk.ts)).toLocaleDateString('es-AR')}): está todo bien.${c.llegoOk.nota?' '+String(c.llegoOk.nota).replace(/"/g,'&quot;'):''}">✅ llegó todo bien (fotos)</div>`:''}
+      <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>${(()=>{const BP=pyBinancePesos(c);return BP?`<div style="font-size:.7rem;font-weight:800;margin-top:3px;color:var(--text)" title="Mercadería + cambista y envío de los dólares: US$ ${BP.usd.toFixed(2).replace('.',',')} × dólar del panel de hoy ${BP.tc.toLocaleString('es-AR')} × ${BP.mult.toFixed(3).replace('.',',')} (lo que costó de más cada dólar por Binance en los últimos ${BP.n} pedidos: compra, transferencia y cambista). El que retira y el correo van por Mercado Pago: no entran.">💵 Tener en Binance: $${BP.pesos.toLocaleString('es-AR')}</div>`:'';})()}${c.llegoOk?`<div style="font-size:.64rem;font-weight:800;margin-top:2px;color:var(--green)" title="Me pasaste las fotos de lo que llegó (${new Date(Number(c.llegoOk.ts)).toLocaleDateString('es-AR')}): está todo bien.${c.llegoOk.nota?' '+String(c.llegoOk.nota).replace(/"/g,'&quot;'):''}">✅ llegó todo bien (fotos)</div>`:''}
     </div>
     <div style="margin-left:auto;text-align:right">
       <div style="font-size:1.05rem;font-weight:800;color:var(--text);white-space:nowrap" title="Lo que te salió el pedido puesto en la oficina: la factura más todos los gastos${R.r?'':' (con el recargo estimado: faltan gastos)'}">US$ ${usd}</div>
