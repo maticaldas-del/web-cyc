@@ -176,7 +176,7 @@
   ventas en max. **El esfuerzo va escrito en cada llamada al ayudante**, nunca se hereda de la sesión.
 
 ### Telegram y avisos
-- **Dos chats** (29/10, él: *"en el CYC Avisos que mandás los resúmenes diarios, a partir de ahora SOLO mandar resúmenes diarios. El resto importante al otro"*): al grupo de los resúmenes (`TG_CHATS`, él y Tito) va **sólo el resumen** (`sendTelegram(...,'resumen')`); todo lo demás (bajas/altas de ML, dólar, urgentes, recordatorios, códigos de devolución) va al canal privado de Mati (`sendAlerta`, `TG_ALERTAS`).
+- **Dos chats** (29/10, él: *"en el CYC Avisos que mandás los resúmenes diarios, a partir de ahora SOLO mandar resúmenes diarios. El resto importante al otro"*): al grupo de los resúmenes (`TG_CHATS`, él y Tito) va **sólo el resumen** (`sendTelegram(...,'resumen')`); todo lo demás (bajas/altas de ML, dólar, urgentes, recordatorios, códigos de devolución) va al canal privado de Mati (`sendAlerta`, `TG_ALERTAS`). **Lo de la Tienda (las 5 fotos de los estados y todo eso) NO va por Telegram: se le pasa en el chat** (05/11, él: *"deja de mandar por telegram lo de la tienda y todo eso"*; `tgfotos` no se usa más).
 - **CYC Avisos (Telegram) = SÓLO lo urgente y los recordatorios** (23/10, *"si me llega un mensaje de CYC Avisos sé que es algo
   que tengo que resolver ya"*): `pregunto:URGENTE: …` (el robot lo niega sin "URGENTE") sólo para lo que cuesta plata si espera
   (reclamo que espera su respuesta, ML frenó algo que vende, algo que vende fuerte en 0 en Full con mercadería en la oficina, un pago
