@@ -8,6 +8,14 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### 💰 Análisis "¿cómo ganamos más?" (05/11) — se lo pasé en el chat, espera "1a 2a…"
+1. Pasada de Nissei ya (perfumes sin mirar hace 12,5 días) + pedido de perfumería con lo que se cortó en Adriana y los perfumes nuevos de 60-337%.
+2. Ayelen sin lugar en Full: (a) segunda publicación en Luciana de lo que se corta (Separador, Protector, Lupa 90, Espejo 7", Gua Sha, Mentonera) · (b) esperar que ML le dé lugar.
+3. Black Friday: (a) analizo las promos de ML (ML pone plata) para lo que sobra, sin bajar del 35% · (b) no entramos.
+4. Centímetro Blanco: (a) esperar al 12/11 que vuelva solo a ~$4.290 · (b) autorizar ya ~$7.290.
+5. Claude: ¿se usan las dos suscripciones ($160.000 + $182.600)?
+6. Mercado Pago: que el chat de Chrome mire si la plata quieta rinde en las 4 cuentas.
+
 ### ⏳ Medición de las Cartas Casino y los Centímetros a $17.490 — contestó 2a (05/11), pero el robot no deja bajar los Centímetros a $10.990: piden su 🔐 (!golpe + !sinlinea + !sincerteza: baja de 37% de una vez, sin techo al 95%, y el 💰 medido del robot es $3.990/$4.290). A $10.990 quedan en 475% (no ~200% como le dije). Preguntado el 05/11: autorizar o esperar al 12/11
 - ⚠️ **Corrección (05/11):** el "a $10.990 vendían 5,6 por día" estaba mal: ese ritmo fue a $3.990-$4.290. A $10.990 estuvo 1 solo día (2 ventas). Antes de proponerle otra vez un precio a los Centímetros, mirar los tramos de la ficha (`ficha:MLA3112784736`).
 - 05/11 él: las 278 "Gris" de la oficina eran BLANCAS (`ofi`, quedan sin etiqueta en Luciana). Él: "sólo si es necesario mandar": hoy no (240 en Full, ~48 días); las 278 esperan etiquetadas y se mandan cuando el Full baje de ~37 días.
