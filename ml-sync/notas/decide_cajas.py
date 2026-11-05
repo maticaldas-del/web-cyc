@@ -155,7 +155,6 @@ BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}   # Paulvic
 # el Watch 5 Lite volvió a 2). Lo que él decidió para un producto (y color) en una cuenta va acá y NINGUNA vuelta lo cambia:
 # (id, color o '', cuenta) → (unidades, motivo). Las unidades nunca pasan lo que hay en la oficina. Se saca de acá cuando él lo cambia.
 FIJO={
-  ('p1793417351891','','Luciana'):(4,'Él 02/11: Ayelen no tiene lugar en Full y este nunca se mandó ni vendió: se pasó a Luciana (MLA2255755299). Nuevo sin ventas: van 4 de las 9'),
   ('p1793417351891','','Ayelen'):(0,'Él 02/11: pasó a Luciana (la publicación de Ayelen se cerró)'),
   ('p1779912655490','Persea','Luciana'):(3,'Él 25/10: el Persea queda en Luciana y es el único perfume que vende ahí. Van las 3 de la oficina (etiquetadas JVUG50085)'),
   ('p17833581096733','','Matias'):(0,'Él eligió la 1a del 25/10: no va a Full porque deja ~10% (su única venta fue a $113.250). Se vende por otro lado'),
@@ -165,24 +164,7 @@ FIJO={
   ('p1792881567867','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
   ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son blancas/celestes (él 25/10, con foto) y la publicación es la NEGRA. Van al local: en ML no llega al 35%'),
   ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
-  ('p17934023964270','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p17934023965311','','Ayelen'):(2,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p17934023966843','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p17934023967884','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p17934023968925','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p17934023969966','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p17934023971007','','Ayelen'):(1,'Él 30/10: "con la mercadería nueva armá la caja" (llegó el 30/10, publicada en Ayelen el 30/10): va primero'),
-  ('p1792882870991','','Luciana'):(7,'Él 04/11 "armá caja": quedan 2 en Full y se aceleró (0,4 por día, alcanza ~5 días). Van las 7 de la oficina'),
-  ('p1793754280062','','Luciana'):(4,'Él 04/11 "pasala ya": Ayelen sin lugar en Full, nunca se mandó ni vendió: va a Luciana (las 4)'),
   ('p1793754280062','','Ayelen'):(0,'Él 04/11: pasó a Luciana (la de Ayelen se cerró)'),
-  ('p17936390139990','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390141201','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390142412','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390143633','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390144844','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390146055','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390147266','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
-  ('p17936390148467','','Luciana'):(1,'Él 04/11 "llegó, armá las cajas": llegó del pedido #1011 de Paraguay, publicado en Luciana. Nuevo sin ventas: va la única que hay'),
 }
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[];soloPerfFuera=[]
 # Revisión etapa 3, 29/10/2026: lo que CALCULA este script lleva esta marca al final del motivo. Así se distingue, sin adivinar por el
@@ -259,6 +241,7 @@ for p in P:
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=0,grande=p['grande'],enCero=False,dias=None,casa=x['casa'],baja=True,dec=x['dec'].get(c))); continue
             if (p['id'],x['v'],c) in FIJO:
                 fq,fm=FIJO[(p['id'],x['v'],c)]
+                if fq>0 and x['camC'].get(c,0)>0: fm=f"{fm} · ya van {x['camC'].get(c,0)} en camino a {c}: no se piden de nuevo"; fq=max(0,fq-x['camC'].get(c,0))   # 05/11/2026
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm+perf_txt(x.get('perfR',0)),cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],fijo=True,dec=x['dec'].get(c))); continue
             # UN COLOR QUE ESA CUENTA NO PUBLICA NO SE MANDA (revisión etapa 3, 29/10/2026): el producto va a una sola cuenta, pero cada
             # color es su publicación. Sin publicación de ESE color no hay código de etiqueta, Armar caja de la web no lo muestra y el robot
@@ -275,6 +258,9 @@ for p in P:
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
     elif (p['id'],'',cta) in FIJO:
         fq,fm=FIJO[(p['id'],'',cta)]
+        # 05/11/2026 (él con los Desatascadores: "porque me pide 4 mas si ayer mande 4 y nunca vendimos"): un FIJO de "van N" es de UNA vez;
+        # lo que ya va en camino a esa cuenta se descuenta (antes la completa lo volvía a pedir todas las noches). Cuando sale, se saca de FIJO.
+        if fq>0 and p['camC'].get(cta,0)>0: fm=f"{fm} · ya van {p['camC'].get(cta,0)} en camino a {cta}: no se piden de nuevo"; fq=max(0,fq-p['camC'].get(cta,0))
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm+perf_txt(p.get('perfR',0)),cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],fijo=True,dec=p['dec'].get(cta)))
     else:
         fd=p['fullC'].get(cta,0);cd=p['camC'].get(cta,0);otras=max(0,(p['full']+p['cam'])-(fd+cd));sinPubOtras=(cta not in p['pub']) and otras>0
