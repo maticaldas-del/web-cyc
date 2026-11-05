@@ -1759,6 +1759,11 @@ privada en `mlapi/ticketllave`, nunca en el repo); yo cierro cada foto con la p�
 - **Qué chequear:** que la foto se vea en el detalle del pedido; que `ml-sync/cifrado` siga fuera de la web (`.assetsignore` tiene `ml-sync`);
   que nunca se imprima `priv` ni la imagen.
 
+### Etapa 7 · 05/11/2026 · v28.126 · ⏱️ "Ventas de hoy" se redibuja sola cada minuto
+- **Qué es:** él (captura a las 00:07 con "lo normal a las 20:49" y todavía el miércoles): la tarjeta se dibujaba sólo cuando cambiaban las ventas; lo que depende de la hora (a esta hora, las 4 cuentas, la curva, el día nuevo a la medianoche) quedaba viejo. Ahora `_homeHoyTic` la redibuja cada minuto con Inicio a la vista y al volver a abrir la app (no mientras se la toca).
+- **Dónde vive:** `index.html` `_homeHoyTic`, `_hoyTocando` (en `_homeHoyDeslizar`).
+- **Qué chequear:** a la medianoche pasa sola a "Ventas de hoy" del día nuevo; el renglón "lo normal a las HH:MM" sigue la hora; deslizar no se corta.
+
 ### Etapa 7 · 05/11/2026 · v28.125 · 📱 "Ventas de hoy" no se corre al bajar la pantalla
 - **Qué es:** él (captura del teléfono: *"se va para el costado"*): el deslizar de día a día (`_homeHoyDeslizar`, 7.25 del 21/10) arrancaba con 12 px y 1,3× de costado, y al bajar la pantalla en diagonal la tarjeta se corría. Ahora pide 30 px y el doble de costado que de vertical; si el dedo se mueve 8 px para abajo primero, no se mueve; y si la pantalla scrollea o se pierde el dedo, vuelve a su lugar.
 - **Dónde vive:** `index.html` `_homeHoyDeslizar`.
