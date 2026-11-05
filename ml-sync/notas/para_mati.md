@@ -8,7 +8,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### 📏 Medición de las Cartas Casino y los Centímetros a $17.490 (1a del 02/11, medido el 05/11) — para el aviso de las 12:30
+### ✅ Medición de las Cartas Casino y los Centímetros a $17.490 — contestó 2a (05/11): Centímetros Blanco vuelven a $10.990 · Cartas se quedan
 - ✅ **Cartas Casino** (MLA1460262099, 369 en Full): a $17.490 vendió 3 en 3 días con stock (1 por día, más que el 0,7 que pediste) → **se queda**. Deja ~$8.975 por día restando el trabajo (a $10.990 dejaba ~$6.500 y a $32.990 ~$4.600). Ojo: a 1 por día las 369 duran ~370 días (sobra).
 - ❓ **Centímetros Blanco** (MLA3112784736 y MLA1699834745, mismo stock de 240): a $17.490 vendieron **0 en 3 días** (hoy ~300% de ganancia en el peor caso, deja $0 por día). Tocaba volver a $32.990 como pediste, pero el robot no lo deja: a $32.990 quedan en **660%**, arriba del tope de 500% que pusiste el 02/11. Plata por día medida: $10.990 → ~$6.800 (5,6 por día) · $26.290 → $0 (0 en 2 días) · $32.990 → ~$4.400 (1 en 74 h) · $17.490 → $0. (a) sugerida: **volver a $10.990**, el que más plata por día dejó (muy arriba del 35%: cerca de 200% en el peor caso, el número exacto lo confirmo antes de tocarlo; 240 u. a 5,6 por día = ~43 días, sin sobra) · (b) dejarlos en $17.490 y esperar hasta 10 días sin vender (el 12/11) · (c) subir al tope del 500% (~$26.000; ahí ya vendió 0 en 2 días).
 
@@ -18,7 +18,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - Mejores: **ABC Accesorios** (13, lavado de autos Sonax, 83-183%) · ~~Juguetería Che (Funko)~~ **descartado el 04/11** (él: *"no me interesa"*) · **Carlos Benassi** (10, Nivea/Glade/Colgate/Elvive, 35-120%) · **CYM** (5, máscaras coreanas 67-91%) · **Torres y Liva** (10, bazar: Hudson, Rigolleau, sahumerios Sagrada Madre, Giesso, Crivea; 37-101%) · **Migluz** (4, pilas Philips, Kalop) · **Limpos** (4) · **Lenid**, **Naccarato**, **Tienda Móvil Rosario** (3 c/u) · otros 9 con 1-2.
 - Ojo: **Distribuidora Pop** (Mantecol 214%, Mogul 167%) es golosina, vence. **Bazar y Más** 0 de 250 · **Madu** 0 de 169. Gas para encendedor y una maceta de 80 cm daban, pero no van a Full.
 - Quedaron sin cargar: Soifer y Sanity (el archivo no se pudo leer).
-- Decidir: (a) que Tito pida precio y condiciones (mínimo de compra, envío, factura) a ABC Accesorios, Benassi y Torres y Liva · (b) esperar a la próxima pasada del domingo.
+- ✅ **Contestó 3b (05/11): esperar a la pasada del domingo 08/11** y volver a mirar los que den; ahí se le vuelve a proponer pedir precio a los mejores.
 
 ### ✅ Contestó "resolvamos" del 03/11 — APLICANDO
 - **Revisión de Datos del 01/11:** 1a 2a 3a 4a 5a 6a 7a 8a 9a 10a 11a · 12: guardar **365 días** (no 180) y archivar lo viejo · 13a 14a 15a · 16b (dejar "plata por día" como está).
