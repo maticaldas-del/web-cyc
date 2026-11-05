@@ -8,14 +8,13 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### 💰 Análisis "¿cómo ganamos más?" (05/11) — se lo pasé en el chat, espera "1a 2a…"
-1. Pasada de Nissei ya (perfumes sin mirar hace 12,5 días) + pedido de perfumería con lo que se cortó en Adriana y los perfumes nuevos de 60-337%.
-2. Ayelen sin lugar en Full: (a) segunda publicación en Luciana de lo que se corta (Separador, Protector, Lupa 90, Espejo 7", Gua Sha, Mentonera) · (b) esperar que ML le dé lugar.
-3. Black Friday: (a) analizo las promos de ML (ML pone plata) para lo que sobra, sin bajar del 35% · (b) no entramos.
-4. Centímetro Blanco: (a) esperar al 12/11 que vuelva solo a ~$4.290 · (b) autorizar ya ~$7.290.
-5. Claude: ¿se usan las dos suscripciones ($160.000 + $182.600)?
-6. Mercado Pago: que el chat de Chrome mire si la plata quieta rinde en las 4 cuentas.
-
+### 💰 Análisis "¿cómo ganamos más?" (05/11) — contestó el 05/11
+- 1: **mi error**: los "perfumes sin mirar hace 12 días" eran de Elegancia (apagada), no de Nissei (vuelta completa el 04/11, 99,7%). Arreglado `pyllenar` (no los cuenta más).
+- 2: él dice que en Full se puede **comprar lugar**: falta el precio (lo lee el chat de Chrome en Ayelen) para hacer la cuenta contra lo que deja lo que se corta (~$180.000/mes en 3-4 semanas, ~$700.000/mes lo chico de Ayelen).
+- 3: Black Friday: ML todavía no lo publicó. Entradas hoy: Pendrive 16gb y Cartas Poker MLA2225760749 en "Potencia tus ventas" (ML pone 2,1-2,8%, quedan 129%+); el Pendrive 8gb lo frenó la regla de sobra. Revisión programada el 18/11 (`trig_014FuqhMQFNUPxDgAeSXrdet`).
+- 4: Centímetro: lo decidí yo, se espera al 12/11 que el punto medio lo vuelva solo.
+- 5: Claude: se paga UNA sola (la de US$200, $182.600) desde que subieron; el renglón de $160.000 no va más. Octubre tiene cargadas las dos ($342.600): preguntar si ese mes fueron dos.
+- 6: la plata de MP sí rinde; entra en el Arqueo porque el saldo lo lee el chat de Chrome todos los días.
 ### ⏳ Medición de las Cartas Casino y los Centímetros a $17.490 — contestó 2a (05/11), pero el robot no deja bajar los Centímetros a $10.990: piden su 🔐 (!golpe + !sinlinea + !sincerteza: baja de 37% de una vez, sin techo al 95%, y el 💰 medido del robot es $3.990/$4.290). A $10.990 quedan en 475% (no ~200% como le dije). Preguntado el 05/11: autorizar o esperar al 12/11
 - ⚠️ **Corrección (05/11):** el "a $10.990 vendían 5,6 por día" estaba mal: ese ritmo fue a $3.990-$4.290. A $10.990 estuvo 1 solo día (2 ventas). Antes de proponerle otra vez un precio a los Centímetros, mirar los tramos de la ficha (`ficha:MLA3112784736`).
 - 05/11 él: las 278 "Gris" de la oficina eran BLANCAS (`ofi`, quedan sin etiqueta en Luciana). Él: "sólo si es necesario mandar": hoy no (240 en Full, ~48 días); las 278 esperan etiquetadas y se mandan cuando el Full baje de ~37 días.
