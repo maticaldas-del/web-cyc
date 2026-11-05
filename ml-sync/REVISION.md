@@ -957,6 +957,14 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   Qué chequear: que `errores` no vuelva a listar una 📈 por una venta al precio viejo · que F14 no frene una baja por una compra vieja ·
   que una venta real a la prueba (precio nuevo) siga contando (Naipes Casino 28/10 09:04 a $7.290).
 
+- **05/11/2026 · La baja que el detector deshizo ya no tapa la vuelta del punto medio** (completa del 05/11, la vio el revisor en contra con el
+  Separador magnético MLA1998561036: 10+ días sin vender a 14.290 y `decido !vuelve` decía "el último cambio no fue una suba"). Qué es: el
+  02/11 00:44 una vuelta lo bajó a 10.490 y el detector la deshizo a las 16:34; la vuelta atrás (`por:'errores'`) ya se salteaba, pero la baja
+  deshecha quedaba como el último cambio. Ahora los cambios cuyo id está en `deshace` de un registro `por:'errores'` también son `rev`.
+  Dónde vive: `cambiosDeshechos` (sync.mjs, arriba de `vueltaDeSuba`) y los dos armados de `camb` (frenos de `decido` y la lista 📉 de
+  `errores`). Qué chequear: `errores` muestra al Separador en 📉 y el Rebarbador MLA2039134465 (mismo caso); F4/F7 no toman la baja deshecha
+  como la última suba ni como cambio vigente.
+
 ## 2 · PLATA (martes)
 ### 🔍 Revisión de la etapa 2 (05/11/2026, 4 revisores en máximo: cobro y cierre · ganancia y costos · deudas y proveedores · ARCA, MP y gastos)
 - **Arreglado (web):** (1) 📦 Ya llegó de Paraguay mandaba lo de la 🏬 Tienda a la Oficina ML y su ficha no quedaba `soloLocal` (el robot ya lo hacía bien): ahora igual que `pyped:llego` · (2) pasado el día 5, el botón de cerrar el mes cerraba el mes EN CURSO aunque el anterior (con ventas) siguiera sin cerrar y el aviso rojo lo pidiera: `_mesACerrar` ahora cierra el anterior · (3) cerrar el mes o marcar "✅ Ya lo cobró" mientras la app muestra la copia del teléfono decía "guardado ✓" sin guardar nada: ahora frena y avisa · (4) la tarjeta 💸 decía el retiro de este cierre y no el que se cobra (congelado / con el ajuste del mes pasado): ahora el MISMO de Gastos y del robot (`_retiroAuto`), con una línea si difieren · (5) un mes que debía dar retiro negativo se perdía (piso 0 en la cuenta de adentro): `_retiroCalc(…,crudo)` y `retiroCalc` del robot lo arrastran al mes siguiente · (6) 💵 Pagó en deudas sin cuotas no hacía nada (abría un cuadro que se sacó el 30/10): sacado · (7) las cuotas cobradas por comando (`debenmov:<id>=-N`) no contaban en "pagó X de N" ni en el vencimiento (seguía ⚠️ vencía): `pagEf` en `cuotasLista` · (8) `congelarMes` ahora suma, una vez TERMINADO el mes, las ventas que faltaban (las de después de un cierre adelantado y las provisorias ya arregladas), sin tocar lo ya congelado.

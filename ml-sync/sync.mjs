@@ -4911,7 +4911,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const esPropio = (c) => !!propio && Math.abs(c.ts - propio.ts) <= 10 * 60e3 && Math.abs(c.a - propio.a) <= 10;
     // `rev` = una vuelta atrás del detector `errores` (deshizo una baja que rompía una regla): es un cambio (cuenta para el escalón de
     // F3), pero no es una prueba de techo ni la suba de una escasez: no cuenta como la última suba de F4/F7 ni abre la escasez.
-    const camb = Object.values(cc).filter((r) => r && r.mla === d.mla && Number(r.ts) > 0 && Number(r.ts) < ahora).map((r) => ({ ts: Number(r.ts), de: Number(r.de) || 0, a: Number(r.a) || 0, rev: r.por === 'errores' }));
+    // 05/11/2026: la baja que el detector DESHIZO (su id está en `deshace` de un registro `por:'errores'`) tampoco cuenta como el último
+    // cambio: si no, la vuelta del punto medio veía "el último cambio no fue una suba" (Separador magnético, 10+ días sin vender a 14.290).
+    const deshCC = cambiosDeshechos(cc);
+    const camb = Object.entries(cc).filter(([, r]) => r && r.mla === d.mla && Number(r.ts) > 0 && Number(r.ts) < ahora).map(([k, r]) => ({ ts: Number(r.ts), de: Number(r.de) || 0, a: Number(r.a) || 0, rev: r.por === 'errores' || deshCC.has('claudecambios/' + k) }));
     // 2 del punto medio (02/11/2026, él): una suba que salió mal VUELVE DE UNA al último precio que vendía bien (`!vuelve`), sin escalera ni
     // techo de 30 días: la cuenta la hace `vueltaDeSuba` (24 h mínimo, menos de la mitad de lo esperado o 10 días sin vender). Si no cierra, freno.
     if (fz.vuelve) {
@@ -5700,6 +5703,9 @@ function vueltaAlaCaja(e, target, fallo, ahora = Date.now()) {
   const r = ptw >= 100000 ? Math.floor((ptw + 10) / 1000) * 1000 - 10 : Math.floor((ptw + 10) / 100) * 100 - 10; const t = r > ptw ? r - (ptw >= 100000 ? 1000 : 100) : r;
   return t > target * 1.02 ? t : null;
 }
+// 05/11/2026: los ids (`claudecambios/<clave>`) de los cambios que el detector `errores` deshizo. Esos cambios no son decisiones vigentes:
+// para la cadena de subas del punto medio y la última suba de F4/F7 se tratan como la vuelta atrás misma (`rev`).
+function cambiosDeshechos(cc) { return new Set(Object.values(cc || {}).filter((r) => r && r.por === 'errores' && r.deshace).map((r) => String(r.deshace))); }
 async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(), pedido = 0) {
   const ch = []; for (const c of camb.filter((c) => !c.rev && c.ts < ahora).sort((x, y) => y.ts - x.ts)) { if (c.a > c.de * 1.02) ch.push(c); else break; }
   if (!ch.length) return { ok: false, txt: 'el último cambio no fue una suba: no hay a qué volver' };
@@ -6176,8 +6182,9 @@ async function detectarErrores(db, o = {}) {
   // ── 📉 SUBAS QUE SALIERON MAL → VOLVER AL ÚLTIMO PRECIO QUE VENDÍA (2 del punto medio, 02/11/2026, él): toda Clásica activa cuya última
   // decisión fue una suba que lleva 24 h+ y vende menos de la mitad de lo esperado (o 10 días sin vender) vuelve de una (`!vuelve`).
   const vuelven = [];
-  { const ccV = Object.values(cc || {}).filter((r) => r && /^MLA\d+$/.test(String(r.mla)) && Number(r.ts) > ahora - 45 * 864e5);
-    const porM = {}; for (const r of ccV) (porM[r.mla] = porM[r.mla] || []).push({ ts: Number(r.ts), de: Number(r.de) || 0, a: Number(r.a) || 0, rev: r.por === 'errores' });
+  { const deshV = cambiosDeshechos(cc);   // 05/11/2026: la baja que el detector deshizo no es el último cambio (ver `cambiosDeshechos`)
+    const ccV = Object.entries(cc || {}).filter(([, r]) => r && /^MLA\d+$/.test(String(r.mla)) && Number(r.ts) > ahora - 45 * 864e5);
+    const porM = {}; for (const [k, r] of ccV) (porM[r.mla] = porM[r.mla] || []).push({ ts: Number(r.ts), de: Number(r.de) || 0, a: Number(r.a) || 0, rev: r.por === 'errores' || deshV.has('claudecambios/' + k) });
     for (const [m, camb] of Object.entries(porM)) {
       const e = links[m]; if (!e || e.gemelaDe || e.ignored || e.noVendemosMas || !/^active/.test(String(e.status || '')) || ML_REVISION_NO_MIRAR.has(m)) continue;
       const ult = camb.filter((c) => !c.rev).sort((x, y) => y.ts - x.ts)[0]; if (!ult || !(ult.a > ult.de * 1.02)) continue;
