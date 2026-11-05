@@ -10843,7 +10843,7 @@ async function tgFlushCola(db) {
 // Sin datos de compradores ni números de orden (el registro de GitHub es público).
 const AVISO_VENTA_VENTANA_MS = 3 * 36e5;
 const AVISO_VENTA_DUERME = [30, 600];   // 00:30 a 10:00 de Argentina, sin avisos de venta (pedido suyo, 15/10/2026)
-const AVISO_VENTA_TELEGRAM = true;   // 04/11/2026, él (el Joystick Xbox de $24.691 no le llegó): "que me avise todas las ventas que generen más de 10.000 de ganancia" por Telegram (canal privado, `sendAlerta` directo) ADEMÁS del teléfono. Antes (15/10) sólo push.
+const AVISO_VENTA_TELEGRAM = false;   // 15/10/2026: el aviso de cada venta va sólo al teléfono (push). 05/11/2026 (él): "no era eso, sino en las notificaciones de cyc": vuelve a sólo push (el 04/11 se había prendido Telegram por error).
 const AVISO_VENTA_GAN_MIN = 10000;    // 15/10/2026: sólo avisan las compras que dejan $10.000 o más de ganancia (pedido suyo)
 // 21/10/2026 · etapa 1: la MISMA tabla que `_pctNivel` de la web (index.html): el % se redondea a un decimal y el piso y la meta
 // salen de `cyc/mlconfig` (minPct / targetPct, como `_pctPisoMeta`). Antes el 25% estaba fijo y no existía el 🟠 Justo.
