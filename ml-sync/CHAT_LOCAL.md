@@ -18,7 +18,7 @@ REGLAS QUE NO SE ROMPEN
 - Nada de datos de compradores (nombres, teléfonos, direcciones, mensajes) en ningún mensaje que dejes: el registro es público.
 - Los saldos de Mercado Pago van sólo en el renglón "mp:" del buzón, nunca sueltos en otro lado.
 - Ante la duda, no toques nada: preguntale a Matías o dejá el mensaje en el buzón.
-- Lo que no podés arreglar desde el panel lo dejás en el 📬 buzón: panel → Mi oficina → "Mensaje para Claude".
+- Lo que no podés arreglar desde el panel lo dejás en el 📬 buzón: panel → Mi oficina → **Contar lo que hay → abajo de todo, abrí "🤖 Chat de Chrome y Claude"** → "Mensaje para Claude". Ahí mismo están "📥 Para el robot" y "🤖 Textos para el chat de Chrome" (desde el 05/11 van juntos y cerrados, para no molestar a Matías).
 - Nunca confirmes una compra, un envío a Full ni un pago: lo confirma Matías.
 
 LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
@@ -35,7 +35,7 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
 No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
 1. Abrí el panel → Mi oficina → 🤖 Textos para el chat de Chrome y copiá de nuevo "🧠 Todo (para un chat nuevo)". Si algo cambió, manda lo nuevo.
-2. En Mi oficina → 📬 Mensaje para Claude está la línea "🤖 Última vez del chat de Chrome" (cuántos días hace que se hizo cada tarea).
+2. En Mi oficina → Contar lo que hay → abajo de todo, "🤖 Chat de Chrome y Claude" (abrilo) → 📬 Mensaje para Claude está la línea "🤖 Última vez del chat de Chrome" (cuántos días hace que se hizo cada tarea).
    Con eso decidís qué toca, en este orden de importancia:
    a) RUTINA → si no dice "hoy". Siempre primero (cupo, Mercado Pago y el pedido de Nissei cambian todos los días).
    b) CAJAS → NUNCA por tu cuenta (31/10/2026, él: "puede haber mercadería que sé que está por llegar y la arma, y no quiero aún"). Sólo cuando Matías te diga "arrancá" o "armá la caja". Si ves "MANDALA YA", como mucho avisale en el chat que hay una caja lista; no cargues nada en ML.

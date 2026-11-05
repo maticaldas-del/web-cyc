@@ -1725,15 +1725,22 @@ setTimeout(function _ldVigia(){try{
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px" id="ofi-contar-cuentas"></div>
     <div id="ofi-contar-nota" style="display:none;font-size:.63rem;color:var(--muted);margin-bottom:10px;line-height:1.5"></div>
-    <div id="ofi-buzon-card"></div>
-    <div id="ofi-pararobot-card"></div>
-    <div id="ofi-prompts-card"></div>
     <div id="ofi-sinetiq-card"></div>
     <input class="search-box" id="ofi-contar-search" type="search" placeholder="Buscar producto..." oninput="renderOfiContar()" style="margin-bottom:8px">
     <label style="font-size:.66rem;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px">
       <input type="checkbox" id="ofi-solo-con" onchange="renderOfiContar()"> mostrar solo los que tienen algo
     </label>
     <div id="ofi-contar-list"></div>
+    <!-- 05/11/2026 (él: "esto es comunicación de ustedes. ponelo abajo o en un botón aparte, así no me molesta"): buzón, Para el robot
+         y Textos del chat de Chrome van juntos, abajo de todo y cerrados. El chat de Chrome sabe abrirlo (CHAT_LOCAL.md). -->
+    <details id="ofi-chatcl" style="margin-top:18px;border-top:1px solid var(--border);padding-top:10px">
+      <summary style="cursor:pointer;font-size:.72rem;color:var(--muted);padding:6px 0">🤖 Chat de Chrome y Claude <span style="font-weight:400">(se hablan entre ellos: no hace falta mirarlo)</span></summary>
+      <div style="margin-top:8px">
+        <div id="ofi-buzon-card"></div>
+        <div id="ofi-pararobot-card"></div>
+        <div id="ofi-prompts-card"></div>
+      </div>
+    </details>
   </div>
 
   <!-- EN CAMINO. Las cajas ya cerradas viven acá, en la misma pantalla que la oficina: es el paso
@@ -3395,7 +3402,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.128';
+const APP_VERSION='28.129';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3408,6 +3415,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.129',f:'05/11',h:'16:05',c:[{n:1,t:'🤖 Mi oficina → Contar lo que hay: el buzón, Para el robot y los textos del chat de Chrome van juntos abajo de todo, cerrados en "Chat de Chrome y Claude". Ya no se abren solos.'}]},
   {v:'28.128',f:'05/11',h:'13:10',c:[{n:2,t:'💵 Pedidos de Paraguay: cada pedido sin pagar dice cuántos pesos tener en Binance (mercadería + cambista, con lo que de verdad costó cada dólar por Binance en los últimos 3 pedidos y el dólar de hoy). El que retira y el correo van por Mercado Pago y no entran.'}]},
   {v:'28.127',f:'05/11',h:'04:53',c:[{n:3,t:'📸 Arqueo: pasado el día 5, si el mes anterior sigue sin cerrar, el botón cierra ÉSE (antes cerraba el mes en curso y el otro quedaba sin cierre). Y no deja cerrar mientras la app muestra la copia del teléfono (decía guardado sin guardar).'},{n:3,t:'💸 La tarjeta del cobro dice el MISMO retiro que Gastos (el fijo, con el ajuste del mes pasado).'},{n:2,t:'📥 Ver deudas: las cuotas que cargo yo cuentan en "pagó X de N" y en el vencimiento; se sacó el botón 💵 Pagó que no hacía nada.'},{n:2,t:'🇵🇾 Ya llegó: lo de la 🏬 Tienda no entra a la Oficina ML y su ficha queda sólo para el local.'},{n:1,t:'🧾 Gastos: los cargos de Full no tienen casilla (los carga el robot solo).'}]},
   {v:'28.126',f:'05/11',h:'00:45',c:[{n:2,t:'⏱️ Ventas de hoy se actualiza solo cada minuto y al volver a abrir la app: "a esta hora", lo normal de cada cuenta, la curva y el cambio de día a la medianoche ya no quedan congelados hasta la próxima venta'}]},
@@ -9227,7 +9235,7 @@ function renderBuzonCard(){
   const sin=Object.values(state.buzon||{}).filter(x=>x&&!x.leido).sort((a,b)=>(a.ts||0)-(b.ts||0));
   // Lo que se está escribiendo no se pierde si el panel se redibuja (llega un dato nuevo mientras se escribe).
   const _ta=document.getElementById('buzon-txt'),_v=_ta?_ta.value:'',_foc=_ta&&document.activeElement===_ta,_ab=el.querySelector('details')?.open;
-  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${sin.length||_ab||_v?' open':''}>
+  el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${_ab||_v?' open':''}>
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📬 Mensaje para Claude${sin.length?` <span style="color:var(--amber);font-weight:400">· ${sin.length} sin leer</span>`:''}</summary>
     <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
     ${(()=>{   // 🤖 CUÁNDO SE HIZO CADA TAREA DEL CHAT DE CHROME (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo"): el chat
