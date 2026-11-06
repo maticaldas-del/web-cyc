@@ -12075,19 +12075,27 @@ function extractoMpCat(txt, monto) {
   const t = String(txt || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   if (/rendim/.test(t)) return 'rend';
   if (/contracargo|chargeback|contra cargo/.test(t)) return 'contracargo';
-  if (/dinero retenido|retencion de dinero|retenido por|reclamo|mediacion|disputa/.test(t)) return monto >= 0 ? 'retenido_libera' : 'retenido';
+  if (/dinero retenido|retencion de dinero|retenido por/.test(t)) return monto >= 0 ? 'retenido_libera' : 'retenido';
+  if (/reclamo|mediacion|disputa|devolucion de venta/.test(t)) return monto >= 0 ? 'reclamo_vuelve' : 'reclamo';
+  if (/reintegro|devolucion de pago de impuesto/.test(t)) return 'devol';
   if (/ingresos brutos|iibb|sircreb|\bibb\b/.test(t)) return 'iibb';
   if (/ganancias/.test(t)) return 'ganancias';
   if (/\biva\b/.test(t)) return 'iva';
   if (/impuesto|retencion|percepcion|ley 25\.?413|debitos y creditos|\bdyc\b/.test(t)) return 'imp_otro';
   if (/\barca\b|\bafip\b|\bvep\b|monotribut|autonomo/.test(t)) return 'arca';
   if (/sancor/.test(t)) return 'sancor';
+  // 06/11/2026 (el primer extracto real): peajes, combustible y correo salen de MP y no estaban en Gastos
+  if (/ausa|au oeste|corredor vial|rutas sur|peaje|telepase|autopista/.test(t)) return 'peajes';
+  if (/\bypf\b|shell|axion|puma energy|combustible|nafta/.test(t)) return 'combustible';
+  if (/andreani|correo|via cargo|oca\b/.test(t)) return 'correo';
+  if (/tarjeta de credito/.test(t)) return 'tarjeta';
   if (/suscripci|anthropic|claude|google|netflix|spotify|apple|microsoft|openai|canva|youtube/.test(t)) return 'suscrip';
-  if (/\bqr\b|link de pago|cobro con|\bpoint\b|cobro presencial/.test(t)) return 'qr';
+  if (/\bqr\b|link de pago|cobro con|\bpoint\b|cobro presencial/.test(t)) return monto >= 0 ? 'qr' : 'pagos';
   if (/devoluci|reembolso|reintegro|cancelaci/.test(t)) return 'devol';
   if (/transferencia|transf\.|\bcvu\b|\bcbu\b|ingreso de dinero|dinero recibido|dinero enviado/.test(t)) return monto >= 0 ? 'transf_rec' : 'transf_env';
   if (/retiro|extraccion/.test(t)) return 'retiro';
-  if (/liberaci|venta|mercado ?libre|cobro/.test(t)) return monto >= 0 ? 'ventas' : 'cargos';
+  if (/facturas vencidas/.test(t)) return 'ml_facturas';
+  if (/liberaci|liquidaci|venta|mercado ?libre|cobro/.test(t)) return monto >= 0 ? 'ventas' : 'cargos';
   if (/cargo|comision|tarifa|costo|envio|full|almacenamiento/.test(t)) return 'cargos';
   if (/pago|debito/.test(t)) return monto >= 0 ? 'otros' : 'pagos';
   return 'otros';
@@ -26665,6 +26673,10 @@ async function main() {
     // del archivo. Corre solo cada hora (ver "🔒 Extractos de MP" en el ciclo).
     if (/^extractomp(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GOx = /:go$|;go$/.test(String(process.env.BILLING_PROBE));
+      // extractomp:rehacer:go (06/11/2026): vuelve a pasar por el lector los extractos guardados cerrados (`mlapi/privado_mp`) cuando cambia la forma de agruparlos
+      if (/:rehacer/.test(String(process.env.BILLING_PROBE)) && GOx) { const G = (await db.get('mlapi/privado_mp')) || {}; const up = {}; let n = 0;
+        for (const [cta, ids] of Object.entries(G)) for (const [id, e] of Object.entries(ids || {})) { up[id] = { ...e, cuenta: e.cuenta || cta }; n++; }
+        if (n) await db.patch('mlapi/privado_in', up); console.log(`↻ ${n} extracto(s) guardados vuelven a procesarse`); }
       const r = await procesarExtractosMp(db, GOx);
       console.log(GOx ? `✓ ${r.n} extracto(s) procesado(s) y borrado(s)` : 'PRUEBA: no guardé ni borré nada. Para aplicar: extractomp:go');
       // 06/11: lo que ya quedó guardado (sin montos: los saldos y lo que rinde MP no van al registro público).

@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.141';
+const APP_VERSION='28.142';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.142',f:'06/11',h:'16:47',c:[{n:2,t:'🔎 Mercado Pago contra el panel: cuenta bien lo que entra por ventas ("Liquidación de dinero") y muestra aparte peajes, combustible, correo y tarjeta pagados desde MP contra lo cargado en Gastos.'}]},
   {v:'28.141',f:'06/11',h:'16:05',c:[{n:1,t:'¿Falta cargar algún gasto?: el total de arriba suma sólo los gastos reales del mes, sin el retiro de los socios.'}]},
   {v:'28.140',f:'06/11',h:'15:55',c:[{n:1,t:'Inicio → La mezcla: sin la lista de colores abajo de la barra (el calendario queda más arriba). Tocando cada color de la barra dice su parte.'}]},
   {v:'28.139',f:'06/11',h:'15:53',c:[{n:2,t:'🔎 Gastos del mes → Mercado Pago contra el panel: con el extracto, también lo pagado desde MP a ARCA, Sancor y suscripciones contra lo cargado en Gastos, las retenciones reales de cada cuenta contra el % que usa el panel, las transferencias entre nuestras cuentas (no son plata nueva), contracargos y plata retenida, y cobros por QR fuera de ML.'}]},
@@ -28330,6 +28331,9 @@ function _mpExtrasHTML(ym){
     if(k==='arca'){const au=gMes(/autonom|obra social/);return fila(t,`MP pagó ${fmt(mp)} · el monotributo ya va en cada venta; como gasto sólo autónomos + obra social de Ayelen: cargado ${fmt(Math.round(au))}${au?' ✓':' ⚠️'}`,au?'var(--green)':'var(--amber)');}
     const ok=pan>=mp*0.9;
     return fila(t,`MP pagó ${fmt(mp)} · en Gastos ${fmt(Math.round(pan))}${ok?' ✓':' ⚠️ falta cargar'}`,ok?'var(--green)':'var(--amber)');}).join('');
+  // 06/11/2026 (el primer extracto real): peajes, combustible y correo salen de MP y no estaban cargados
+  [['🛣️ Peajes','peajes',/peaje|ausa|autopista/],['⛽ Combustible','combustible',/combustible|nafta|ypf/],['📮 Correo (Andreani y otros)','correo',/andreani|correo|via cargo/],['💳 Tarjeta de crédito','tarjeta',/tarjeta/]].forEach(([t,k,re])=>{const mp=suma(k,'db');if(!mp)return;const pan=gMes(re);
+    h1+=fila(t,`MP pagó ${fmt(mp)} · en Gastos ${fmt(Math.round(pan))}${pan>=mp*0.9?' ✓':' ⚠️ ¿es de CYC?'}`,pan>=mp*0.9?'var(--green)':'var(--amber)');});
   const pagos=suma('pagos','db');if(pagos)h1+=fila('· Otros pagos desde MP',fmt(pagos)+' (mirar si alguno es un gasto)','var(--muted)');
   // (2) retenciones reales por cuenta contra el % del panel
   const h2=C.map(c=>{const ret=['iibb','ganancias','iva','imp_otro'].reduce((s,k)=>s+v(c,k,'db')-v(c,k,'cr'),0),vent=v(c,'ventas','cr');if(!vent||!ret)return '';
@@ -28342,8 +28346,8 @@ function _mpExtrasHTML(ym){
   const trRec=suma('transf_rec','cr'),trEnv=suma('transf_env','db');
   const h3=(trRec||trEnv)?fila('🔁 Transferencias',`entraron ${fmt(trRec)} · salieron ${fmt(trEnv)}${nInt?` · ${nInt} entre nuestras cuentas (${fmt(Math.round(mInt))}): no es plata nueva`:''}`):'';
   // (4) contracargos y plata retenida · (5) cobros por QR o link
-  const cc=suma('contracargo','db'),rt=suma('retenido','db'),rl=suma('retenido_libera','cr'),qr=suma('qr','cr');
-  const h4=(cc?fila('⚠️ Contracargos',fmt(cc),'var(--red)'):'')+((rt||rl)?fila('🔒 Plata retenida por reclamos',`retuvo ${fmt(rt)} · devolvió ${fmt(rl)}`,rt>rl?'var(--amber)':''):'');
+  const cc=suma('contracargo','db'),rt=suma('retenido','db')+suma('reclamo','db'),rl=suma('retenido_libera','cr')+suma('reclamo_vuelve','cr'),qr=suma('qr','cr');
+  const h4=(cc?fila('⚠️ Contracargos',fmt(cc),'var(--red)'):'')+((rt||rl)?fila('🔒 Reclamos y devoluciones (retenido + debitado)',`salió ${fmt(rt)} · volvió ${fmt(rl)}`,rt>rl?'var(--amber)':''):'');
   const h5=qr?fila('📱 Cobros por QR o link (fuera de ML)',fmt(qr)+' · ¿está cargado en Tienda o Perfumería?','var(--amber)'):'';
   const sec=(t,x)=>x?`<div style="padding:6px 0;border-top:1px solid var(--border)"><b>${t}</b>${x}</div>`:'';
   return sec('🧾 Gastos pagados desde Mercado Pago',h1)+sec('🏷️ Retenciones reales',h2)+sec('🔁 Entre cuentas',h3)+sec('⚠️ Reclamos',h4)+sec('📱 Fuera de ML',h5);
@@ -28353,7 +28357,7 @@ function _mpVsPanelHTML(ym){
   if(!C.length)return (['Adriana','Luciana','Ayelen','Matias'].some(c=>(R[c]||{})[ym]))?`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">🔎 Para comparar Mercado Pago contra el panel hay que volver a pegar el extracto (el robot ahora lo separa por tipo).</span>`:'';
   const [y,m]=ym.split('_');const pre=y+'_'+m+'_';
   const netoPanel={};for(const [k,dia] of Object.entries(state.ventaprod||{})){if(!k.startsWith(pre))continue;for(const v of Object.values(dia||{})){if(!v||v.cancelada)continue;netoPanel[v.cuenta]=(netoPanel[v.cuenta]||0)+(Number(v.neto)||0);}}
-  const grupo=k=>/^(liberacion|venta|cobro_venta|dinero_liberado)/.test(k)?'ventas':/rendim/.test(k)?'rend':/(impuesto|retencion|percepcion|iibb|ganancias|iva|sircreb)/.test(k)?'imp':/(cargo|comision|costo|tarifa|envio)/.test(k)?'cargos':/(devolucion|reembolso|contracargo|reintegro|cancelacion)/.test(k)?'devol':/transferencia/.test(k)?'transf':/retiro/.test(k)?'retiro':'otros';
+  const grupo=k=>/^(liberacion|liquidacion|venta|cobro_venta|dinero_liberado)/.test(k)?'ventas':/rendim/.test(k)?'rend':/(impuesto|retencion|percepcion|iibb|ganancias|iva|sircreb)/.test(k)?'imp':/(cargo|comision|costo|tarifa|envio)/.test(k)?'cargos':/(devolucion|reembolso|contracargo|reintegro|cancelacion)/.test(k)?'devol':/transferencia/.test(k)?'transf':/retiro/.test(k)?'retiro':'otros';
   const NOM={ventas:'💵 Entró por ventas',rend:'💰 Rendimientos',imp:'🧾 Impuestos y retenciones',cargos:'📦 Cargos y comisiones',devol:'↩️ Devoluciones',transf:'🔁 Transferencias',retiro:'🏧 Retiros',otros:'· Otros'};
   const filas=C.map(c=>{const T=R[c][ym].tipos,G={};const det={};
     for(const [k,v] of Object.entries(T)){const g=grupo(k);G[g]=G[g]||{cr:0,db:0,n:0};G[g].cr+=v.cr;G[g].db+=v.db;G[g].n+=v.n;(det[g]=det[g]||[]).push(k.replace(/_/g,' ')+' ('+v.n+')');}
