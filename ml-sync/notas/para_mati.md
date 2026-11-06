@@ -8,6 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### 💳 Extracto de MP (06/11, dudas que quedaron de sus respuestas)
+- **Peajes y la deuda de la perfumería:** cada peaje que paga CYC desde MP, ¿lo SUMO a lo que la perfumería le debe a CYC (Deuda Perfumería · MercadoPago)? (a) sí, se suma (ellos lo deben) · (b) se resta (decime cómo). Y ago-oct ($598k): ¿ya lo descontaste a fin de cada mes o lo cargo?
+- **Sancor:** MP pagó 4 veces (ago 2 = $243k, oct 2 = $274k; sep ninguno) y hay cargado $274k (ago $65k, sep $98k, oct $111k). (a) cargo cada pago real en su mes (los dobles = mes atrasado) y saco lo cargado a mano · (b) dejo lo cargado.
+
 ### ✅ Contestó la lista de las 12:30 del 06/11 (autorizo PXP7 · 4a 5a 6a) — APLICADO
 - PXP7 Animale Original mujer: descuento a $113.990 (43% peor caso), releído de ML ✓ · 4a Aer x6: le paso el link del competidor (MLA4150859190, $11.758, mismo catálogo) para comprar 12 desde Adriana · 5a tarea COMPETENCIA del chat de Chrome (147 sin catálogo, de a 20 por día) · 6a fotos de ABEL quedan como están.
 - Siguen abiertos: 7 (¿octubre tuvo dos cuotas de Claude?) · 8 cajas de Ayelen sin alta · 9 mensajes sin leer · 10 precio de comprar lugar en Full.

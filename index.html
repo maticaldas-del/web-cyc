@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.142';
+const APP_VERSION='28.143';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.143',f:'06/11',h:'18:12',c:[{n:1,t:'🔎 Mercado Pago contra el panel: el correo se compara con el costo de caja que ya va en cada producto, los peajes figuran como de la perfumería y la nafta y la tarjeta como personales.'}]},
   {v:'28.142',f:'06/11',h:'16:47',c:[{n:2,t:'🔎 Mercado Pago contra el panel: cuenta bien lo que entra por ventas ("Liquidación de dinero") y muestra aparte peajes, combustible, correo y tarjeta pagados desde MP contra lo cargado en Gastos.'}]},
   {v:'28.141',f:'06/11',h:'16:05',c:[{n:1,t:'¿Falta cargar algún gasto?: el total de arriba suma sólo los gastos reales del mes, sin el retiro de los socios.'}]},
   {v:'28.140',f:'06/11',h:'15:55',c:[{n:1,t:'Inicio → La mezcla: sin la lista de colores abajo de la barra (el calendario queda más arriba). Tocando cada color de la barra dice su parte.'}]},
@@ -28332,8 +28333,11 @@ function _mpExtrasHTML(ym){
     const ok=pan>=mp*0.9;
     return fila(t,`MP pagó ${fmt(mp)} · en Gastos ${fmt(Math.round(pan))}${ok?' ✓':' ⚠️ falta cargar'}`,ok?'var(--green)':'var(--amber)');}).join('');
   // 06/11/2026 (el primer extracto real): peajes, combustible y correo salen de MP y no estaban cargados
-  [['🛣️ Peajes','peajes',/peaje|ausa|autopista/],['⛽ Combustible','combustible',/combustible|nafta|ypf/],['📮 Correo (Andreani y otros)','correo',/andreani|correo|via cargo/],['💳 Tarjeta de crédito','tarjeta',/tarjeta/]].forEach(([t,k,re])=>{const mp=suma(k,'db');if(!mp)return;const pan=gMes(re);
-    h1+=fila(t,`MP pagó ${fmt(mp)} · en Gastos ${fmt(Math.round(pan))}${pan>=mp*0.9?' ✓':' ⚠️ ¿es de CYC?'}`,pan>=mp*0.9?'var(--green)':'var(--amber)');});
+  // 06/11/2026 (él, decisiones del primer extracto): el correo (Andreani) es el envío de las cajas a Full y ya va en el costo de cada
+  // producto (Envío+embalaje, `costoCaja`) · los peajes los paga la perfumería (van a su deuda) · nafta, tarjeta y súper son personales.
+  {const mp=suma('correo','db'),n=C.reduce((s,c)=>s+v(c,'correo','n'),0);if(mp)h1+=fila('📮 Correo (envío de cajas a Full)',`MP pagó ${fmt(mp)} en ${n} envíos (~${fmt(Math.round(mp/Math.max(1,n)))} c/u) · el panel cuenta ${fmt(costoCaja())} por caja dentro del costo`,Math.abs(mp/Math.max(1,n)-costoCaja())>costoCaja()*0.2?'var(--amber)':'var(--green)');}
+  {const mp=suma('peajes','db');if(mp)h1+=fila('🛣️ Peajes (los paga la perfumería)',`MP pagó ${fmt(mp)} · van a la deuda de la perfumería`,'var(--muted)');}
+  {const mp=suma('combustible','db')+suma('tarjeta','db');if(mp)h1+=fila('· Nafta y tarjeta (personal)',fmt(mp)+' · no es de CYC','var(--muted)');}
   const pagos=suma('pagos','db');if(pagos)h1+=fila('· Otros pagos desde MP',fmt(pagos)+' (mirar si alguno es un gasto)','var(--muted)');
   // (2) retenciones reales por cuenta contra el % del panel
   const h2=C.map(c=>{const ret=['iibb','ganancias','iva','imp_otro'].reduce((s,k)=>s+v(c,k,'db')-v(c,k,'cr'),0),vent=v(c,'ventas','cr');if(!vent||!ret)return '';
