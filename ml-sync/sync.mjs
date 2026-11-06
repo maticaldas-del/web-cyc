@@ -14748,7 +14748,7 @@ async function colaParaRobot(db, labels) {
     for (const [ts, m] of Object.entries(buz)) {
       const txt = String((m && m.t) || ''); const tsM = Number(m && m.ts) || Number(ts) || 0;
       // Sólo las RUTINA nuevas (desde que esto existe) y que nadie leyó todavía: una que ya cargó Claude a mano no se vuelve a cargar.
-      if (!/^\s*RUTINA\b/i.test(txt) || hechas[ts] || m.leido || tsM < RUTINA_AUTO_DESDE || Date.now() - tsM > 2 * 864e5) continue;
+      if (!/^\s*RUTINA\b/i.test(txt) || /^\s*RUTINA\s+MA[ÑN]ANA/i.test(txt) || hechas[ts] || m.leido || tsM < RUTINA_AUTO_DESDE || Date.now() - tsM > 2 * 864e5) continue;
       const dia = new Date((Number(m.ts) || Number(ts)) - 3 * 36e5).toISOString().slice(0, 10); const raros = []; const cmds = [];
       const lnC = txt.split('\n').find((l) => /^\s*cupo:/i.test(l));
       if (lnC) { const ok = [];
