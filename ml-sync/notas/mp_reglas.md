@@ -18,6 +18,8 @@ Lo uso cada día al mirar el extracto (CLAUDE §8). Sin montos de terceros ni no
 
 11. **Transferencias a la persona de Paraguay (la que se repite desde ago, ~$20.000-100.000) = el que retira o el correo** (06/11, él: *"depende del caso es el que retira o el correo de paraguay. fijate que es el mismo monto"*): se cruzan por MONTO con `compray` (retira ≈ 10% del pedido; correo ≈ $19.000-28.000). Ej. 03-05/11: $82.000 retira y $20.000 correo del pedido 02/11, $79.000 retira del pedido 04/11. Ya están en el costo del pedido: no son gasto aparte. (El nombre no va acá: repo público.)
 
+12. **Transferencias de uso personal** (06/11, él: *"uso personal. ya está contado"*): no van ni se preguntan de nuevo. **Los nombres que ya me explicó viven CERRADOS con mi llave en `ml-sync/cifrado/mp_nombres.enc`** (nombre → qué es; se lee y se suma con el script `nombres.js` del scratchpad). Nunca en claro al repo. Si se pierde mi llave, se vuelven a preguntar.
+
 ## Cómo se mira cada día (06/11/2026, él: *"que no me mande cosas dos veces y que no falten cosas a analizar"*)
 - Sólo días COMPLETOS (hasta ayer) y sólo los posteriores a "Analizado hasta" de cada cuenta (abajo): así nada se mira dos veces ni queda afuera.
 - Al terminar, se sube la fecha de cada cuenta acá en el mismo commit.
