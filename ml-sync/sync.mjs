@@ -1381,7 +1381,12 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
   const sinLeerProd = {};                    // "cuenta|prodId" cuya publicación ML no contestó: todo el producto queda ciego
   const motivoSL = {};                       // auditoría 14/10: por qué quedó sin leer (sinpub · color · sincolor) → mlapi/cajasciegas, lo lee el informe
   const sinCantidad = [];                    // entradas aceptadas pero sin unidades legibles
-  for (const [cta, o] of Object.entries(porCta)) {
+  // EL ORDEN GIRA CADA HORA (06/11/2026, él: "revisalo", sobre cajas de Ayelen que ML ya tenía y el robot daba en 0 de 68 hace 11 días). ML corta con
+  // 429 cuando se pasa el cupo de consultas y siempre caían los mismos renglones, los últimos de la lista: la caja no se leía nunca. Girando
+  // la cuenta y las publicaciones por las que se arranca, cada vuelta lee a otros y lo leído se acumula (ver `cajasentrado`, más abajo).
+  const giroH = Math.floor(Date.now() / 36e5);
+  const ctasGiro = Object.entries(porCta); for (let _g = giroH % (ctasGiro.length || 1); _g > 0; _g--) ctasGiro.push(ctasGiro.shift());
+  for (const [cta, o] of ctasGiro) {
     // Etapa 5: sin token esa cuenta NO se leyó. Sus productos quedan "sin leer": si no, abajo se veían
     // como leídos con 0 entradas y se borraba lo ya anotado en cyc/cajasentrado (unidades contadas dos veces).
     const _ciega = () => { for (const pid of o.prods) sinLeerProd[cta + '|' + pid] = true; };
@@ -1401,8 +1406,10 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
     const isoDesde = (f) => new Date(new Date(f + 'T00:00:00Z').getTime() - 86400e3).toISOString();
     const hastaISO = new Date(Date.now() + 86400e3).toISOString();   // +1 día por si ML anota en otro huso
     // Publicaciones de esos productos en esta cuenta.
-    const mlas = Object.entries(links).filter(([m, e2]) =>
+    const mlas0 = Object.entries(links).filter(([m, e2]) =>
       m.startsWith('MLA') && e2 && e2.cuenta === cta && !e2.ignored && o.prods.has(e2.prodId)).map(([m]) => m);
+    const inicioG = Math.floor((giroH % 6) * mlas0.length / 6);   // 6 puntos de arranque parejos: en 6 horas pasa cada publicación por el principio
+    const mlas = [...mlas0.slice(inicioG), ...mlas0.slice(0, inicioG)];
     // UN DEPÓSITO DE FULL ES UN SOLO PRODUCTO-COLOR (24/09/2026, revisión paso 2). Dos publicaciones
     // de la misma cuenta pueden compartir el `inventory_id` (las dos Lupa 90mm), y ahí la entrada
     // ya se dedupa por renglón. Pero si esas dos publicaciones caen en renglones DISTINTOS (otro
@@ -1900,7 +1907,16 @@ async function cajasQueLlegaron(db, accounts, labels, products, DRY, soloAnotar 
       // escrita (si la marca no sale, seguía abierta sin su "ya entraron N": contada dos veces). La web no
       // mira este dato de una caja ya marcada, y la vuelta siguiente lo limpia.
       if (yaMarcada) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
-      if (ciego) { if (prevE[key]) nuevoE[key] = prevE[key]; continue; }
+      // UNA CAJA CON RENGLONES SIN LEER GUARDA LO QUE SÍ SE LEYÓ (06/11/2026). Antes un solo renglón ciego tiraba la lectura de TODA la caja: con el
+      // 429 de ML siempre había alguno y la caja quedaba en "0 de 68" con ML diciendo 68 aptas. Ahora: el renglón leído vale lo leído y el ciego
+      // conserva lo anotado antes. Sigue la regla de siempre: un "no sé" no devuelve unidades al camión ni las saca.
+      if (ciego) {
+        const ciegoR = (p, v) => !!(sinLeer[kR(ab.e.cuenta, p, v)] || sinLeerProd[ab.e.cuenta + '|' + p]);
+        const prevR = prevE[key] && String(prevE[key].track || '') === String(ab.c.track || '') ? (Array.isArray(prevE[key].items) ? prevE[key].items : Object.values(prevE[key].items || {})) : [];
+        const mez = [...its.filter((x) => !ciegoR(x.p, x.v)), ...prevR.filter((x) => x && ciegoR(x.p, x.v || ''))];
+        if (mez.length) nuevoE[key] = { track: String(ab.c.track || ''), items: mez };
+        continue;
+      }
       if (its.length) nuevoE[key] = { track: String(ab.c.track || ''), items: its };
     }
     // Etapa 5: las abiertas de +45 días no se miran, pero lo que ya había entrado de ellas NO se borra
@@ -20828,7 +20844,7 @@ async function main() {
     }
     if (/^cajasmirar$/.test(String(process.env.BILLING_PROBE || ''))) {
       const envs = (await db.get('cyc/envios_full')) || {}; const entC = (await db.get('cyc/cajasentrado')) || {}; const prodsM = {}; for (const p of products) prodsM[p.id] = p;
-      const filas = []; const ahoraM = Date.now();
+      const filas = []; const ahoraM = Date.now(); let cgM = {}; try { cgM = ((await db.get('mlapi/cajasciegas')) || {}).cajas || {}; } catch { cgM = {}; }
       for (const [id, env] of Object.entries(envs)) for (const [ci, c] of (Array.isArray(env && env.cajasDet) ? env.cajasDet : []).entries()) {
         if (!c || c.recibida || env.pausado) continue;
         const t0 = envSalidaTs(c.fecha || env.fecha, c.fecha ? 0 : (env.reanudado || env.ts)); const dd = t0 > 0 ? (ahoraM - t0) / 864e5 : null;
@@ -20838,7 +20854,8 @@ async function main() {
         for (const it of (c.items || [])) { if (!it) continue; const u = Number(it.u) || 0; uC += u; const x = its.find((y) => y && y.p === it.prodId && (y.v || '') === (it.variante || '')); const e = x ? Math.max(0, Math.min(Number(x.q) || 0, u)) : 0; eC += e;
           if (e < u) falt.push(`${u - e} de ${u} ${String((prodsM[it.prodId] || {}).name || it.nombre || '?').slice(0, 38)}${it.variante ? ' · ' + it.variante : ''}`); }
         if (uC > 0 && eC >= uC) continue;
-        filas.push(`· ${env.cuenta || '?'} · envío …${String(c.track || id).slice(-4)} · salió ${Math.round(dd)} d atrás · ML dio de alta ${eC} de ${uC} · faltan: ${falt.slice(0, 6).join(' · ')}${falt.length > 6 ? ' · …' : ''}`);
+        const slM = cgM[id + '__' + ci]; const nSL = slM && String(slM.track || '') === String(c.track || '') ? Object.keys(slM.r || {}).length : 0;   // 06/11: un 0 sin leer no es faltante
+        filas.push(`· ${env.cuenta || '?'} · envío …${String(c.track || id).slice(-4)} · salió ${Math.round(dd)} d atrás · ML dio de alta ${eC} de ${uC}${nSL ? ` · ⚠️ ${nSL} renglón(es) que ML no dejó leer: puede haber entrado más, NO es faltante` : ''} · faltan: ${falt.slice(0, 6).join(' · ')}${falt.length > 6 ? ' · …' : ''}`);
       }
       console.log(`=== 📦 CAJAS PARA MIRAR EN ML (${filas.length}) · despachadas hace 3+ días y que ML todavía no dio de alta enteras ===`);
       if (!filas.length) console.log('· ninguna: todo lo despachado ya entró entero o salió hace menos de 3 días'); else filas.forEach((x) => console.log(x));
@@ -49735,6 +49752,7 @@ async function main() {
         // el robot cada vuelta), con la MISMA regla que `cajaEntradoDe` de la web: sólo si el seguimiento coincide, y
         // nunca más de lo que llevaba el renglón. Con "ML ya dio de alta N de M" se sabe si va `cajallego`.
         let entC = null; try { entC = (await db.get('cyc/cajasentrado')) || {}; } catch { entC = null; }
+        let cgI = {}; try { cgI = ((await db.get('mlapi/cajasciegas')) || {}).cajas || {}; } catch { cgI = {}; }   // 06/11: un "0 de 68" con renglones sin leer no es faltante, y se leía como tal
         const entradoCaja = (id, ci, c) => {
           const r = entC && entC[id + '__' + ci]; if (!r || String(r.track || '') !== String(c.track || '')) return 0;
           const its = Array.isArray(r.items) ? r.items : Object.values(r.items || {});
@@ -49748,7 +49766,7 @@ async function main() {
           // que tenga (antes sólo salía con 9+ días y con el seguimiento cortado: había que ir a buscarlo a mano).
           // Revisión etapa 3, 29/10/2026: una caja en PAUSA no (está en la oficina; lo "entrado" sería de otra caja).
           if (entC && uC > 0 && eC >= uC && c.track && !env.pausado) completas.push({ txt: `${env.cuenta || '?'} …${String(c.track).slice(-4)} (${uC} u.)`, track: String(c.track) });
-          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${env.pausado ? '⏸️ envío en pausa (en la oficina, no cuenta días)' : dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}` : 'no pude leer lo que ML dio de alta'}`);
+          if (dd == null || dd >= 9) abiertas.push(`· ${env.cuenta || '?'} · caja ${c.track ? '…' + String(c.track).slice(-4) : id} · ${uC} u. · ${env.pausado ? '⏸️ envío en pausa (en la oficina, no cuenta días)' : dd == null ? 'sin fecha' : Math.round(dd) + ' días en camino'} · ${entC ? `ML ya dio de alta ${eC} de ${uC}${uC > 0 && eC >= uC ? ' ✅ entró completa: cajallego' : ''}${eC < uC && cgI[id + '__' + ci] && String(cgI[id + '__' + ci].track || '') === String(c.track || '') ? ' · ⚠️ con renglones sin leer: puede haber entrado más, NO es faltante' : ''}` : 'no pude leer lo que ML dio de alta'}`);
         }
         // Auditoría 03/11/2026: el envío en pausa no es "9+ días en camino" (está en la oficina): se cuenta aparte.
         const nPausI = abiertas.filter((x) => x.includes('⏸️ envío en pausa')).length;
