@@ -175,6 +175,8 @@ html{font-size:118%}
 .vp-cab-chips>*{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vp-cab-chips:empty{display:block}
 .vp-cab-num{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}
+/* 06/11/2026 (él: "números se van para el costado"): una tarjeta en columna con flex-wrap toma el ancho de su renglón más largo y empuja total/ganancia afuera. En columna no hace falta envolver. */
+.ingreso-item[style*="flex-direction:column"]{flex-wrap:nowrap}
 .vp-cab-fecha{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:600px){.vp-pc-cab{flex-wrap:wrap}.vp-pc-cab>.who-badge{flex:none}.vp-cab-chips{justify-content:flex-start}.vp-cab-num{flex:1 0 100%;justify-content:flex-end}}
 @media(min-width:1100px){#vp-top{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
@@ -3408,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.137';
+const APP_VERSION='28.138';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3421,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.138',f:'06/11',h:'15:51',c:[{n:1,t:'Ventas: con muchos carteles arriba (Premium, 1ª venta, estrategia) el total y la ganancia ya no se van para el costado: los carteles se acortan y los números quedan a la vista.'}]},
   {v:'28.137',f:'06/11',h:'15:48',c:[{n:2,t:'💳 Gastos del mes: cada cuenta muestra lo que dice el extracto de Mercado Pago (ventas, rendimientos, impuestos, cargos, devoluciones, transferencias) contra lo que tiene el panel.'},{n:2,t:"🧮 ¿Cierra el mes?: los rendimientos de Mercado Pago son un renglón propio y se suman a lo que genera CYC."},{n:1,t:'🗄️ Las ventas de más de 400 días se guardan aparte de noche y la web las trae sólo cuando mirás esas fechas en Métricas (no se borra nada).'}]},
   {v:'28.136',f:'06/11',h:'15:29',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también COMPETENCIA (comparar con otros vendedores lo que vendemos caro).'}]},
   {v:'28.135',f:'06/11',h:'15:25',c:[{n:2,t:'📊 Métricas → 🔀 Todo, 🛍️ Perfumería y 🏬 Tienda: vuelve la barra para elegir el período y Total / Ganancia (sólo se veía en ML).'}]},
