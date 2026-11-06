@@ -53,12 +53,13 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    a1) MIRAR TODO → TODOS LOS DÍAS, justo después de la RUTINA (06/11/2026, él: "que mire todo. Que por el momento no haga nada"): reclamos, mediaciones, devoluciones, mensajes sin leer, preguntas, lo que ML frena o avisa, reputación, Full, avisos de Mercado Pago, facturas y el panel, en las 4 cuentas, SIN TOCAR NADA. Texto: PROMPT_RUTINA_MANANA.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
    f2) MÁS VENDIDOS → TODOS LOS DÍAS (06/11, él: "la mayoría para seguridad es diario, menos las listas"), después de CAJAS LLEGADAS (ver abajo).
+   f4) COMPETENCIA → TODOS LOS DÍAS, después de MÁS VENDIDOS (06/11, Matías eligió 5a): de a 20 publicaciones nuestras que no están en catálogo, buscar en ML si otro vende EXACTAMENTE lo mismo bastante más barato. Sólo mirar. Texto: PROMPT_COMPETENCIA.
    LO DEL MES (el extracto de Mercado Pago y cualquier tarea con fecha del mes): si le tocaba un día en que no te prendieron, la hacés en la PRIMERA rutina siguiente; se sabe porque en Gastos del mes el renglón 📄 sigue en rojo.
    g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
    fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …",
-   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …".
+   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …", "COMPETENCIA …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
 
 CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026; corregido el mismo día, él: "ya va por dos horas, ¿no será que va más lento que antes?")
