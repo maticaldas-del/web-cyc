@@ -7544,7 +7544,7 @@ function cuotasLista(){return Object.entries(state.debencuotas||{}).filter(([,d]
     const resta=monto-pagadas*cuota+cuotaMovsSuma(d);
     // Revisión etapa 2 (05/11/2026): lo cobrado por comando (`debenmov:<id>=-N`) va como movimiento, no como cuota: "pagó X de N" y el vencimiento
     // cuentan también esas cuotas (antes 2 cuotas cobradas así seguían "pagó 0 de 24 · ⚠️ vencía" y llevaban a marcarlas otra vez).
-    const _pagMv=n>1&&cuota>0?Object.values(d.movs||{}).reduce((t,x)=>t+(x&&Number(x.m)<0?-Number(x.m):0),0):0,pagEf=Math.min(n,pagadas+Math.floor(_pagMv/cuota+1e-6));
+    const _pagMv=n>1&&cuota>0?Math.max(0,-cuotaMovsSuma(d)):0,   /* revisión etapa 9 (06/11): neto (un cobro de algo agregado aparte no es una cuota) */pagEf=Math.min(n,pagadas+Math.floor(_pagMv/cuota+1e-6));
     return{id,...d,n,monto,cuota,pagadas,pagEf,resta,fin:Math.abs(resta)<=0.5};}).sort((a,b)=>(a.fin-b.fin)||(Number(b.ts)||0)-(Number(a.ts)||0));}
 // Lo que falta cobrar NETO: lo que nos deben menos lo que le debemos a quien devolvió de más (8a, 30/10/2026). Es el número que va a "Deben a
 // CYC" del Arqueo (`deben_cyc`, con su signo: si diera negativo resta del patrimonio, no suma).

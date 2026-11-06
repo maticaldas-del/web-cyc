@@ -42996,6 +42996,7 @@ async function main() {
         if (!cand2.length) { const pal = _n(quien).split(' ').filter(Boolean); cand2 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
         if (cand2.length !== 1) { console.log(`❌ "${quien}" agarra ${cand2.length} deudas${cand2.length ? ': ' + cand2.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand2[0]; const nD = Math.round(pesosArg(mds[1]) || 0);
+        if (d.tipo === 'venta' || (Number(d.costo) > 0 && !/perfumer/.test(_n(d.nom)))) { console.log(`❌ ${_tapaNom(d)} es una VENTA (tiene costo): arrancarla de cero le borra el costo y la pasa a hoy (su ganancia se iría de los meses pasados). Lo que pagan: =-N · si cambió el total: =+N / =-N con nota. No escribo nada.`); return; }   // revisión etapa 9 (06/11)
         // 11a de la revisión etapa 9 (30/10/2026, él): en MERCADERÍA Perfumería no se arranca de cero: borraría qué producto se dejó, en qué
         // perfumería y su ganancia. Lo que vuelve se saca con `=devuelve|prod=|local=|u=|a=`; lo que pagan, con `=-N|prod=|local=`.
         if (/perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom))) { console.log(`❌ ${_tapaNom(d)} no se arranca de cero (se perdería qué se dejó y dónde). Lo que vuelve: =devuelve|prod=<ficha>|local=<…>|u=<n>|a=<local|ml>;go · lo que pagan: =-N|prod=<ficha>|local=<…>;go. No escribo nada.`); return; }
@@ -43058,7 +43059,7 @@ async function main() {
         if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
         const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
-        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] || '—')} → ${campo === 'nom' ? _tapaNom({ nom: val }) : (val || '—')}`);   // revisión etapa 9, 30/10/2026: el nombre nuevo con la misma regla (antes `!d.fija`)
+        console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] ? '(texto de ' + String(d[campo]).length + ' letras)' : '—')} → ${campo === 'nom' ? _tapaNom({ nom: val }) : (val ? '(texto de ' + val.length + ' letras)' : '—')}`);   // revisión etapa 9 (06/11): "qué se llevó" puede traer nombres: no va al registro   // revisión etapa 9, 30/10/2026: el nombre nuevo con la misma regla (antes `!d.fija`)
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
         const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
@@ -43116,7 +43117,7 @@ async function main() {
         // que los viejos sin vender (justo lo que vuelve) siempre figuraban pagados y la devolución se negaba. La cuenta se rehace sola y lo pagado
         // de más queda a favor.
         const fifoD = deudaFifoBot(dD); void fifoD;
-        const ab = Object.entries(dD.movs || {}).filter(([k, x]) => x && Number(x.m) > 0 && x.prod === pD.id && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(a[0]) - Number(b[0]));
+        const ab = Object.entries(dD.movs || {}).filter(([k, x]) => x && Number(x.m) > 0 && x.prod === pD.id && x.local === locD && Number(x.u) > 0).sort((a, b) => Number(b[0]) - Number(a[0]));   // revisión etapa 9 (06/11): del ÚLTIMO dejado al primero (el que vuelve es el que no se vendió; la plata paga del más viejo)
         const hay = ab.reduce((t, [, x]) => t + Number(x.u), 0);
         if (hay < uD) { console.log(`❌ en ${locD} hay ${hay} sin pagar de ${pD.name}${hay ? '' : ' (de ese producto en esa perfumería)'}; pidió devolver ${uD}. No escribo nada.`); return; }
         console.log(`=== DEVOLUCIÓN EN "${_tapaNom(dD)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
@@ -43199,7 +43200,8 @@ async function main() {
       // Revisión etapa 9, 30/10/2026: un `u=` que no es un número entero de 1 o más (u=abc, u=0) se frena; antes pasaba a 1 sin avisar.
       if (extra.u != null && !/^[1-9]\d*$/.test(String(extra.u).trim())) { console.log(`❌ u="${extra.u}": va un número entero de 1 o más. No escribo nada.`); return; }
       const u = Math.max(1, parseInt(extra.u, 10) || 1);
-      let montoU = mPct ? null : pesosArg(m[2]);   // revisión etapa 2 (05/11): "158000.00" daba $15.800.000 if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }
+      let montoU = mPct ? null : pesosArg(m[2]);   // revisión etapa 2 (05/11): "158000.00" daba $15.800.000
+      if (!mPct && !(montoU > 0)) { console.log('❌ monto en cero'); return; }   // revisión etapa 9 (06/11): el comentario de arriba se había comido este freno
       const LOCALES = ['soares', 'sarmiento', 'ceballos'];
       // `local=reparto` (30/10/2026, él con 16 Alfaparf: "se reparten así, no sé exacto a cuál va"): se deja sin perfumería (en Métricas
       // Local sale como "Sin perfumería").
@@ -43229,7 +43231,9 @@ async function main() {
       if (m[1] === '-' && _n(quien) === 'perfumeria') {
         // Revisión etapa 2 (05/11/2026): tiene que haber UNA de cada una (antes agarraba la primera: una tercera deuda con "perfumería" en el
         // nombre podía llevarse el cobro sin avisar).
-        const _lMP = lista.filter(([, d]) => /perfumer/.test(_n(d.nom)) && !/mercader/.test(_n(d.nom))), _lMe = lista.filter(([, d]) => /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
+        // revisión etapa 9 (06/11): primero por el nombre EXACTO de las dos de siempre (una tercera con "perfumería" en el nombre, aunque esté pagada, ya no frena)
+        const _exMP = lista.filter(([, d]) => _n(d.nom).trim() === 'deuda perfumeria'), _exMe = lista.filter(([, d]) => _n(d.nom).trim() === 'mercaderia perfumeria');
+        const _lMP = _exMP.length === 1 ? _exMP : lista.filter(([, d]) => /perfumer/.test(_n(d.nom)) && !/mercader/.test(_n(d.nom))), _lMe = _exMe.length === 1 ? _exMe : lista.filter(([, d]) => /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
         if (_lMP.length > 1 || _lMe.length > 1) { console.log(`❌ hay ${_lMP.length} deudas de MercadoPago y ${_lMe.length} de Mercadería con "perfumería" en el nombre: decime a cuál va. No escribo nada.`); return; }
         const dMP = _lMP[0], dMe = _lMe[0];
         if (!dMP || !dMe) { console.log('❌ no encuentro las dos deudas de la perfumería (MercadoPago y Mercadería). No escribo nada.'); return; }
