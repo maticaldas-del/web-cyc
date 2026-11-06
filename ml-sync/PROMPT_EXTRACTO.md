@@ -24,14 +24,10 @@ El robot suma esos días a lo que ya tenía (no pisa el mes). Si Matías pide ot
      archivo"** en la configuración de la extensión de Claude, una sola vez.
 2. **Ctrl+A** (seleccionar todo) y **Ctrl+C** (copiar). No leas ni copies nada de su contenido en ningún otro lado.
 3. Andá al panel → **Mi oficina → Contar lo que hay → abajo de todo, abrí "🤖 Chat de Chrome y Claude" → "🔒 Archivo para Claude"**.
-4. Elegí la **cuenta**, escribí el **período** (ej. `2026-10` o `2026-01 a 2026-10`), pegá con **Ctrl+V** en el cuadro grande y tocá
+4. Elegí la **cuenta**, escribí el **período** (ej. `2026-11-01 a 2026-11-05`), pegá con **Ctrl+V** en el cuadro grande y tocá
    **🔒 Guardar cerrado para Claude**. Tiene que salir el cartel "🔒 Guardado cerrado (… KB, <cuenta>)".
 5. Repetí con las otras 3 cuentas.
 6. Borrá los 4 archivos de Descargas (tienen nombres de otras personas).
-
-**UNA VEZ (06/11/2026): volver a pegar agosto, septiembre y octubre de las 4 cuentas** (período `2026-08 a 2026-10`): el robot ahora separa cada
-movimiento por tipo (ventas, rendimientos, impuestos, cargos, devoluciones) para compararlo con el panel, y los que ya se pegaron no lo traían.
-Si en Gastos del mes de un mes sale "🔎 hay que volver a pegar el extracto", hacelo para ese mes. Dejá el mensaje `EXTRACTO 2026-08 a 2026-10: …`.
 
 ## Reglas
 - **El archivo tiene nombres de otras personas. NO copies nada de su contenido en ningún lado**: ni en el buzón, ni en el chat,
@@ -41,5 +37,5 @@ Si en Gastos del mes de un mes sale "🔎 hay que volver a pegar el extracto", h
 
 ## Al terminar
 - Dejá en el buzón (el mismo lugar, "📬 Mensaje para Claude") un mensaje que EMPIECE con `EXTRACTO <fecha de hoy>` y diga `del AAAA-MM-DD hasta AAAA-MM-DD` y diga sólo cuántas
-  cuentas guardaste (ej. "EXTRACTO 2026-10: 4 de 4 guardados en 🔒"). **Sin montos ni nombres.**
+  cuentas guardaste (ej. "EXTRACTO 2026-11-06: del 2026-11-01 hasta 2026-11-05 · 4 de 4 guardados en 🔒"). **Sin montos ni nombres.**
 - El robot los procesa solo en la hora siguiente; en Gastos del mes el renglón 📄 del extracto se tilda solo con lo que rindió.
