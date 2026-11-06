@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.144';
+const APP_VERSION='28.145';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.145',f:'06/11',h:'20:47',c:[{n:2,t:'🔔 El aviso de cada venta suena una vez por cada $10.000 de ganancia (2 veces con $20.000, 3 con $30.000…, hasta 10).'}]},
   {v:'28.144',f:'06/11',h:'18:23',c:[{n:2,t:'Gastos del mes: Sancor y Autónomos dicen si Mercado Pago ya los pagó ese mes (✅ con día y monto, ❌ si no aparece, ⚠️ si Sancor se pagó dos veces).'}]},
   {v:'28.143',f:'06/11',h:'18:12',c:[{n:1,t:'🔎 Mercado Pago contra el panel: el correo se compara con el costo de caja que ya va en cada producto, los peajes figuran como de la perfumería y la nafta y la tarjeta como personales.'}]},
   {v:'28.142',f:'06/11',h:'16:47',c:[{n:2,t:'🔎 Mercado Pago contra el panel: cuenta bien lo que entra por ventas ("Liquidación de dinero") y muestra aparte peajes, combustible, correo y tarjeta pagados desde MP contra lo cargado en Gastos.'}]},

@@ -186,7 +186,7 @@
   NO van: a `notas/para_mati.md`** y se resuelven en el chat cuando dice "resolvamos". Nunca "subí/bajé/activé", ni resúmenes, ni lo que
   deshizo el detector (va al log). `//` = salto de línea, sin `;`, sin datos de compradores. Informativos: `sendAlerta(texto,{info:true})`.
 - **Cada venta nueva llega al TELÉFONO (push de la web, las notificaciones de CYC), NO a Telegram** (`AVISO_VENTA_TELEGRAM=false`; 05/11, él: *"no era eso, sino en las notificaciones de cyc… sacá el telegram para esas ventas"*): sólo compras que dejan
-  **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). Cada teléfono toca
+  **$10.000+** de ganancia (la compra ENTERA, sumando el carrito), no suena 00:30-10:00 (sale junto a las 10:00). **Suena una vez por cada $10.000 de ganancia** (06/11, él; tope 10). Cada teléfono toca
   una vez "🔔 Activar aviso de cada venta". Llave privada VAPID en `mlapi/vapid` (nunca al repo). **Sale apenas el robot lee las ventas** (27/10, no al final de la vuelta): llega 2-5 min después de la venta; él: *"lo del aviso de 2 a 5 mins está bien"* → no se arma el aviso al instante (Cloudflare + notificaciones de ML), no volver a proponerlo.
 - Chats nuevos del bot quedan `pendiente` hasta `tgaprobar:<últimos números>:go`.
 - **Ventas vivas:** el temblor se permite desde **$10.000** de ganancia (`VIVA_GAN_TIEMBLA`, 15/10) y el fuego desde **$20.000** (`VIVA_GAN_FUEGO`, 26/10). Cada venta dice

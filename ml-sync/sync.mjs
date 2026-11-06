@@ -11072,6 +11072,9 @@ async function avisarVentasNuevas(db, lista) {
       title: conGan.length === 1 ? '🔔 Venta nueva' : `🔔 ${conGan.length} ventas nuevas`,
       body: planos.join('\n') + `\n📊 Hoy: ${n} ventas · ganancia ${money(gan)}`,
       tag: 'venta-' + kid(conGan[conGan.length - 1].v.id), url: './#aviso',
+      // 06/11/2026 (él: "que suene una vez por 10.000, dos por 20.000, 3 por 30.000. así sucesivamente"): cuántas veces suena = la ganancia
+      // nueva de este aviso (las compras que avisa, sumadas) ÷ $10.000, redondeado para abajo; mínimo 1, tope 10. Lo hace el teléfono (sw.js).
+      veces: Math.max(1, Math.min(10, Math.floor(conGan.reduce((t, x) => { const r = ganDe(x.v, x.dayKey); return t + (r ? r.g : 0); }, 0) / 10000))),
     });
   } catch (e) { console.log('Aviso al teléfono: ' + e.message); }
   // 7.20 (21/10/2026): cuáles ventas fueron en este aviso, para que la web las marque "🔔 la del aviso" al tocarlo (#aviso). Sólo los

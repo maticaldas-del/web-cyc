@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1227";
+const CACHE = "cyc-v1228";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -57,17 +57,28 @@ self.addEventListener("fetch", (e) => {
 self.addEventListener("push", (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(d.title || "🔔 CYC", {
+  // 06/11/2026 (él: "que suene una vez por 10.000, dos por 20.000, 3 por 30.000"): `veces` lo manda el robot (ganancia ÷ $10.000, tope 10).
+  // El sonido lo elige el teléfono, así que para que suene N veces el MISMO aviso se vuelve a mostrar N veces (mismo `tag` + `renotify`:
+  // reemplaza al anterior y vuelve a sonar), separado 1,8 s; y la vibración hace N golpes.
+  const veces = Math.max(1, Math.min(10, parseInt(d.veces, 10) || 1));
+  const vib = []; for (let i = 0; i < veces; i++) vib.push(350, 200);
+  const opts = {
     body: d.body || "",
     tag: d.tag || "cyc",
     icon: "icon.svg",
     badge: "icon.svg",
     // 28/10/2026 (él: "el volumen de los avisos se escucha muy bajo"): la web NO puede elegir el volumen ni el sonido (usa el de las
     // notificaciones del teléfono); lo que sí: vibrar más largo y que vuelva a sonar aunque haya otro aviso igual sin leer.
-    vibrate: [400, 150, 400, 150, 400],
+    vibrate: vib,
     renotify: true,
     data: { url: d.url || "./" },
-  }));
+  };
+  const titulo = d.title || "🔔 CYC";
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  e.waitUntil((async () => {
+    await self.registration.showNotification(titulo, opts);
+    for (let i = 2; i <= veces; i++) { await espera(1800); await self.registration.showNotification(titulo, { ...opts, vibrate: [350] }); }
+  })());
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
