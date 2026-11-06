@@ -8,9 +8,6 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
-### 💳 Extracto de MP (06/11) — pendiente
-- **Sancor de agosto a octubre:** MP pagó 152.716 + 90.192 (04/08) y 110.814 + 163.046 (03/10); en septiembre nada. Cargado: 65.227 / 97.819 / 110.814. ¿El de 163.046 de octubre es el de septiembre? ¿Los dos de agosto son julio + agosto? (desde noviembre ya se lleva con el pago real).
-
 ### ✅ Contestó la lista de las 12:30 del 06/11 (autorizo PXP7 · 4a 5a 6a) — APLICADO
 - PXP7 Animale Original mujer: descuento a $113.990 (43% peor caso), releído de ML ✓ · 4a Aer x6: le paso el link del competidor (MLA4150859190, $11.758, mismo catálogo) para comprar 12 desde Adriana · 5a tarea COMPETENCIA del chat de Chrome (147 sin catálogo, de a 20 por día) · 6a fotos de ABEL quedan como están.
 - Siguen abiertos: 7 (¿octubre tuvo dos cuotas de Claude?) · 8 cajas de Ayelen sin alta · 9 mensajes sin leer · 10 precio de comprar lugar en Full.
