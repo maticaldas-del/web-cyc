@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.138';
+const APP_VERSION='28.139';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.139',f:'06/11',h:'15:53',c:[{n:2,t:'🔎 Gastos del mes → Mercado Pago contra el panel: con el extracto, también lo pagado desde MP a ARCA, Sancor y suscripciones contra lo cargado en Gastos, las retenciones reales de cada cuenta contra el % que usa el panel, las transferencias entre nuestras cuentas (no son plata nueva), contracargos y plata retenida, y cobros por QR fuera de ML.'}]},
   {v:'28.138',f:'06/11',h:'15:51',c:[{n:1,t:'Ventas: con muchos carteles arriba (Premium, 1ª venta, estrategia) el total y la ganancia ya no se van para el costado: los carteles se acortan y los números quedan a la vista.'}]},
   {v:'28.137',f:'06/11',h:'15:48',c:[{n:2,t:'💳 Gastos del mes: cada cuenta muestra lo que dice el extracto de Mercado Pago (ventas, rendimientos, impuestos, cargos, devoluciones, transferencias) contra lo que tiene el panel.'},{n:2,t:"🧮 ¿Cierra el mes?: los rendimientos de Mercado Pago son un renglón propio y se suman a lo que genera CYC."},{n:1,t:'🗄️ Las ventas de más de 400 días se guardan aparte de noche y la web las trae sólo cuando mirás esas fechas en Métricas (no se borra nada).'}]},
   {v:'28.136',f:'06/11',h:'15:29',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también COMPETENCIA (comparar con otros vendedores lo que vendemos caro).'}]},
@@ -28310,6 +28311,41 @@ function renderComprasChecklist(){
 // 🔎 MERCADO PAGO CONTRA EL PANEL (06/11/2026, él eligió 1a): con los totales por tipo de movimiento que saca el robot del extracto
 // (`cyc/rendimientos_mp/<cuenta>/<mes>/tipos`, sin nombres), por cuenta: lo que entró por ventas (liberaciones) contra el neto de las ventas
 // del panel de ese mes, y los impuestos/retenciones, cargos y lo demás. Lo liberado corre unos días atrás de la venta: una diferencia chica es normal.
+// 🔎 LO DEMÁS QUE SALE DEL EXTRACTO (06/11/2026, él: "la idea era que tengas todo eso vos"): con los grupos que arma el robot
+// (`rendimientos_mp/<cuenta>/<mes>/cat`, leyendo el texto de cada movimiento sin guardarlo): (1) gastos pagados por MP contra los cargados
+// en Gastos, (2) retenciones reales contra el % que usa el panel (`ML_EXTRA_PCT`), (3) transferencias entre nuestras cuentas (mismo día y
+// monto: una sale y otra entra), (4) contracargos y plata retenida, (5) cobros por QR o link fuera de ML.
+function _mpExtrasHTML(ym){
+  const R=state.rendimientos_mp||{},CT=['Adriana','Luciana','Ayelen','Matias'],C=CT.filter(c=>((R[c]||{})[ym]||{}).cat);
+  if(!C.length)return '';
+  const cat=c=>R[c][ym].cat||{},v=(c,k,f)=>Math.round(((cat(c)[k]||{})[f])||0),suma=(k,f)=>C.reduce((s,c)=>s+v(c,k,f),0);
+  const fila=(t,x,col)=>`<div style="display:flex;gap:6px;justify-content:space-between"><span>${t}</span><span style="font-family:'DM Mono',monospace;${col?'color:'+col:''}">${x}</span></div>`;
+  // (1) gastos pagados por MP contra los cargados ese mes
+  const gMes=re=>Object.values(state.compras||{}).filter(g=>g&&g.tipo!=='compra'&&String(g.dayKey||'').startsWith(ym)&&re.test((String(g.desc||'')+' '+String(g.cat||'')).toLowerCase())).reduce((s,g)=>s+(Number(g.monto)||0),0);
+  const G=[['🏛️ ARCA (VEP, autónomos)','arca',/arca|afip|vep|monotrib|autonom/],['🩺 Sancor','sancor',/sancor|obra social priv/],['🔁 Suscripciones','suscrip',/suscrip|claude|anthropic|google|netflix|spotify|canva/]];
+  let h1=G.map(([t,k,re])=>{const mp=suma(k,'db');if(!mp)return '';const pan=gMes(re);
+    // ARCA: el monotributo (impuesto integrado) NO es gasto (ya se descuenta en cada venta): de lo pagado, sólo autónomos + obra social de Ayelen
+    if(k==='arca'){const au=gMes(/autonom|obra social/);return fila(t,`MP pagó ${fmt(mp)} · el monotributo ya va en cada venta; como gasto sólo autónomos + obra social de Ayelen: cargado ${fmt(Math.round(au))}${au?' ✓':' ⚠️'}`,au?'var(--green)':'var(--amber)');}
+    const ok=pan>=mp*0.9;
+    return fila(t,`MP pagó ${fmt(mp)} · en Gastos ${fmt(Math.round(pan))}${ok?' ✓':' ⚠️ falta cargar'}`,ok?'var(--green)':'var(--amber)');}).join('');
+  const pagos=suma('pagos','db');if(pagos)h1+=fila('· Otros pagos desde MP',fmt(pagos)+' (mirar si alguno es un gasto)','var(--muted)');
+  // (2) retenciones reales por cuenta contra el % del panel
+  const h2=C.map(c=>{const ret=['iibb','ganancias','iva','imp_otro'].reduce((s,k)=>s+v(c,k,'db')-v(c,k,'cr'),0),vent=v(c,'ventas','cr');if(!vent||!ret)return '';
+    const pct=Math.round(ret/vent*1000)/10,ref=ML_EXTRA_PCT[c.toLowerCase()];const dif=ref!=null?Math.round((pct-ref)*10)/10:null;
+    return fila(`${c}: IIBB ${fmt(v(c,'iibb','db'))} · ganancias ${fmt(v(c,'ganancias','db'))}${v(c,'iva','db')?' · IVA '+fmt(v(c,'iva','db')):''}${v(c,'imp_otro','db')?' · otros '+fmt(v(c,'imp_otro','db')):''}`,
+      `${pct}% de lo liberado${ref!=null?` · el panel usa ${ref}%`:''}`,dif!=null&&Math.abs(dif)>0.7?'var(--amber)':'var(--green)');}).join('');
+  // (3) transferencias entre nuestras cuentas: mismo día y mismo monto, una sale y otra entra
+  const tr=[];C.forEach(c=>(R[c][ym].tr||[]).forEach(([d,m])=>tr.push({c,d,m,usado:false})));
+  let nInt=0,mInt=0;for(const a of tr){if(a.m>=0||a.usado)continue;const b=tr.find(x=>!x.usado&&x.c!==a.c&&x.m>0&&x.d===a.d&&Math.abs(x.m+a.m)<1);if(b){a.usado=b.usado=true;nInt++;mInt+=b.m;}}
+  const trRec=suma('transf_rec','cr'),trEnv=suma('transf_env','db');
+  const h3=(trRec||trEnv)?fila('🔁 Transferencias',`entraron ${fmt(trRec)} · salieron ${fmt(trEnv)}${nInt?` · ${nInt} entre nuestras cuentas (${fmt(Math.round(mInt))}): no es plata nueva`:''}`):'';
+  // (4) contracargos y plata retenida · (5) cobros por QR o link
+  const cc=suma('contracargo','db'),rt=suma('retenido','db'),rl=suma('retenido_libera','cr'),qr=suma('qr','cr');
+  const h4=(cc?fila('⚠️ Contracargos',fmt(cc),'var(--red)'):'')+((rt||rl)?fila('🔒 Plata retenida por reclamos',`retuvo ${fmt(rt)} · devolvió ${fmt(rl)}`,rt>rl?'var(--amber)':''):'');
+  const h5=qr?fila('📱 Cobros por QR o link (fuera de ML)',fmt(qr)+' · ¿está cargado en Tienda o Perfumería?','var(--amber)'):'';
+  const sec=(t,x)=>x?`<div style="padding:6px 0;border-top:1px solid var(--border)"><b>${t}</b>${x}</div>`:'';
+  return sec('🧾 Gastos pagados desde Mercado Pago',h1)+sec('🏷️ Retenciones reales',h2)+sec('🔁 Entre cuentas',h3)+sec('⚠️ Reclamos',h4)+sec('📱 Fuera de ML',h5);
+}
 function _mpVsPanelHTML(ym){
   const R=state.rendimientos_mp||{},C=['Adriana','Luciana','Ayelen','Matias'].filter(c=>((R[c]||{})[ym]||{}).tipos);
   if(!C.length)return (['Adriana','Luciana','Ayelen','Matias'].some(c=>(R[c]||{})[ym]))?`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">🔎 Para comparar Mercado Pago contra el panel hay que volver a pegar el extracto (el robot ahora lo separa por tipo).</span>`:'';
@@ -28323,7 +28359,7 @@ function _mpVsPanelHTML(ym){
     const lin=Object.keys(NOM).filter(g=>G[g]).map(g=>`<div style="display:flex;gap:6px;justify-content:space-between"><span title="${escHtml(det[g].join(' · '))}">${NOM[g]} <span style="color:var(--muted)">(${G[g].n})</span></span><span style="font-family:'DM Mono',monospace">${G[g].cr?'+'+fmt(Math.round(G[g].cr)):''}${G[g].cr&&G[g].db?' / ':''}${G[g].db?'−'+fmt(Math.round(G[g].db)):''}</span></div>`).join('');
     const cmp=np?`<div style="margin-top:3px;color:${dif!=null&&Math.abs(dif)>10?'var(--amber)':'var(--green)'}">Ventas del panel ese mes (neto): ${fmt(Math.round(np))} · Mercado Pago liberó ${fmt(Math.round(vent))}${dif!=null?` (${dif>0?'+':''}${dif}%)`:''}</div>`:'';
     return `<div style="padding:6px 0;border-top:1px solid var(--border)"><b>${c}</b>${lin}${cmp}</div>`;}).join('');
-  return `<details style="flex-basis:100%;font-size:.66rem;margin-top:4px"><summary style="cursor:pointer;color:var(--muted)">🔎 Mercado Pago contra el panel (${C.length} de 4 cuentas)</summary>${filas}<div style="color:var(--muted);margin-top:4px">Lo liberado corre unos días atrás de cada venta: hasta ~10% de diferencia es normal. Pasá el dedo sobre cada renglón para ver qué tipos entraron.</div></details>`;
+  return `<details style="flex-basis:100%;font-size:.66rem;margin-top:4px"><summary style="cursor:pointer;color:var(--muted)">🔎 Mercado Pago contra el panel (${C.length} de 4 cuentas)</summary>${filas}${_mpExtrasHTML(ym)}<div style="color:var(--muted);margin-top:4px">Lo liberado corre unos días atrás de cada venta: hasta ~10% de diferencia es normal. Pasá el dedo sobre cada renglón para ver qué tipos entraron.</div></details>`;
 }
 async function setExtractoMp(ym,val){
   if(window._deCopia&&window._deCopia()){toast('Todavía se están bajando los datos: no se guardó. Probá en unos segundos','err');renderComprasChecklist();return;}

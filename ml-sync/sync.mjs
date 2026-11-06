@@ -12044,10 +12044,36 @@ function _numAr(x) {
   if (c > p) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/,/g, '');
   const v = parseFloat(s); return isFinite(v) ? v : null;
 }
+function _diaDeFecha(x) {
+  const s = String(x || ''); let m = s.match(/\d{4}-\d{2}-(\d{2})/); if (m) return Number(m[1]);
+  m = s.match(/(\d{1,2})[\/.-]\d{1,2}[\/.-]\d{4}/); return m ? Number(m[1]) : 0;
+}
 function _fechaYm(x) {
   const s = String(x || ''); let m = s.match(/(\d{4})-(\d{2})-(\d{2})/); if (m) return `${m[1]}_${m[2]}`;
   m = s.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/); if (m) return `${m[3]}_${String(m[2]).padStart(2, '0')}`;
   return null;
+}
+// Grupo de un movimiento del extracto de MP por su texto (que NO se guarda). El orden importa: lo más específico primero.
+function extractoMpCat(txt, monto) {
+  const t = String(txt || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/rendim/.test(t)) return 'rend';
+  if (/contracargo|chargeback|contra cargo/.test(t)) return 'contracargo';
+  if (/dinero retenido|retencion de dinero|retenido por|reclamo|mediacion|disputa/.test(t)) return monto >= 0 ? 'retenido_libera' : 'retenido';
+  if (/ingresos brutos|iibb|sircreb|\bibb\b/.test(t)) return 'iibb';
+  if (/ganancias/.test(t)) return 'ganancias';
+  if (/\biva\b/.test(t)) return 'iva';
+  if (/impuesto|retencion|percepcion|ley 25\.?413|debitos y creditos|\bdyc\b/.test(t)) return 'imp_otro';
+  if (/\barca\b|\bafip\b|\bvep\b|monotribut|autonomo/.test(t)) return 'arca';
+  if (/sancor/.test(t)) return 'sancor';
+  if (/suscripci|anthropic|claude|google|netflix|spotify|apple|microsoft|openai|canva|youtube/.test(t)) return 'suscrip';
+  if (/\bqr\b|link de pago|cobro con|\bpoint\b|cobro presencial/.test(t)) return 'qr';
+  if (/devoluci|reembolso|reintegro|cancelaci/.test(t)) return 'devol';
+  if (/transferencia|transf\.|\bcvu\b|\bcbu\b|ingreso de dinero|dinero recibido|dinero enviado/.test(t)) return monto >= 0 ? 'transf_rec' : 'transf_env';
+  if (/retiro|extraccion/.test(t)) return 'retiro';
+  if (/liberaci|venta|mercado ?libre|cobro/.test(t)) return monto >= 0 ? 'ventas' : 'cargos';
+  if (/cargo|comision|tarifa|costo|envio|full|almacenamiento/.test(t)) return 'cargos';
+  if (/pago|debito/.test(t)) return monto >= 0 ? 'otros' : 'pagos';
+  return 'otros';
 }
 function extractoMpResumen(txt) {
   if (/^PK/.test(String(txt || ''))) return { err: 'es un Excel (.xlsx), no texto: hay que bajarlo en CSV' };
@@ -12074,6 +12100,13 @@ function extractoMpResumen(txt) {
       if (w[1] && /^[a-záéíóúñ]+$/.test(w[1]) && w[1].length > 2) tipo += '_' + w[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 15);
       const T = (M.tipos = M.tipos || {})[tipo] || (M.tipos[tipo] = { n: 0, cr: 0, db: 0 });
       T.n++; if (monto >= 0) T.cr += monto; else T.db += -monto; }
+    // 06/11/2026 (él: "la idea era que tengas todo eso vos"): además del tipo, cada movimiento se clasifica leyendo TODO su texto en memoria
+    // (`extractoMpCat`) en grupos con nombre fijo: ARCA, Sancor, suscripciones, retenciones de IIBB / ganancias / IVA, contracargos, plata
+    // retenida, cobros por QR o link, transferencias. Se guardan sólo los totales por grupo; de las transferencias, día y monto (sin nombre)
+    // para que la web encuentre las que van entre nuestras 4 cuentas (mismo día y monto en una que sale y otra que entra).
+    { const tx = iTxt.map((i) => String(r[i] || '')).join(' '); const cat = extractoMpCat(tx, monto);
+      const C = (M.cat = M.cat || {})[cat] || (M.cat[cat] = { n: 0, cr: 0, db: 0 }); C.n++; if (monto >= 0) C.cr += monto; else C.db += -monto;
+      if (/^transf/.test(cat) && (M.tr = M.tr || []).length < 400) M.tr.push([_diaDeFecha(r[iF]), Math.round(monto * 100) / 100]); }
     const sal = iS >= 0 ? _numAr(r[iS]) : null;
     if (sal != null) {
       if (M.saldoIni == null) M.saldoIni = Math.round((sal - monto) * 100) / 100;
@@ -12083,7 +12116,7 @@ function extractoMpResumen(txt) {
     }
   }
   for (const M of Object.values(meses)) { M.rend = Math.round(M.rend * 100) / 100;
-    for (const T of Object.values(M.tipos || {})) { T.cr = Math.round(T.cr * 100) / 100; T.db = Math.round(T.db * 100) / 100; } }
+    for (const T of [...Object.values(M.tipos || {}), ...Object.values(M.cat || {})]) { T.cr = Math.round(T.cr * 100) / 100; T.db = Math.round(T.db * 100) / 100; } }
   // la cabecera (nombres de columna, no datos) para ver qué trae el archivo
   return { meses, n, enc, rotas, conSaldo: iS >= 0, cols: cab.length, cab: cab.map((c) => String(c).slice(0, 40)).slice(0, 40) };
 }
