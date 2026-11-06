@@ -14,10 +14,12 @@ Lo uso cada día al mirar el extracto (CLAUDE §8). Sin montos de terceros ni no
 
 0. **Los meses cerrados quedan cerrados** (06/11, él: *"los meses cerrados ya están cerrados. y puede que veas cosas que estaban mal cargadas o cosas así"*): lo que encuentre mal en un mes ya cerrado NO se corrige ni se carga (ni gasto, ni `cobrocorr`); como mucho lo anoto como dato. Sólo se trabaja el mes abierto.
 
+10. **La transferencia que entra de Tati (~$125.000) = la cuota de la notebook** (ya cargada en su deuda): se cruza, no es plata nueva.
+
 ## Cómo se mira cada día (06/11/2026, él: *"que no me mande cosas dos veces y que no falten cosas a analizar"*)
 - Sólo días COMPLETOS (hasta ayer) y sólo los posteriores a "Analizado hasta" de cada cuenta (abajo): así nada se mira dos veces ni queda afuera.
 - Al terminar, se sube la fecha de cada cuenta acá en el mismo commit.
 - Lo que sale: gastos sin cargar (con su ✓ de pagado en Gastos), peajes → deuda de la perfumería, ingresos que no son ventas de ML (se cruzan con las deudas), transferencias a personas que no conozco → preguntas en la lista de las 12:30 (una sola vez cada una).
 
 ### Analizado hasta
-- Adriana: 2026-10-31 · Luciana: 2026-10-31 · Ayelen: 2026-10-31 · Matias: 2026-10-31
+- Adriana: 2026-11-05 · Luciana: 2026-11-05 · Ayelen: 2026-11-05 · Matias: 2026-11-05
