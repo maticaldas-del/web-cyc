@@ -72,10 +72,45 @@ pendientes de emitir. Por cuenta: cuántas y desde cuándo. Si no hay nada, pon�
 Abrí el panel (Inicio): copiá cualquier cartel ROJO o ⚠️ que veas arriba (por ejemplo "sin conexión", "faltan datos", un pedido o una
 caja en rojo). Si todo está normal, poné "panel ok".
 
+== 10 · VENTAS DE HOY Y DE LOS PRÓXIMOS DÍAS (06/11, sale de las pestañas que él abre cada mañana) ==
+En cada cuenta: https://vendedores.mercadolibre.com.ar/ventas/omni/listado?filters=TAB_TODAY&startPeriod=WITH_DATE_CLOSED_6M_OLD&sort=DATE_CLOSED_DESC
+y la de próximos días: https://vendedores.mercadolibre.com.ar/ventas/omni/listado?filters=TAB_NEXT_DAYS&startPeriod=WITH_DATE_CLOSED_6M_OLD&sort=DATE_CLOSED_DESC&subFilters=&search=&limit=50&offset=0
+Por cuenta: cuántas hay en cada una, cuántas falta despachar hoy y hasta qué hora, y marcá con ⏰ las demoradas o con algún aviso
+(producto o MLA + qué dice). Nada de nombres ni direcciones.
+
+== 11 · LO QUE SE ESTÁ POR QUEDAR SIN STOCK ==
+En cada cuenta: https://vendedores.mercadolibre.com.ar/publicaciones?filters=OMNI_ACTIVE%7CCHANNEL_NO_PROXIMITY_AND_NO_MP_MERCHANTS&page=1&sort=STOCK_IN_FLEX_ASC
+(activas, con menos stock primero). Anotá las que tienen 3 unidades o menos: MLA o nombre + cuántas quedan. Si son muchas, las 10
+primeras y el total.
+
+== 12 · ESPACIO EN FULL Y PUBLICACIONES EN REVISIÓN ==
+- Espacio: https://vendedores.mercadolibre.com.ar/publicaciones/listado/space_management → cuánto espacio se usa y lo que ML avisa o
+  recomienda (producto + qué dice).
+- En revisión: https://vendedores.mercadolibre.com.ar/publicaciones?filters=OMNI_UNDER_REVIEW&page=1&sort=DEFAULT&task=GROUPED_MODERATE
+  → MLA o nombre + qué pide ML + hasta cuándo (si ya salió en la parte 4, no lo repitas).
+
+== 13 · RESUMEN Y MÉTRICAS DE LA SEMANA ==
+En cada cuenta:
+- https://vendedores.mercadolibre.com.ar/resumen → las tareas o avisos pendientes que muestra.
+- https://vendedores.mercadolibre.com.ar/metricas?start_period=lastSevenDays → ventas, unidades, visitas y conversión de los últimos
+  7 días, y si subió o bajó contra los 7 anteriores (el número que muestre ML; si no lo muestra, "?").
+
+== 14 · PROMOCIONES PROGRAMADAS ==
+En cada cuenta: https://vendedores.mercadolibre.com.ar/publicaciones/listado/promos?filters=scheduled_offer&page=1
+Cuántas hay y las que empiezan o terminan en los próximos 3 días: MLA o nombre + descuento + fecha. No aceptes ni canceles ninguna.
+
+== 15 · EL DÓLAR (una sola vez, no por cuenta) ==
+https://dolarhoy.com/ → compra y venta del blue y del oficial, y compará con el "DÓLAR ACTUAL" de arriba del panel. Si difieren en
+más de 2%, marcalo con ⏰.
+
+Direcciones directas de lo de arriba, por si el menú cambió de nombre: reclamos https://vendedores.mercadolibre.com.ar/post-purchase/post-sales ·
+mensajes https://vendedores.mercadolibre.com.ar/post-purchase/post-sales?main.filter=messages · preguntas https://vendedores.mercadolibre.com.ar/preguntas/vendedor ·
+envíos a Full https://vendedores.mercadolibre.com.ar/shipping/inbounds · retiros de Full https://vendedores.mercadolibre.com.ar/fulfillment/withdrawals
+
 == CÓMO LO DEJÁS ESCRITO ==
 Panel → Mi oficina → Contar lo que hay → abajo de todo, "🤖 Chat de Chrome y Claude" → "📬 Mensaje para Claude".
 - El mensaje EMPIEZA con `MIRAR TODO <AAAA-MM-DD>` (así se anota en "Última vez").
-- Arriba de todo, una línea: `URGENTE: <cuántos> · reclamos <n> · mediaciones <n> · mensajes sin leer <n> · preguntas <n> · frenadas por ML <n>`.
+- Arriba de todo, una línea: `URGENTE: <cuántos> · reclamos <n> · mediaciones <n> · mensajes sin leer <n> · preguntas <n> · frenadas por ML <n> · por despachar hoy <n> · con poco stock <n>`.
 - Después, una línea por cosa, agrupada por cuenta, lo urgente primero (⏰). Ejemplo:
   `Adriana · ⏰ mediación …9946 · Perfume Paulvic Good · el comprador dice que no le llegó · espera respuesta nuestra al mediador hasta el 07/11 18:00 · opciones: mensaje al mediador`
 - Cada mensaje entra hasta 2.000 letras: si no alcanza, dejá varios, todos empezando igual (`MIRAR TODO 2026-11-06 (2/3)` …).
