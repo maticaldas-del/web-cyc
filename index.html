@@ -2026,7 +2026,7 @@ setTimeout(function _ldVigia(){try{
   </div>
 
   <!-- ── Selector de período: ENTRE la Tendencia y el % de Ganancia (04/11/2026, él: "que esto esté entremedio de los dos, así queda cómodo para ambas gráficas"; antes arriba de todo y un rato debajo del %) ── -->
-  <div id="met-cal-bar" class="cal-bar" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
+  <div id="met-cal-bar" class="cal-bar" data-metc="1" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
     <!-- Un botón con el período elegido. Las opciones salen al tocarlo, agrupadas: por un lado
          los "últimos N días", por otro un día/mes/año concreto, y aparte el período a medida. -->
     <div class="dd-wrap" id="ms-dd-wrap">
@@ -3408,7 +3408,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.134';
+const APP_VERSION='28.135';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3421,6 +3421,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.135',f:'06/11',h:'15:25',c:[{n:2,t:'📊 Métricas → 🔀 Todo, 🛍️ Perfumería y 🏬 Tienda: vuelve la barra para elegir el período y Total / Ganancia (sólo se veía en ML).'}]},
   {v:'28.134',f:'06/11',h:'11:40',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también MIRAR TODO (reclamos, mensajes, preguntas y avisos de ML, sólo mirando; va dentro de la rutina de cada día).'}]},
   {v:'28.134',f:'06/11',h:'04:40',c:[{n:2,t:'🇵🇾 Ya llegó: lo del local y de la 🏬 Tienda no se cuenta en la Oficina ML ni como stock en camino; avisa lo de la Tienda que falta cargar.'},{n:2,t:'🪄 Llenar no carga perfumes abajo del 35% por la perfumería.'},{n:2,t:'📊 Perfumería: el % por perfumería, por mes y por producto deja afuera lo dejado al costo; un préstamo no se cuenta como venta de la Tienda.'},{n:1,t:'📥 Cuotas: un cobro de algo agregado aparte no cuenta como cuota pagada.'}]},
   {v:'28.133',f:'05/11',h:'23:59',c:[{n:1,t:'🎨 Ventas de este mes / año: la barra de colores dice cuánta ganancia del período hace falta para cada color (ej. $2,7M en el mes), no la de un día.'}]},
