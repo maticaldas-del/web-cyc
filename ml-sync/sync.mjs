@@ -12174,7 +12174,12 @@ async function procesarExtractosMp(db, GO) {
     await db.patch('cyc/rendimientos_mp', upd);
     // 06/11/2026 (él: "quiero que veas movimiento por movimiento… un análisis"): el archivo queda GUARDADO CERRADO (como llegó, con la llave del
     // robot) en `mlapi/privado_mp/<cuenta>/<id>`, fuera de cyc/ (la web no lo baja), para que `extractover` me lo pase cerrado con MI llave.
-    { const { error, errTs, ...guardo } = e; await db.set('mlapi/privado_mp/' + cta + '/' + id, guardo); }
+    // 06/11/2026 (todos los días, el mes hasta hoy): se guarda uno por cuenta y período (el de hoy reemplaza al de ayer), no uno por pegada.
+    { const { error, errTs, ...guardo } = e; const kP = String(e.per || '').replace(/[^0-9A-Za-z-]/g, '_').slice(0, 40) || id;
+      const viejo = (await db.get('mlapi/privado_mp/' + cta)) || {}; const sacar = {};
+      for (const [k2, v2] of Object.entries(viejo)) if (k2 !== kP && v2 && String(v2.per || '') === String(e.per || '') && e.per) sacar[k2] = null;
+      if (Object.keys(sacar).length) await db.patch('mlapi/privado_mp/' + cta, sacar);
+      await db.set('mlapi/privado_mp/' + cta + '/' + kP, guardo); }
     await db.set('mlapi/privado_in/' + id, null);
     ok++;
   }

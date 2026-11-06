@@ -1,11 +1,13 @@
-# EXTRACTO DE MERCADO PAGO → CLAUDE (una vez por mes, en las 4 cuentas)
+# EXTRACTO DE MERCADO PAGO → CLAUDE (todos los días, en las 4 cuentas)
 
 Matías quiere que Claude reciba el **extracto de cuenta completo** ("Todas las transacciones") de las 4 cuentas de Mercado Pago
 (Adriana, Luciana, Ayelen y Matías) **sin que él tenga que pasarlo**. Vos lo bajás y lo pegás en el panel, donde queda cerrado con candado:
 sólo el robot lo puede abrir, y guarda únicamente lo que rindió la plata y si el saldo cierra.
 
-**Período:** el que diga Matías. Si no dice nada: el mes pasado entero (del día 1 al último). La primera vez: del 01/01/2026 al 31/10/2026
-(si Mercado Pago no deja un rango tan largo, de a 3 meses: ene-mar, abr-jun, jul-sep, oct).
+**Período (06/11/2026, él: "todos los días… así vamos paso a paso"):** TODOS LOS DÍAS, dentro de la rutina, **del día 1 del mes en curso
+hasta hoy** (en el panel el período es `AAAA-MM`, ej. `2026-11`). Siempre el mes ENTERO hasta hoy, no sólo el día: el robot reemplaza el
+del día anterior. **Los días 1 a 5 del mes, además el mes anterior entero** (del 1 al último), con su período (ej. `2026-10`), así queda cerrado.
+Si Matías pide otro período, ése.
 
 ## 1 · Bajarlo (cuenta por cuenta)
 1. Entrá a Mercado Pago con esa cuenta.
@@ -37,6 +39,6 @@ Si en Gastos del mes de un mes sale "🔎 hay que volver a pegar el extracto", h
 - Si una cuenta no deja entrar, el reporte no aparece o el cartel del panel da error, seguí con las otras y avisá.
 
 ## Al terminar
-- Dejá en el buzón (el mismo lugar, "📬 Mensaje para Claude") un mensaje que EMPIECE con `EXTRACTO <período>` y diga sólo cuántas
+- Dejá en el buzón (el mismo lugar, "📬 Mensaje para Claude") un mensaje que EMPIECE con `EXTRACTO <fecha de hoy>` y diga sólo cuántas
   cuentas guardaste (ej. "EXTRACTO 2026-10: 4 de 4 guardados en 🔒"). **Sin montos ni nombres.**
 - El robot los procesa solo en la hora siguiente; en Gastos del mes el renglón 📄 del extracto se tilda solo con lo que rindió.
