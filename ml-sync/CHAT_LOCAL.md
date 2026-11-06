@@ -23,7 +23,7 @@ REGLAS QUE NO SE ROMPEN
 
 LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - "extracto" (una vez por mes; si Gastos del mes muestra en rojo el renglón 📄 del extracto, hacelo aunque no lo pida): bajar el extracto de Mercado Pago de las 4 cuentas y pegarlo en el panel en "🔒 Archivo para Claude", que lo cierra con candado (ver PROMPT_EXTRACTO.md). Nada de su contenido va a ningún otro lado.
-- "rutina" (06/11, él: "hacé una sola rutina que sea completa"): Matías dice "rutina" y hacés TODO lo de "CUÁNDO HACÉS CADA COSA" (abajo), en ese orden: lo de todos los días siempre y lo de cada 7/14 días o de los domingos cuando le toca. Lo primero: cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei + los de "⏳ Para volver a mirar" (lo que da y se miró hace 2+ días; todos los días, 01/11) → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
+- "rutina" o "rutina completa" (06/11, él: "yo siempre a la mañana pongo hacé la rutina completa, lo diario que lo haga siempre y lo que se hace por semana que se haga por semana, y si toca el 5 del mes y no prendí que lo haga el próximo run… la mayoría para seguridad es diario, menos las listas"): es lo mismo, una sola rutina. Hacés TODO lo de "CUÁNDO HACÉS CADA COSA" (abajo), en ese orden: lo de todos los días siempre y lo de cada 7/14 días o de los domingos cuando le toca. Lo primero: cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei + los de "⏳ Para volver a mirar" (lo que da y se miró hace 2+ días; todos los días, 01/11) → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
 - "arrancá" (cajas): SÓLO cuando Matías lo pide, armar en ML las cajas de Full que el panel marca "MANDALA YA" (cargar Planificación de envíos, sin confirmar).  → CAJAS
 - "PROMPT GUAY" / pasada de los sábados: copiar el catálogo de Nissei de comprasparaguay y los precios de lo que pide el panel.  → GUAY
 - Listas de proveedores: copiar listas de precios y dejarlas medidas.  → LISTAS
@@ -31,7 +31,7 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - Imega (mayorista que conoce Tito).  → IMEGA
 - Antigüedad del stock en Full (tarea de una vez).  → ANTIGÜEDAD
 - "cajas llegadas" (cada vez que te prenden, después de la RUTINA): sólo las cajas que el robot no pudo cerrar (`cajasmirar`) y el porqué de lo que falta.  → CAJAS LLEGADAS Si una caja llegó mal (rota, faltante, ML rechazó unidades), además tocá ⚠️ "no llegó bien" en esa caja (Pedidos → Envíos a Full) y escribí qué pasó (04/11).
-- "más vendidos" (cada 7 días): lo más vendido de cada categoría de ML cruzado con Nissei y las listas.  → MÁS VENDIDOS
+- "más vendidos" (TODOS LOS DÍAS desde el 06/11, dentro de la rutina): lo más vendido de cada categoría de ML cruzado con Nissei y las listas.  → MÁS VENDIDOS
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
 No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
@@ -52,7 +52,8 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    f3) MAYORISTAS WEB (AnD Mitre y AVL 112, los que visita Tito) → si hace 7 días o más (03/11/2026). El catálogo lo baja el robot (`listawoo`): vos lo actualizás, revisás que lo que da 35% sea el mismo producto en ML y anotás lo que la página no dice (IVA, mínimo, packs). Texto: PROMPT_MAYORISTAS_WEB.
    a1) MIRAR TODO → TODOS LOS DÍAS, justo después de la RUTINA (06/11/2026, él: "que mire todo. Que por el momento no haga nada"): reclamos, mediaciones, devoluciones, mensajes sin leer, preguntas, lo que ML frena o avisa, reputación, Full, avisos de Mercado Pago, facturas y el panel, en las 4 cuentas, SIN TOCAR NADA. Texto: PROMPT_RUTINA_MANANA.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
-   f2) MÁS VENDIDOS → si hace 7 días o más (ver abajo).
+   f2) MÁS VENDIDOS → TODOS LOS DÍAS (06/11, él: "la mayoría para seguridad es diario, menos las listas"), después de CAJAS LLEGADAS (ver abajo).
+   LO DEL MES (el extracto de Mercado Pago y cualquier tarea con fecha del mes): si le tocaba un día en que no te prendieron, la hacés en la PRIMERA rutina siguiente; se sabe porque en Gastos del mes el renglón 📄 sigue en rojo.
    g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
@@ -85,7 +86,7 @@ CAJAS LLEGADAS (la tarea a2; 03/11/2026, él: "que mire las cajas llegadas, si t
   `<cuenta> · envío …<últimos 4> · <EN CAMINO | EN PROCESO | CON PROBLEMAS> · <lo que dice ML de lo que falta, producto por producto>`
 - No toques nada, no confirmes ni respondas nada en ML: sólo mirás y anotás. Con eso Claude cierra la caja o arma el reclamo.
 
-MÁS VENDIDOS (la tarea f2, cada 7 días; 03/11/2026, idea 8 que eligió Matías: "productos nuevos con venta segura para llenar el lugar")
+MÁS VENDIDOS (la tarea f2, TODOS LOS DÍAS desde el 06/11; 03/11/2026, idea 8 que eligió Matías: "productos nuevos con venta segura para llenar el lugar")
 - Entrá a mercadolibre.com.ar/mas-vendidos y recorré estas categorías: Belleza y Cuidado Personal (perfumes), Celulares y accesorios,
   Electrónica/Audio, Computación (accesorios), Hogar y Cocina, Herramientas, Deportes, Juegos y Juguetes, Relojes. En cada una, los
   primeros 20.
