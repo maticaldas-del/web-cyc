@@ -62,5 +62,8 @@ rep('</style>', """.pe-abel { display: block; color: #16a34a; font-weight: 800; 
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pe-abel { color: #4ade80; } }
 :root[data-theme="dark"] .pe-abel { color: #4ade80; }
 </style>""")
+# Revisión etapa 9 (06/11/2026): ABEL y la Tienda están en el mismo sitio y compartían lo guardado en el navegador (el orden elegido en la
+# Tienda dejaba vacío el selector de ABEL y lo del carrito salía marcado): ABEL usa sus propias claves.
+s = s.replace('cycT_', 'abelT_')
 (R / 'abel' / 'index.html').write_text(s)
 print('ok', len(s))

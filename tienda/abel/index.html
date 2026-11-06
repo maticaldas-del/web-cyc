@@ -280,16 +280,16 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
 
   // Tema claro/oscuro: sigue al teléfono salvo que se elija a mano.
-  var tema = leer("cycT_tema", "", function (v) { return v === "light" || v === "dark"; });
+  var tema = leer("abelT_tema", "", function (v) { return v === "light" || v === "dark"; });
   if (tema) document.documentElement.setAttribute("data-theme", tema);
   $("tema").onclick = function () {
     var oscuro = document.documentElement.getAttribute("data-theme") === "dark" ||
       (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
     tema = oscuro ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", tema); guardar("cycT_tema", tema);
+    document.documentElement.setAttribute("data-theme", tema); guardar("abelT_tema", tema);
   };
 
-  var PRODS = [], POR_ID = {}, WA = "", rubro = "", pedido = pedidoValido(leer("cycT_pedido", {}));
+  var PRODS = [], POR_ID = {}, WA = "", rubro = "", pedido = pedidoValido(leer("abelT_pedido", {}));
   // La fecha de la lista (`act`): con más de 3 días, el pedido copiado dice "consultar precio" en vez de los precios (30/10/2026).
   var ACT = "", VIEJO = false;
   var grilla = $("grilla");
@@ -347,7 +347,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   }
   // ORDENAR (05/11/2026, él: "poner para ordenar"): destacados = la vidriera de arriba; con una búsqueda, primero lo que EMPIEZA con lo
   // buscado ("Auriculares…" antes que una tablet que trae auriculares). Se recuerda en este teléfono.
-  var ordenar = leer("cycT_orden", "", function (v) { return ["", "menor", "mayor", "ahorro", "az"].indexOf(v) >= 0; });
+  var ordenar = leer("abelT_orden", "", function (v) { return ["", "menor", "mayor", "ahorro", "az"].indexOf(v) >= 0; });
   function ordenado(ls) {
     var con = function (f) { return ls.slice().sort(f); };
     var sinP = function (p) { return p.p > 0 ? 0 : 1; };   // "Consultar precio" siempre al final
@@ -469,7 +469,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     if (!POR_ID[id]) return;
     var q = Math.max(0, Math.min(99, (pedido[id] || 0) + d));
     if (q) pedido[id] = q; else delete pedido[id];
-    guardar("cycT_pedido", pedido);
+    guardar("abelT_pedido", pedido);
     document.querySelectorAll('.card[data-id="' + id + '"]').forEach(function (c) { c.classList.toggle("en", q > 0); c.querySelector(".slot").innerHTML = cantHtml(id); });
     if ($("dlgVer").open && $("verCant").dataset.id === id) $("verCant").innerHTML = cantHtml(id);
     if ($("dlgPedido").open) pintarPedido();
@@ -529,7 +529,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   });
   $("q").addEventListener("input", function () { pag = 1; pintar(); window.scrollTo(0, 0); });
   $("ordenSel").value = ordenar;
-  $("ordenSel").addEventListener("change", function () { ordenar = this.value; guardar("cycT_orden", ordenar); pag = 1; pintar(true); });
+  $("ordenSel").addEventListener("change", function () { ordenar = this.value; guardar("abelT_orden", ordenar); pag = 1; pintar(true); });
   $("rubroSel").addEventListener("change", function () { rubro = this.value; pag = 1; pintarChips(); pintar(); window.scrollTo(0, 0); });
   // teclado: Enter/Espacio en la foto abre el visor; flechas pasan las fotos
   document.addEventListener("keydown", function (e) {
@@ -547,7 +547,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   $("barraTot0").onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("verPedido").onclick(); } };
   $("vaciar").onclick = function () {
     if (!lineasPedido().length || !confirm("¿Vaciar el pedido?")) return;
-    pedido = {}; guardar("cycT_pedido", pedido); pintar(); pintarPedido(); actualizarBarra();
+    pedido = {}; guardar("abelT_pedido", pedido); pintar(); pintarPedido(); actualizarBarra();
   };
   $("copiar").onclick = function () {
     var t = textoPedido(); if (!t) return;

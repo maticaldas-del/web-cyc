@@ -13243,6 +13243,8 @@ const PY_TRAD = [
   [/\b(\d+)\s+em\s+1\b/gi, '$1 en 1'], [/\bautom[oó]vel\b/giu, 'auto'], [/\bautomotivo\b/gi, 'automotor'], [/\bempunhadura\b/gi, 'empuñadura'], [/\best[uú]dio\b/giu, 'estudio'],
   // 05/11/2026 (ABEL día 3): 5 perfumes con "Recarregável" y uno con "Exilir" (Elixir mal escrito en el proveedor).
   [/\brecarreg[aá]ve(l|is)\b/giu, (m, x) => (x === 'l' ? 'recargable' : 'recargables')], [/\bexilir\b/gi, 'Elixir'],
+  // revisión etapa 9 (06/11/2026): "Óleo de Perfume" quedaba en portugués
+  [/(^|\s)[óÓ]leo(?=\s|$)/gu, (m, a) => a + 'Aceite'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE, CON EL CATÁLOGO DE ML EXACTO (inicio) ─────────────────────────────────
@@ -32359,7 +32361,10 @@ async function main() {
       // El mismo código dos veces (ficha y candidato) cuenta una sola vez, con el precio mirado más nuevo.
       const resolver = (xs) => {
         const porCod = new Map(); for (const x of xs) { const k = x.cod || ('?' + x.key); const v = porCod.get(k); if (!v || x.ts > v.ts) porCod.set(k, x); }
-        const u = [...porCod.values()]; if (u.length === 1) return u[0];
+        let u = [...porCod.values()]; if (u.length === 1) return u[0];
+        // Revisión etapa 9 (06/11/2026): si hay códigos mirados hace 2 días o menos, se elige entre ÉSOS (antes podía quedar uno de hace 12 días y
+        // ABEL, que pide 2 días, lo dejaba afuera aunque el otro código estaba en stock hoy).
+        { const fr = u.filter((x) => Date.now() - (Number(x.ts) || 0) <= 2 * 864e5); if (fr.length) u = fr; if (u.length === 1) return u[0]; }
         const max = u.reduce((a, b) => (b.usd > a.usd ? b : a)), min = Math.min(...u.map((x) => x.usd));
         if (max.usd <= min * 1.05) return max;
         // 31/10/2026 (él: "muchos me piden la Xiaomi Pad 2, no hay ni una cargada… si buscan algo y no está no compran"): antes, dos códigos
@@ -43257,6 +43262,9 @@ async function main() {
       // salía como de 1 unidad y lo que ella había pedido (`cyc/pedperf`) bajaba de a 1 aunque se le dejaran 3.
       const esPerfD = /perfumer/.test(_n(d.nom)) || !!local || sinLocal;
       if (signo > 0 && prodF && esPerfD && !extra.u) { console.log('❌ lo que se deja en la perfumería va con |u=<cuántas se dejaron>. No escribo nada.'); return; }
+      // Revisión etapa 9 (06/11/2026): lo que se deja con |prod= dice SIEMPRE de dónde salió (de=local | ml | ninguna): sin eso la deuda subía y
+      // ninguna oficina bajaba (el patrimonio y el cobro subían el valor entero de la mercadería). `de=ninguna` = nunca estuvo en una oficina.
+      if (signo > 0 && prodF && !(extra.de && /cyc|local|mati|ml|ningun|nada/i.test(extra.de))) { console.log('❌ falta |de=<local|ml|ninguna>: de qué oficina salió (ninguna = nunca estuvo en una oficina). No escribo nada.'); return; }
       // Revisión etapa 9, 30/10/2026: en MERCADERÍA Perfumería todo lo que se deja va con producto, perfumería y unidades (`|prod=|local=|u=`).
       // Un "+N" suelto quedaba sin costo, sin unidades y sin perfumería (lo "sin costo cargado" de Ver deudas, que Métricas Local no ve).
       // La otra (Deuda Perfumería = MercadoPago) sigue con +N solo.
@@ -50514,12 +50522,12 @@ async function main() {
           if (cE) { o.cta[cE] = (o.cta[cE] || 0) + u; if (it.variante) { const w = o.vc[it.variante] || (o.vc[it.variante] = {}); w[cE] = (w[cE] || 0) + u; } }
         }
       }); }
-      const viaPy = {}; for (const c of Object.values(CPY)) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) viaPy[it.prodId] = (viaPy[it.prodId] || 0) + (Number(it.u) || 0);
+      const viaPy = {}; for (const c of Object.values(CPY)) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId && !it.paraLocal && !it.tienda) viaPy[it.prodId] = (viaPy[it.prodId] || 0) + (Number(it.u) || 0);
       // Lo de Paraguay que LLEGÓ y todavía no se contó en la oficina (la misma cuenta que `pyRepoSinContar` de la web, 7 días).
       for (const c of Object.values(CPY)) {
         if (!c || c.estado !== 'llego' || !c.fechaLlego || !c.ofiAlLlegar) continue;
         const t = Date.parse(c.fechaLlego + 'T12:00:00-03:00'); if (!(t > 0) || hoy - t > 7 * 864e5) continue;
-        const uP = {}; for (const it of (c.items || [])) if (it && it.prodId && !it.id) uP[it.prodId] = (uP[it.prodId] || 0) + (parseInt(it.u) || 0);
+        const uP = {}; for (const it of (c.items || [])) if (it && it.prodId && !it.id && !it.paraLocal && !it.tienda) uP[it.prodId] = (uP[it.prodId] || 0) + (parseInt(it.u) || 0);
         for (const [pid, u] of Object.entries(uP)) { if (!(pid in c.ofiAlLlegar)) continue;
           const subio = Math.max(0, (parseInt(I[pid + '__Oficina_Mati']) || 0) - (parseInt(c.ofiAlLlegar[pid]) || 0)); const falta = Math.max(0, u - subio);
           if (falta > 0) viaPy[pid] = (viaPy[pid] || 0) + falta; }
@@ -56101,7 +56109,7 @@ async function main() {
             // Etapa 3 (20/10/2026): el proveedor, el link y la foto viajan con el renglón (del candidato si sigue vivo; si no, del
             // pedido). Sin esto la ficha de Elegancia nacía como Nissei y sin las fotos para comparar.
             const src = { id: it.id, nombre: (k && k.nombre) || it.nom || '', usd: parseFloat(it.usd) > 0 ? it.usd : (k && k.usd), cod: (k && k.cod) || it.cod || '', ts: k && k.ts,
-              prov: (k && k.prov) ? provPyDe(k) : it.prov ? provPyDe(it) : (/^pyel/.test(id) ? 'elegancia' : provPyDe(c)), link: (k && k.link) || it.link || '', foto: (k && k.foto) || it.foto || '', tienda: !!it.tienda };
+              prov: (k && k.prov) ? provPyDe(k) : it.prov ? provPyDe(it) : (/^pyel/.test(id) ? 'elegancia' : provPyDe(c)), link: (k && k.link) || it.link || '', foto: (k && k.foto) || it.foto || '', tienda: !!it.tienda, paraLocal: !!it.paraLocal };
             if (k && k.prodId && prods.some((p) => p.id === k.prodId)) { plan.push({ src, estado: 'ya' }); continue; }
             if (!String(src.nombre).trim()) { plan.push({ src, estado: 'nonombre' }); continue; }
             // D2 (etapa 3, 29/09): sólo frena la MISMA ficha —mismo código de Nissei (también por el
@@ -56164,7 +56172,7 @@ async function main() {
           const p = { id: 'p' + Date.now() + String(i++), name: String(((cands[x.src.id] || {}).mlTit && !((cands[x.src.id] || {}).mlReparos || '').length) ? cands[x.src.id].mlTit : x.src.nombre).trim().slice(0, 90), costUSD: puesto, cost: puesto * (tc || 0), origen: 'py', costFullUSD: puesto, altaChat: Date.now() };
           if (x.src.cod) p.codPy = String(x.src.cod);
           if (usd > 0) { p.nisseiUSD = usd; p.nisseiTs = x.src.ts || Date.now(); }
-          if (x.src.tienda) p.soloLocal = true;   // 🏬 02/11/2026: lo de la Tienda no se publica en ML
+          if (x.src.tienda || x.src.paraLocal) p.soloLocal = true;   // 🏬 02/11/2026: lo de la Tienda no se publica en ML · revisión etapa 9 (06/11): lo que ya es del local tampoco
           // Etapa 3 (20/10/2026): igual que `candFichaDesde` de la web: la ficha queda del proveedor que la vendió y con el link
           // y la foto de comprasparaguay (sin eso, lo de Elegancia quedaba como Nissei y Probados no mostraba la foto de Paraguay).
           if (x.src.prov && x.src.prov !== 'nissei') p.provPy = x.src.prov;
@@ -56516,7 +56524,7 @@ async function main() {
               // "ya se descontó de lo decidido", y Pedidos lo volvía a restar.
               // `dp` también (revisión etapa 3, 29/10/2026): un renglón con el descuento PENDIENTE que perdía la marca quedaba como "ya
               // descontado" para Pedidos (en los pedidos de la web) y no se restaba nunca.
-              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'dp', 'ts', 'tienda']) if (hit.src[k] != null) o[k] = hit.src[k];
+              for (const k of ['mlId', 'link', 'foto', 'prov', 'margen', 'ganancia', 'pesoKg', 'pesoTxt', 'prodId', 'variante', 'desc', 'dp', 'ts', 'tienda', 'paraLocal']) if (hit.src[k] != null) o[k] = hit.src[k];
               // EL PRECIO DE LA WEB QUEDA AL LADO DEL PAGADO (10/10/2026, él: "los pedidos que cargo en paraguay siempre
               // tienen descuento de lo que aparece en la web (…) quizás hay productos con más descuento que otro, o
               // algunos quizás nada"). El de la web es el que se guardó al hacer el pedido; si el ticket ya se había

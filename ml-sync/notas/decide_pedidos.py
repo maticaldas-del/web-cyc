@@ -1,4 +1,17 @@
 import re,sys,math,os,json
+# 12b DEL LOCAL TAMBIÉN EN PEDIDOS (revisión etapa 9, 06/11/2026): lo FIJO de él para Full (`FIJO` de decide_cajas.py, ej. las 3 Persea de
+# Luciana) va antes que lo de la perfumería. Antes Pedidos apartaba esas 3 para ella ("no hace falta comprar") y Cajas las mandaba a Full:
+# ella se quedaba sin nada. Se lee el mismo FIJO (un solo lugar).
+def _leer_fijo():
+    import ast
+    try:
+        t=open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'decide_cajas.py'),encoding='utf-8').read()
+        i=t.index('\nFIJO={')+1; j=t.index('\n}',i)+2
+        return ast.literal_eval(t[i+5:j])
+    except Exception as e:
+        print(f'⚠️ no pude leer FIJO de decide_cajas.py ({e}): lo de la perfumería se aparta sin contar lo fijo para Full'); return {}
+_FIJO=_leer_fijo()
+def fijo_q(pid,v): return max([q for (a,b,_c),(q,_m) in _FIJO.items() if a==pid and b==v] or [0])
 # Arma los pedidos de TODO el catálogo a partir del log de `pedidostodo` (09/10/2026; revisión 9 del 13/10/2026).
 # Uso: python3 decide_pedidos.py <log de pedidostodo> <salida> → escribe <salida>, <salida>.json y pedidos.txt
 # Objetivo 30 días (Bs As 60 desde el 03/11, Paulvic 45): ritmo (por día CON stock: dCS) menos Full + oficina + camino + viajando. Sin ganancia o sin costo = 0.
@@ -305,8 +318,8 @@ for p in prods:
             r=0; p['perf']=(pu,pva)
         else:
             tv=_m[0] if _m else max(p['vars'],key=lambda v:(v['v180'],v['casa']))
-            p['perf']=(pu,tv['v']); r=min(pu,tv['casa']); tv['casa']-=r; p['casa']=max(0,p['casa']-r); tv['perfOfi']=r
-    else: r=min(pu,p['casa']); p['casa']-=r
+            p['perf']=(pu,tv['v']); r=min(pu,max(0,tv['casa']-fijo_q(p['id'],tv['v']))); tv['casa']-=r; p['casa']=max(0,p['casa']-r); tv['perfOfi']=r
+    else: r=min(pu,max(0,p['casa']-fijo_q(p['id'],''))); p['casa']-=r
     p['perfOfi']=r; p['perf']=(pu-r,p['perf'][1])
     if r: print(f"🛍️ {p['n']}: {r} de la perfumería ya están en la oficina (apartados){'' if pu-r else ': no hace falta comprar para ella'}")
     # 🚚 LO QUE VIENE VIAJANDO LA CUBRE PRIMERO (30/10/2026, él eligió la 4a de la revisión del Local: "lo que viaja la cubre primero, no se
@@ -515,8 +528,10 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
     else: base=f"se venden unos {mes} por mes"
     tt=round(t)
     if q>0:
-        m45=re.search(r'45 días porque (.*)$',b)
-        x=f"Hola Tito! Te pido {q}{de}: {base} y entre Full, la oficina y lo que viene en camino hay {tt}. Con {q} más cubrimos "+(f"un mes y medio ({m45.group(1)})." if m45 else "un mes.")
+        # revisión etapa 9 (06/11/2026): también los 60 días de Bs As (antes sólo leía "45 días" y a Tito le decía "un mes")
+        m45=re.search(r'(\d+) días porque (.*)$',b)
+        _cub=lambda d: 'un mes y medio' if d==45 else 'dos meses' if d==60 else f'{d} días'
+        x=f"Hola Tito! Te pido {q}{de}: {base} y entre Full, la oficina y lo que viene en camino hay {tt}. Con {q} más cubrimos "+(f"{_cub(int(m45.group(1)))} ({m45.group(2)})." if m45 else "un mes.")
     elif b.startswith('nunca'):
         x=f"Hola Tito! {quien} no lo compres: {base}."
     else:

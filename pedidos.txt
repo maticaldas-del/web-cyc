@@ -1,0 +1,4 @@
+ped:p100=u|1|Hola Tito! Te pido 1 para la perfumería. Para ML: Este no lo compres: al precio de hoy deja 0% y ahora compramos sólo lo que deja 35% o más. Si al subirlo sigue vendiendo, lo vuelvo a pedir.|cub=2
+ped:p100=venta|9990|precio normal de venta para el maximo de compra
+ped:p200=u|18|Hola Tito! Te pido 18: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 18 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Aparte hay 3 en la oficina apartadas para la perfumería (no las cuento para ML).|cub=5
+ped:p200=venta|19990|precio normal de venta para el maximo de compra

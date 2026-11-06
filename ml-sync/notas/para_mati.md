@@ -433,3 +433,22 @@ Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (19 cosas
 1. **Recortadora 4 en 1 (Ayelen, 5 u.):** el Excel de ML dice que la más vieja tiene 105 días (el robot contaba 76) y el stock antiguo se cobra desde el ~20/11. El 31/10 dijiste "queda a $48.990 hasta los 90 días, ahí lo vemos"; hoy tiene un descuento a $41.590. Para ganar la caja ML pide $29.643 (~20% en el peor caso, casi la misma plata por unidad porque abajo de $33.000 el envío lo paga el comprador). (a) sugerida: descuento a $29.590 para ganar la caja (tu regla de los 15 días antes de pagar stock antiguo) y, si no se vende al ~17/11, retirarla · (b) dejarla en $41.590 y retirar al ~17/11 si no vende.
 2. **microSD Pokémon 256 GB (Ayelen, 2 u., 27 días):** no vendió en 10 días a $249.890 con ~20 visitas por día (techo seguro). Para ganar la caja ML pide $214.569 (~20%), y antes de los 90 días la liquidación no baja del 30%. (a) sugerida: esperar a $249.890 hasta los 90 días (~08/01) · (b) autorizar ganar la caja antes de Navidad (es un regalo típico).
 3. **Muserose Musc Mirada (Adriana, 1 u.):** el precio de lista sigue en $69.783 con centavos aunque lo corregí dos veces. Puede ser una herramienta de precios de ML que lo pisa. (a) sugerida: que mires en ML si tiene activada alguna herramienta automática de precios y la apagues · (b) dejarlo así.
+
+### Revisión del Local del 06/11 (16 decisiones, para cuando digas "resolvamos")
+Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (ver REVISION etapa 9).
+1. **Cuando la perfumería devuelve algo, ¿de qué día sale la ganancia?** Hoy sale del día que se dejó (cambia un mes ya cerrado). (a) sugerida: del día que vuelve · (b) del día que se dejó, como hoy.
+2. **La tarjeta de Mercadería Perfumería** muestra la ganancia de la deuda inicial, no la de lo que se dejó después. (a) sugerida: la de lo dejado (lo que pediste el 29/10) · (b) como hoy.
+3. **El +25% de una ficha en dólares, ¿con qué dólar?** (a) sugerida: el del día que se deja (como hoy, igual que el Arqueo) · (b) el del día que se compró.
+4. **Lo de la 🏬 Tienda que llega de Paraguay** queda en ninguna oficina hasta que cargo la venta: si se cierra el mes en el medio, falta en el patrimonio. (a) sugerida: entra a la Oficina Local hasta que se carga la venta · (b) la venta se carga el mismo día que llega (regla de trabajo).
+5. **"Cobrado" de la perfumería** cuenta sólo lo de Mercadería: como "la perfumería pagó X" va primero a MercadoPago, un cobro puede salir $0. (a) sugerida: mostrar también lo de MercadoPago · (b) como hoy.
+6. **Corregir el precio de algo dejado en un mes ya cerrado**: (a) sugerida: va a "lo viejo cargado tarde" (no se cobra como ganancia) · (b) entra al cobro.
+7. **Calvin Klein y las marcas prohibidas sólo en ML**: la lista de Paraguay todavía las mide por el % del local. (a) sugerida: para la perfumería sólo por lo que ella pide (`pedperf`) · (b) que se sigan mirando.
+8. **Lo "sólo local" que llega** (ej. el Dior J'adore del 26/10) queda en la Oficina ML. (a) sugerida: va a la Oficina Local · (b) como hoy.
+9. **ABEL · Colonias de 200/250 ml** (21 body splash: Stella Dustin, Joli Joli, Icandy, Lattafa, Maison Alhambra). Los "Body Mist" ya están afuera. (a) sugerida: afuera también · (b) adentro.
+10. **ABEL no tiene TODOS los perfumes**: ~65 que no pudimos asegurar en ML y ~70 que en ML están más baratos que nuestro costo quedan afuera, aunque la regla dice "todos, sin comparar con ML". (a) sugerida: que entren con la foto y el nombre de Nissei · (b) dejarlos afuera.
+11. **ABEL en efectivo sale ~5% más caro que la Tienda de CYC** para los mismos 1.095 perfumes (con tarjeta ~35% más). (a) sugerida: está bien, son dos negocios distintos · (b) igualarlos.
+12. **Testers en ABEL**: (a) sugerida: afuera · (b) adentro.
+13. **"Llega en 7 días hábiles"**: en la práctica se espera el próximo pedido de Paraguay (~1 por semana) más el viaje (~16 días). (a) sugerida: "llega en 2 a 3 semanas" · (b) dejarlo.
+14. **ABEL con menos de 20 perfumes al día**: hoy queda la página vieja sin aviso. (a) sugerida: te aviso y la página dice "actualizando" · (b) como hoy.
+15. **Los US$ 100 por mes de ABEL** no están cargados en ningún lado (no se ven en el Arqueo). (a) sugerida: deuda mensual de la perfumería desde que arranque · (b) no cargarlos.
+16. **Persea:** ahora Pedidos también respeta lo que fijaste para Full (las 3 de Luciana) y compra aparte lo que pide la perfumería. (a) sugerida: así · (b) que la perfumería vaya primero.
