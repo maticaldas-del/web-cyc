@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.140';
+const APP_VERSION='28.141';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.141',f:'06/11',h:'16:05',c:[{n:1,t:'¿Falta cargar algún gasto?: el total de arriba suma sólo los gastos reales del mes, sin el retiro de los socios.'}]},
   {v:'28.140',f:'06/11',h:'15:55',c:[{n:1,t:'Inicio → La mezcla: sin la lista de colores abajo de la barra (el calendario queda más arriba). Tocando cada color de la barra dice su parte.'}]},
   {v:'28.139',f:'06/11',h:'15:53',c:[{n:2,t:'🔎 Gastos del mes → Mercado Pago contra el panel: con el extracto, también lo pagado desde MP a ARCA, Sancor y suscripciones contra lo cargado en Gastos, las retenciones reales de cada cuenta contra el % que usa el panel, las transferencias entre nuestras cuentas (no son plata nueva), contracargos y plata retenida, y cobros por QR fuera de ML.'}]},
   {v:'28.138',f:'06/11',h:'15:51',c:[{n:1,t:'Ventas: con muchos carteles arriba (Premium, 1ª venta, estrategia) el total y la ganancia ya no se van para el costado: los carteles se acortan y los números quedan a la vista.'}]},
@@ -28271,9 +28272,9 @@ function renderComprasChecklist(){
     <div style="font-size:.86rem;font-weight:700;color:${col};margin-bottom:10px">
       ${faltan?`❌ Faltan ${faltan} de ${filas.length+filasRet.length+1}`:`✅ Están los ${filas.length+filasRet.length+1}`}
       <span style="font-weight:400;font-size:.68rem;color:var(--muted)">· lo que no puede cargarse solo</span>
-      ${(()=>{/* 21/10/2026, él: "que el total gastado del mes aparezca ahí también": TODOS los gastos cargados del mes (no sólo los de la lista) */
+      ${(()=>{/* 21/10/2026, él: "que el total gastado del mes aparezca ahí también": TODOS los gastos cargados del mes (no sólo los de la lista). 06/11/2026 (él: "solo los gastos reales, no el retiro"): sin el retiro de los socios */
         const gm=getComprasByPrefix(ymL).filter(x=>getCompraTipo(x)==='gasto');const t=gm.reduce((a,x)=>a+(Number(x.monto)||0),0);
-        return `<span style="float:right;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Total del mes <b>${fmt(t+(_ret||0))}</b> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}${_ret!=null?' + el retiro '+fmt(_ret):''}</span></span>`;})()}
+        return `<span style="float:right;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Gastos del mes <b>${fmt(t)}</b> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}</span></span>`;})()}
     </div>
     ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.noVa?'➖':(f.hay?'✅':(f.parcial?'⚠️':'❌'))}</span>
