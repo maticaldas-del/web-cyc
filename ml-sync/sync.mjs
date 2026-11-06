@@ -12067,6 +12067,13 @@ function extractoMpResumen(txt) {
     const M = meses[ym] || (meses[ym] = { filas: 0, rend: 0, nRend: 0, saldoIni: null, saldoFin: null });
     M.filas++;
     if (iTxt.some((i) => /rendim/i.test(String(r[i] || '')))) { M.rend += monto; M.nRend++; }
+    // 06/11/2026 (él eligió 1a): el TIPO de cada movimiento = la 1ª palabra de la descripción (y la 2ª sólo si va en minúscula: "Transferencia
+    // enviada", nunca un nombre, que va con mayúscula). Se guardan sólo los totales por tipo: ni nombres ni el texto del movimiento.
+    { const t0 = iTxt.map((i) => String(r[i] || '').trim()).find((x) => /[A-Za-zÁÉÍÓÚáéíóúñÑ]/.test(x)) || '';
+      const w = t0.split(/\s+/).filter(Boolean); let tipo = String(w[0] || '?').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '').slice(0, 20) || '?';
+      if (w[1] && /^[a-záéíóúñ]+$/.test(w[1]) && w[1].length > 2) tipo += '_' + w[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 15);
+      const T = (M.tipos = M.tipos || {})[tipo] || (M.tipos[tipo] = { n: 0, cr: 0, db: 0 });
+      T.n++; if (monto >= 0) T.cr += monto; else T.db += -monto; }
     const sal = iS >= 0 ? _numAr(r[iS]) : null;
     if (sal != null) {
       if (M.saldoIni == null) M.saldoIni = Math.round((sal - monto) * 100) / 100;
@@ -12075,8 +12082,10 @@ function extractoMpResumen(txt) {
       prev = sal;
     }
   }
-  for (const M of Object.values(meses)) M.rend = Math.round(M.rend * 100) / 100;
-  return { meses, n, enc, rotas, conSaldo: iS >= 0, cols: cab.length };
+  for (const M of Object.values(meses)) { M.rend = Math.round(M.rend * 100) / 100;
+    for (const T of Object.values(M.tipos || {})) { T.cr = Math.round(T.cr * 100) / 100; T.db = Math.round(T.db * 100) / 100; } }
+  // la cabecera (nombres de columna, no datos) para ver qué trae el archivo
+  return { meses, n, enc, rotas, conSaldo: iS >= 0, cols: cab.length, cab: cab.map((c) => String(c).slice(0, 40)).slice(0, 40) };
 }
 async function procesarExtractosMp(db, GO) {
   const inp = (await db.get('mlapi/privado_in')) || {};
@@ -12103,6 +12112,7 @@ async function procesarExtractosMp(db, GO) {
     console.log(`🔒 ${cta} · ${e.per || ''}: ${R.n} movimientos · ${ms.length} mes(es) ${ms[0] ? ms[0].replace('_', '-') + ' a ' + ms[ms.length - 1].replace('_', '-') : ''} · saldo ${R.conSaldo ? (R.rotas ? `NO encadena en ${R.rotas} renglón(es) de ${R.enc + R.rotas}` : `encadena ✓ (${R.enc} renglones)`) : 'sin columna de saldo'} · rendimientos en ${ms.filter((m) => R.meses[m].nRend).length} mes(es) (los montos se ven en el panel)`);
     if (!GO || !/^(Adriana|Luciana|Ayelen|Matias)$/.test(cta)) { if (GO) console.log('   (sin cuenta válida: no se guarda)'); continue; }
     const upd = {}; for (const m of ms) upd[cta + '/' + m] = { ...R.meses[m], ts: Date.now(), encadena: R.conSaldo ? !R.rotas : null };
+    upd[cta + '/_cab'] = R.cab;
     await db.patch('cyc/rendimientos_mp', upd);
     await db.set('mlapi/privado_in/' + id, null);
     ok++;
@@ -26577,7 +26587,7 @@ async function main() {
       const pend = Object.values((await db.get('mlapi/privado_in')) || {}).filter((e) => e && e.tipo === 'extracto_mp');
       console.log(`\n=== 🔒 YA GUARDADO (cyc/rendimientos_mp) · ${pend.length} archivo(s) cerrado(s) esperando ===`);
       for (const p of pend) console.log(`  esperando: ${p.cuenta || '?'} · ${p.per || ''}${p.error ? ' · ERROR: ' + p.error : ''}`);
-      for (const [cta, ms] of Object.entries(rm)) for (const [m, x] of Object.entries(ms || {}).sort()) console.log(`  ${cta} · ${m.replace('_', '-')} · ${x.filas} movimientos · rendimientos en ${x.nRend} renglón(es) · saldo ${x.encadena === true ? 'encadena ✓' : x.encadena === false ? 'NO encadena' : 'sin columna'} · guardado ${new Date(x.ts).toISOString().slice(0, 16)}`);
+      for (const [cta, ms] of Object.entries(rm)) for (const [m, x] of Object.entries(ms || {}).sort()) if (m === '_cab') console.log(`  ${cta} · columnas del archivo: ${(x || []).join(' | ')}`); else console.log(`  ${cta} · ${m.replace('_', '-')} · ${x.filas} movimientos · rendimientos en ${x.nRend} renglón(es) · saldo ${x.encadena === true ? 'encadena ✓' : x.encadena === false ? 'NO encadena' : 'sin columna'} · guardado ${new Date(x.ts).toISOString().slice(0, 16)}${x.tipos ? ' · tipos: ' + Object.entries(x.tipos).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => k + ' ' + v.n).join(', ') : ' · (sin tipos: hay que volver a pegarlo)'}`);
       return;
     }
     // BILLING_PROBE=pyllenar:<resto|perf>[:<tope US$>] (04/11/2026, él: "llenalo hasta 600 dólares"; SÓLO LEE) → lo mismo que el botón
