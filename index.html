@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.143';
+const APP_VERSION='28.144';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.144',f:'06/11',h:'18:23',c:[{n:2,t:'Gastos del mes: Sancor y Autónomos dicen si Mercado Pago ya los pagó ese mes (✅ con día y monto, ❌ si no aparece, ⚠️ si Sancor se pagó dos veces).'}]},
   {v:'28.143',f:'06/11',h:'18:12',c:[{n:1,t:'🔎 Mercado Pago contra el panel: el correo se compara con el costo de caja que ya va en cada producto, los peajes figuran como de la perfumería y la nafta y la tarjeta como personales.'}]},
   {v:'28.142',f:'06/11',h:'16:47',c:[{n:2,t:'🔎 Mercado Pago contra el panel: cuenta bien lo que entra por ventas ("Liquidación de dinero") y muestra aparte peajes, combustible, correo y tarjeta pagados desde MP contra lo cargado en Gastos.'}]},
   {v:'28.141',f:'06/11',h:'16:05',c:[{n:1,t:'¿Falta cargar algún gasto?: el total de arriba suma sólo los gastos reales del mes, sin el retiro de los socios.'}]},
@@ -28237,6 +28238,22 @@ function _gastosFaltanAviso(ym,lbl){
   try{const f=gastosChecklistMes(ym).filter(x=>!x.hay);if(!f.length)return'';
     return `<div style="font-size:.64rem;color:var(--amber);margin-top:4px;line-height:1.45">⚠️ A ${lbl} le falta${f.length>1?'n':''} cargar ${f.length} gasto${f.length>1?'s':''} (${f.map(x=>x.g.n.split(' — ')[0]).join(', ')}): este número puede bajar.</div>`;}catch(_){return'';}
 }
+// 💳 ¿YA SE PAGÓ? (06/11/2026, él: "podés agregar todos estos gastos a gastos poniendo cruz o tilde si está pago, así no se paga dos veces.
+// pero tampoco agregues al pedo. solo lo importante"): en Sancor y en Autónomos (el VEP de la categoría H de Ayelen, que los lleva adentro)
+// se ve qué pagos de ese mes muestra el extracto de Mercado Pago (`rendimientos_mp/<cuenta>/<mes>/pf`, día y monto). Dos pagos de Sancor
+// en el mismo mes = ⚠️ (él: "puede que se pague dos veces también, por eso hay que estar seguro").
+function _mpPagadoHTML(ym,g){
+  const n=String(g&&g.n||'').toLowerCase();const k=/sancor/.test(n)?'sancor':/aut[oó]nomo/.test(n)?'arca':null;if(!k)return'';
+  const R=state.rendimientos_mp||{},P=[];let hayExt=false;
+  for(const c of ['Adriana','Luciana','Ayelen','Matias']){const M=(R[c]||{})[ym];if(!M)continue;if(M.pf)hayExt=true;for(const [cat,d,m] of (M.pf||[]))if(cat===k)P.push({c,d,m});}
+  if(!hayExt)return'';
+  const [y,mm]=ym.split('_');const dd=d=>String(d).padStart(2,'0')+'/'+mm;
+  let L=P;if(k==='arca')L=P.filter(p=>p.m>250000);   // el VEP de la H (impuesto + autónomos + obra social); los de G y F no son gasto
+  const col=!L.length?'var(--red)':(k==='sancor'&&L.length>1?'var(--amber)':'var(--green)');
+  const txt=!L.length?`❌ Mercado Pago no muestra el pago de este mes${k==='arca'?' (VEP de la H de Ayelen)':''}`
+    :`✅ pagado por Mercado Pago: ${L.map(p=>`${dd(p.d)} ${fmt(Math.round(p.m))} (${p.c})`).join(' · ')}${k==='sancor'&&L.length>1?` · ⚠️ ${L.length} pagos en el mes: ¿uno atrasado o pagado dos veces?`:''}`;
+  return `<span style="font-size:.64rem;color:${col};flex-basis:100%">💳 ${txt}</span>`;
+}
 function renderComprasChecklist(){
   try{renderComprasRetiro();}catch(e){}
   const el=document.getElementById('compras-checklist');if(!el)return;
@@ -28287,6 +28304,7 @@ function renderComprasChecklist(){
              :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
                :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
       ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>`}
+      ${_mpPagadoHTML(ymL,f.g)}
       ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}" style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn" style="font-size:.66rem;padding:3px 10px" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
     </div>`).join('')}
     ${filasRet.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">

@@ -12131,7 +12131,10 @@ function extractoMpResumen(txt) {
     // para que la web encuentre las que van entre nuestras 4 cuentas (mismo día y monto en una que sale y otra que entra).
     { const tx = iTxt.map((i) => String(r[i] || '')).join(' '); const cat = extractoMpCat(tx, monto);
       const C = (M.cat = M.cat || {})[cat] || (M.cat[cat] = { n: 0, cr: 0, db: 0 }); C.n++; if (monto >= 0) C.cr += monto; else C.db += -monto;
-      if (/^transf/.test(cat) && (M.tr = M.tr || []).length < 400) M.tr.push([_diaDeFecha(r[iF]), Math.round(monto * 100) / 100]); }
+      if (/^transf/.test(cat) && (M.tr = M.tr || []).length < 400) M.tr.push([_diaDeFecha(r[iF]), Math.round(monto * 100) / 100]);
+      // 06/11/2026 (él: "agregá estos gastos a gastos poniendo cruz o tilde si está pago, así no se paga dos veces"): de los gastos fijos
+      // (Sancor, ARCA, suscripciones) y de los peajes (van a la deuda de la perfumería) se guarda cada pago: día y monto, sin texto.
+      if (['sancor', 'arca', 'suscrip', 'peajes'].includes(cat) && monto < 0 && (M.pf = M.pf || []).length < 400) M.pf.push([cat, _diaDeFecha(r[iF]), Math.round(-monto * 100) / 100]); }
     const sal = iS >= 0 ? _numAr(r[iS]) : null;
     if (sal != null) {
       if (M.saldoIni == null) M.saldoIni = Math.round((sal - monto) * 100) / 100;
