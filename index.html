@@ -2772,7 +2772,7 @@ function startApp(){
     state.metricas =d.metricas ||{};
     state.local    =d.local    ||{};
     state.compras  =d.compras  ||{};
-    state.ventaprod=d.ventaprod||{};
+    state.ventaprod=Object.assign({},window._vpArch||{},d.ventaprod||{}); // + los días viejos traídos del archivo (`_vpArchivoTraer`)
     state.oficinas=d.oficinas||{};   // mercadería en las casas, valuada solo a costo USD
     state.precios_hist_prod=d.precios_hist_prod||{};
     state.tc_mes=d.tc_mes||{};
@@ -3408,7 +3408,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.136';
+const APP_VERSION='28.137';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3421,6 +3421,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.137',f:'06/11',h:'15:48',c:[{n:2,t:'💳 Gastos del mes: cada cuenta muestra lo que dice el extracto de Mercado Pago (ventas, rendimientos, impuestos, cargos, devoluciones, transferencias) contra lo que tiene el panel.'},{n:2,t:"🧮 ¿Cierra el mes?: los rendimientos de Mercado Pago son un renglón propio y se suman a lo que genera CYC."},{n:1,t:'🗄️ Las ventas de más de 400 días se guardan aparte de noche y la web las trae sólo cuando mirás esas fechas en Métricas (no se borra nada).'}]},
   {v:'28.136',f:'06/11',h:'15:29',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también COMPETENCIA (comparar con otros vendedores lo que vendemos caro).'}]},
   {v:'28.135',f:'06/11',h:'15:25',c:[{n:2,t:'📊 Métricas → 🔀 Todo, 🛍️ Perfumería y 🏬 Tienda: vuelve la barra para elegir el período y Total / Ganancia (sólo se veía en ML).'}]},
   {v:'28.134',f:'06/11',h:'11:40',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también MIRAR TODO (reclamos, mensajes, preguntas y avisos de ML, sólo mirando; va dentro de la rutina de cada día).'}]},
@@ -11366,7 +11367,10 @@ function renderReconciliacion(){
   {const tB=_cB?_ganTrasCorte(snapKey,_cB):null,tE=_cE?_ganTrasCorte(ym,_cE):null;
     for(const k of ['neto','costo','gastos'])P[k]+=(tB?tB[k]:0)-(tE?tE[k]:0);
     ganLocal+=(tB?tB.local:0)-(tE?tE.local:0);}
-  const genera=P.neto-P.costo-P.gastos+ganLocal;         // lo que generó el negocio (ML + local)
+  // 💰 RENDIMIENTOS DE MERCADO PAGO (06/11/2026, él eligió 2a: "los rendimientos mínimamente tienen que estar"): lo que rindió la plata de las
+  // 4 cuentas, del extracto (`cyc/rendimientos_mp`). El saldo de MP ya lo trae adentro, así que sin sumarlo acá se leía como "Sobra".
+  let rendMP=0,_rendFalta=0;{const RM=state.rendimientos_mp||{};for(const m of _mesesEval){const cs=['Adriana','Luciana','Ayelen','Matias'].filter(c=>(RM[c]||{})[m]);if(cs.length<4)_rendFalta++;cs.forEach(c=>rendMP+=Number(RM[c][m].rend)||0);}}
+  const genera=P.neto-P.costo-P.gastos+ganLocal+rendMP;         // lo que generó el negocio (ML + local + lo que rindió Mercado Pago)
   // Retiro de cada mes: el cargado, o el supuesto de ese mes (`retiroDefMes`).
   let retiroUsado=0,_retFaltan=0;
   for(const x of _Ps){const rr=state.retiro_mes&&state.retiro_mes[x.m];if(rr!=null&&rr!==''){retiroUsado+=Number(rr)||0;}else{retiroUsado+=x.P.retiro;_retFaltan++;}}
@@ -11378,7 +11382,7 @@ function renderReconciliacion(){
   if(Math.abs(dif)<=umbral){col='#22c55e';verdict='✓ Cierra bien';expl='Los números cuadran: lo que ganó el negocio se ve reflejado en el patrimonio.';}
   else if(dif<0){col='#ef4444';verdict='🔴 Falta plata';expl=`Salieron <strong>${fmt(-dif)}</strong> que no están anotados. Revisá: gastos sin cargar, retiros de más, o pérdidas/roturas de stock este mes.`;}
   else{col='#f59e0b';verdict='🟡 Sobra';expl=`El patrimonio creció <strong>${fmt(dif)}</strong> más que la ganancia. Puede ser un valor cargado de más en el arqueo, o plata que entró y no es de ventas.`;}
-  if(!_arqViewYM&&!endSnap){try{const r={ym,base:snapKey,esperado:Math.round(esperado),crecio:Math.round(dP),dif:Math.round(dif),genera:Math.round(genera),ganLocal:Math.round(ganLocal),neto:Math.round(P.neto),costo:Math.round(P.costo),gastos:Math.round(P.gastos),retiro:Math.round(retiroUsado),retSupuesto:retReal==null,tc,total:Math.round(arqNow*100)/100,baseTotal:Number(snap.total)};
+  if(!_arqViewYM&&!endSnap){try{const r={ym,base:snapKey,esperado:Math.round(esperado),crecio:Math.round(dP),dif:Math.round(dif),genera:Math.round(genera),ganLocal:Math.round(ganLocal),rendMP:Math.round(rendMP),neto:Math.round(P.neto),costo:Math.round(P.costo),gastos:Math.round(P.gastos),retiro:Math.round(retiroUsado),retSupuesto:retReal==null,tc,total:Math.round(arqNow*100)/100,baseTotal:Number(snap.total)};
     const o=state.recon_vivo||{};if(o.ym!==r.ym||Math.abs((o.dif||0)-r.dif)>1000||Date.now()-(o.ts||0)>36e5){r.ts=Date.now();state.recon_vivo=r;fbSet('recon_vivo',r).catch(()=>{});}}catch(_){}}   // para que el robot pueda leerlo (recon)
   const mesLbl=MONTHS[parseInt(mm,10)-1]+' '+yy;
   const row=(lbl,val,extra='')=>`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><span style="color:var(--muted)">${lbl}</span><span style="font-family:'DM Mono',monospace;${extra}">${val}</span></div>`;
@@ -11389,6 +11393,7 @@ function renderReconciliacion(){
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;font-size:.7rem">
       ${row('Ganancia del negocio (debería quedar)',fmt(esperado))}
+      ${rendMP||_rendFalta?row('· adentro: 💰 rindió Mercado Pago',rendMP?fmt(Math.round(rendMP)):'—',_rendFalta?'color:var(--muted)':'color:var(--green)')+(_rendFalta?`<div style="font-size:.58rem;color:var(--muted);text-align:right">${_rendFalta===_mesesEval.length?'sin extracto de este mes todavía':'falta el extracto de algún mes o cuenta'}</div>`:''):''}
       ${row('Creció el patrimonio (arqueo)',fmt(dP))}
       <div style="border-top:1px solid var(--border);margin-top:3px;padding-top:6px">${row('Diferencia',fmt(dif),`font-weight:700;color:${col}`)}</div>
     </div>
@@ -26111,6 +26116,18 @@ function renderMetLocal(curKeys,prevKeys,lbl){
 // cada dibujo la releía: si el navegador no dejaba guardar, tocar 🏪 Local no hacía nada (volvía a ML), y un valor raro guardado mostraba los
 // números de ML con todas sus secciones escondidas y ningún botón prendido.
 const MET_VISTAS=['ml','perf','tienda','todo'];let _metSrcLeido=false,_metNetoAntes=null;
+// 06/11/2026 (él: "me gustaria tener toda la info posible guardada, pero que se cargue al buscarla"; 3a): las ventas de más de 400 días
+// las pasa el robot de noche a `archivo/ventaprod/<día>` (fuera de cyc/, no se baja al abrir). Cuando una pantalla pide días más viejos
+// que el primero cargado, se traen esos días UNA vez y se suman a `state.ventaprod` (los totales de cada día siguen en `metricas`).
+let _vpArchPedido=null;
+function _vpArchivoTraer(desde){
+  try{if(!db||!desde||!/^\d{4}_\d{2}_\d{2}$/.test(desde))return;
+    const ks=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort();const primero=ks[0]||'9999';
+    if(desde>=primero||(_vpArchPedido&&_vpArchPedido<=desde))return;_vpArchPedido=desde;
+    db.ref('archivo/ventaprod').orderByKey().startAt(desde).endAt(primero).once('value').then(sn=>{const v=sn.val()||{};let n=0;
+      for(const [k,d] of Object.entries(v))if(d&&!(state.ventaprod||{})[k]){(window._vpArch=window._vpArch||{})[k]=d;(state.ventaprod=state.ventaprod||{})[k]=d;n++;}
+      if(n){try{if(currentPage==='metricas')renderMetricas();}catch(_){}}}).catch(()=>{_vpArchPedido=null;});
+  }catch(_){}}
 function renderMetricas(){
   if(!_metSrcLeido){_metSrcLeido=true;try{let s=localStorage.getItem('cyc_metvista');if(s==='local')s='perf';if(MET_VISTAS.includes(s))metSrc=s;}catch(e){}}
   if(!MET_VISTAS.includes(metSrc))metSrc='ml';_metLocMemo=null;
@@ -26125,6 +26142,7 @@ function renderMetricas(){
   _initMetDefaults();
   _metNextApagar();
   const curKeys=getAllMetKeys(metScopeMode),prevKeys=getAllPrevMetKeys(metScopeMode);
+  try{const _mk=[...curKeys,...prevKeys].filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort()[0];if(_mk)_vpArchivoTraer(_mk);}catch(_){}
   const cur=sumMetFields(curKeys,metViewField),prev=sumMetFields(prevKeys,metViewField);
   const curTotal=metAccts().reduce((s,a)=>s+cur[a],0),prevTotal=metAccts().reduce((s,a)=>s+prev[a],0);
   const lbl=getMetScopeLabel(metScopeMode),prevLbl=getPrevMetLabel(metScopeMode);
@@ -28277,6 +28295,7 @@ function renderComprasChecklist(){
         ?`<span style="font-size:.6rem;color:var(--green)">pasado</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" onclick="setExtractoMp('${ymL}',false)">deshacer</button>`
         :`<span style="font-size:.6rem">falta</span> <button class="vbtn" style="font-size:.6rem;padding:1px 6px" onclick="setExtractoMp('${ymL}',true)">✅ Ya se lo pasé</button>`}</span>
       ${filaEx.rTxt?`<span style="font-size:.64rem;color:var(--green);flex-basis:100%">💰 ${filaEx.rTxt}</span>`:''}
+      ${_mpVsPanelHTML(_exYm)}
       ${filaEx.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">El completo: todos los movimientos de las 4 cuentas. Con eso salen los rendimientos de Mercado Pago y se controla que el saldo cierre al peso. El chat de Chrome lo baja con el texto EXTRACTO.</span>`}
     </div>
     ${faltan?`<div style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.6">
@@ -28285,6 +28304,24 @@ function renderComprasChecklist(){
   </div>`;
 }
 
+// 🔎 MERCADO PAGO CONTRA EL PANEL (06/11/2026, él eligió 1a): con los totales por tipo de movimiento que saca el robot del extracto
+// (`cyc/rendimientos_mp/<cuenta>/<mes>/tipos`, sin nombres), por cuenta: lo que entró por ventas (liberaciones) contra el neto de las ventas
+// del panel de ese mes, y los impuestos/retenciones, cargos y lo demás. Lo liberado corre unos días atrás de la venta: una diferencia chica es normal.
+function _mpVsPanelHTML(ym){
+  const R=state.rendimientos_mp||{},C=['Adriana','Luciana','Ayelen','Matias'].filter(c=>((R[c]||{})[ym]||{}).tipos);
+  if(!C.length)return (['Adriana','Luciana','Ayelen','Matias'].some(c=>(R[c]||{})[ym]))?`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">🔎 Para comparar Mercado Pago contra el panel hay que volver a pegar el extracto (el robot ahora lo separa por tipo).</span>`:'';
+  const [y,m]=ym.split('_');const pre=y+'_'+m+'_';
+  const netoPanel={};for(const [k,dia] of Object.entries(state.ventaprod||{})){if(!k.startsWith(pre))continue;for(const v of Object.values(dia||{})){if(!v||v.cancelada)continue;netoPanel[v.cuenta]=(netoPanel[v.cuenta]||0)+(Number(v.neto)||0);}}
+  const grupo=k=>/^(liberacion|venta|cobro_venta|dinero_liberado)/.test(k)?'ventas':/rendim/.test(k)?'rend':/(impuesto|retencion|percepcion|iibb|ganancias|iva|sircreb)/.test(k)?'imp':/(cargo|comision|costo|tarifa|envio)/.test(k)?'cargos':/(devolucion|reembolso|contracargo|reintegro|cancelacion)/.test(k)?'devol':/transferencia/.test(k)?'transf':/retiro/.test(k)?'retiro':'otros';
+  const NOM={ventas:'💵 Entró por ventas',rend:'💰 Rendimientos',imp:'🧾 Impuestos y retenciones',cargos:'📦 Cargos y comisiones',devol:'↩️ Devoluciones',transf:'🔁 Transferencias',retiro:'🏧 Retiros',otros:'· Otros'};
+  const filas=C.map(c=>{const T=R[c][ym].tipos,G={};const det={};
+    for(const [k,v] of Object.entries(T)){const g=grupo(k);G[g]=G[g]||{cr:0,db:0,n:0};G[g].cr+=v.cr;G[g].db+=v.db;G[g].n+=v.n;(det[g]=det[g]||[]).push(k.replace(/_/g,' ')+' ('+v.n+')');}
+    const vent=(G.ventas||{}).cr||0,np=netoPanel[c]||0,dif=np?Math.round((vent-np)/np*100):null;
+    const lin=Object.keys(NOM).filter(g=>G[g]).map(g=>`<div style="display:flex;gap:6px;justify-content:space-between"><span title="${escHtml(det[g].join(' · '))}">${NOM[g]} <span style="color:var(--muted)">(${G[g].n})</span></span><span style="font-family:'DM Mono',monospace">${G[g].cr?'+'+fmt(Math.round(G[g].cr)):''}${G[g].cr&&G[g].db?' / ':''}${G[g].db?'−'+fmt(Math.round(G[g].db)):''}</span></div>`).join('');
+    const cmp=np?`<div style="margin-top:3px;color:${dif!=null&&Math.abs(dif)>10?'var(--amber)':'var(--green)'}">Ventas del panel ese mes (neto): ${fmt(Math.round(np))} · Mercado Pago liberó ${fmt(Math.round(vent))}${dif!=null?` (${dif>0?'+':''}${dif}%)`:''}</div>`:'';
+    return `<div style="padding:6px 0;border-top:1px solid var(--border)"><b>${c}</b>${lin}${cmp}</div>`;}).join('');
+  return `<details style="flex-basis:100%;font-size:.66rem;margin-top:4px"><summary style="cursor:pointer;color:var(--muted)">🔎 Mercado Pago contra el panel (${C.length} de 4 cuentas)</summary>${filas}<div style="color:var(--muted);margin-top:4px">Lo liberado corre unos días atrás de cada venta: hasta ~10% de diferencia es normal. Pasá el dedo sobre cada renglón para ver qué tipos entraron.</div></details>`;
+}
 async function setExtractoMp(ym,val){
   if(window._deCopia&&window._deCopia()){toast('Todavía se están bajando los datos: no se guardó. Probá en unos segundos','err');renderComprasChecklist();return;}
   state.extracto_mp=state.extracto_mp||{};const prev=state.extracto_mp[ym];const v=val?{ts:Date.now()}:null;

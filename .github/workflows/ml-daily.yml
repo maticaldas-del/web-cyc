@@ -255,6 +255,19 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           BILLING_PROBE: prompts:go
         run: exec node ml-sync/sync.mjs
+      # LO VIEJO SE GUARDA APARTE (06/11/2026, él eligió 3a): ventas y historia de más de ~13 meses pasan a `archivo/` (no se borra nada;
+      # la web las trae cuando se mira una fecha vieja). Hoy no hay nada tan viejo: no mueve nada hasta que lo haya.
+      - name: Guardar aparte lo viejo
+        id: archivar
+        if: steps.noche.outputs.hecha != '1'
+        continue-on-error: true
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          BILLING_PROBE: archivar:400:go
+        run: exec node ml-sync/sync.mjs
       # LA LÍNEA DE TIEMPO DE CADA PUBLICACIÓN (01/10/2026): stock, precio, estado, caja, visitas,
       # ventas, remate y margen de AYER, leído de ML en el momento (mlapi/linea).
       - name: Línea de tiempo de ayer

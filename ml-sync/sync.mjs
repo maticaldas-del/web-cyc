@@ -25098,6 +25098,10 @@ async function main() {
       }
       const VA = (await db.get('cyc/ventaanalisis')) || {};
       for (const [dk, d] of Object.entries(VA)) if (/^\d{4}_\d{2}_\d{2}$/.test(dk) && dk < kCorte && d) plan.push(['ventaanalisis/' + dk, d]);
+      // 06/11/2026 (él eligió 3a: "toda la info posible guardada, pero que se cargue al buscarla"): las ventas de cada día también, con 400+ días
+      // (así "el mismo período del año pasado" de Métricas sigue en la carga de siempre); la web las trae de `archivo/ventaprod` al mirar esa fecha.
+      { const kV = dayKeyFromISO(Date.now() - Math.max(400, dias) * 864e5); const VPk = (await db.get('cyc/ventaprod')) || {};
+        for (const [dk, d] of Object.entries(VPk)) if (/^\d{4}_\d{2}_\d{2}$/.test(dk) && dk < kV && d) plan.push(['ventaprod/' + dk, d]); }
       const porNodo = {}; for (const [r] of plan) { const n = r.split('/')[0]; porNodo[n] = (porNodo[n] || 0) + 1; }
       console.log(`=== archivar · más de ${dias} días ${GO ? '· MUEVO' : '(prueba: con :go se mueve)'} === ${plan.length} renglón(es): ${Object.entries(porNodo).map(([n, c]) => `${n} ${c}`).join(' · ') || 'nada'}`);
       if (!GO || !plan.length) return;

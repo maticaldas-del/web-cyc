@@ -26,6 +26,10 @@ sólo el robot lo puede abrir, y guarda únicamente lo que rindió la plata y si
 5. Repetí con las otras 3 cuentas.
 6. Borrá los 4 archivos de Descargas (tienen nombres de otras personas).
 
+**UNA VEZ (06/11/2026): volver a pegar agosto, septiembre y octubre de las 4 cuentas** (período `2026-08 a 2026-10`): el robot ahora separa cada
+movimiento por tipo (ventas, rendimientos, impuestos, cargos, devoluciones) para compararlo con el panel, y los que ya se pegaron no lo traían.
+Si en Gastos del mes de un mes sale "🔎 hay que volver a pegar el extracto", hacelo para ese mes. Dejá el mensaje `EXTRACTO 2026-08 a 2026-10: …`.
+
 ## Reglas
 - **El archivo tiene nombres de otras personas. NO copies nada de su contenido en ningún lado**: ni en el buzón, ni en el chat,
   ni en "Para el robot". Sólo en el cuadro 🔒, que lo cierra con candado.
