@@ -13245,6 +13245,11 @@ const PY_TRAD = [
   [/\brecarreg[aá]ve(l|is)\b/giu, (m, x) => (x === 'l' ? 'recargable' : 'recargables')], [/\bexilir\b/gi, 'Elixir'],
   // revisión etapa 9 (06/11/2026): "Óleo de Perfume" quedaba en portugués
   [/(^|\s)[óÓ]leo(?=\s|$)/gu, (m, a) => a + 'Aceite'],
+  // 06/11/2026 (control diario): 156 nombres de la tienda con "Vigilância" y otros con "â" del portugués (no se tocan las marcas: Lancôme, Idôle).
+  [/\bvigil[aâ]ncia\b/giu, 'vigilancia'], [/\btit[aâ]nio\b/giu, 'titanio'], [/\bc[aâ]meras\b/giu, 'cámaras'], [/\bc[aâ]mara\b/giu, 'cámara'], [/\bc[aâ]mbio\b/giu, 'cambio'],
+  [/\btranex[aâ]mico\b/giu, 'tranexámico'], [/\bl[aâ]mina(s)?\b/giu, 'lámina$1'], [/\binstant[aâ]ne([oa]s?)\b/giu, 'instantáne$1'], [/\bvitrocer[aâ]mica\b/giu, 'vitrocerámica'],
+  [/\bcer[aâ]mic([oa]s?)\b/giu, 'cerámic$1'], [/\bmacad[aâ]mia\b/giu, 'macadamia'], [/\bdin[aâ]mic([oa]s?)\b/giu, 'dinámic$1'], [/\bpanor[aâ]mic([oa]s?)\b/giu, 'panorámic$1'],
+  [/\boce[aâ]nic([oa]s?)\b/giu, 'oceánic$1'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE, CON EL CATÁLOGO DE ML EXACTO (inicio) ─────────────────────────────────
