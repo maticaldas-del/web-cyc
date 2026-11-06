@@ -8,6 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 06/11 (autorizo PXP7 · 4a 5a 6a) — APLICADO
+- PXP7 Animale Original mujer: descuento a $113.990 (43% peor caso), releído de ML ✓ · 4a Aer x6: le paso el link del competidor (MLA4150859190, $11.758, mismo catálogo) para comprar 12 desde Adriana · 5a tarea COMPETENCIA del chat de Chrome (147 sin catálogo, de a 20 por día) · 6a fotos de ABEL quedan como están.
+- Siguen abiertos: 7 (¿octubre tuvo dos cuotas de Claude?) · 8 cajas de Ayelen sin alta · 9 mensajes sin leer · 10 precio de comprar lugar en Full.
+
 ### 💰 Análisis "¿cómo ganamos más?" (05/11) — contestó el 05/11
 - 1: **mi error**: los "perfumes sin mirar hace 12 días" eran de Elegancia (apagada), no de Nissei (vuelta completa el 04/11, 99,7%). Arreglado `pyllenar` (no los cuenta más).
 - 2: él dice que en Full se puede **comprar lugar**: falta el precio (lo lee el chat de Chrome en Ayelen) para hacer la cuenta contra lo que deja lo que se corta (~$180.000/mes en 3-4 semanas, ~$700.000/mes lo chico de Ayelen).
