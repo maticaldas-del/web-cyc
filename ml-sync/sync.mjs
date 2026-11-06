@@ -32652,7 +32652,7 @@ async function main() {
         const lote = vend.slice(i, i + 20); const tk = toks[lote[0].l.cuenta] || tk0;
         let arr = []; try { arr = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,catalog_product_id,status,price', tk); } catch { arr = []; }
         for (const row of (arr || [])) { const b = row && row.body; const v = b && lote.find((x) => x.mla === b.id); if (!v) continue;
-          if (!b.catalog_product_id) { sinCat++; continue; } v.cp = b.catalog_product_id; v.hoy = Number(b.price) || 0; v.status = b.status;
+          if (!b.catalog_product_id) { sinCat++; v.hoy = Number(b.price) || 0; v.status = b.status; (globalThis._ccSinCat = globalThis._ccSinCat || []).push(v); continue; } v.cp = b.catalog_product_id; v.hoy = Number(b.price) || 0; v.status = b.status;
           (porCat[v.cp] = porCat[v.cp] || []).push(v); }
       }
       const filas = []; let consultas = 0, sinMas = 0;
@@ -32683,6 +32683,10 @@ async function main() {
         for (const x of f.ok) console.log(`     ⇒ comprando a ${money(Math.round(x.C))} (${x.id}${x.full ? ', Full' : ''}, tiene ${x.q == null ? '?' : x.q}) deja ${money(Math.round(x.gan))} por unidad = ${Math.round(x.pct)}% en el peor caso`);
         console.log(`     plata por mes a nuestro ritmo: ${money(f.mesPlata)}`);
       }
+      // 06/11/2026 (él eligió 5a): lo que NO está en catálogo lo compara el chat de Chrome en ML con foto; acá sale la lista para su texto.
+      const sc = (globalThis._ccSinCat || []).filter((v) => v.status === 'active' || v.u30 > 0).sort((a, b) => b.u30 - a.u30 || b.u - a.u);
+      console.log(`\n=== SIN CATÁLOGO (${sc.length}) · para que el chat de Chrome los compare en ML, los que más venden primero ===`);
+      for (const v of sc) console.log(`SC|${v.mla}|${v.l.cuenta}|${Math.round(v.ultP)}|${v.u30}|${String(v.l.title || '').replace(/\|/g, ' ').slice(0, 70)}`);
       console.log(`\n(${consultas} catálogos consultados. El envío de la compra es gratis desde ${money(UMBRAL_ENVIO_GRATIS)}: comprar de a 7+ en los baratos. "tiene" es lo que muestra ML, redondeado.)`);
       return;
     }
