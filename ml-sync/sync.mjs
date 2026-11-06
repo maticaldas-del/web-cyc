@@ -26572,6 +26572,12 @@ async function main() {
       const GOx = /:go$|;go$/.test(String(process.env.BILLING_PROBE));
       const r = await procesarExtractosMp(db, GOx);
       console.log(GOx ? `✓ ${r.n} extracto(s) procesado(s) y borrado(s)` : 'PRUEBA: no guardé ni borré nada. Para aplicar: extractomp:go');
+      // 06/11: lo que ya quedó guardado (sin montos: los saldos y lo que rinde MP no van al registro público).
+      const rm = (await db.get('cyc/rendimientos_mp')) || {};
+      const pend = Object.values((await db.get('mlapi/privado_in')) || {}).filter((e) => e && e.tipo === 'extracto_mp');
+      console.log(`\n=== 🔒 YA GUARDADO (cyc/rendimientos_mp) · ${pend.length} archivo(s) cerrado(s) esperando ===`);
+      for (const p of pend) console.log(`  esperando: ${p.cuenta || '?'} · ${p.per || ''}${p.error ? ' · ERROR: ' + p.error : ''}`);
+      for (const [cta, ms] of Object.entries(rm)) for (const [m, x] of Object.entries(ms || {}).sort()) console.log(`  ${cta} · ${m.replace('_', '-')} · ${x.filas} movimientos · rendimientos en ${x.nRend} renglón(es) · saldo ${x.encadena === true ? 'encadena ✓' : x.encadena === false ? 'NO encadena' : 'sin columna'} · guardado ${new Date(x.ts).toISOString().slice(0, 16)}`);
       return;
     }
     // BILLING_PROBE=pyllenar:<resto|perf>[:<tope US$>] (04/11/2026, él: "llenalo hasta 600 dólares"; SÓLO LEE) → lo mismo que el botón
