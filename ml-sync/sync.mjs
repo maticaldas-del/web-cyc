@@ -32600,6 +32600,82 @@ async function main() {
         console.log([cod, String(e.n || '').replace(/\|/g, '/').slice(0, 60), Math.round(Number(e.m)) + '%', Number(e.mv) || 0, mi, String(e.mt || '').replace(/\|/g, '/').slice(0, 70), e.f || '', fotoML[mi] || '', listaOkVale(e) ? 'ok' : ''].join('|')); }
       console.log('@@FIN'); return;
     }
+    // BILLING_PROBE=comprarcompe[:días] → SOLO LEE (06/11/2026, él: "que pasa si compramos las unidades de productos de nuestra competencia y
+    // las vendemos al precio que siempre vendimos nosotros… analizá vos a todos los competidores y productos a ver qué nos conviene comprar").
+    // Para cada publicación de catálogo que VENDIÓ en los últimos días (línea diaria `mlapi/linea`: u, tot, neto), toma nuestro precio de
+    // venta (el de la última venta) y lo que ML nos dejó por unidad, y mira la ficha del catálogo: los vendedores de ACÁ (no de afuera),
+    // que no somos nosotros, con el producto NUEVO y más baratos que nuestro precio. Si les compramos a ellos y lo vendemos a nuestro precio:
+    // cuánto deja por unidad y el % en el peor caso (misma cuenta que `vendeperdiendo`), cuántas tienen (ML da el número redondeado) y
+    // cuántas vendemos por mes. Sólo pasa lo que deja 35%+ en el peor caso. Ordena por plata por mes (lo que deja × lo que vendemos).
+    if (/^comprarcompe(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const ccDias = Math.max(14, parseInt(String(process.env.BILLING_PROBE).split(':')[1], 10) || 60);
+      const ccDesde = dayKeyFromISO(Date.now() - ccDias * 864e5), ccD30 = dayKeyFromISO(Date.now() - 30 * 864e5);
+      const ccLinks = (await db.get('cyc/mllinks')) || {}; const ccProds = (await db.get('cyc/products')) || {};
+      const ccTc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; let ccMono = null; try { ccMono = await leerMonoPct(db); } catch { ccMono = null; }
+      if (!(ccTc > 0) || ccMono == null) { console.log('❌ sin dólar o sin % de monotributo: no puedo medir el %'); return; }
+      const ccEnv = (pr) => (pr >= UMBRAL_ENVIO_GRATIS ? 6000 : 0);
+      const ccPct = (P, netoU, cu, m) => { const e = ccEnv(P); return (netoU - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + e) * 100; };
+      const sids = {}; for (const l of labels) if (accounts[l]?.seller_id) sids[String(accounts[l].seller_id)] = l;
+      const toks = {}; for (const l of labels) { const acc = accounts[l]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[l] = t.access_token; } catch { /* sin esa cuenta */ } }
+      const tk0 = Object.values(toks)[0]; if (!tk0) { console.log('❌ sin token'); return; }
+      // 1) lo que vendimos, por publicación
+      const vend = [];
+      for (const [mla, l] of Object.entries(ccLinks)) {
+        if (!l || !l.prodId || l.ignored || !/^MLA\d+$/.test(mla)) continue;
+        let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || null; } catch { lin = null; } if (!lin) continue;
+        let u = 0, u30 = 0, tot = 0, neto = 0, ultK = '', ultP = 0, ultN = 0, st = null, stK = '';
+        for (const [k, d] of Object.entries(lin)) {
+          if (!d) continue; if (d.st != null && k > stK) { stK = k; st = Number(d.st); }
+          if (k < ccDesde || !(Number(d.u) > 0) || !(Number(d.neto) > 0)) continue;
+          const du = Number(d.u), P = Number(d.tot) > 0 ? Number(d.tot) / du : Number(d.pV || d.p) || 0; if (!(P > 0)) continue;
+          u += du; tot += P * du; neto += Number(d.neto); if (k >= ccD30) u30 += du;
+          if (k > ultK) { ultK = k; ultP = P; ultN = Number(d.neto) / du; }
+        }
+        if (!(u > 0)) continue;
+        vend.push({ mla, l, u, u30, ultP, ultN, st });
+      }
+      console.log(`=== COMPRARLE A LA COMPETENCIA · ${vend.length} publicaciones que vendieron en ${ccDias} días ===`);
+      // 2) la ficha de catálogo de cada una
+      const porCat = {}; let sinCat = 0;
+      for (let i = 0; i < vend.length; i += 20) {
+        const lote = vend.slice(i, i + 20); const tk = toks[lote[0].l.cuenta] || tk0;
+        let arr = []; try { arr = await mlGet('/items?ids=' + lote.map((x) => x.mla).join(',') + '&attributes=id,catalog_product_id,status,price', tk); } catch { arr = []; }
+        for (const row of (arr || [])) { const b = row && row.body; const v = b && lote.find((x) => x.mla === b.id); if (!v) continue;
+          if (!b.catalog_product_id) { sinCat++; continue; } v.cp = b.catalog_product_id; v.hoy = Number(b.price) || 0; v.status = b.status;
+          (porCat[v.cp] = porCat[v.cp] || []).push(v); }
+      }
+      const filas = []; let consultas = 0, sinMas = 0;
+      for (const [cp, vs] of Object.entries(porCat)) {
+        let res = []; try { consultas++; await new Promise((r) => setTimeout(r, 150)); res = ((await mlGet(`/products/${cp}/items`, tk0)) || {}).results || []; } catch { continue; }
+        const ofs = res.filter((o) => o && Number(o.price) > 0 && !sids[String(o.seller_id)] && !esOfertaDeAfuera(o) && (!o.condition || o.condition === 'new')).sort((a, b) => a.price - b.price);
+        // una fila por catálogo, con la publicación nuestra que más vende
+        const v = vs.sort((a, b) => b.u - a.u)[0]; const uT = vs.reduce((t, x) => t + x.u, 0), u30T = vs.reduce((t, x) => t + x.u30, 0);
+        const P = v.ultP, netoU = v.ultN; const pr = ccProds[v.l.prodId]; const cuNuestro = pr ? costoPesos(pr, 1, ccTc).costo : 0;
+        const m = ((ML_EXTRA_PCT[String(v.l.cuenta || '').toLowerCase()] || 4) + ccMono) / 100;
+        const baratos = ofs.filter((o) => o.price <= P * 0.85); if (!baratos.length) { sinMas++; continue; }
+        const det = [];
+        for (const o of baratos.slice(0, 3)) {
+          let q = null, full = o.shipping?.logistic_type === 'fulfillment';
+          try { await new Promise((r) => setTimeout(r, 120)); const it = await mlGet('/items/' + o.item_id + '?attributes=available_quantity,condition,status,shipping', tk0); q = Number(it.available_quantity); if (it.condition && it.condition !== 'new') continue; if (it.status && it.status !== 'active') continue; full = it.shipping?.logistic_type === 'fulfillment'; } catch { /* sin stock a la vista */ }
+          const C = Number(o.price); const gan = netoU - C - P * m - P * PEOR_RET_PCT; const pct = ccPct(P, netoU, C, m);
+          det.push({ id: o.item_id, C, q, full, gan, pct });
+        }
+        const ok = det.filter((x) => x.pct >= 35); if (!ok.length) continue;
+        const mejor = ok[0]; const ganNuestra = netoU - cuNuestro - P * m - P * PEOR_RET_PCT;
+        filas.push({ nom: String((pr && pr.name) || v.l.title || v.mla).slice(0, 52), mla: v.mla, cuenta: v.l.cuenta, P, hoy: v.hoy, status: v.status, uT, u30T, st: v.st, cuNuestro, ganNuestra, ok, mesPlata: Math.round(mejor.gan * u30T) });
+      }
+      filas.sort((a, b) => b.mesPlata - a.mesPlata);
+      console.log(`${Object.keys(porCat).length} catálogos mirados (${sinCat} publicaciones sin catálogo, no se pueden comparar) · ${sinMas} sin nadie 15%+ más barato · ${filas.length} donde comprarle al otro deja 35%+\n`);
+      for (const f of filas) {
+        console.log(`■ ${f.nom} · ${f.cuenta} ${f.mla} · vendemos a ${money(Math.round(f.P))} (hoy ${money(Math.round(f.hoy))}${f.status !== 'active' ? ', ' + f.status : ''}) · ${f.u30T} u. en 30 días (${f.uT} en ${ccDias}) · stock nuestro ${f.st == null ? '?' : f.st}`);
+        console.log(`     hoy nos cuesta ${money(Math.round(f.cuNuestro))} y deja ${money(Math.round(f.ganNuestra))} por unidad`);
+        for (const x of f.ok) console.log(`     ⇒ comprando a ${money(Math.round(x.C))} (${x.id}${x.full ? ', Full' : ''}, tiene ${x.q == null ? '?' : x.q}) deja ${money(Math.round(x.gan))} por unidad = ${Math.round(x.pct)}% en el peor caso`);
+        console.log(`     plata por mes a nuestro ritmo: ${money(f.mesPlata)}`);
+      }
+      console.log(`\n(${consultas} catálogos consultados. El envío de la compra es gratis desde ${money(UMBRAL_ENVIO_GRATIS)}: comprar de a 7+ en los baratos. "tiene" es lo que muestra ML, redondeado.)`);
+      return;
+    }
     // BILLING_PROBE=vendeperdiendo[:días] → SOLO LEE (04/11/2026, él: "quizás dice que no da pero se venden igual… quizás descartamos
     // productos pero al mandarlos se venden igual"). Mira la línea diaria (`mlapi/linea/<MLA>/<día>`: `caja` g/c/p, `ptw` = precio para
     // ganar, `u`/`tot`/`neto` vendido) de las publicaciones de CATÁLOGO y cuenta las ventas ganando / compartiendo / perdiendo la caja,
