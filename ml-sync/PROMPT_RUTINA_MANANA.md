@@ -57,7 +57,7 @@ Mercado Libre → Full (o "Gestión de stock Full") en cada cuenta:
   (últimas 4 cifras), cuántas unidades mandamos, cuántas recibió ML y qué dice del resto.
 - Unidades con problema adentro de Full ("no aptas", "dañadas", "retirar", "en revisión"): producto + cuántas + qué pide ML.
 - Avisos de stock antiguo o de cobro por almacenamiento que vence pronto: producto + cuántas + desde qué fecha cobra.
-- Retiros de Full pendientes (si hay): qué y para cuándo.
+- Retiros de Full: se miran en la parte 16.
 
 == 7 · MERCADO PAGO (sin copiar movimientos: traen nombres) ==
 En cada cuenta de Mercado Pago, sólo si aparece un cartel o una sección de: dinero retenido, contracargo, disputa, cuenta
@@ -103,6 +103,26 @@ Cuántas hay y las que empiezan o terminan en los próximos 3 días: MLA o nombr
 https://dolarhoy.com/ → compra y venta del blue y del oficial, y compará con el "DÓLAR ACTUAL" de arriba del panel. Si difieren en
 más de 2%, marcalo con ⏰.
 
+== 16 · QUÉ LE LLEGA HOY Y EL CÓDIGO PARA RECIBIRLO (06/11, él: "fijate si hay un retiro en camino o si va a llegar algo hoy. y si hay algún código para recibirlo") ==
+En cada cuenta: https://vendedores.mercadolibre.com.ar/fulfillment/withdrawals (TODAS las páginas: ?page=2, ?page=3…).
+- CÓDIGO: arriba dice "Código de autorización válido para hoy". Anotá el de cada cuenta, SIEMPRE, aunque no venga nada. Es uno por cuenta,
+  cambia todos los días y sirve para todas las visitas de ese día: se ingresa al escanear el QR del transportista. Es el mismo que aparece en
+  Posventa. Va sólo al buzón y al mensaje a Matías, nunca al repositorio. No toques "Preferencias de venta".
+- RETIROS: buscá en la columna ESTADO los que dicen "En camino", "En preparación", "Listo para retirar" o parecido. "Entregado",
+  "Retirado", "Descartado", "Cancelado" y "Por completar" (borrador, no viene nada; contalos) no vienen. Abrí "Ver detalle" de cada uno
+  que no esté terminado y anotá: número (últimas 4 cifras), cuántas unidades y bultos, y la fecha de entrega que dé ML.
+- OJO, el estado de arriba puede ser viejo: mirá bulto por bulto. Si todos los bultos dicen "Llegó el …", NO está en camino aunque arriba
+  lo diga (pasó con el de Matías terminado en 5878: figura en camino y llegó en enero). Anotalo como "ya llegó, el estado quedó viejo".
+- Si ML da fecha de hoy o no da ninguna y está en camino, marcalo con ⏰ y agregá el código de esa cuenta en el mismo renglón.
+  Entregas a domicilio: lunes a viernes de 7 a 22 h.
+- DEVOLUCIONES: https://vendedores.mercadolibre.com.ar/post-purchase/post-sales?main.filter=returns → las "En camino". Abrí cada venta
+  (sin copiar nombre, DNI ni dirección) y anotá a dónde va y desde qué fecha. Si va al Centro de almacenamiento de Full, a él no le llega: sólo
+  contala. Si va a su domicilio, ⏰ con la fecha. Si lleva más de 30 días "en camino", anotala como trabada, no como que llega. Si no dice a
+  dónde va, decilo, no adivines.
+Escribilo como el primer bloque, antes de todo lo demás, una línea por cuenta. Ejemplo:
+  `HOY LLEGA · Adriana: nada · código XXXXXXXX`
+Si no llega nada en ninguna cuenta, decilo igual. Nunca confirmes ni aceptes nada: sólo mirás y anotás.
+
 Direcciones directas de lo de arriba, por si el menú cambió de nombre: reclamos https://vendedores.mercadolibre.com.ar/post-purchase/post-sales ·
 mensajes https://vendedores.mercadolibre.com.ar/post-purchase/post-sales?main.filter=messages · preguntas https://vendedores.mercadolibre.com.ar/preguntas/vendedor ·
 envíos a Full https://vendedores.mercadolibre.com.ar/shipping/inbounds · retiros de Full https://vendedores.mercadolibre.com.ar/fulfillment/withdrawals
@@ -110,7 +130,7 @@ envíos a Full https://vendedores.mercadolibre.com.ar/shipping/inbounds · retir
 == CÓMO LO DEJÁS ESCRITO ==
 Panel → Mi oficina → Contar lo que hay → abajo de todo, "🤖 Chat de Chrome y Claude" → "📬 Mensaje para Claude".
 - El mensaje EMPIEZA con `MIRAR TODO <AAAA-MM-DD>` (así se anota en "Última vez").
-- Arriba de todo, una línea: `URGENTE: <cuántos> · reclamos <n> · mediaciones <n> · mensajes sin leer <n> · preguntas <n> · frenadas por ML <n> · por despachar hoy <n> · con poco stock <n>`.
+- Arriba de todo, una línea: `URGENTE: <cuántos> · reclamos <n> · mediaciones <n> · mensajes sin leer <n> · preguntas <n> · frenadas por ML <n> · por despachar hoy <n> · con poco stock <n> · retiros en camino <n> · llegan hoy <n>`.
 - Después, una línea por cosa, agrupada por cuenta, lo urgente primero (⏰). Ejemplo:
   `Adriana · ⏰ mediación …9946 · Perfume Paulvic Good · el comprador dice que no le llegó · espera respuesta nuestra al mediador hasta el 07/11 18:00 · opciones: mensaje al mediador`
 - Cada mensaje entra hasta 2.000 letras: si no alcanza, dejá varios, todos empezando igual (`MIRAR TODO 2026-11-06 (2/3)` …).
@@ -119,6 +139,7 @@ Claude lo lee en su próxima vuelta y le pasa a Matías lo que hay que resolver.
 
 == AL TERMINAR: LO QUE LE ESCRIBÍS A MATÍAS EN EL CHAT (06/11, él: "hacé la rutina y hacés todo y me escribís qué es importante a resolver hoy o lo importante en gral y cargás todo en cyc") ==
 Cuando termine toda la rutina y esté todo cargado en el buzón, escribile corto, en castellano llano y sin datos de compradores:
-1. "Para resolver hoy": lo ⏰ urgente, lo que vence antes primero, con cuenta, producto y hasta cuándo.
-2. "Importante en general": lo que no vence hoy pero conviene que sepa.
-3. Lo que no pudiste mirar. Si no hay nada urgente, decilo.
+1. "Hoy llega": qué viene y de qué cuenta, y el código de cada cuenta (parte 16). Si no viene nada, decilo igual.
+2. "Para resolver hoy": lo ⏰ urgente, lo que vence antes primero, con cuenta, producto y hasta cuándo.
+3. "Importante en general": lo que no vence hoy pero conviene que sepa.
+4. Lo que no pudiste mirar. Si no hay nada urgente, decilo.
