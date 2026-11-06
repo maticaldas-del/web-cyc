@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.139';
+const APP_VERSION='28.140';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.140',f:'06/11',h:'15:55',c:[{n:1,t:'Inicio → La mezcla: sin la lista de colores abajo de la barra (el calendario queda más arriba). Tocando cada color de la barra dice su parte.'}]},
   {v:'28.139',f:'06/11',h:'15:53',c:[{n:2,t:'🔎 Gastos del mes → Mercado Pago contra el panel: con el extracto, también lo pagado desde MP a ARCA, Sancor y suscripciones contra lo cargado en Gastos, las retenciones reales de cada cuenta contra el % que usa el panel, las transferencias entre nuestras cuentas (no son plata nueva), contracargos y plata retenida, y cobros por QR fuera de ML.'}]},
   {v:'28.138',f:'06/11',h:'15:51',c:[{n:1,t:'Ventas: con muchos carteles arriba (Premium, 1ª venta, estrategia) el total y la ganancia ya no se van para el costado: los carteles se acortan y los números quedan a la vista.'}]},
   {v:'28.137',f:'06/11',h:'15:48',c:[{n:2,t:'💳 Gastos del mes: cada cuenta muestra lo que dice el extracto de Mercado Pago (ventas, rendimientos, impuestos, cargos, devoluciones, transferencias) contra lo que tiene el panel.'},{n:2,t:"🧮 ¿Cierra el mes?: los rendimientos de Mercado Pago son un renglón propio y se suman a lo que genera CYC."},{n:1,t:'🗄️ Las ventas de más de 400 días se guardan aparte de noche y la web las trae sólo cuando mirás esas fechas en Métricas (no se borra nada).'}]},
@@ -25544,6 +25545,7 @@ function metMezclaMeses(n,agr){
   const L=Object.values(meses).sort((a,b)=>a.ym<b.ym?1:-1);return n===0?L:L.slice(0,n||6);
 }
 // 🧮 LA MEZCLA DE HOY, ADENTRO DE VENTAS DE HOY (03/11/2026, idea 17 del 02/11, él eligió la a): la misma cuenta que la tarjeta de Métricas
+// 06/11/2026 (él: "eso sacalo, porque sino me queda muy abajo el calendario"): sin la lista de colores abajo de la barra; cada color dice su parte al tocarlo.
 // (`metMezclaMeses`, el % de cada venta como en su renglón) pero de UN día: qué parte de lo facturado fue roja (menos de 25%), naranja
 // (25-35%), verde (35-50%) y azul (50%+), y cuánto dejó cada $100 contra la meta. Las ventas abajo del 35% se nombran con lo que ya se hizo
 // (la estrategia de su publicación). Un día sin rojo ni naranja brilla.
@@ -25557,11 +25559,10 @@ function _mezclaDiaHTML(k,nom){
     const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;}
   if(!(tot>0))return '';
   const c100=gan/tot*100,limpio=tr.r.tot===0&&tr.a.tot===0;
-  const barra=MEZCLA_TRAMOS.map(t=>tr[t.k].tot>0?`<span title="${t.t}: ${fmt(tr[t.k].tot)} facturado" style="display:inline-block;height:100%;width:${(tr[t.k].tot/tot*100).toFixed(1)}%;background:${t.col}"></span>`:'').join('');
+  const barra=MEZCLA_TRAMOS.map(t=>tr[t.k].tot>0?`<span title="${t.t}: ${Math.round(tr[t.k].tot/tot*100)}% · ${fmt(tr[t.k].tot)} facturado" style="display:inline-block;height:100%;width:${(tr[t.k].tot/tot*100).toFixed(1)}%;background:${t.col}"></span>`:'').join('');
   return `<div style="margin-top:10px;font-size:.7rem${limpio?';text-shadow:0 0 8px color-mix(in srgb,var(--green) 60%,transparent)':''}" title="La mezcla de hoy: qué parte de lo facturado salió de ventas de menos de 25% (rojo), 25-35% (naranja), 35-50% (verde) y 50%+ (azul). La meta es que no haya rojo ni naranja.">
     <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span>🧮 <b>La mezcla ${nom||'de hoy'}</b>${limpio?' · ✨ sin rojo ni naranja':''}</span><span><b style="color:${c100>=MEZCLA_META_100?'var(--green)':'var(--amber)'}">$${c100.toFixed(0)}</b> cada $100 <span style="color:var(--muted)">(meta $${MEZCLA_META_100})</span></span></div>
     <div style="display:flex;height:8px;border-radius:999px;overflow:hidden;background:var(--border)">${barra}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:5px;color:var(--muted)">${MEZCLA_TRAMOS.map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span style="width:9px;height:9px;border-radius:2px;background:${t.col};display:inline-block"></span>${t.t} <b style="color:var(--text)">${Math.round(tr[t.k].tot/tot*100)}%</b></span>`).join('')}</div>
   </div>`;
 }
 function renderMetMezcla(){
