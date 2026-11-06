@@ -12109,13 +12109,17 @@ function extractoMpResumen(txt) {
   const iM = idx(/amount|monto|importe|valor/i, /gross|bruto|fee|comisi/i), iS = idx(/partial_balance|balance|saldo/i, /initial|final|inicial/i);
   const iTxt = cab.map((c, i) => (/description|descrip|record_type|type|tipo|concept|detalle/i.test(c) ? i : -1)).filter((i) => i >= 0);
   if (iF < 0 || (iCr < 0 && iDb < 0 && iM < 0)) return { err: 'faltan columnas de fecha o de monto', cols: cab.length };
-  const meses = {}; let prev = null, enc = 0, rotas = 0, n = 0;
+  const meses = {}, dias = {}; let prev = null, enc = 0, rotas = 0, n = 0;
   for (const r of filas) {
     const ym = _fechaYm(r[iF]); if (!ym) continue;
     const monto = iCr >= 0 || iDb >= 0 ? (_numAr(iCr >= 0 ? r[iCr] : 0) || 0) - Math.abs(_numAr(iDb >= 0 ? r[iDb] : 0) || 0) : _numAr(r[iM]);
     if (monto == null) continue;
     n++;
-    const M = meses[ym] || (meses[ym] = { filas: 0, rend: 0, nRend: 0, saldoIni: null, saldoFin: null });
+    // 06/11/2026 (él: "siempre se hace desde el último que se hizo hasta el día anterior"): además del mes, cada DÍA por separado, así un
+    // archivo de pocos días se SUMA a lo que ya había (reemplaza sólo esos días) en vez de pisar el mes entero.
+    const dk = ym + '_' + String(_diaDeFecha(r[iF])).padStart(2, '0');
+    const D = dias[dk] || (dias[dk] = { filas: 0, rend: 0, nRend: 0, saldoIni: null, saldoFin: null });
+    for (const M of [meses[ym] || (meses[ym] = { filas: 0, rend: 0, nRend: 0, saldoIni: null, saldoFin: null }), D]) {
     M.filas++;
     if (iTxt.some((i) => /rendim/i.test(String(r[i] || '')))) { M.rend += monto; M.nRend++; }
     // 06/11/2026 (él eligió 1a): el TIPO de cada movimiento = la 1ª palabra de la descripción (y la 2ª sólo si va en minúscula: "Transferencia
@@ -12139,14 +12143,29 @@ function extractoMpResumen(txt) {
     if (sal != null) {
       if (M.saldoIni == null) M.saldoIni = Math.round((sal - monto) * 100) / 100;
       M.saldoFin = sal;
-      if (prev != null) { if (Math.abs(prev + monto - sal) <= 1) enc++; else rotas++; }
-      prev = sal;
     }
+    }
+    const sal = iS >= 0 ? _numAr(r[iS]) : null;
+    if (sal != null) { if (prev != null) { if (Math.abs(prev + monto - sal) <= 1) enc++; else rotas++; } prev = sal; }
   }
-  for (const M of Object.values(meses)) { M.rend = Math.round(M.rend * 100) / 100;
+  for (const M of [...Object.values(meses), ...Object.values(dias)]) { M.rend = Math.round(M.rend * 100) / 100;
     for (const T of [...Object.values(M.tipos || {}), ...Object.values(M.cat || {})]) { T.cr = Math.round(T.cr * 100) / 100; T.db = Math.round(T.db * 100) / 100; } }
   // la cabecera (nombres de columna, no datos) para ver qué trae el archivo
-  return { meses, n, enc, rotas, conSaldo: iS >= 0, cols: cab.length, cab: cab.map((c) => String(c).slice(0, 40)).slice(0, 40) };
+  return { meses, dias, n, enc, rotas, conSaldo: iS >= 0, cols: cab.length, cab: cab.map((c) => String(c).slice(0, 40)).slice(0, 40) };
+}
+// Arma el mes con sus días (`d/<dd>`, cada uno como lo devuelve extractoMpResumen): suma filas, rendimientos, tipos y grupos; junta los
+// pagos (`pf`) y transferencias (`tr`); el saldo inicial es el del primer día y el final el del último; encadena si ningún día dijo que no.
+function extractoMpJuntarDias(dd) {
+  const M = { filas: 0, rend: 0, nRend: 0, saldoIni: null, saldoFin: null, tipos: {}, cat: {}, tr: [], pf: [], encadena: null };
+  for (const k of Object.keys(dd).sort()) { const D = dd[k] || {};
+    M.filas += D.filas || 0; M.rend += D.rend || 0; M.nRend += D.nRend || 0;
+    if (M.saldoIni == null && D.saldoIni != null) M.saldoIni = D.saldoIni; if (D.saldoFin != null) M.saldoFin = D.saldoFin;
+    for (const g of ['tipos', 'cat']) for (const [t, v] of Object.entries(D[g] || {})) { const T = M[g][t] || (M[g][t] = { n: 0, cr: 0, db: 0 }); T.n += v.n || 0; T.cr += v.cr || 0; T.db += v.db || 0; }
+    for (const x of D.tr || []) M.tr.push(x); for (const x of D.pf || []) M.pf.push(x);
+    if (D.enc === false) M.encadena = false; else if (D.enc === true && M.encadena !== false) M.encadena = true; }
+  M.rend = Math.round(M.rend * 100) / 100;
+  for (const g of ['tipos', 'cat']) for (const T of Object.values(M[g])) { T.cr = Math.round(T.cr * 100) / 100; T.db = Math.round(T.db * 100) / 100; }
+  return M;
 }
 async function procesarExtractosMp(db, GO) {
   const inp = (await db.get('mlapi/privado_in')) || {};
@@ -12172,7 +12191,13 @@ async function procesarExtractosMp(db, GO) {
     const ms = Object.keys(R.meses).sort();
     console.log(`🔒 ${cta} · ${e.per || ''}: ${R.n} movimientos · ${ms.length} mes(es) ${ms[0] ? ms[0].replace('_', '-') + ' a ' + ms[ms.length - 1].replace('_', '-') : ''} · saldo ${R.conSaldo ? (R.rotas ? `NO encadena en ${R.rotas} renglón(es) de ${R.enc + R.rotas}` : `encadena ✓ (${R.enc} renglones)`) : 'sin columna de saldo'} · rendimientos en ${ms.filter((m) => R.meses[m].nRend).length} mes(es) (los montos se ven en el panel)`);
     if (!GO || !/^(Adriana|Luciana|Ayelen|Matias)$/.test(cta)) { if (GO) console.log('   (sin cuenta válida: no se guarda)'); continue; }
-    const upd = {}; for (const m of ms) upd[cta + '/' + m] = { ...R.meses[m], ts: Date.now(), encadena: R.conSaldo ? !R.rotas : null };
+    // 06/11/2026: los días del archivo reemplazan esos días; el mes se rearma con TODOS sus días guardados (`d/<dd>`).
+    const upd = {}; const encF = R.conSaldo ? !R.rotas : null;
+    for (const m of ms) {
+      const viejo = ((await db.get('cyc/rendimientos_mp/' + cta + '/' + m + '/d')) || {});
+      const dd = { ...viejo }; for (const [k, D] of Object.entries(R.dias || {})) if (k.startsWith(m + '_')) dd[k.slice(8)] = { ...D, enc: encF };
+      upd[cta + '/' + m] = { ...extractoMpJuntarDias(dd), d: dd, ts: Date.now() };
+    }
     upd[cta + '/_cab'] = R.cab;
     await db.patch('cyc/rendimientos_mp', upd);
     // 06/11/2026 (él: "quiero que veas movimiento por movimiento… un análisis"): el archivo queda GUARDADO CERRADO (como llegó, con la llave del

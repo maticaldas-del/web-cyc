@@ -4,10 +4,11 @@ Matías quiere que Claude reciba el **extracto de cuenta completo** ("Todas las 
 (Adriana, Luciana, Ayelen y Matías) **sin que él tenga que pasarlo**. Vos lo bajás y lo pegás en el panel, donde queda cerrado con candado:
 sólo el robot lo puede abrir, y guarda únicamente lo que rindió la plata y si el saldo cierra.
 
-**Período (06/11/2026, él: "todos los días… así vamos paso a paso"):** TODOS LOS DÍAS, dentro de la rutina, **del día 1 del mes en curso
-hasta hoy** (en el panel el período es `AAAA-MM`, ej. `2026-11`). Siempre el mes ENTERO hasta hoy, no sólo el día: el robot reemplaza el
-del día anterior. **Los días 1 a 5 del mes, además el mes anterior entero** (del 1 al último), con su período (ej. `2026-10`), así queda cerrado.
-Si Matías pide otro período, ése.
+**Período (06/11/2026, él: "siempre se hace desde el último que se hizo hasta el día anterior a hacer la run"):** en cada rutina, en las
+4 cuentas, **desde el día SIGUIENTE al último que ya pegaste hasta AYER** (hoy no se pega: el día no terminó). El último pegado sale del
+último mensaje `EXTRACTO` del buzón (dice "hasta AAAA-MM-DD"). Ejemplo: el último dijo hasta el 05/11 y hoy es 08/11 → del 06/11 al 07/11.
+Si ayer ya está pegado, no hay nada que hacer hoy. En el panel, en "período" escribí el rango: `2026-11-06 a 2026-11-07`.
+El robot suma esos días a lo que ya tenía (no pisa el mes). Si Matías pide otro período, ése.
 
 ## 1 · Bajarlo (cuenta por cuenta)
 1. Entrá a Mercado Pago con esa cuenta.
@@ -39,6 +40,6 @@ Si en Gastos del mes de un mes sale "🔎 hay que volver a pegar el extracto", h
 - Si una cuenta no deja entrar, el reporte no aparece o el cartel del panel da error, seguí con las otras y avisá.
 
 ## Al terminar
-- Dejá en el buzón (el mismo lugar, "📬 Mensaje para Claude") un mensaje que EMPIECE con `EXTRACTO <fecha de hoy>` y diga sólo cuántas
+- Dejá en el buzón (el mismo lugar, "📬 Mensaje para Claude") un mensaje que EMPIECE con `EXTRACTO <fecha de hoy>` y diga `del AAAA-MM-DD hasta AAAA-MM-DD` y diga sólo cuántas
   cuentas guardaste (ej. "EXTRACTO 2026-10: 4 de 4 guardados en 🔒"). **Sin montos ni nombres.**
 - El robot los procesa solo en la hora siguiente; en Gastos del mes el renglón 📄 del extracto se tilda solo con lo que rindió.
