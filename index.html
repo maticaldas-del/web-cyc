@@ -3408,7 +3408,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.132';
+const APP_VERSION='28.133';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3421,6 +3421,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.133',f:'05/11',h:'23:59',c:[{n:1,t:'🎨 Ventas de este mes / año: la barra de colores dice cuánta ganancia del período hace falta para cada color (ej. $2,7M en el mes), no la de un día.'}]},
   {v:'28.132',f:'05/11',h:'21:50',c:[{n:3,t:'🔧 El panel se quedaba sin terminar de cargar (Inicio clavado en una hora vieja): dos partes nuevas del 05/11 (extracto de Mercado Pago) frenaban la carga. Ahora se leen aparte y el panel abre igual.'}]},
   {v:'28.131',f:'05/11',h:'17:20',c:[{n:3,t:'🔒 Mi oficina → Chat de Chrome y Claude: "Archivo para Claude". El chat de Chrome pega ahí el extracto de Mercado Pago; queda cerrado con candado, el robot saca solo lo que rindió cada cuenta y si el saldo cierra, y en Gastos del mes se tilda solo con el monto.'}]},
   {v:'28.130',f:'05/11',h:'16:40',c:[{n:2,t:'📄 Gastos del mes: nuevo renglón para acordarte de pasarle a Claude el extracto completo de Mercado Pago del mes anterior (las 4 cuentas), con botón ✅ Ya se lo pasé.'}]},
@@ -12762,7 +12763,9 @@ function _diaEscaleraHTML(gan,dias,quedan,esc){
   const n=Math.max(1,Number(dias)||1),g=(Number(gan)||0)/n;
   const niv=VIVA_DIA_NIV.slice(1);
   let sig=null;for(const x of niv)if(g<x[1]){sig=x;break;}
-  const k1=x=>'$'+Math.round(x[1]/1000)+'k';
+  // 06/11/2026 (él, con Mes: "que muestre el monto real de ganancia para llegar a ese color"): en Mes y Año la marca es el total del
+  // período (lo del día × los días), no lo de un día.
+  const k1=x=>{const v=x[1]*n;return v>=1e6?'$'+String(Math.round(v/1e5)/10).replace('.',',')+'M':'$'+Math.round(v/1000)+'k';};
   // LA BARRA SE LLENA DE A POCO (21/10/2026, él: "que la barra se vaya llenando de a poquito (…) gradual. Y el color que se tome
   // el que se llenó por completo"): cada tramo se llena en proporción a lo que va del nivel anterior al suyo (el que está en curso
   // queda a medias), con el color del último nivel completo, y se llena con animación tramo por tramo. Al redibujar arranca de
@@ -12771,7 +12774,7 @@ function _diaEscaleraHTML(gan,dias,quedan,esc){
   const fr=niv.map((x,i)=>{const d=i?niv[i-1][1]:0;return g>=x[1]?1:g<=d?0:(g-d)/(x[1]-d);});
   const prev=_escPrev[n]||fr.map(()=>0);_escPrev[n]=fr;
   let t=0;const segs=niv.map((x,i)=>{const w0=Math.round((prev[i]||0)*1000)/10,w=Math.round(fr[i]*1000)/10,dur=Math.max(.4,Math.abs(fr[i]-(prev[i]||0))*.9),del=t;t+=w!==w0?dur:0;
-    return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1])}${n>1?' por día':''}" style="flex:1;height:8px;border-radius:99px;position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:${x[2]};opacity:.25"></span><span class="esc-fill" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s;background:${fr[i]>=1?x[2]:colAct}"></span></span>`;}).join('');
+    return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1]*n)}${n>1?' en el período ('+fmt(x[1])+' por día)':''}" style="flex:1;height:8px;border-radius:99px;position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:${x[2]};opacity:.25"></span><span class="esc-fill" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s;background:${fr[i]>=1?x[2]:colAct}"></span></span>`;}).join('');
   const marcas=niv.map(x=>`<span style="flex:1;min-width:0;overflow:hidden;white-space:nowrap">${k1(x)}</span>`).join('');
   // Mes y año (24/10/2026): `dias` son los del período entero, así que lo que falta se dice en total y repartido en los que quedan.
   const q=Math.max(0,Number(quedan)||0),per=esc==='anio'?'el año':'el mes';
