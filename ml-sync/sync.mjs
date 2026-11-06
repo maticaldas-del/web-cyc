@@ -8,7 +8,8 @@
 
 import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt, dbConteo } from './lib.mjs';
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
-import { createHmac, randomInt, generateKeyPairSync, privateDecrypt, createDecipheriv, createHash, constants as cryptoK } from 'node:crypto';
+import { createHmac, randomInt, generateKeyPairSync, privateDecrypt, createDecipheriv, createHash, publicEncrypt, createCipheriv, randomBytes, constants as cryptoK } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 
 // LO PRIVADO VIAJA CIFRADO (20/10/2026, etapa 4, él eligió la 1a): el repo y sus registros son PÚBLICOS, así que las listas de
 // precios de los proveedores no se suben legibles. Claude las cifra con `ml-sync/tools/cifrar.mjs` y la llave pública
@@ -12163,6 +12164,9 @@ async function procesarExtractosMp(db, GO) {
     const upd = {}; for (const m of ms) upd[cta + '/' + m] = { ...R.meses[m], ts: Date.now(), encadena: R.conSaldo ? !R.rotas : null };
     upd[cta + '/_cab'] = R.cab;
     await db.patch('cyc/rendimientos_mp', upd);
+    // 06/11/2026 (él: "quiero que veas movimiento por movimiento… un análisis"): el archivo queda GUARDADO CERRADO (como llegó, con la llave del
+    // robot) en `mlapi/privado_mp/<cuenta>/<id>`, fuera de cyc/ (la web no lo baja), para que `extractover` me lo pase cerrado con MI llave.
+    { const { error, errTs, ...guardo } = e; await db.set('mlapi/privado_mp/' + cta + '/' + id, guardo); }
     await db.set('mlapi/privado_in/' + id, null);
     ok++;
   }
@@ -26627,6 +26631,33 @@ async function main() {
       for (const [pid, e] of rows) { const p = pi[pid] || {}; const d = Number(p.nisseiTs) ? ((Date.now() - Number(p.nisseiTs)) / 864e5).toFixed(1) : '?';
         const vs = e.v ? ' · ' + Object.entries(e.v).filter(([, u]) => (parseInt(u) || 0) > 0).map(([k, u]) => k + '=' + u).join(' ') : '';
         console.log(`  ${parseInt(e.u)} u. · ${String(p.name || pid).slice(0, 60)} · ${p.codPy || 'sin código'} · Nissei US$ ${p.nisseiUSD || '?'} hace ${d} d${SS[pid] ? ' · 🚫 Nissei no lo tiene' : ''}${Number(d) >= 2 ? ' · ⛔ mirado hace 2+ días' : ''}${vs}`); }
+      return;
+    }
+    // BILLING_PROBE=extractover[:<cuenta>] (06/11/2026, él: "quiero que veas movimiento por movimiento y armando todo y viendo si está todo
+    // correcto, si hay algo que pagamos mucho"): abre los extractos guardados cerrados (`mlapi/privado_mp`) y los vuelve a cerrar con MI llave
+    // pública (`ml-sync/claude_lector.pub.pem`; la privada sólo la tengo yo, nunca va al repo): gzip + AES-256-GCM, la llave AES con RSA-OAEP.
+    // En el registro sale SÓLO lo cerrado (renglones `EXV|…`): sin la llave privada no se lee nada. Sin montos ni nombres a la vista.
+    if (/^extractover(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const filtro = (String(process.env.BILLING_PROBE).match(/^extractover:(\w+)/) || [])[1] || '';
+      const ll = await db.get('mlapi/ticketllave'); const G = (await db.get('mlapi/privado_mp')) || {};
+      let pub = ''; try { pub = readFileSync(new URL('./claude_lector.pub.pem', import.meta.url), 'utf8'); } catch { pub = ''; }
+      if (!ll || !ll.priv || !pub) { console.log('falta la llave del robot o la mía (claude_lector.pub.pem)'); return; }
+      const todo = [];
+      for (const [cta, ids] of Object.entries(G)) { if (filtro && cta.toLowerCase() !== filtro.toLowerCase()) continue;
+        for (const [id, e] of Object.entries(ids || {})) { try {
+          const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+          const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
+          todo.push({ cta, id, per: e.per || '', txt: Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8') });
+        } catch (er) { console.log(`no pude abrir ${cta} ${id}: ${String(er.message || er).slice(0, 60)}`); } } }
+      console.log(`=== extractover · ${todo.length} archivo(s): ${todo.map((x) => x.cta + ' ' + x.per).join(' · ') || 'ninguno'} ===`);
+      if (!todo.length) return;
+      const z = gzipSync(Buffer.from(JSON.stringify(todo), 'utf8')); todo.length = 0;
+      const key = randomBytes(32), iv = randomBytes(12); const c = createCipheriv('aes-256-gcm', key, iv);
+      const enc = Buffer.concat([c.update(z), c.final()]).toString('base64'); const tag = c.getAuthTag().toString('base64');
+      const ek = publicEncrypt({ key: pub, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, key).toString('base64');
+      console.log(`EXV|K|${ek}`); console.log(`EXV|IV|${iv.toString('base64')}`); console.log(`EXV|TAG|${tag}`);
+      const T = 15000, nT = Math.ceil(enc.length / T); for (let i = 0; i < nT; i++) console.log(`EXV|D|${i}|${nT}|${enc.slice(i * T, (i + 1) * T)}`);
+      console.log(`=== fin extractover (${nT} pedazos) ===`);
       return;
     }
     // BILLING_PROBE=extractomp[:go] (05/11/2026) → abre los extractos de Mercado Pago que llegaron cerrados desde el panel (🔒 Archivo para
