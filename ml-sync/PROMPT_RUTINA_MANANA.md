@@ -1,6 +1,6 @@
-PROMPT · RUTINA MAÑANA DEL CHAT DE CHROME DE CYC (06/11/2026, él: "que haga todo eso de los reclamos y mire mensajes… ponelo como rutina de la mañana, y que mire todo. Que por el momento no haga nada. Solo que mire y vea realmente cómo está todo. Que sea bien completo")
+PROMPT · MIRAR TODO (parte de la RUTINA diaria) DEL CHAT DE CHROME DE CYC (06/11/2026, él: "que haga todo eso de los reclamos y mire mensajes… ponelo como rutina de la mañana, y que mire todo. Que por el momento no haga nada. Solo que mire y vea realmente cómo está todo. Que sea bien completo")
 
-Cuándo: cuando Matías escribe "rutina mañana" (y dentro de "rutina completa"). Todo se mira de nuevo cada vez: no te acordás de
+Cuándo: TODOS LOS DÍAS, dentro de la "rutina" (06/11, él: "hacé una sola rutina que sea completa"), justo después del cupo, Mercado Pago y Nissei. Todo se mira de nuevo cada vez: no te acordás de
 números de otros días.
 
 LO MÁS IMPORTANTE: POR AHORA NO HACÉS NADA. SÓLO MIRÁS Y ANOTÁS.
@@ -74,10 +74,10 @@ caja en rojo). Si todo está normal, poné "panel ok".
 
 == CÓMO LO DEJÁS ESCRITO ==
 Panel → Mi oficina → Contar lo que hay → abajo de todo, "🤖 Chat de Chrome y Claude" → "📬 Mensaje para Claude".
-- El mensaje EMPIEZA con `RUTINA MAÑANA <AAAA-MM-DD>` (así se anota en "Última vez").
+- El mensaje EMPIEZA con `MIRAR TODO <AAAA-MM-DD>` (así se anota en "Última vez").
 - Arriba de todo, una línea: `URGENTE: <cuántos> · reclamos <n> · mediaciones <n> · mensajes sin leer <n> · preguntas <n> · frenadas por ML <n>`.
 - Después, una línea por cosa, agrupada por cuenta, lo urgente primero (⏰). Ejemplo:
   `Adriana · ⏰ mediación …9946 · Perfume Paulvic Good · el comprador dice que no le llegó · espera respuesta nuestra al mediador hasta el 07/11 18:00 · opciones: mensaje al mediador`
-- Cada mensaje entra hasta 2.000 letras: si no alcanza, dejá varios, todos empezando igual (`RUTINA MAÑANA 2026-11-06 (2/3)` …).
+- Cada mensaje entra hasta 2.000 letras: si no alcanza, dejá varios, todos empezando igual (`MIRAR TODO 2026-11-06 (2/3)` …).
 - Lo que no encontraste o no pudiste abrir, decilo ("no encontré la sección de facturas en Luciana") en vez de adivinar.
 Claude lo lee en su próxima vuelta y le pasa a Matías lo que hay que resolver.

@@ -23,9 +23,7 @@ REGLAS QUE NO SE ROMPEN
 
 LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 - "extracto" (una vez por mes; si Gastos del mes muestra en rojo el renglón 📄 del extracto, hacelo aunque no lo pida): bajar el extracto de Mercado Pago de las 4 cuentas y pegarlo en el panel en "🔒 Archivo para Claude", que lo cierra con candado (ver PROMPT_EXTRACTO.md). Nada de su contenido va a ningún otro lado.
-- "rutina" (todos los días): cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei + los de "⏳ Para volver a mirar" (lo que da y se miró hace 2+ días; todos los días, 01/11) → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
-- "rutina mañana" (06/11, cuando Matías lo pide): MIRAR TODO sin tocar nada en las 4 cuentas: reclamos, mediaciones, devoluciones, mensajes de compradores sin leer, preguntas, lo que ML frenó o avisa, reputación, Full con problemas, avisos de Mercado Pago, facturas con error y carteles rojos del panel → mensaje "RUTINA MAÑANA <fecha>" en el buzón.  → RUTINA MAÑANA
-- "rutina completa" (06/11, cuando Matías lo pide; él: "que haga TODO, lo obvio que no hace falta no lo haga"): todas las tareas, una atrás de la otra, en este orden: 1) RUTINA · 2) RUTINA MAÑANA · 3) CAJAS LLEGADAS · 4) extracto, si en Gastos del mes el renglón 📄 está en rojo · 5) GUAY (seguís desde donde quedaste) · 6) LISTAS · 7) ONCE · 8) IMEGA · 9) MAYORISTAS WEB · 10) MÁS VENDIDOS · 11) TIENDA con lo que sobre. Las hacés AUNQUE no les toque por días; salteás sólo la que ya dice "hoy" en "Última vez" o la que no aplica (ej. el extracto ya ✅ del mes). NUNCA dentro de la rutina completa: armar cajas en ML (eso es sólo con "arrancá"), ANTIGÜEDAD (sólo si la pide), ni confirmar nada. Cada tarea deja su mensaje con su nombre, como siempre.
+- "rutina" (06/11, él: "hacé una sola rutina que sea completa"): Matías dice "rutina" y hacés TODO lo de "CUÁNDO HACÉS CADA COSA" (abajo), en ese orden: lo de todos los días siempre y lo de cada 7/14 días o de los domingos cuando le toca. Lo primero: cupo de Full de las 4 cuentas, disponible de Mercado Pago de las 4, repaso del pedido del momento en Nissei + los de "⏳ Para volver a mirar" (lo que da y se miró hace 2+ días; todos los días, 01/11) → mensaje "RUTINA <fecha>" en el buzón.  → RUTINA LOCAL
 - "arrancá" (cajas): SÓLO cuando Matías lo pide, armar en ML las cajas de Full que el panel marca "MANDALA YA" (cargar Planificación de envíos, sin confirmar).  → CAJAS
 - "PROMPT GUAY" / pasada de los sábados: copiar el catálogo de Nissei de comprasparaguay y los precios de lo que pide el panel.  → GUAY
 - Listas de proveedores: copiar listas de precios y dejarlas medidas.  → LISTAS
@@ -52,13 +50,14 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
       NO recargues los DESCARTADOS (Matías los sacó): Juguetería Che (04/11, los Funko: "no me interesa").
    f) IMEGA → si hace 14 días o más.
    f3) MAYORISTAS WEB (AnD Mitre y AVL 112, los que visita Tito) → si hace 7 días o más (03/11/2026). El catálogo lo baja el robot (`listawoo`): vos lo actualizás, revisás que lo que da 35% sea el mismo producto en ML y anotás lo que la página no dice (IVA, mínimo, packs). Texto: PROMPT_MAYORISTAS_WEB.
+   a1) MIRAR TODO → TODOS LOS DÍAS, justo después de la RUTINA (06/11/2026, él: "que mire todo. Que por el momento no haga nada"): reclamos, mediaciones, devoluciones, mensajes sin leer, preguntas, lo que ML frena o avisa, reputación, Full, avisos de Mercado Pago, facturas y el panel, en las 4 cuentas, SIN TOCAR NADA. Texto: PROMPT_RUTINA_MANANA.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
    f2) MÁS VENDIDOS → si hace 7 días o más (ver abajo).
    g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
    fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …",
-   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …".
+   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
 
 CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026; corregido el mismo día, él: "ya va por dos horas, ¿no será que va más lento que antes?")

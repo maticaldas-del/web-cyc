@@ -3421,7 +3421,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.134',f:'06/11',h:'11:40',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también la RUTINA MAÑANA (reclamos, mensajes, preguntas y avisos de ML, sólo mirando).'}]},
+  {v:'28.134',f:'06/11',h:'11:40',c:[{n:1,t:'📬 Buzón: la línea "Última vez del chat de Chrome" cuenta también MIRAR TODO (reclamos, mensajes, preguntas y avisos de ML, sólo mirando; va dentro de la rutina de cada día).'}]},
   {v:'28.134',f:'06/11',h:'04:40',c:[{n:2,t:'🇵🇾 Ya llegó: lo del local y de la 🏬 Tienda no se cuenta en la Oficina ML ni como stock en camino; avisa lo de la Tienda que falta cargar.'},{n:2,t:'🪄 Llenar no carga perfumes abajo del 35% por la perfumería.'},{n:2,t:'📊 Perfumería: el % por perfumería, por mes y por producto deja afuera lo dejado al costo; un préstamo no se cuenta como venta de la Tienda.'},{n:1,t:'📥 Cuotas: un cobro de algo agregado aparte no cuenta como cuota pagada.'}]},
   {v:'28.133',f:'05/11',h:'23:59',c:[{n:1,t:'🎨 Ventas de este mes / año: la barra de colores dice cuánta ganancia del período hace falta para cada color (ej. $2,7M en el mes), no la de un día.'}]},
   {v:'28.132',f:'05/11',h:'21:50',c:[{n:3,t:'🔧 El panel se quedaba sin terminar de cargar (Inicio clavado en una hora vieja): dos partes nuevas del 05/11 (extracto de Mercado Pago) frenaban la carga. Ahora se leen aparte y el panel abre igual.'}]},
@@ -9303,7 +9303,7 @@ function renderBuzonCard(){
       // mira esta línea al arrancar y hace lo que toca. Sale de TODOS los mensajes del buzón (leídos o no) que empiezan con el nombre de la tarea.
       // 03/11/2026: + CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB; cada mensaje cuenta para la tarea de nombre MÁS LARGO que coincide
       // (un "CAJAS LLEGADAS …" no es la tarea CAJAS).
-      const T=['RUTINA','RUTINA MAÑANA','CAJAS','CAJAS LLEGADAS','GUAY','LISTAS','ONCE','IMEGA','MAYORISTAS WEB','MÁS VENDIDOS','TIENDA'],ult={};
+      const T=['RUTINA','MIRAR TODO','CAJAS','CAJAS LLEGADAS','GUAY','LISTAS','ONCE','IMEGA','MAYORISTAS WEB','MÁS VENDIDOS','TIENDA'],ult={};
       Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T.filter(t=>m.startsWith(t)).sort((a,b)=>b.length-a.length)[0];if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
       const dd=ts=>Math.floor((Date.now()-ts)/864e5);
       return `<div style="font-size:.66rem;margin:6px 0;line-height:1.6">🤖 <b>Última vez del chat de Chrome:</b> ${T.map(k=>`${k} ${ult[k]?(dd(ult[k])===0?'<b style="color:var(--green)">hoy</b>':`hace ${dd(ult[k])} día${dd(ult[k])===1?'':'s'}`):'<span style="color:var(--amber)">nunca</span>'}`).join(' · ')}</div>`;})()}
