@@ -13357,6 +13357,8 @@ const PY_TRAD = [
   [/\btranex[aâ]mico\b/giu, 'tranexámico'], [/\bl[aâ]mina(s)?\b/giu, 'lámina$1'], [/\binstant[aâ]ne([oa]s?)\b/giu, 'instantáne$1'], [/\bvitrocer[aâ]mica\b/giu, 'vitrocerámica'],
   [/\bcer[aâ]mic([oa]s?)\b/giu, 'cerámic$1'], [/\bmacad[aâ]mia\b/giu, 'macadamia'], [/\bdin[aâ]mic([oa]s?)\b/giu, 'dinámic$1'], [/\bpanor[aâ]mic([oa]s?)\b/giu, 'panorámic$1'],
   [/\boce[aâ]nic([oa]s?)\b/giu, 'oceánic$1'],
+  // 07/11/2026 (control diario): 17 nombres con "Sobrancelhas" y 9 con "Fixador" quedaban en portugués ("Gel Fixador de Sobrancelhas Covergirl").
+  [/\bsobrancelhas\b/gi, 'cejas'], [/\bsobrancelha\b/gi, 'ceja'], [/\bfixador(es)?\b/gi, 'fijador$1'], [/\bcrescimento\b/gi, 'crecimiento'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
 // ── TIENDA: TODO NISSEI MENOS LO GRANDE, CON EL CATÁLOGO DE ML EXACTO (inicio) ─────────────────────────────────
