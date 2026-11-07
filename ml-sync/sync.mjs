@@ -43204,6 +43204,20 @@ async function main() {
       // 8a de la revisión del Local (30/10/2026, él): si devuelven de más, la deuda queda EN NEGATIVO (lo que le debemos), no se recorta a 0 (el
       // resto se perdía). La misma cuenta que `cuotasLista` de index.html: si se toca una, la otra.
       const saldo = (d) => { const n = Math.max(1, Number(d.n) || 1), monto = Number(d.monto) || 0, pag = Math.min(n, Number(d.pagadas) || 0);
+      // 🛍️ AVISO DE PAGO DE LA PERFUMERÍA AL GRUPO DE LOS SOCIOS (07/11/2026, él: "cuando la perfumería paga no se manda por telegram lo que
+      // resta y lo que se pagó. Una vez sí llegó la primera" — esa la mandé a mano con `tgsocios`). Cada cobro de la perfumería (la de
+      // MercadoPago o la de Mercadería) manda al grupo (él y Tito) lo pagado y lo que queda de cada una, releído de la base. Sin nombres.
+      const avisoPagoPerf = async (pagado, fecha) => {
+        try {
+          const todasD = (await db.get('cyc/debencuotas')) || {};
+          const ds = Object.values(todasD).filter((x) => x && /perfumer/.test(_n(x.nom || '')));
+          const sMPx = ds.filter((x) => !/mercader/.test(_n(x.nom))).reduce((t, x) => t + Math.max(0, saldo(x)), 0);
+          const sMex = ds.filter((x) => /mercader/.test(_n(x.nom))).reduce((t, x) => t + Math.max(0, saldo(x)), 0);
+          const txt = `🛍️ <b>La perfumería pagó ${money(Math.round(pagado))}</b> (${String(fecha).split('-').reverse().join('/')})\nQueda: MercadoPago ${money(Math.round(sMPx))} · Mercadería ${money(Math.round(sMex))}\n<b>Total que debe: ${money(Math.round(sMPx + sMex))}</b>`;
+          const ok = await sendTelegram(txt, 'resumen');
+          console.log(ok ? '  ✓ aviso del pago mandado al grupo de los socios' : '  ⚠️ el aviso del pago NO salió por Telegram');
+        } catch (e) { console.log('  ⚠️ el aviso del pago NO salió: ' + String(e.message || e).slice(0, 90)); }
+      };
         return monto - pag * (monto / n) + Object.values(d.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0); };
       const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) { const sd = Math.round(saldo(d)); console.log(`  ${id} · ${_tapaNom(d)} · ${sd < 0 ? 'le debemos ' + money(-sd) : 'falta ' + money(sd)} · ${Object.keys(d.movs || {}).length} movimiento(s)`); } return; }
@@ -43515,6 +43529,7 @@ async function main() {
         if (aMe > 0) await db.patch(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`, { m: -aMe, f, nota: notaC, quien: 'robot' });
         const r1 = aMP > 0 ? await db.get(`cyc/debencuotas/${dMP[0]}/movs/${k0}`) : true, r2 = aMe > 0 ? await db.get(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`) : true;
         console.log(r1 && r2 ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if (r1 && r2) await avisoPagoPerf(monto, f);
         return;
       }
       let cand = lista.filter(([id]) => id === quien);
@@ -43562,6 +43577,7 @@ async function main() {
         const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
         console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       }
+      if (signo < 0 && /perfumer/.test(_n(d.nom)) && !extra.prod) await avisoPagoPerf(monto, f);
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
         const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
