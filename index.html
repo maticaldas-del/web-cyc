@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.145';
+const APP_VERSION='28.146';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.146',f:'07/11',h:'22:15',c:[{n:3,t:'🏷️ Inicio → Ventas de hoy ya no se queda clavada: si una venta trae un dato raro, la tarjeta igual se dibuja con los mismos números de Ventas x Producto (antes quedaba la de horas antes).'}]},
   {v:'28.145',f:'06/11',h:'20:47',c:[{n:2,t:'🔔 El aviso de cada venta suena una vez por cada $10.000 de ganancia (2 veces con $20.000, 3 con $30.000…, hasta 10).'}]},
   {v:'28.144',f:'06/11',h:'18:23',c:[{n:2,t:'Gastos del mes: Sancor y Autónomos dicen si Mercado Pago ya los pagó ese mes (✅ con día y monto, ❌ si no aparece, ⚠️ si Sancor se pagó dos veces).'}]},
   {v:'28.143',f:'06/11',h:'18:12',c:[{n:1,t:'🔎 Mercado Pago contra el panel: el correo se compara con el costo de caja que ya va en cada producto, los peajes figuran como de la perfumería y la nafta y la tarjeta como personales.'}]},
@@ -25544,7 +25545,7 @@ function metMezclaMeses(n,agr){
       const vv={...v,_dateKey:k};const costo=efectivoCostoVP(vv);
       if(!(costo>0)||ventaSinCostoVP(vv)){m.sinCosto++;continue;}
       const gan=(v.neto||0)-costo,pct=pctGananciaVP(gan,costo,gestDivVP(v));if(pct==null)continue;
-      const tr=MEZCLA_TRAMOS.find(t=>pct<t.max);const tot=v.total||0;
+      const tr=MEZCLA_TRAMOS.find(t=>pct<t.max);if(!tr)continue;const tot=v.total||0;
       m.tr[tr.k].tot+=tot;m.tr[tr.k].gan+=gan;m.tot+=tot;m.gan+=gan;}
   }
   const L=Object.values(meses).sort((a,b)=>a.ym<b.ym?1:-1);return n===0?L:L.slice(0,n||6);
@@ -25557,11 +25558,12 @@ function metMezclaMeses(n,agr){
 // 03/11/2026 (él: "sacar eso. y poner todos los colores en la barra"): sin la lista "Abajo del 35%"; abajo de la barra los 4 colores con su parte.
 // 03/11/2026 (él: "en el inicio donde dice 'la mezcla de hoy' quiero lo mismo pero en el período seleccionado, mes, año"): la misma cuenta sobre
 // un día, un mes o un año (`_mezclaDiaHTML(clave, nombre)`: clave = 'AAAA_MM_DD' | 'AAAA_MM' | 'AAAA'; suma todos los días que empiezan así).
+function _mezclaSeguro(k,nom){try{return _mezclaDiaHTML(k,nom);}catch(e){try{(window._diag=window._diag||{}).mezclaErr=String(e&&e.message||e).slice(0,200);}catch(_){}return '';}}
 function _mezclaDiaHTML(k,nom){
   const _vp=state.ventaprod||{};const _ks=k.length===10?[k]:Object.keys(_vp).filter(x=>x.startsWith(k+'_'));
   const tr=_mzTr0();let tot=0,gan=0;const bajas=[];
   for(const _k of _ks)for(const v of Object.values(_vp[_k]||{})){if(!v||v.cancelada)continue;const vv={...v,_dateKey:_k};const costo=efectivoCostoVP(vv);if(!(costo>0)||ventaSinCostoVP(vv))continue;
-    const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;}
+    const g=(v.neto||0)-costo,pct=pctGananciaVP(g,costo,gestDivVP(v));if(pct==null)continue;const t=MEZCLA_TRAMOS.find(x=>pct<x.max);if(!t)continue;const f=v.total||0;tr[t.k].tot+=f;tr[t.k].gan+=g;tot+=f;gan+=g;}
   if(!(tot>0))return '';
   const c100=gan/tot*100,limpio=tr.r.tot===0&&tr.a.tot===0;
   const barra=MEZCLA_TRAMOS.map(t=>tr[t.k].tot>0?`<span title="${t.t}: ${Math.round(tr[t.k].tot/tot*100)}% · ${fmt(tr[t.k].tot)} facturado" style="display:inline-block;height:100%;width:${(tr[t.k].tot/tot*100).toFixed(1)}%;background:${t.col}"></span>`:'').join('');
@@ -27629,7 +27631,23 @@ function _homeHoyTic(forzar){
 }
 setInterval(()=>_homeHoyTic(false),60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')_homeHoyTic(true);});
+// 07/11/2026 (él, con Inicio clavado en 17 ventas y "a esta hora 21:57" mientras Ventas x Producto ya decía 19: "tan difícil es agarrar el
+// numerito que sí actualiza y lo pegás al inicio?"): si algo de la tarjeta falla (una venta con un dato raro), antes no se dibujaba NADA y
+// quedaba la de antes. Ahora: (1) la tarjeta entera va en un try y, si falla, se dibuja igual con los números de `_homeDiaTot` (la misma
+// cuenta que Ventas x Producto) y la falla queda anotada en el diagnóstico; (2) cada parte que suele fallar va aparte.
 function renderHomeHoy(){
+  try{_renderHomeHoy();}
+  catch(e){
+    try{(window._diag=window._diag||{}).homeErr=String(e&&e.message||e).slice(0,200);_diagMandar&&_diagMandar();}catch(_){}
+    try{const el=document.getElementById('home-hoy');if(!el)return;const h=_homeDiaTot(dateToKey(new Date()));
+      el.innerHTML=`<div style="padding:16px"><div style="font-size:.7rem;letter-spacing:.2em;color:var(--muted)">🏷️ VENTAS DE HOY</div>
+        <div style="font-size:2rem;font-weight:800;margin-top:8px">${fmt(Math.round(h.bruto))}</div>
+        <div style="font-size:.72rem;color:var(--muted)">facturado · ${h.ventas} ventas · ${h.u} u.</div>
+        <div style="font-size:1.6rem;font-weight:800;color:var(--green);margin-top:8px">${fmt(Math.round(h.gan))}</div>
+        <div style="font-size:.72rem;color:var(--muted)">ganancia${h.pct!=null?' · '+Math.round(h.pct)+'%':''}</div></div>`;}catch(_){}
+  }
+}
+function _renderHomeHoy(){
   const el=document.getElementById('home-hoy');if(!el||!state.ventaprod)return;
   // La ganancia de hoy queda anotada en el aparato para el contador de la pantalla de "cargando" (26/10/2026).
   try{const _kh=dateToKey(new Date());localStorage.setItem('cycGanHoy',JSON.stringify({k:_kh,g:Math.round(_homeDiaTot(_kh).gan||0)}));}catch(e){}
@@ -27673,7 +27691,7 @@ function renderHomeHoy(){
        mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
   <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px;${ocultaVendido()?'display:none':''}">
     ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
-    ${h.ventas>0?(esc==='dia'?_mezclaDiaHTML(dateToKey(hoy),_homeHoyOff===0?'de hoy':'de ese día'):esc==='mes'?_mezclaDiaHTML(_hf.getFullYear()+'_'+String(_hf.getMonth()+1).padStart(2,'0'),_homeHoyOff===0?'de este mes':'de ese mes'):esc==='anio'?_mezclaDiaHTML(String(_hf.getFullYear()),_homeHoyOff===0?'de este año':'de ese año'):''):''}
+    ${h.ventas>0?(esc==='dia'?_mezclaSeguro(dateToKey(hoy),_homeHoyOff===0?'de hoy':'de ese día'):esc==='mes'?_mezclaSeguro(_hf.getFullYear()+'_'+String(_hf.getMonth()+1).padStart(2,'0'),_homeHoyOff===0?'de este mes':'de ese mes'):esc==='anio'?_mezclaSeguro(String(_hf.getFullYear()),_homeHoyOff===0?'de este año':'de ese año'):''):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
     <!-- 💸 cuánto cobrar: SACADO de acá (29/10/2026, él: "sacá el cuánto cobrar de abajo de las ventas, ya que va a estar en finanzas"). Vive en el Arqueo (renderCobroCrec). -->
