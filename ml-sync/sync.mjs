@@ -19904,6 +19904,26 @@ async function main() {
     // BILLING_PROBE=cajasllegaron[:go] → MARCA LAS CAJAS QUE YA ENTRARON A FULL.
     // Sin ':go' solo dice cuáles marcaría. Es la misma función que corre sola una vez por hora, no
     // una copia: si un día se cambia la regla, se cambia en un solo lado.
+    // BILLING_PROBE=envioreanudar:<últimos dígitos del envío o del seguimiento>[:go] (07/11/2026, él con la caja …5641 de Matías que figuraba
+    // ⏸️ en pausa: "esa caja ya salió y ya llegó"). Lo mismo que el botón ▶️ Reanudar de la web, pero sin pisar la fecha: la caja ya salió,
+    // así que `reanudado` = cuando se puso en pausa (no hoy) y la fecha queda. Después la marca sola la vuelta de la hora cuando ML la da de
+    // alta entera (o `cajallego`). Sin `:go` sólo muestra.
+    if (/^envioreanudar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('envioreanudar:'.length);
+      const GO = /:go$/i.test(_r); const fin = _r.replace(/:go$/i, '').replace(/\D/g, '');
+      if (fin.length < 4) { console.log('Usá: envioreanudar:<últimos 4+ dígitos>[:go]'); return; }
+      const envs = (await db.get('cyc/envios_full')) || {};
+      const hits = Object.entries(envs).filter(([id, e]) => e && (String(id).endsWith(fin) || (Array.isArray(e.cajasDet) && e.cajasDet.some((c) => c && String(c.track || c.seg || '').endsWith(fin)))));
+      if (hits.length !== 1) { console.log(`"…${fin}" agarra ${hits.length} envío(s). Tiene que ser uno solo.`); return; }
+      const [id, e] = hits[0];
+      console.log(`Envío …${String(id).slice(-4)} · ${e.cuenta || '?'} · fecha ${e.fecha || '?'} · ${e.pausado ? '⏸️ en pausa desde ' + new Date(e.pausado).toISOString().slice(0, 16) : 'NO está en pausa'}`);
+      if (!e.pausado) return;
+      if (!GO) { console.log('PRUEBA: no toqué nada. Agregá :go para sacarle la pausa.'); return; }
+      await db.patch('cyc/envios_full/' + id, { pausado: null, reanudado: e.pausado, ...(e.fechaArmada ? {} : { fechaArmada: e.fecha || null }) });
+      const rel = (await db.get('cyc/envios_full/' + id)) || {};
+      console.log(!rel.pausado ? `✓ Releído: sin pausa · sale desde ${e.fecha} (reanudado ${new Date(rel.reanudado).toISOString().slice(0, 10)})` : '✗ Sigue en pausa en la base');
+      return;
+    }
     // BILLING_PROBE=cajallego:<seguimiento|idEnvio>[:go] → MARCA UNA CAJA COMO LLEGADA COMPLETA.
     //
     // Es el hermano al revés de `abrircaja`, y hace falta por un caso concreto: **ML dice que la
