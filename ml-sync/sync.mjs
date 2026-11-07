@@ -22402,7 +22402,7 @@ async function main() {
       console.log(`=== MENSAJE A UNA VENTA · ${label} · venta ${_idPub(o.id)} · ${String(o.date_created || '').slice(0, 10)} ===`);
       for (const it of (o.order_items || [])) console.log(`  producto: ${String(it.item?.title || '').slice(0, 60)} · ${it.quantity} u.`);
       const hilo = async () => { try { const d = await mlGet(`/messages/packs/${pack}/sellers/${sid}?tag=post_sale&mark_as_read=false`, tok); return d?.messages || d?.results || []; } catch (e) { console.log('  (no pude leer el hilo: ' + String(e.message || e).slice(0, 90) + ')'); return []; } };
-      const ver = (arr) => { for (const m of arr.slice(-6)) { const mio = String(m.from?.user_id || '') === String(sid); console.log(`    [${String(m.message_date?.created || m.date_created || '').slice(0, 16).replace('T', ' ')}] ${mio ? 'NOSOTROS' : 'COMPRADOR'}: ${_taparPub(String(m.text || '').replace(/\s+/g, ' ').slice(0, 300))}`); } };
+      const ver = (arr) => { for (const m of arr.slice(-6)) { const mio = String(m.from?.user_id || '') === String(sid); console.log(`    [${String(m.message_date?.created || m.date_created || '').slice(0, 16).replace('T', ' ')}] ${mio ? 'NOSOTROS: ' + _taparPub(String(m.text || '').replace(/\s+/g, ' ').slice(0, 300)) : 'COMPRADOR: (' + String(m.text || '').length + ' letras · el texto del comprador no se imprime: el registro es público)'}`); } };
       const antes = await hilo(); console.log('  conversación:'); ver(antes);
       if (!texto) return;
       console.log(`  a mandar: ${_taparPub(texto)}`);
@@ -22459,7 +22459,7 @@ async function main() {
                 for (const m of arr) {
                   const quien = m.sender_role || m.from?.role || m.sender?.role || '?';
                   const cuando = String(m.date_created || m.date || '').slice(0, 16).replace('T', ' ');
-                  console.log(`    [${cuando}] ${quien}: ${_taparPub(String(m.message || m.text || '').replace(/\s+/g, ' ').slice(0, 300))}`);
+                  console.log(`    [${cuando}] ${quien}: ${/seller|respondent/i.test(String(quien)) ? _taparPub(String(m.message || m.text || '').replace(/\s+/g, ' ').slice(0, 300)) : '(' + String(m.message || m.text || '').length + ' letras · no se imprime: el registro es público)'}`);
                 }
               } else if (arr.length) {
                 console.log(`  acciones que ML me deja hacer: ${arr.map((a) => a.action || a.id || a).join(', ')}`);
@@ -22489,7 +22489,7 @@ async function main() {
             for (const m of arr.slice(-6)) {
               const mio = String(m.from?.user_id || '') === String(sid);
               const cuando = String(m.message_date?.created || m.date_created || '').slice(0, 16).replace('T', ' ');
-              console.log(`    [${cuando}] ${mio ? 'NOSOTROS' : 'COMPRADOR'}: ${_taparPub(String(m.text || '').replace(/\s+/g, ' ').slice(0, 300))}`);
+              console.log(`    [${cuando}] ${mio ? 'NOSOTROS: ' + _taparPub(String(m.text || '').replace(/\s+/g, ' ').slice(0, 300)) : 'COMPRADOR: (' + String(m.text || '').length + ' letras · no se imprime: el registro es público)'}`);
             }
             if (!arr.length) console.log('  (no pude leer el hilo)');
           } catch (e) { console.log(`  (no pude leer el hilo: ${String(e.message || e).slice(0, 90)})`); }
