@@ -165,6 +165,9 @@ FIJO={
   ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son blancas/celestes (él 25/10, con foto) y la publicación es la NEGRA. Van al local: en ML no llega al 35%'),
   ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
   ('p1793754280062','','Ayelen'):(0,'Él 04/11: pasó a Luciana (la de Ayelen se cerró)'),
+  ('p1794063798829','','Luciana'):(0,'Él 07/11: no va a Full lo que no da 35% contra la competencia ni vendió a 35%+. Labial IDI 19 Sandy: la competencia está a $9.395 y para 35% hace falta $13.990. Espera en la oficina'),
+  ('p1794063805405','','Luciana'):(0,'Él 07/11: no va a Full lo que no da 35% contra la competencia ni vendió a 35%+. Maybelline Witty: la competencia está a $21.031 y para 35% hace falta $47.990. Espera en la oficina'),
+  ('p1794063807731','','Luciana'):(0,'Él 07/11: no va a Full lo que no da 35% contra la competencia ni vendió a 35%+. Mary Bosques Rubios Totales: con Full a $32.990 y para 35% hace falta $62.990. Espera en la oficina'),
 }
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[];soloPerfFuera=[]
 # Revisión etapa 3, 29/10/2026: lo que CALCULA este script lleva esta marca al final del motivo. Así se distingue, sin adivinar por el
