@@ -468,3 +468,21 @@ Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (ver REVI
 8. **Lattafa Sutoor y VS Velvet Petals en la oficina (1 y 2 u.):** no hay escalón de liquidación posible antes de los 90 días. (a) sugerida: llevarlas a la perfumería en vez de mandarlas a Full · (b) mandarlas igual.
 9. **Rodillera:** trabada a $19.390 por la prueba del mes, tampoco vendió 26 días a $12.870; ML sólo acepta descuentos de 34% o más. techo95: seguro. (a) sugerida: descuento de una a $9.990 · (b) esperar al 12/11.
 10. **2 unidades que ML no acepta adentro de Full** (Par protector metatarso de Ayelen y De La Patagonia 50 ml de Adriana): hay que pedir el retiro. (a) sugerida: retirarlas con la próxima caja · (b) dejarlas.
+
+### Revisión de la Tienda del 07/11 (15 decisiones, para cuando digas "resolvamos")
+Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (ver REVISION etapa 10).
+1. **Fotos:** 8 de cada 10 fotos de la Tienda (y 6 de cada 10 de ABEL) se cargan desde la página de fotos del proveedor (la dirección dice "produtos"). Si alguien abre la foto llega al proveedor, y si el proveedor la corta, la Tienda queda sin fotos. (a) sugerida: copiarlas a la Tienda con nombres nuestros · (b) dejarlas así.
+2. **ABEL manda el código de Nissei** en el WhatsApp y lo tiene en su archivo, con los mismos códigos que la Tienda (cualquiera puede unir los dos). (a) sugerida: que mande el código de la Tienda (yo lo busco igual) · (b) dejarlo.
+3. **La Tienda baja su lista de este repositorio** y su página trae comentarios internos: alguien que busque puede llegar acá (donde dice Nissei). (a) sugerida: que el robot la suba directo y sin comentarios · (b) dejarlo.
+4. **Nombres en portugués:** quedan ~250-850 (Condicionador, Série, Tratamento, Lápis, "e" por "y"…). (a) sugerida: traducir más palabras y sacar lo que siga en portugués · (b) dejarlo.
+5. **El piso de 10% sobre ML no cuenta las 3 cuotas sin interés:** un producto puede quedar al 2% de ganancia después de las cuotas. (a) sugerida: el 10% después de las cuotas · (b) como hoy.
+6. **Precio del proveedor de hasta 30 días** en la Tienda (en Pedidos y ABEL son 2). (a) sugerida: 7 días · (b) 30.
+7. **Recargo:** un pedido chico con 53,5% de recargo queda afuera de la cuenta (tope 40%). (a) sugerida: dejar el tope (un pedido chico no tiene que subir toda la Tienda) · (b) contarlo.
+8. **Lista vieja (más de 3 días):** el mensaje dice "consultar precio" pero las tarjetas siguen mostrando el precio. (a) sugerida: "consultar" también en las tarjetas · (b) sólo en el mensaje.
+9. **16 perfumes con nombre de ML sin tamaño:** hoy se le agrega "(100 ml)" (uno es de 50 ml). (a) sugerida: afuera salvo que ML diga el tamaño · (b) como hoy.
+10. **Pesados que entraron:** impresoras 3D de 15 kg o más (una a $4,73M), dispensers de agua de pie, climatizadores grandes y un home theater 5.1. (a) sugerida: afuera · (b) quedan.
+11. **ML con otro pack o tamaño:** hoy se muestra la foto de ML (del otro tamaño) con el nombre del proveedor. (a) sugerida: foto y nombre del proveedor · (b) afuera.
+12. **1.185 productos cuestan más de $716.841** (el máximo por unidad del monotributo). (a) sugerida: afuera de la Tienda · (b) quedan.
+13. **La fila 🔥 "más barato que en ML"** muestra los que están 45-50% abajo, justo los que más chance tienen de estar mal emparejados. (a) sugerida: sólo los de catálogo exacto · (b) dejarla.
+14. **El mensaje de WhatsApp no dice "3 cuotas sin interés"** (el pedido en pantalla sí). (a) sugerida: agregarlo · (b) dejarlo.
+15. **Perfumes más estrictos (ya hecho):** desde hoy un perfume de ML con una palabra de más (Very Good Girl, Lady Million Empire, Acqua di Gio Profondo) o otro número (N°19) no cuenta como el mismo. Van a salir algunos perfumes de la Tienda y de ABEL. (a) sugerida: así · (b) volver a como estaba.

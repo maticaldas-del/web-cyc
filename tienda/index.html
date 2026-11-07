@@ -85,7 +85,7 @@ header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bot
 .cuenta { color: var(--ink2); font-size: 13px; margin: 8px 0; }
 /* 05/11/2026 (él: "poner para ordenar"): la cuenta a la izquierda y el orden a la derecha, en una sola fila. */
 .fila-orden { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; }
-.fila-orden .cuenta { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fila-orden .cuenta { margin: 0; min-width: 0; white-space: normal; }
 .ordenSel { flex: none; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 13px; padding: 0 8px; max-width: 46%; cursor: pointer; }
 .ordenSel:focus { border-color: var(--acc); outline: none; }
 .grilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
@@ -206,7 +206,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 <main class="wrap">
   <section class="ofertas" id="ofertas" hidden><h2>🔥 Más barato que en Mercado Libre</h2><div class="ofila" id="ofila"></div></section>
   <div class="fila-orden"><div class="cuenta" id="cuenta">Cargando…</div>
-    <select class="ordenSel" id="ordenSel" aria-label="Ordenar"><option value="">Ordenar: destacados</option><option value="menor">Menor precio</option><option value="mayor">Mayor precio</option><option value="ahorro">Más ahorro contra ML</option><option value="az">Nombre (A-Z)</option></select></div>
+    <select class="ordenSel" id="ordenSel" aria-label="Ordenar"><option value="">Destacados</option><option value="menor">Menor precio</option><option value="mayor">Mayor precio</option><option value="ahorro">Más ahorro contra ML</option><option value="az">Nombre (A-Z)</option></select></div>
   <div class="grilla" id="grilla"></div>
   <nav class="paginas" id="paginas" aria-label="Páginas"></nav>
   <footer id="pie">CYC</footer>
@@ -409,7 +409,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var r = ["¡Hola! Quiero hacer este pedido en CYC (pedido " + codigo(ls) + "):", ""];
     ls.forEach(function (l) { r.push("• " + (l.q > 1 ? l.q + " × " : "") + l.p.n + " · cód. " + l.p.id + " · " + (VIEJO || l.p.cp ? "consultar precio" : pesos(l.p.p * l.q))); });
     r.push("");
-    r.push(VIEJO ? "Total: a confirmar" : "Total: " + pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + lo que hay que consultar" : ""));
+    r.push(VIEJO ? "Total: a confirmar" : (total(ls) > 0 ? "Total: " + pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + lo que hay que consultar" : "") : "Total: a consultar"));
     // 01/11/2026 (él eligió 4a: "que paguen una parte antes y el resto después… lo importante es vender"): seña de la mitad y el resto al recibir.
     if (!VIEJO && total(ls) > 0) r.push("Seña al pedir: " + pesos(Math.ceil(total(ls) / 2)) + " · al recibir: " + pesos(total(ls) - Math.ceil(total(ls) / 2)));
     r.push("Llegaría aprox. el " + llegaAprox() + " (7 días hábiles)");
@@ -427,7 +427,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function actualizarBarra() {
     var ls = lineasPedido(), n = ls.reduce(function (s, l) { return s + l.q; }, 0);
     $("barra").classList.toggle("si", n > 0);
-    $("barraTot").textContent = pesos(total(ls));
+    $("barraTot").textContent = total(ls) > 0 || !ls.some(function (l) { return l.p.cp; }) ? pesos(total(ls)) : "a consultar";
     $("barraN").textContent = n + (n === 1 ? " producto" : " productos") + " · tocá para cambiar";
   }
 
@@ -437,7 +437,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
       return '<div class="lin"><img src="' + esc(l.p.f[0]) + '" alt="" referrerpolicy="no-referrer"><div class="t">' + esc(l.p.n) + "<small>" + (l.p.cp ? "consultar precio" : pesos(l.p.p) + (l.q > 1 ? " c/u · " + pesos(l.p.p * l.q) : "")) + "</small></div>" +
         '<div class="c"><button type="button" data-menos="' + l.p.id + '" aria-label="' + (l.q === 1 ? 'Sacar del pedido' : 'Uno menos') + '">' + (l.q === 1 ? '🗑' : '−') + '</button><span>' + l.q + '</span><button type="button" data-mas="' + l.p.id + '" aria-label="Uno más">+</button></div></div>';
     }).join("") : '<div class="vacio">Todavía no elegiste nada.</div>';
-    $("pedTot").textContent = pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + a consultar" : "");
+    $("pedTot").textContent = total(ls) > 0 ? pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + a consultar" : "") : (ls.some(function (l) { return l.p.cp; }) ? "a consultar" : pesos(0));
     $("pedCuo").textContent = total(ls) > 0 ? "o 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)) : "";
     $("pedCod").textContent = ls.length ? codigo(ls) : "—";
     $("copiar").disabled = !ls.length; $("wa").disabled = !ls.length;
@@ -528,8 +528,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var hecho = function () { toast("Pedido copiado ✓"); };
     var aMano = function () {
       var ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta); ta.select(); var ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
-      document.body.removeChild(ta); ok ? hecho() : prompt("Copiá el pedido:", t);
+      var h = document.querySelector("dialog[open]") || document.body; h.appendChild(ta); ta.focus(); ta.select(); var ok = false; try { ok = document.activeElement === ta && document.execCommand("copy"); } catch (e) { ok = false; }
+      h.removeChild(ta); ok ? hecho() : prompt("Copiá el pedido:", t);
     };
     if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(hecho, aMano); else aMano();
   };
@@ -549,7 +549,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
       $("pie").textContent = "CYC · precios actualizados el " + f[2] + "/" + f[1] + "/" + f[0] + (VIEJO ? " (a confirmar)" : ""); } }
     pintarChips(); pintar(); actualizarBarra();
     // Link directo a un producto (31/10/2026, para los estados de WhatsApp): tiendacyc.github.io/#p=<código> abre ese producto.
-    var mH = /[#&]p=([0-9A-Za-z]{4,8})/.exec(location.hash || ""); if (mH && POR_ID[mH[1].toUpperCase()]) ver(mH[1].toUpperCase());
+    var mH = /[#&]p=([0-9A-Za-z]{4,8})/.exec(location.hash || ""); if (mH && POR_ID[mH[1].toUpperCase()]) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} ver(mH[1].toUpperCase()); }
   }).catch(function () {
     $("cuenta").textContent = "";
     grilla.innerHTML = '<div class="vacio" style="grid-column:1/-1">No pude cargar los productos. Probá de nuevo en un rato.</div>';

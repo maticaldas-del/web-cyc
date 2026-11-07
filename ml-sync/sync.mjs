@@ -13338,7 +13338,7 @@ const LISTA_NOMBRE_VER = 1;
 const PY_NOMBRE_VER = 1;
 const PY_TRAD = [
   [/\bmouse\s+sem\s+fio\b/gi, 'mouse inalambrico'], [/\bfones?\s+de\s+ouvido\b/gi, 'auriculares'], [/\bsem\s+fio\b/gi, 'inalambrico'],
-  [/\bcaixa\s+de\s+som\b/gi, 'parlante'], [/\balto[- ]?falante\b/gi, 'parlante'], [/\bsecador\s+de\s+cabelo\b/gi, 'secador de pelo'],
+  [/\bcaixa\s+de\s+som\b/gi, 'parlante'], [/\balto[- ]?falantes?\b/gi, (m) => (/s$/i.test(m) ? 'parlantes' : 'parlante')], [/\bsecador\s+de\s+cabelo\b/gi, 'secador de pelo'],
   [/\bcart[aã]o\s+de\s+mem[oó]ria\b/gi, 'tarjeta de memoria'], [/\bgarrafa\s+t[eé]rmica\b/gi, 'termo'], [/\bcapa\s+para\b/gi, 'funda para'],
   [/\bpel[ií]cula\b/gi, 'vidrio templado'], [/\brel[oó]gio\b/gi, 'reloj'], [/\bfeminino\b/gi, 'mujer'], [/\bmasculino\b/gi, 'hombre'],
   [/\bunissex\b/gi, 'unisex'], [/\bpreto\b/gi, 'negro'], [/\bbranco\b/gi, 'blanco'], [/\bvermelho\b/gi, 'rojo'], [/\bcinza\b/gi, 'gris'],
@@ -13347,7 +13347,7 @@ const PY_TRAD = [
   [/\bescova\b/gi, 'cepillo'], [/\b(prancha|chapinha)\b/gi, 'planchita'], [/\bbarbeador\b/gi, 'afeitadora'], [/\baparador\b/gi, 'cortadora'],
   [/\bfritadeira\b/gi, 'freidora'], [/\bliquidificador\b/gi, 'licuadora'], [/\baspirador\b/gi, 'aspiradora'], [/\bl[aâ]mpada\b/gi, 'lampara'],
   [/\blumin[aá]ria\b/gi, 'lampara'], [/\bbrinquedo\b/gi, 'juguete'], [/\bboneca\b/gi, 'muñeca'], [/\bjogo\b/gi, 'juego'], [/\bcontrole\b/gi, 'control'],
-  [/\b[oó]culos\b/gi, 'anteojos'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
+  [/(?<![\p{L}])[oó]culos(?![\p{L}])/giu, 'anteojos'],   /* revisión etapa 10 (07/11): "Binóculos" daba "Binanteojos" */ [/\bbin[oó]culos\b/giu, 'binoculares'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
   [/\bt[eê]nis\b/gi, 'zapatillas'], [/\blanterna\b/gi, 'linterna'], [/\bbalan[cç]a\b/gi, 'balanza'], [/\btesoura\b/gi, 'tijera'],
   [/\bimpressora\b/gi, 'impresora'], [/\bconsole\b/gi, 'consola'], [/\bteclado\s+sem\s+fio\b/gi, 'teclado inalambrico'], [/\bcompat[ií]vel\b/gi, 'compatible'],
   [/\bsuporte\b/gi, 'soporte'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
@@ -13403,7 +13403,7 @@ function tiendaGrande(nombre) {
   const esAcc = /^\s*(controle\s+remoto|control\s+remoto|suporte|soporte|capa|funda|cabo|cable|adaptador|filtro|pel[ií]cula|chromecast|fire\s*tv|tv\s*box|tv\s*stick|android\s*tv|apple\s*tv|google\s*tv|antena|conversor|receptor|mochila|bolsa|case|luva)\b/i.test(n);
   // Monitores: sólo hasta 24". Uno que EMPIEZA con "Monitor" sin la medida, afuera; el de presión, el cardíaco o el de estudio no son de PC.
   if (!esAcc && /\bmonitor(es)?\b(?!\s+(de\s+)?(press|presi|glic|beb|frequ|card|est[uú]dio|refer))/i.test(n)) {
-    const m = n.match(/(\d{2}(?:[.,]\d)?)\s*(?:"|''|”|pol\b|polegadas|pulgadas|inch|in\b)/i);
+    const m = n.match(/(\d{2}(?:[.,]\d+)?)\s*(?:"|''|”|pol\b|polegadas|pulgadas|inch|in\b)/i);   // revisión etapa 10 (07/11): 31.15" se leía 15"
     if (m && parseFloat(m[1].replace(',', '.')) > 24) return 'monitor de más de 24"';
     if (!m && /^\s*monitor\b/i.test(n)) return 'monitor sin la medida';
   }
@@ -13653,7 +13653,7 @@ function tiendaMismoProducto(nNissei, nML, blando = false) {
   // 2c) Perfumes: TODA palabra del nombre de Nissei tiene que estar en ML (Very Good Girl, 1 Million Lucky, Khamrah Qahwa…).
   if (_TM_PERF.test(A) || _TM_PERF.test(B)) for (const w of tA) { if (_TM_DESCR.has(w) || _TM_PERF_RELLENO.has(w) || _TM_GENERO.has(w) || _TM_COLOR.has(w) || /^\d/.test(w) || w.length <= 2) continue; if (!tiene(SB, w)) return 'perfume: Nissei dice "' + w + '" y ML no'; }
   // 3) El color: si Nissei lo dice, ML tiene que decir ese mismo.
-  if (!codigoIgual) for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
+  for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
   // 4) La capacidad: los GB/TB/ml de Nissei tienen que estar en ML (la RAM no cuenta, pero si los dos la dicen tiene que ser la misma).
   //    Una consola puede no decirla en ML.
   const ramA = _tmRam(A), ramB = _tmRam(B);
@@ -13725,7 +13725,15 @@ function tiendaPerfumeSeguro(nn, n) {
     const ea = eau(nn), eb = eau(n); if ([...ea].some((x) => !eb.has(x)) || [...eb].some((x) => !ea.has(x))) return false; }
   const enB = A.filter((w) => B.has(w) || Bl.some((b) => b.length > 4 && (b.startsWith(w) || w.startsWith(b)))).length / A.length;
   const enA = Bl.filter((w) => As.has(w) || A.some((a) => a.length > 4 && (a.startsWith(w) || w.startsWith(a)))).length / Bl.length;
-  return enB >= 1 && enA >= 0.75;   // 01/11: TODAS las palabras del proveedor y casi nada de más en ML (muestra de 25: Mawwal Janah/Athar, Mirada Verato Amber, NR For Her Forever)
+  // Revisión etapa 10 (07/11/2026): ML no puede tener palabras de más (Very Good Girl ≠ Good Girl, Lady Million Empire, Acqua di Gio Profondo,
+  // CK One Shock, Flowerbomb Nectar: todos pasaban con el 75%), los números que no son el tamaño tienen que ser los mismos (N°5 ≠ N°19) y un
+  // "x 2" / dúo sólo en ML es otro producto. Probado: 9 de 9 malos afuera, 5 de 5 buenos adentro.
+  { const nums = (t) => new Set((String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/\b\d+(?:[.,]\d+)?\b(?!\s*(ml|oz|fl))/g) || []));
+    const packX = (t) => /\bx\s*(\d{1,2})\b(?!\s*(ml|gr?|oz))|\b(\d{1,2})\s*u\b|\b(duo|dupla|duplo|par|pares)\b/i.test(t);
+    const na = nums(nn), nb = nums(n); if ([...na].some((x) => !nb.has(x)) || [...nb].some((x) => !na.has(x))) return false;
+    if (packX(n) && !packX(nn)) return false;
+    if (/\b\d(?:[.,]\d)?\s*(oz|fl)?\b/i.test(String(n).replace(/\d{2,3}\s*ml/i, '')) && !/\d{2,3}\s*ml\b/i.test(n)) return false; }
+  return enB >= 1 && enA >= 1;   // 01/11: TODAS las palabras del proveedor y casi nada de más en ML (muestra de 25: Mawwal Janah/Athar, Mirada Verato Amber, NR For Her Forever)
 }
 function tiendaParecido(nNissei, nML) {
   const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
@@ -32684,9 +32692,9 @@ async function main() {
       // del catálogo de ML (`/products/<cat>`) las características principales, la ficha técnica y la descripción corta. Se guardan en
       // `mlapi/tiendadet/<cat>` = {ts, d:{t,a,s}} (o {ts, no:1}) y se releen cada 60 días; por corrida, con el cupo que dejó la búsqueda.
       // Van en 64 archivos aparte (`detalles/d<n>.json`, n = tiendaBalde(id)): la página baja SÓLO el del producto que se abre.
-      const detPorId = {}; let detQuedan = 0, detLeidos = 0;
+      const detPorId = {}; let detQuedan = 0, detLeidos = 0, detFallo = false;
       if (GOt && !CONSULTA_SOLO_LEE) {
-        let detMem = {}; try { detMem = (await db.get('mlapi/tiendadet')) || {}; } catch { detMem = null; }
+        let detMem = {}; try { detMem = (await db.get('mlapi/tiendadet')) || {}; } catch { detMem = null; detFallo = true; }
         if (detMem) {
           const DET_DIAS = 60, detMax = Math.max(0, Math.min(2500, TM_MAX - tmLlamadas));
           const falta = [...new Set(out.map((q) => q._cat).filter(Boolean))].filter((c) => { const m = detMem[c]; return !(m && hoy - Number(m.ts || 0) < DET_DIAS * 864e5); });
@@ -32747,7 +32755,10 @@ async function main() {
       const releido = JSON.parse(readFileSync(ruta, 'utf8'));
       if (releido.productos.length !== out.length) { negar(`❌ El archivo no quedó bien (releí ${releido.productos.length} de ${out.length}).`); return; }
       console.log(`✓ escrito: ${releido.productos.length} de ${out.length} productos (releído)`);
-      { const dir = (ruta.replace(/\/[^/]*$/, '') || '.') + '/detalles'; mkdirSync(dir, { recursive: true });
+      // Revisión etapa 10 (07/11/2026): si no se pudo leer la memoria de detalles (`detFallo`), NO se escriben (se publicaban 64 archivos
+      // vacíos y todos los productos quedaban sin detalles; sin la carpeta, la subida deja los de antes).
+      if (detFallo) console.log('⚠️ detalles: no se pudo leer la memoria de detalles: quedan los de antes');
+      else { const dir = (ruta.replace(/\/[^/]*$/, '') || '.') + '/detalles'; mkdirSync(dir, { recursive: true });
         const baldes = Array.from({ length: 64 }, () => ({})); let nd = 0;
         for (const [id, d] of Object.entries(detPorId)) { baldes[tiendaBalde(id)][id] = d; nd++; }
         let malo = 0; baldes.forEach((b, i) => { const t = JSON.stringify(b); if (prohibido(t.replace(/https:\/\/[^"]+/g, ''))) { malo++; writeFileSync(dir + '/d' + i + '.json', '{}\n'); } else writeFileSync(dir + '/d' + i + '.json', t + '\n'); });
