@@ -456,3 +456,15 @@ Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (ver REVI
 14. **ABEL con menos de 20 perfumes al día**: hoy queda la página vieja sin aviso. (a) sugerida: te aviso y la página dice "actualizando" · (b) como hoy.
 15. **Los US$ 100 por mes de ABEL** no están cargados en ningún lado (no se ven en el Arqueo). (a) sugerida: deuda mensual de la perfumería desde que arranque · (b) no cargarlos.
 16. **Persea:** ahora Pedidos también respeta lo que fijaste para Full (las 3 de Luciana) y compra aparte lo que pide la perfumería. (a) sugerida: así · (b) que la perfumería vaya primero.
+
+### 07/11 · De la completa (para cuando digas "resolvamos")
+1. **Pendrive 8 GB (Matías, 105 u., sin reposición):** a $23.990 vende ~0,3 por día; ganando la caja (ML pide $21.813) vendía ~3,5 por día. techo95: 100% de que $23.990 deja menos. (a) sugerida: autorizar bajar a $21.790 hoy · (b) esperar 1-2 días a que el sistema lo mida solo.
+2. **Paulvic Libre (Adriana, 2 u.):** la prueba de $28.590 lleva 11 días sin vender y la regla la vuelve a $14.360. (a) sugerida: dejarla en $21.990 como los demás Paulvic hasta después de Navidad · (b) que vuelva a $14.360.
+3. **VS Coconut Passion (Adriana, 13 u. de 119 días, pagan stock antiguo):** con el descuento a $46.790 deja 7%; ganar la caja pide bajar del costo. (a) sugerida: retirarlas a la perfumería (costo + 25%) · (b) seguir con el descuento pagando stock antiguo.
+4. **Paulvic Teikirisi (Adriana, 1 u. de 230 días, paga stock antiguo):** hoy vence el plazo que elegiste. (a) sugerida: retirarla al local · (b) seguir a $14.990.
+5. **VS de 1 unidad (Bare Vanilla, Pure Seduction, Velvet Petals):** no venden; la competencia está a $39.000-44.000. (a) sugerida: retirarlas a la perfumería · (b) esperar a los 90 días (~15/12 y ~06/01) para liquidar hasta el 10%.
+6. **Paulvic Luna (Adriana, 11 u. de 133 días, pagan stock antiguo ~$3.650 desde el 10/11):** vende 1 por mes a $14.990; ganar la caja pide bajar del costo. (a) sugerida: retirarlas a la perfumería · (b) dejarlas pagando stock antiguo.
+7. **Reflector panel solar (Ayelen, 5 u. de 137 días):** al costo en el CyberMonday hasta el 12/11, sin ventas desde el 17/08. (a) sugerida: retirarlas al local · (b) seguir al costo pagando ~$1.500 por mes.
+8. **Lattafa Sutoor y VS Velvet Petals en la oficina (1 y 2 u.):** no hay escalón de liquidación posible antes de los 90 días. (a) sugerida: llevarlas a la perfumería en vez de mandarlas a Full · (b) mandarlas igual.
+9. **Rodillera:** trabada a $19.390 por la prueba del mes, tampoco vendió 26 días a $12.870; ML sólo acepta descuentos de 34% o más. techo95: seguro. (a) sugerida: descuento de una a $9.990 · (b) esperar al 12/11.
+10. **2 unidades que ML no acepta adentro de Full** (Par protector metatarso de Ayelen y De La Patagonia 50 ml de Adriana): hay que pedir el retiro. (a) sugerida: retirarlas con la próxima caja · (b) dejarlas.
