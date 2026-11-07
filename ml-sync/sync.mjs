@@ -94,6 +94,17 @@ if (/^(capital|licua|cierrevs)(:|;|$)/.test(String(process.env.BILLING_PROBE || 
   const _esMP = /mercado\s*pago|\bmp\b|a liquidar|disponible|\bdisp\b/i;
   console.log = (...a) => _olM(...a.map((x) => (typeof x === 'string' ? x.split('\n').map((ln) => (_esMP.test(ln) ? ln.replace(/(US\$\s?|\$|−\$|-\$)\s?-?\d[\d.,]*/g, (m) => (/US/.test(m) ? 'US$ •••' : '$•••')).replace(/(^|[\s:(])[+−-]?\d{1,3}(\.\d{3})+(,\d+)?/g, '$1•••') : ln)).join('\n') : x)));
 }
+// 🛍️ LA TIENDA NO DICE DE DÓNDE VIENE NI EN EL REGISTRO (revisión etapa 10, 07/11/2026): el registro de GitHub es público y `tienda`
+// imprimía "ya no está en Nissei", la fórmula de ABEL (de ahí se saca el costo en dólares) y, en `tienda:id=`/`fuera=`, el código del proveedor
+// y el US$. En todo comando `tienda…` el nombre del proveedor sale como "proveedor", los códigos y los US$ tapados.
+if (/^tienda(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+  const _olT = console.log.bind(console);
+  const _tapaT = (t) => t.replace(/\ben (nissei|paraguay)\b/gi, 'en el proveedor').replace(/comprasparaguay(\.com\.ar)?|nissei|paraguay/gi, 'proveedor')
+    .replace(/US\$\s?-?\d[\d.,]*/g, 'US$ •••')
+    .replace(/(proveedor:?\s+)(\d{3,8})\b/gi, '$1•••')
+    .replace(/×\s*[\d.,]+\s*×\s*[\d.,]+(\s*×\s*[\d.,]+)?/g, '× •••').replace(/×\s*\d+[.,]\d+/g, '× •••');
+  console.log = (...a) => _olT(...a.map((x) => (typeof x === 'string' ? _tapaT(x) : x)));
+}
 // ⚠️ UN COMANDO QUE SE NIEGA NO QUEDA COMO "BIEN" (revisión etapa 4, 30/10/2026): el bucle de los workflows escribe "✓ terminó" si node sale
 // con 0, y un comando que dice "No escribo nada" o "DATOS INCOMPLETOS" sale con 0. Al terminar se deja un renglón que se ve en el registro.
 if (process.env.BILLING_PROBE) {
@@ -13327,7 +13338,7 @@ const LISTA_NOMBRE_VER = 1;
 const PY_NOMBRE_VER = 1;
 const PY_TRAD = [
   [/\bmouse\s+sem\s+fio\b/gi, 'mouse inalambrico'], [/\bfones?\s+de\s+ouvido\b/gi, 'auriculares'], [/\bsem\s+fio\b/gi, 'inalambrico'],
-  [/\bcaixa\s+de\s+som\b/gi, 'parlante'], [/\balto[- ]?falante\b/gi, 'parlante'], [/\bsecador\s+de\s+cabelo\b/gi, 'secador de pelo'],
+  [/\bcaixa\s+de\s+som\b/gi, 'parlante'], [/\balto[- ]?falantes?\b/gi, (m) => (/s$/i.test(m) ? 'parlantes' : 'parlante')], [/\bsecador\s+de\s+cabelo\b/gi, 'secador de pelo'],
   [/\bcart[aã]o\s+de\s+mem[oó]ria\b/gi, 'tarjeta de memoria'], [/\bgarrafa\s+t[eé]rmica\b/gi, 'termo'], [/\bcapa\s+para\b/gi, 'funda para'],
   [/\bpel[ií]cula\b/gi, 'vidrio templado'], [/\brel[oó]gio\b/gi, 'reloj'], [/\bfeminino\b/gi, 'mujer'], [/\bmasculino\b/gi, 'hombre'],
   [/\bunissex\b/gi, 'unisex'], [/\bpreto\b/gi, 'negro'], [/\bbranco\b/gi, 'blanco'], [/\bvermelho\b/gi, 'rojo'], [/\bcinza\b/gi, 'gris'],
@@ -13336,7 +13347,7 @@ const PY_TRAD = [
   [/\bescova\b/gi, 'cepillo'], [/\b(prancha|chapinha)\b/gi, 'planchita'], [/\bbarbeador\b/gi, 'afeitadora'], [/\baparador\b/gi, 'cortadora'],
   [/\bfritadeira\b/gi, 'freidora'], [/\bliquidificador\b/gi, 'licuadora'], [/\baspirador\b/gi, 'aspiradora'], [/\bl[aâ]mpada\b/gi, 'lampara'],
   [/\blumin[aá]ria\b/gi, 'lampara'], [/\bbrinquedo\b/gi, 'juguete'], [/\bboneca\b/gi, 'muñeca'], [/\bjogo\b/gi, 'juego'], [/\bcontrole\b/gi, 'control'],
-  [/\b[oó]culos\b/gi, 'anteojos'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
+  [/(?<![\p{L}])[oó]culos(?![\p{L}])/giu, 'anteojos'],   /* revisión etapa 10 (07/11): "Binóculos" daba "Binanteojos" */ [/\bbin[oó]culos\b/giu, 'binoculares'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
   [/\bt[eê]nis\b/gi, 'zapatillas'], [/\blanterna\b/gi, 'linterna'], [/\bbalan[cç]a\b/gi, 'balanza'], [/\btesoura\b/gi, 'tijera'],
   [/\bimpressora\b/gi, 'impresora'], [/\bconsole\b/gi, 'consola'], [/\bteclado\s+sem\s+fio\b/gi, 'teclado inalambrico'], [/\bcompat[ií]vel\b/gi, 'compatible'],
   [/\bsuporte\b/gi, 'soporte'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
@@ -13394,7 +13405,7 @@ function tiendaGrande(nombre) {
   const esAcc = /^\s*(controle\s+remoto|control\s+remoto|suporte|soporte|capa|funda|cabo|cable|adaptador|filtro|pel[ií]cula|chromecast|fire\s*tv|tv\s*box|tv\s*stick|android\s*tv|apple\s*tv|google\s*tv|antena|conversor|receptor|mochila|bolsa|case|luva)\b/i.test(n);
   // Monitores: sólo hasta 24". Uno que EMPIEZA con "Monitor" sin la medida, afuera; el de presión, el cardíaco o el de estudio no son de PC.
   if (!esAcc && /\bmonitor(es)?\b(?!\s+(de\s+)?(press|presi|glic|beb|frequ|card|est[uú]dio|refer))/i.test(n)) {
-    const m = n.match(/(\d{2}(?:[.,]\d)?)\s*(?:"|''|”|pol\b|polegadas|pulgadas|inch|in\b)/i);
+    const m = n.match(/(\d{2}(?:[.,]\d+)?)\s*(?:"|''|”|pol\b|polegadas|pulgadas|inch|in\b)/i);   // revisión etapa 10 (07/11): 31.15" se leía 15"
     if (m && parseFloat(m[1].replace(',', '.')) > 24) return 'monitor de más de 24"';
     if (!m && /^\s*monitor\b/i.test(n)) return 'monitor sin la medida';
   }
@@ -13407,6 +13418,11 @@ function tiendaGrande(nombre) {
 // Swap, Vitrine o "Sem caixa". Afuera, igual que el tester.
 // 31/10/2026: lo de Apple que sale sin precio en la tienda (el nombre EMPIEZA con el equipo, así "Funda para iPhone" sigue con precio).
 const TIENDA_APPLE = /^\s*(celular\s+|smartphone\s+|tablet\s+|notebook\s+|auriculares?\s+|reloj\s+|smartwatch\s+)?(apple\s+)?(iphone|ipad|macbook|imac|mac\s+(mini|studio|pro)|airpods|apple\s+watch|watch\s+(series|ultra|se)\b)/i;
+// Revisión etapa 10 (07/11/2026): también "Apple 11\" iPad Air", "Apple 15\" MacBook Air" y "Auriculares inalámbricos Apple AirPods Pro 3"
+// (salían con precio: la regla de arriba sólo miraba el principio). Lo que es PARA un Apple (funda, cable, correa…) sigue con precio.
+const TIENDA_APPLE2 = /\bapple\s+(\d+(?:[.,]\d+)?\s*(?:"|''|pulgadas)\s+)?(iphone|ipad|macbook|imac|mac\s+(mini|studio|pro)|airpods|watch)\b/i;
+const TIENDA_APPLE_ACC = /\b(para|compatible|funda|case|carcasa|protector|vidrio|cable|cargador|correa|malla|soporte|adaptador|estuche|lápiz|lapiz|stylus)\b/i;
+function esAppleTienda(n) { const t = String(n || ''); if (TIENDA_APPLE.test(t)) return true; const m = t.match(TIENDA_APPLE2); return !!m && !TIENDA_APPLE_ACC.test(t.slice(0, m.index)); }
 // 31/10/2026 (él: "los filamentos están caros"): Nissei "Elegoo PLA+ 3 KG" entraba con el nombre de ML "1 kg" a $111.990 (parecía 1 kg
 // carísimo; eran 3). Si el nombre del proveedor y el de ML dicen la MISMA medida (kg, g, ml, l, GB, TB, unidades) con números distintos, es
 // otro producto (pack o tamaño): afuera.
@@ -13639,7 +13655,7 @@ function tiendaMismoProducto(nNissei, nML, blando = false) {
   // 2c) Perfumes: TODA palabra del nombre de Nissei tiene que estar en ML (Very Good Girl, 1 Million Lucky, Khamrah Qahwa…).
   if (_TM_PERF.test(A) || _TM_PERF.test(B)) for (const w of tA) { if (_TM_DESCR.has(w) || _TM_PERF_RELLENO.has(w) || _TM_GENERO.has(w) || _TM_COLOR.has(w) || /^\d/.test(w) || w.length <= 2) continue; if (!tiene(SB, w)) return 'perfume: Nissei dice "' + w + '" y ML no'; }
   // 3) El color: si Nissei lo dice, ML tiene que decir ese mismo.
-  if (!codigoIgual) for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
+  for (const w of SA) if (_TM_COLOR.has(w) && !SB.has(w)) return /\b(blanco|negro|gris|azul|verde|rojo)\b/.test(B) || [...SB].some((v) => _TM_COLOR.has(v)) ? 'otro color' : 'ML no dice el color';
   // 4) La capacidad: los GB/TB/ml de Nissei tienen que estar en ML (la RAM no cuenta, pero si los dos la dicen tiene que ser la misma).
   //    Una consola puede no decirla en ML.
   const ramA = _tmRam(A), ramB = _tmRam(B);
@@ -13711,7 +13727,15 @@ function tiendaPerfumeSeguro(nn, n) {
     const ea = eau(nn), eb = eau(n); if ([...ea].some((x) => !eb.has(x)) || [...eb].some((x) => !ea.has(x))) return false; }
   const enB = A.filter((w) => B.has(w) || Bl.some((b) => b.length > 4 && (b.startsWith(w) || w.startsWith(b)))).length / A.length;
   const enA = Bl.filter((w) => As.has(w) || A.some((a) => a.length > 4 && (a.startsWith(w) || w.startsWith(a)))).length / Bl.length;
-  return enB >= 1 && enA >= 0.75;   // 01/11: TODAS las palabras del proveedor y casi nada de más en ML (muestra de 25: Mawwal Janah/Athar, Mirada Verato Amber, NR For Her Forever)
+  // Revisión etapa 10 (07/11/2026): ML no puede tener palabras de más (Very Good Girl ≠ Good Girl, Lady Million Empire, Acqua di Gio Profondo,
+  // CK One Shock, Flowerbomb Nectar: todos pasaban con el 75%), los números que no son el tamaño tienen que ser los mismos (N°5 ≠ N°19) y un
+  // "x 2" / dúo sólo en ML es otro producto. Probado: 9 de 9 malos afuera, 5 de 5 buenos adentro.
+  { const nums = (t) => new Set((String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/\b\d+(?:[.,]\d+)?\b(?!\s*(ml|oz|fl))/g) || []));
+    const packX = (t) => /\bx\s*(\d{1,2})\b(?!\s*(ml|gr?|oz))|\b(\d{1,2})\s*u\b|\b(duo|dupla|duplo|par|pares)\b/i.test(t);
+    const na = nums(nn), nb = nums(n); if ([...na].some((x) => !nb.has(x)) || [...nb].some((x) => !na.has(x))) return false;
+    if (packX(n) && !packX(nn)) return false;
+    if (/\b\d(?:[.,]\d)?\s*(oz|fl)?\b/i.test(String(n).replace(/\d{2,3}\s*ml/i, '')) && !/\d{2,3}\s*ml\b/i.test(n)) return false; }
+  return enB >= 1 && enA >= 1;   // 01/11: TODAS las palabras del proveedor y casi nada de más en ML (muestra de 25: Mawwal Janah/Athar, Mirada Verato Amber, NR For Her Forever)
 }
 function tiendaParecido(nNissei, nML) {
   const sig = (t) => new Set(_tmTokens(t).filter((w) => !_TM_DESCR.has(w) || _TM_VARIANTE.has(w)));
@@ -32225,7 +32249,7 @@ async function main() {
       // de los últimos 3 pedidos con todos los gastos (no el promedio de compras): así el 25% nunca se come en un pedido caro.
       let RECT = RECARGO_PAR;
       try { const cps = (await db.get('cyc/compraspy')) || {};
-        const rr = Object.entries(cps).map(([k, c]) => ({ f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}, { sinAdelanto: true }).r })).filter((x) => x.r && x.r >= 1.05 && x.r <= 1.4)
+        const rr = Object.entries(cps).map(([k, c]) => ({ f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}, { sinAdelanto: true }).r })).filter((x) => x.r && x.r >= 1.05 && x.r <= 1.4 && /^\d{4}-\d{2}-\d{2}/.test(x.f))   // revisión etapa 10 (07/11): sin fecha no cuenta (quedaba como el "más nuevo")
           .sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
         if (rr.length) RECT = Math.max(RECARGO_PAR, ...rr.map((x) => x.r));
       } catch { /* queda el recargo de compras */ }
@@ -32287,6 +32311,7 @@ async function main() {
         if (!p || String(p.origen || '').toLowerCase() !== 'py') continue;
         if (provPyDeBot(p) !== 'nissei') { no('otro proveedor'); continue; }
         const usd = Number(p.nisseiUSD) || 0; if (!(usd > 0)) { no('ficha sin precio de hoy'); continue; }
+        if (usd > 2000) { no('más caro que el tope de la tienda'); continue; }   // revisión etapa 10 (07/11): el tope de US$ 2.000 también para fichas (salió una potencia de auto a $14.208.990)
         if (sinSt && sinSt[p.id]) { no('ya no lo tienen'); codUsados.push(p.codPy); continue; }
         if (marcaFrenadaDe({ nombre: p.name, marca: p.marca }, marcasNo)) { no('marca prohibida'); codUsados.push(p.codPy); continue; }
         const ts = Math.max(Number(p.nisseiTs) || 0, Number(((pycat || {})[String(p.codPy || '')] || {}).ts) || 0);
@@ -32329,6 +32354,7 @@ async function main() {
         if (!candCatChequeado(c)) { no('candidato sin el catálogo confirmado'); continue; }
         if (marcaFrenadaDe(c, marcasNo)) { no('marca prohibida'); codUsados.push(c.cod); continue; }
         const usd = Number(c.usd) || 0; if (!(usd > 0)) { no('candidato sin precio'); continue; }
+        if (usd > 2000) { no('más caro que el tope de la tienda'); continue; }   // revisión etapa 10 (07/11)
         const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`ya no está en Nissei (no se vio en la última vuelta completa) o mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const cat = candCatDe(c); codUsados.push(c.cod);
         meter({ key: cat, cat, usd, ts, cod: String(c.cod || ''), nn: String(c.nombre || ''), mpRef: Number(c.mlPrecio) || null, titRes: c.mlTit, fotoRes: c.mlFoto });
@@ -32500,7 +32526,7 @@ async function main() {
       const qLeer = catsQ.filter((c) => { const q = tmCache['Q_' + c]; return !(q && hoy - Number(q.ts || 0) < dispersa('Q_' + c, TM_DIAS)); });
       for (let i = 0; i < qLeer.length && hayCupo(); i += 5) {
         await Promise.all(qLeer.slice(i, i + 5).map(async (c) => {
-          try { const it = await leer404('/products/' + c + '/items?limit=30'); const xs = ((it && it.results) || []).filter((y) => y && Number(y.price) > 0 && !(y.tags || []).some((t) => /^cbt_/.test(t)));
+          try { const it = await leer404('/products/' + c + '/items?limit=30'); const xs = ((it && it.results) || []).filter((y) => y && Number(y.price) > 0 && !esOfertaDeAfuera(y));   // revisión etapa 10 (07/11): sin las de afuera (también por el envío y el modo internacional, como el resto del robot)
             if (!xs.length) { qSin++; await anotar('Q_' + c, { ts: hoy, no: 1 }); return; }
             let best = null; for (const y of xs) { const eq = Number(y.price) * (y.listing_type_id === 'gold_pro' ? 1 : CUOTAS_CLASICA); if (!best || eq < best.eq) best = { eq: Math.round(eq), raw: Math.round(Number(y.price)), t: y.listing_type_id === 'gold_pro' ? 'p' : 'c' }; }
             qLeidos++; await anotar('Q_' + c, { ...best, ts: hoy });
@@ -32642,7 +32668,7 @@ async function main() {
         } else if (Number(ent.usd) !== x.usd || Number(ent.p) !== p || String(ent.cod || '') !== String(x.cod || '')) idsCambia[clave] = { ...ent, cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), usd: x.usd, p, n: n.slice(0, 120) };
         // 31/10/2026 (él eligió 1a: "apple están carísimos… si los saco van a decir aaa no tienen iphone"): los Apple (iPhone, iPad, Mac,
         // AirPods, Watch) salen SIN precio ("Consultar precio"): el precio no va ni en el archivo. Los accesorios para Apple siguen con precio.
-        const cp = TIENDA_APPLE.test(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
+        const cp = esAppleTienda(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlR = x.mlRaw > 0 ? x.mlRaw : x.mpRef; const mlVer = !cp && !om && !x.ap && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
@@ -32668,9 +32694,9 @@ async function main() {
       // del catálogo de ML (`/products/<cat>`) las características principales, la ficha técnica y la descripción corta. Se guardan en
       // `mlapi/tiendadet/<cat>` = {ts, d:{t,a,s}} (o {ts, no:1}) y se releen cada 60 días; por corrida, con el cupo que dejó la búsqueda.
       // Van en 64 archivos aparte (`detalles/d<n>.json`, n = tiendaBalde(id)): la página baja SÓLO el del producto que se abre.
-      const detPorId = {}; let detQuedan = 0, detLeidos = 0;
+      const detPorId = {}; let detQuedan = 0, detLeidos = 0, detFallo = false;
       if (GOt && !CONSULTA_SOLO_LEE) {
-        let detMem = {}; try { detMem = (await db.get('mlapi/tiendadet')) || {}; } catch { detMem = null; }
+        let detMem = {}; try { detMem = (await db.get('mlapi/tiendadet')) || {}; } catch { detMem = null; detFallo = true; }
         if (detMem) {
           const DET_DIAS = 60, detMax = Math.max(0, Math.min(2500, TM_MAX - tmLlamadas));
           const falta = [...new Set(out.map((q) => q._cat).filter(Boolean))].filter((c) => { const m = detMem[c]; return !(m && hoy - Number(m.ts || 0) < DET_DIAS * 864e5); });
@@ -32731,7 +32757,10 @@ async function main() {
       const releido = JSON.parse(readFileSync(ruta, 'utf8'));
       if (releido.productos.length !== out.length) { negar(`❌ El archivo no quedó bien (releí ${releido.productos.length} de ${out.length}).`); return; }
       console.log(`✓ escrito: ${releido.productos.length} de ${out.length} productos (releído)`);
-      { const dir = (ruta.replace(/\/[^/]*$/, '') || '.') + '/detalles'; mkdirSync(dir, { recursive: true });
+      // Revisión etapa 10 (07/11/2026): si no se pudo leer la memoria de detalles (`detFallo`), NO se escriben (se publicaban 64 archivos
+      // vacíos y todos los productos quedaban sin detalles; sin la carpeta, la subida deja los de antes).
+      if (detFallo) console.log('⚠️ detalles: no se pudo leer la memoria de detalles: quedan los de antes');
+      else { const dir = (ruta.replace(/\/[^/]*$/, '') || '.') + '/detalles'; mkdirSync(dir, { recursive: true });
         const baldes = Array.from({ length: 64 }, () => ({})); let nd = 0;
         for (const [id, d] of Object.entries(detPorId)) { baldes[tiendaBalde(id)][id] = d; nd++; }
         let malo = 0; baldes.forEach((b, i) => { const t = JSON.stringify(b); if (prohibido(t.replace(/https:\/\/[^"]+/g, ''))) { malo++; writeFileSync(dir + '/d' + i + '.json', '{}\n'); } else writeFileSync(dir + '/d' + i + '.json', t + '\n'); });

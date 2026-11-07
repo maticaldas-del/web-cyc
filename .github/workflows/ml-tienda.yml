@@ -89,4 +89,6 @@ jobs:
         run: |
           Q=$(grep -o 'quedan [0-9]*' "$RUNNER_TEMP/tienda.log" | tail -1 | grep -o '[0-9]*' || echo 0)
           echo "quedan: ${Q:-0}"
+          # revisión etapa 10 (07/11/2026): si ML falló seguido, no se relanza (si no, cada corrida terminaba con "quedan N" y lanzaba otra sin parar)
+          if grep -q 'veces seguidas: se cortó' "$RUNNER_TEMP/tienda.log"; then echo "→ ML falló seguido: no lanzo otra (sigue la noche)"; exit 0; fi
           if [ "${Q:-0}" -gt 0 ]; then gh workflow run ml-tienda.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME" && echo "→ lancé la siguiente"; else echo "→ terminó: no lanzo otra"; fi
