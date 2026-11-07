@@ -33353,6 +33353,22 @@ async function main() {
       if (e2.title && !P.nombreFijo) { try { await nombreDeML(P, e2.title); } catch (er) { console.log('  nombre: no pude cambiarlo (' + String(er.message || er).slice(0, 80) + ')'); } }
       const okE = await guardarEstrategia(db, nid, 'nuevo', `Lanzamiento a ${money(precio)}: la publiqué yo (Claude) en el catálogo confirmado ${e2.catOk}${cuenta ? ', deja ' + cuenta.margenNormal.toFixed(0) + '% (' + cuenta.peor.toFixed(0) + '% en el peor caso)' : ''}${precio >= UMBRAL_ENVIO_GRATIS && CRUZA_A_MANO ? '. Cruza los $33.000 a propósito: ' + String(kv.motivo || '').slice(0, 120) : ''}. Se activa sola cuando llegue la caja a Full.`);   // Revisión etapa 1 (24/10): normal y peor bien
       console.log(okE ? '   ✓ estrategia 🆕 lanzamiento anotada' : '   ⚠️ no pude anotar la estrategia');
+      // 07/11/2026 (él con Armar caja: "quiero que diga los $ a ganar aunque sean productos nuevos, poniendo lo que ganaría al venderse al
+      // precio publicado"): el margen de la ficha se anota en el acto (el de noche lo afina). Sin esto lo nuevo no suma en 💵 al venderse.
+      await margenAlDia(nid, tokP, 'publicar');
+      return;
+    }
+    // BILLING_PROBE=margenaldia:<MLA>[,<MLA>…] (07/11/2026) → anota YA el margen de esas publicaciones en su ficha (lo mismo que hace
+    // `publicar` al crear y cada cambio de precio). Para lo publicado antes de que `publicar` lo hiciera.
+    if (/^margenaldia:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const mlas = String(process.env.BILLING_PROBE).slice('margenaldia:'.length).split(/[,;\s]+/).map((x) => x.trim().toUpperCase()).filter((x) => /^MLA\d+$/.test(x));
+      const tokM = {};
+      for (const m of mlas) {
+        const lk = await db.get('cyc/mllinks/' + m); const lab = lk && labels.find((l) => l.toLowerCase() === String(lk.cuenta || '').toLowerCase());
+        if (!lab) { console.log(`${m}: sin cuenta en el vínculo`); continue; }
+        if (!tokM[lab]) { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[lab].refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokM[lab] = t.access_token; }
+        console.log(`${m} · ${lab}:`); await margenAlDia(m, tokM[lab], 'margenaldia');
+      }
       return;
     }
     // BILLING_PROBE=catok:<MLA>=<ok|sincat|MLA…|->[;<MLA>=…][;go] (etapa 6 · A2, 21/10/2026) → "EL CATÁLOGO DE ESTA PUBLICACIÓN NUEVA
