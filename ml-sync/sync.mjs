@@ -13416,6 +13416,11 @@ function tiendaGrande(nombre) {
 // Swap, Vitrine o "Sem caixa". Afuera, igual que el tester.
 // 31/10/2026: lo de Apple que sale sin precio en la tienda (el nombre EMPIEZA con el equipo, así "Funda para iPhone" sigue con precio).
 const TIENDA_APPLE = /^\s*(celular\s+|smartphone\s+|tablet\s+|notebook\s+|auriculares?\s+|reloj\s+|smartwatch\s+)?(apple\s+)?(iphone|ipad|macbook|imac|mac\s+(mini|studio|pro)|airpods|apple\s+watch|watch\s+(series|ultra|se)\b)/i;
+// Revisión etapa 10 (07/11/2026): también "Apple 11\" iPad Air", "Apple 15\" MacBook Air" y "Auriculares inalámbricos Apple AirPods Pro 3"
+// (salían con precio: la regla de arriba sólo miraba el principio). Lo que es PARA un Apple (funda, cable, correa…) sigue con precio.
+const TIENDA_APPLE2 = /\bapple\s+(\d+(?:[.,]\d+)?\s*(?:"|''|pulgadas)\s+)?(iphone|ipad|macbook|imac|mac\s+(mini|studio|pro)|airpods|watch)\b/i;
+const TIENDA_APPLE_ACC = /\b(para|compatible|funda|case|carcasa|protector|vidrio|cable|cargador|correa|malla|soporte|adaptador|estuche|lápiz|lapiz|stylus)\b/i;
+function esAppleTienda(n) { const t = String(n || ''); if (TIENDA_APPLE.test(t)) return true; const m = t.match(TIENDA_APPLE2); return !!m && !TIENDA_APPLE_ACC.test(t.slice(0, m.index)); }
 // 31/10/2026 (él: "los filamentos están caros"): Nissei "Elegoo PLA+ 3 KG" entraba con el nombre de ML "1 kg" a $111.990 (parecía 1 kg
 // carísimo; eran 3). Si el nombre del proveedor y el de ML dicen la MISMA medida (kg, g, ml, l, GB, TB, unidades) con números distintos, es
 // otro producto (pack o tamaño): afuera.
@@ -32234,7 +32239,7 @@ async function main() {
       // de los últimos 3 pedidos con todos los gastos (no el promedio de compras): así el 25% nunca se come en un pedido caro.
       let RECT = RECARGO_PAR;
       try { const cps = (await db.get('cyc/compraspy')) || {};
-        const rr = Object.entries(cps).map(([k, c]) => ({ f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}, { sinAdelanto: true }).r })).filter((x) => x.r && x.r >= 1.05 && x.r <= 1.4)
+        const rr = Object.entries(cps).map(([k, c]) => ({ f: String((c && c.fecha) || k), r: recargoRealPedido(c || {}, { sinAdelanto: true }).r })).filter((x) => x.r && x.r >= 1.05 && x.r <= 1.4 && /^\d{4}-\d{2}-\d{2}/.test(x.f))   // revisión etapa 10 (07/11): sin fecha no cuenta (quedaba como el "más nuevo")
           .sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
         if (rr.length) RECT = Math.max(RECARGO_PAR, ...rr.map((x) => x.r));
       } catch { /* queda el recargo de compras */ }
@@ -32296,6 +32301,7 @@ async function main() {
         if (!p || String(p.origen || '').toLowerCase() !== 'py') continue;
         if (provPyDeBot(p) !== 'nissei') { no('otro proveedor'); continue; }
         const usd = Number(p.nisseiUSD) || 0; if (!(usd > 0)) { no('ficha sin precio de hoy'); continue; }
+        if (usd > 2000) { no('más caro que el tope de la tienda'); continue; }   // revisión etapa 10 (07/11): el tope de US$ 2.000 también para fichas (salió una potencia de auto a $14.208.990)
         if (sinSt && sinSt[p.id]) { no('ya no lo tienen'); codUsados.push(p.codPy); continue; }
         if (marcaFrenadaDe({ nombre: p.name, marca: p.marca }, marcasNo)) { no('marca prohibida'); codUsados.push(p.codPy); continue; }
         const ts = Math.max(Number(p.nisseiTs) || 0, Number(((pycat || {})[String(p.codPy || '')] || {}).ts) || 0);
@@ -32338,6 +32344,7 @@ async function main() {
         if (!candCatChequeado(c)) { no('candidato sin el catálogo confirmado'); continue; }
         if (marcaFrenadaDe(c, marcasNo)) { no('marca prohibida'); codUsados.push(c.cod); continue; }
         const usd = Number(c.usd) || 0; if (!(usd > 0)) { no('candidato sin precio'); continue; }
+        if (usd > 2000) { no('más caro que el tope de la tienda'); continue; }   // revisión etapa 10 (07/11)
         const ts = candVistoTsBot(c); if (!fresco(ts)) { no(`ya no está en Nissei (no se vio en la última vuelta completa) o mirado hace más de ${TIENDA_DIAS} días`); continue; }
         const cat = candCatDe(c); codUsados.push(c.cod);
         meter({ key: cat, cat, usd, ts, cod: String(c.cod || ''), nn: String(c.nombre || ''), mpRef: Number(c.mlPrecio) || null, titRes: c.mlTit, fotoRes: c.mlFoto });
@@ -32509,7 +32516,7 @@ async function main() {
       const qLeer = catsQ.filter((c) => { const q = tmCache['Q_' + c]; return !(q && hoy - Number(q.ts || 0) < dispersa('Q_' + c, TM_DIAS)); });
       for (let i = 0; i < qLeer.length && hayCupo(); i += 5) {
         await Promise.all(qLeer.slice(i, i + 5).map(async (c) => {
-          try { const it = await leer404('/products/' + c + '/items?limit=30'); const xs = ((it && it.results) || []).filter((y) => y && Number(y.price) > 0 && !(y.tags || []).some((t) => /^cbt_/.test(t)));
+          try { const it = await leer404('/products/' + c + '/items?limit=30'); const xs = ((it && it.results) || []).filter((y) => y && Number(y.price) > 0 && !esOfertaDeAfuera(y));   // revisión etapa 10 (07/11): sin las de afuera (también por el envío y el modo internacional, como el resto del robot)
             if (!xs.length) { qSin++; await anotar('Q_' + c, { ts: hoy, no: 1 }); return; }
             let best = null; for (const y of xs) { const eq = Number(y.price) * (y.listing_type_id === 'gold_pro' ? 1 : CUOTAS_CLASICA); if (!best || eq < best.eq) best = { eq: Math.round(eq), raw: Math.round(Number(y.price)), t: y.listing_type_id === 'gold_pro' ? 'p' : 'c' }; }
             qLeidos++; await anotar('Q_' + c, { ...best, ts: hoy });
@@ -32651,7 +32658,7 @@ async function main() {
         } else if (Number(ent.usd) !== x.usd || Number(ent.p) !== p || String(ent.cod || '') !== String(x.cod || '')) idsCambia[clave] = { ...ent, cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), usd: x.usd, p, n: n.slice(0, 120) };
         // 31/10/2026 (él eligió 1a: "apple están carísimos… si los saco van a decir aaa no tienen iphone"): los Apple (iPhone, iPad, Mac,
         // AirPods, Watch) salen SIN precio ("Consultar precio"): el precio no va ni en el archivo. Los accesorios para Apple siguen con precio.
-        const cp = TIENDA_APPLE.test(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
+        const cp = esAppleTienda(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
         const mlR = x.mlRaw > 0 ? x.mlRaw : x.mpRef; const mlVer = !cp && !om && !x.ap && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
