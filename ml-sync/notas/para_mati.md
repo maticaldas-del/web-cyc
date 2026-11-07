@@ -8,6 +8,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 07/11 (2 contestá vos · 3 ok · 4 pagó CYC, no tocar · 5 dejar Imega · 6 al 0% · 7 manejalo · 8 no entendió)
+- 2 mensaje de la funda (Luciana): contestado con `msjventa` (factura C, somos monotributo), releído ✓ · 4 Pirineo y Dai Nippon: no se carga nada · 6 Rose, Teikirisi y 1.4 Sexy Men a $11.190 como descuento (1,2% peor caso; la caja pide $10.512 = pierde) · 7 VS Coconut: se deja a $54.990 (deja ~$9.900 por unidad, el stock antiguo cuesta ~$9.800 en total) · 8: el envío de Matías …5641 (20 u.) está en pausa desde antes: explicárselo.
+
 ### ✅ Contestó la lista de las 12:30 del 06/11 (autorizo PXP7 · 4a 5a 6a) — APLICADO
 - PXP7 Animale Original mujer: descuento a $113.990 (43% peor caso), releído de ML ✓ · 4a Aer x6: le paso el link del competidor (MLA4150859190, $11.758, mismo catálogo) para comprar 12 desde Adriana · 5a tarea COMPETENCIA del chat de Chrome (147 sin catálogo, de a 20 por día) · 6a fotos de ABEL quedan como están.
 - Siguen abiertos: 7 (¿octubre tuvo dos cuotas de Claude?) · 8 cajas de Ayelen sin alta · 9 mensajes sin leer · 10 precio de comprar lugar en Full.
