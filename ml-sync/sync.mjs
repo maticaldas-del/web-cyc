@@ -94,6 +94,17 @@ if (/^(capital|licua|cierrevs)(:|;|$)/.test(String(process.env.BILLING_PROBE || 
   const _esMP = /mercado\s*pago|\bmp\b|a liquidar|disponible|\bdisp\b/i;
   console.log = (...a) => _olM(...a.map((x) => (typeof x === 'string' ? x.split('\n').map((ln) => (_esMP.test(ln) ? ln.replace(/(US\$\s?|\$|−\$|-\$)\s?-?\d[\d.,]*/g, (m) => (/US/.test(m) ? 'US$ •••' : '$•••')).replace(/(^|[\s:(])[+−-]?\d{1,3}(\.\d{3})+(,\d+)?/g, '$1•••') : ln)).join('\n') : x)));
 }
+// 🛍️ LA TIENDA NO DICE DE DÓNDE VIENE NI EN EL REGISTRO (revisión etapa 10, 07/11/2026): el registro de GitHub es público y `tienda`
+// imprimía "ya no está en Nissei", la fórmula de ABEL (de ahí se saca el costo en dólares) y, en `tienda:id=`/`fuera=`, el código del proveedor
+// y el US$. En todo comando `tienda…` el nombre del proveedor sale como "proveedor", los códigos y los US$ tapados.
+if (/^tienda(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+  const _olT = console.log.bind(console);
+  const _tapaT = (t) => t.replace(/\ben (nissei|paraguay)\b/gi, 'en el proveedor').replace(/comprasparaguay(\.com\.ar)?|nissei|paraguay/gi, 'proveedor')
+    .replace(/US\$\s?-?\d[\d.,]*/g, 'US$ •••')
+    .replace(/(proveedor:?\s+)(\d{3,8})\b/gi, '$1•••')
+    .replace(/×\s*[\d.,]+\s*×\s*[\d.,]+(\s*×\s*[\d.,]+)?/g, '× •••').replace(/×\s*\d+[.,]\d+/g, '× •••');
+  console.log = (...a) => _olT(...a.map((x) => (typeof x === 'string' ? _tapaT(x) : x)));
+}
 // ⚠️ UN COMANDO QUE SE NIEGA NO QUEDA COMO "BIEN" (revisión etapa 4, 30/10/2026): el bucle de los workflows escribe "✓ terminó" si node sale
 // con 0, y un comando que dice "No escribo nada" o "DATOS INCOMPLETOS" sale con 0. Al terminar se deja un renglón que se ve en el registro.
 if (process.env.BILLING_PROBE) {
