@@ -113,7 +113,7 @@ if (process.env.BILLING_PROBE) {
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
 const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
-const CONSULTA_NIEGA = new Set(['cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
@@ -22374,6 +22374,44 @@ async function main() {
       const ok = await sendTelegram(msg, 'resumen');
       if (ok && !DRY) { try { await db.set('mlapi/telegram/lastChequeo', hoyK); } catch { /* no rompe */ } }
       console.log(ok ? '\n✅ Mandado a Telegram.' : '\n⚠️ No pude mandarlo a Telegram.');
+      return;
+    }
+    // BILLING_PROBE=msjventa:<cuenta>:<últimos dígitos de la venta o del paquete>[=<texto>][;go] (07/11/2026, él: "contestá vos" el
+    // mensaje de una venta de Luciana que pedía factura A). CONTESTARLE UN MENSAJE A UN COMPRADOR DE UNA VENTA. Busca la venta entre las
+    // últimas 100 de esa cuenta por el final de su número (o del paquete), muestra el producto y los últimos mensajes (tapados: el registro
+    // es público) y, con `;go`, manda el texto por el chat de la venta y relee el hilo. Sin `;go` sólo muestra. El texto no lleva `;`.
+    if (/^msjventa:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('msjventa:'.length);
+      const GO = /;go$/i.test(_r);
+      const cuerpo = _r.replace(/;go$/i, '');
+      const i1 = cuerpo.indexOf(':'); const cta = cuerpo.slice(0, i1).trim().toLowerCase();
+      const resto = cuerpo.slice(i1 + 1); const i2 = resto.indexOf('=');
+      const fin = (i2 >= 0 ? resto.slice(0, i2) : resto).trim().replace(/\D/g, '');
+      const texto = i2 >= 0 ? resto.slice(i2 + 1).trim() : '';
+      const label = labels.find((l) => l.toLowerCase() === cta);
+      if (!label || fin.length < 4) { console.log('Usá: msjventa:<cuenta>:<últimos 4+ dígitos>[=<texto>][;go]'); return; }
+      const acc = accounts[label];
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token);
+      await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() });
+      const tok = t.access_token, sid = acc.seller_id;
+      let ords = [];
+      for (const off of [0, 50]) { try { ords = ords.concat(((await mlGet(`/orders/search?seller=${sid}&sort=date_desc&limit=50&offset=${off}`, tok))?.results) || []); } catch { /* sigue */ } }
+      const hits = ords.filter((o) => String(o.id).endsWith(fin) || String(o.pack_id || '').endsWith(fin));
+      if (hits.length !== 1) { console.log(`"…${fin}" agarra ${hits.length} venta(s) de ${label} (miré ${ords.length}). Tiene que ser una sola.`); return; }
+      const o = hits[0]; const pack = o.pack_id || o.id; const buyer = o.buyer?.id;
+      console.log(`=== MENSAJE A UNA VENTA · ${label} · venta ${_idPub(o.id)} · ${String(o.date_created || '').slice(0, 10)} ===`);
+      for (const it of (o.order_items || [])) console.log(`  producto: ${String(it.item?.title || '').slice(0, 60)} · ${it.quantity} u.`);
+      const hilo = async () => { try { const d = await mlGet(`/messages/packs/${pack}/sellers/${sid}?tag=post_sale&mark_as_read=false`, tok); return d?.messages || d?.results || []; } catch (e) { console.log('  (no pude leer el hilo: ' + String(e.message || e).slice(0, 90) + ')'); return []; } };
+      const ver = (arr) => { for (const m of arr.slice(-6)) { const mio = String(m.from?.user_id || '') === String(sid); console.log(`    [${String(m.message_date?.created || m.date_created || '').slice(0, 16).replace('T', ' ')}] ${mio ? 'NOSOTROS' : 'COMPRADOR'}: ${_taparPub(String(m.text || '').replace(/\s+/g, ' ').slice(0, 300))}`); } };
+      const antes = await hilo(); console.log('  conversación:'); ver(antes);
+      if (!texto) return;
+      console.log(`  a mandar: ${_taparPub(texto)}`);
+      if (!GO) { console.log('PRUEBA: no mandé nada. Para mandarlo, agregá ;go al final.'); return; }
+      if (!buyer) { console.log('✗ La venta no trae el comprador: no mando nada.'); return; }
+      const r = await fetch(ML_API + `/messages/packs/${pack}/sellers/${sid}?tag=post_sale`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: { user_id: Number(sid) }, to: { user_id: Number(buyer) }, text: texto }), signal: AbortSignal.timeout(25000) });
+      console.log(r.ok ? '✓ ML lo aceptó' : `✗ ML dijo ${r.status}: ${String(await r.text()).slice(0, 200)}`);
+      const desp = await hilo(); const ok = desp.some((m) => String(m.from?.user_id || '') === String(sid) && String(m.text || '').trim() === texto);
+      console.log(ok ? '✓ Releído: el mensaje está en el hilo.' : '✗ Releído: no lo veo en el hilo.');
       return;
     }
     // BILLING_PROBE=posventa[:crudo] → LOS RECLAMOS ABIERTOS Y LOS MENSAJES SIN LEER, CON EL TEXTO.
