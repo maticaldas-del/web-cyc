@@ -268,6 +268,22 @@ jobs:
           FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
           BILLING_PROBE: archivar:400:go
         run: exec node ml-sync/sync.mjs
+      # LO CARGADO EN LOS PEDIDOS DE LAS LISTAS, MEDIDO DE NUEVO CADA MAÑANA (2a del 08/11/2026, él: "Tito viaja 2 veces por semana y
+      # nunca se sabe cuándo"): el Labial IDI y el Maybelline daban al cargarlos y no al comprarlos. Lo que dejó de dar se ve en la web.
+      - name: Pedidos de las listas medidos hoy
+        id: listaped
+        if: steps.noche.outputs.hecha != '1'
+        continue-on-error: true
+        env:
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_BOT_EMAIL: ${{ secrets.FIREBASE_BOT_EMAIL }}
+          FIREBASE_BOT_PASSWORD: ${{ secrets.FIREBASE_BOT_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          BILLING_PROBE: listapedmedir:go
+        run: exec node ml-sync/sync.mjs
       # LA LÍNEA DE TIEMPO DE CADA PUBLICACIÓN (01/10/2026): stock, precio, estado, caja, visitas,
       # ventas, remate y margen de AYER, leído de ML en el momento (mlapi/linea).
       - name: Línea de tiempo de ayer

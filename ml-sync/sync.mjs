@@ -13817,7 +13817,11 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
   for (const [cod, e] of todos) {
     if (!e || !e.n) continue;
     if (PY_ELEGANCIA_OFF && pycatProvDe(cod, e) === 'elegancia') continue;
+    // 2a del 08/11/2026 (él: "eso debería hacerse todos los días. él viaja 2 veces por semana y nunca se sabe cuándo"): `opts.soloCods` = medir
+    // SÓLO esos códigos (lo cargado en el pedido del momento de una lista) y SIEMPRE, aunque estén frescos.
+    if (opts.soloCods && !opts.soloCods.has(String(cod))) continue;
     const fz = pyCatFuera(e.n, Number(e.u) || 0, marcasNo); if (fz) { cuenta.fuera++; if (aplicar && e.fz !== fz) await db.patch(RUTA + '/' + cod, { fz }); continue; }
+    if (opts.soloCods) { cola.push([cod, e]); continue; }
     // 🔁 REBUSCA (24/10/2026, eligió la 1a): un candidato que descarté porque ML lo comparaba con OTRO producto no frena que el
     // catálogo se vuelva a medir; se busca de nuevo sin los catálogos rechazados (`mlNoEs` del candidato).
     if (!esLista && candList.some(([, c]) => pycatEsDe(cod, e, c, c.cod) && c.noTipo !== 'rebusca')) { cuenta.cand++; continue; }
@@ -26593,6 +26597,30 @@ async function main() {
         console.log(`    ${r.r === items[k0].r ? '✓ releído' : '❌ no quedó'}`);
       }
       if (!APLICAR) console.log('PRUEBA: agregá :go para guardar.');
+      return;
+    }
+    // BILLING_PROBE=listapedmedir[:go] (2a del 08/11/2026, él con el Labial IDI y el Maybelline que trajo Tito: "dijiste que sí daban, ahora no
+    // dan… eso debería hacerse todos los días: él viaja 2 veces por semana y nunca se sabe cuándo") → VUELVE A MEDIR CONTRA ML, HOY, TODO
+    // LO CARGADO EN LOS PEDIDOS DEL MOMENTO DE LAS LISTAS (`cyc/listas_pedido` = nuevos, `cyc/listas_pedido_prob` = probados con su código),
+    // aunque esté medido hace poco. Lo corre ml-daily cada mañana. Imprime cuántos siguen dando y cuáles dejaron de dar el 35% (la web
+    // los muestra con el % nuevo). Sin `:go` mide sin escribir.
+    if (/^listapedmedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GOm = /:go$/i.test(String(process.env.BILLING_PROBE));
+      const LP = (await db.get('cyc/listas_pedido')) || {}, LPP = (await db.get('cyc/listas_pedido_prob')) || {};
+      const provs = (await db.get('cyc/mlconfig/listasProv')) || {};
+      const porProv = {};
+      for (const [pk, cods] of Object.entries(LP)) for (const [cod, u] of Object.entries(cods || {})) if (Number(u) > 0) (porProv[pk] = porProv[pk] || new Set()).add(String(cod));
+      for (const [pk, ps] of Object.entries(LPP)) for (const x of Object.values(ps || {})) { if (!x || !(Number(x.u) > 0)) continue; if (x.cod) (porProv[pk] = porProv[pk] || new Set()).add(String(x.cod)); for (const v of Object.values(x.v || {})) if (v && v.c) (porProv[pk] = porProv[pk] || new Set()).add(String(v.c)); }
+      const ks = Object.keys(porProv);
+      console.log(`=== 🛒 LO CARGADO EN LOS PEDIDOS DE LAS LISTAS, MEDIDO HOY · ${ks.length} proveedor(es) · ${ks.reduce((t, k) => t + porProv[k].size, 0)} código(s) ${GOm ? '' : '(PRUEBA)'} ===`);
+      for (const k of ks) {
+        const pv = provs[k] || {};
+        await correrPyCatMedir(db, products, labels, accounts, 500, GOm, null, { lista: k, nombre: pv.nombre || k, rec: pv.rec, soloCods: porProv[k] });
+        if (!GOm) continue;
+        const L = (await db.get('mlapi/listas/' + k)) || {};
+        const malos = [...porProv[k]].filter((c) => L[c] && L[c].m != null && Number(L[c].m) < 35);
+        console.log(`  → ${pv.nombre || k}: ${porProv[k].size - malos.length} siguen dando · ${malos.length ? '❌ dejaron de dar el 35%: ' + malos.map((c) => `${String(L[c].n || c).slice(0, 40)} (${L[c].m}%)`).join(' · ') : 'ninguno dejó de dar'}`);
+      }
       return;
     }
     // BILLING_PROBE=listamedir[:<proveedor>][:<cuántos>][:go] → mide contra ML las listas guardadas (la misma cuenta que Paraguay).
