@@ -113,7 +113,7 @@ if (process.env.BILLING_PROBE) {
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
 const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
-const CONSULTA_NIEGA = new Set(['msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
 let CONSULTA_SOLO_LEE = false;
@@ -29938,6 +29938,29 @@ async function main() {
       console.log(`\n${linea('Clásica', tot.gold_special)}\n${linea('Premium', tot.gold_pro)}${tot.otro.n ? '\n' + linea('otro tipo', tot.otro) : ''}`);
       console.log(go ? `\n✓ ${escritas} ventas completadas · ${sinVenta} no estaban en el panel · ${fallos} lecturas fallidas` : '\n(prueba: con :go se completan las ventas guardadas)');
       if (go && escritas) { try { const q = await db.get(`cyc/ventaprod/${dayKeyFromISO(new Date().toISOString())}`); console.log(`relectura: ${Object.values(q || {}).filter((v) => v && v.tipoPub).length} ventas de hoy con el tipo anotado`); } catch { /* informativo */ } }
+      return;
+    }
+    // 🏷️ CORREGIR EL CÓDIGO DE BARRAS (GTIN) de una publicación (08/11/2026, él pasó el del Metatarso par: ML no dejaba crear su gemela
+    // de envío porque el GTIN cargado era de otra marca). `gtin:<MLA>=<código>[:go]`: chequea el dígito verificador (EAN-13/UPC), muestra
+    // el de hoy, con go lo cambia y relee de ML.
+    if (/^gtin:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const arg = String(process.env.BILLING_PROBE).slice('gtin:'.length); const go = /:go$/.test(arg);
+      const m = arg.replace(/:go$/, '').match(/^(MLA\d+)=(\d{8,14})$/i);
+      if (!m) { console.log('Uso: gtin:<MLA>=<código de barras>[:go]'); return; }
+      const mla = m[1].toUpperCase(), cod = m[2];
+      const dv = (d) => { const x = d.slice(0, -1).split('').reverse(); const sm = x.reduce((t, c, i) => t + Number(c) * (i % 2 === 0 ? 3 : 1), 0); return (10 - sm % 10) % 10 === Number(d.slice(-1)); };
+      if (!dv(cod)) { console.log(`✗ ${cod}: el dígito verificador no da, el código está mal copiado`); return; }
+      const L = ((await db.get('cyc/mllinks/' + mla)) || {}); const acc = accounts[L.cuenta];
+      if (!acc?.refresh_token) { console.log(`✗ ${mla}: no está en cyc/mllinks o sin permiso`); return; }
+      const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + L.cuenta, { refresh_token: t.refresh_token, updated_ts: Date.now() }); const tk = t.access_token;
+      const gt = (it) => ((it.attributes || []).find((a) => a.id === 'GTIN') || {}).value_name || '—';
+      const it = await mlGet('/items/' + mla + '?attributes=id,title,attributes', tk);
+      console.log(`${mla} · ${L.cuenta} · ${String(it.title || '').slice(0, 60)} · GTIN hoy ${gt(it)} → ${cod}`);
+      if (!go) { console.log('(sin :go no cambio nada)'); return; }
+      const r = await fetch(ML_API + '/items/' + mla, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ attributes: [{ id: 'GTIN', value_name: cod }] }) });
+      if (!r.ok) { console.log(`✗ ML no lo aceptó (${r.status}): ${(await r.text()).slice(0, 300)}`); return; }
+      const it2 = await mlGet('/items/' + mla + '?attributes=id,attributes', tk);
+      console.log(gt(it2) === cod ? `✓ releído de ML: GTIN ${cod}` : `⚠️ releído de ML: GTIN ${gt(it2)} (no quedó)`);
       return;
     }
     // CREAR LA 📦 GEMELA CLÁSICA CON ENVÍO GRATIS (22/10/2026). `gemelaenviocrea:<MLA>=<precio>[;<MLA>=<precio>…][:go]`. Igual que
