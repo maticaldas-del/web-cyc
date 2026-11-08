@@ -94,6 +94,24 @@ if (/^(capital|licua|cierrevs)(:|;|$)/.test(String(process.env.BILLING_PROBE || 
   const _esMP = /mercado\s*pago|\bmp\b|a liquidar|disponible|\bdisp\b/i;
   console.log = (...a) => _olM(...a.map((x) => (typeof x === 'string' ? x.split('\n').map((ln) => (_esMP.test(ln) ? ln.replace(/(US\$\s?|\$|−\$|-\$)\s?-?\d[\d.,]*/g, (m) => (/US/.test(m) ? 'US$ •••' : '$•••')).replace(/(^|[\s:(])[+−-]?\d{1,3}(\.\d{3})+(,\d+)?/g, '$1•••') : ln)).join('\n') : x)));
 }
+// 🙈 DATOS FISCALES Y EL COBRO DE CADA SOCIO NO VAN AL REGISTRO PÚBLICO (Plata 14a y 15a del 08/11/2026, él): los comandos que corren cada
+// mañana en ml-daily imprimían lo facturado por cuenta (`facsync`), el IIBB por provincia (`cargosmes`, sección 2), el lugar contra el tope de H
+// (`paramcompra`) y el cobro/retiro de cada socio (`retiroauto`). Se tapa el número como los saldos de MP (`_MASCARA_PLATA`); lo que escriben en
+// la base es igual y en la web se siguen viendo. `retiroauto` tapa todo; los otros sólo esos renglones.
+const _FISCAL_CMD = (String(process.env.BILLING_PROBE || '').match(/^(facsync|cargosmes|retiroauto|paramcompra)(:|;|$)/) || [])[1] || null;
+const _tapaPlataLn = (t) => t.replace(/(US\$\s?|−\$|-\$|\$)\s?-?\d[\d.,]*/g, (m) => (/US/.test(m) ? 'US$ •••' : '$•••')).replace(/([A-Za-zÁÉÍÓÚáéíóúñ]=)\s?-?\$?\s?\d[\d.,]{3,}/g, '$1•••');
+if (_FISCAL_CMD) {
+  const _olF = console.log.bind(console);
+  let _enIIBB = false;
+  const _tapaF = (t) => t.split('\n').map((ln) => {
+    if (_FISCAL_CMD === 'retiroauto') return _tapaPlataLn(ln);
+    if (_FISCAL_CMD === 'facsync') return /facturad/i.test(ln) ? _tapaPlataLn(ln) : ln;
+    if (_FISCAL_CMD === 'paramcompra') return /tope de H|\blugar\b/i.test(ln) ? _tapaPlataLn(ln) : ln;
+    if (/PERCEPCIONES DE IIBB|IIBB/i.test(ln)) _enIIBB = true; else if (/^\s*── \d|^\s*(Sin :go|✓|✗)/.test(ln)) _enIIBB = false;
+    return _enIIBB ? _tapaPlataLn(ln) : ln;
+  }).join('\n');
+  console.log = (...a) => _olF(...a.map((x) => (typeof x === 'string' ? _tapaF(x) : x)));
+}
 // 🛍️ LA TIENDA NO DICE DE DÓNDE VIENE NI EN EL REGISTRO (revisión etapa 10, 07/11/2026): el registro de GitHub es público y `tienda`
 // imprimía "ya no está en Nissei", la fórmula de ABEL (de ahí se saca el costo en dólares) y, en `tienda:id=`/`fuera=`, el código del proveedor
 // y el US$. En todo comando `tienda…` el nombre del proveedor sale como "proveedor", los códigos y los US$ tapados.
@@ -403,6 +421,28 @@ async function ofiSumarBot(db, p, va, delta, inv) {
   let se = null; try { se = await sinEtiqSumarBot(db, p.id, color || '', delta, p); } catch { console.log(`   ⚠️ ${p.name}: no pude anotarlo sin etiqueta (cyc/sinetiq)`); }
   return { color, antes, ahora, tA, tN, se };
 }
+// 🏪 LO "SÓLO LOCAL" QUE LLEGA VA A LA OFICINA LOCAL (8a de la revisión del Local, 08/11/2026, él): una ficha `soloLocal` (no va a ML) que llega
+// de Paraguay se suma a `cyc/oficyc/<ficha>` (con color: `v/<color>`), no a la Oficina ML. Mientras la Oficina Local no está contada por unidades
+// (`mlconfig/oficycPorUnidades` ≠ true), el Arqueo usa el valor a mano (`finanzas/of_viejo`): se le suma lo que costó (u × costo en dólares de la
+// ficha), igual que `debenmov …|de=local` lo resta. Igual que `ofiLlegaLocal` de la web.
+async function oficycSumarBot(db, p, va, delta) {
+  if (!p || !p.id || !(delta > 0)) return null;
+  const vs = Array.isArray(p.variantes) ? p.variantes : Object.values(p.variantes || {});
+  const color = va && vs.length ? (vs.find((v) => sid(v) === sid(va)) || null) : null;
+  if (va && vs.length && !color) return null;
+  const x0 = await db.get('cyc/oficyc/' + p.id); const x = x0 && typeof x0 === 'object' ? x0 : { t: parseInt(x0) || 0 };
+  const antes = color ? parseInt((x.v || {})[sid(color)]) || 0 : parseInt(x.t) || 0;
+  if (color) { x.v = x.v || {}; x.v[sid(color)] = antes + delta; } else x.t = antes + delta;
+  await db.set('cyc/oficyc/' + p.id, x);
+  try { if (!(await db.get('cyc/oficycdesde/' + p.id))) await db.set('cyc/oficycdesde/' + p.id, { ts: Date.now() }); } catch { /* sólo la fecha de entrada */ }
+  let arq = '';
+  if ((await db.get('cyc/mlconfig/oficycPorUnidades')) !== true) {
+    const tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; const cu = Number(costoPesos(p, 1, tc).costBaseUSD) || 0;
+    if (cu > 0) { const vA = parseFloat(await db.get('cyc/finanzas/of_viejo')) || 0, vN = Math.round((vA + cu * delta) * 100) / 100; await db.set('cyc/finanzas/of_viejo', vN); arq = ` · Arqueo Oficina Local (a mano) US$ ${vA.toFixed(2)} → US$ ${vN.toFixed(2)}`; }
+    else arq = ' · ⚠️ sin costo en dólares: el valor a mano de la Oficina Local NO subió (subilo a mano en el Arqueo)';
+  }
+  return { color, antes, ahora: antes + delta, arq };
+}
 // Lo que FALTÓ de un pedido, desde el chat: `<palabra>[#<color>]=<unidades que LLEGARON>` (`=` adelante = nombre exacto). Cada uno
 // tiene que agarrar UN renglón del pedido. Devuelve { llegan: Map(índice → u), problemas }.
 function faltoDePedido(items, args, nomDe) {
@@ -573,6 +613,9 @@ function setDevLive(vp, prods) {
 }
 // LO COMPRADO EN PESOS TIENE EL COSTO FIJO EN PESOS (27/10/2026, él eligió la 2a): con `costoPesos:true` el costo es `p.cost` (los pesos
 // pagados) ÷ el dólar que se use, así el dólar no lo mueve. Paraguay sigue en dólares. Misma regla que `costoEnPesos` de index.html.
+// 7a del 08/11/2026 (él): el % del monotributo de una venta = el que quedó guardado en ella el día que se vendió (`v.monoPct`); las ventas
+// de antes de esta regla siguen con el del mes (`respaldo`). Igual que `monoDeVenta` de la web.
+function monoDeVentaBot(v, respaldo) { const m = v && v.monoPct != null ? Number(v.monoPct) : NaN; return isFinite(m) && m >= 0 && v.monoPct !== '' ? m : respaldo; }
 function costoEnPesosBot(p) { return !!(p && p.costoPesos && Number(p.cost) > 0); }
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
@@ -736,7 +779,7 @@ async function armarCostoWeb(db, vp) {
     const ym = String(dk || '').slice(0, 7);
     { const fz = congel[ym]; if (fz && v.id && fz[v.id] != null) return { costo: Number(fz[v.id]) || 0, sinCosto: false, gest: gestDe(v, prodDe(v), dk), congelado: true }; }   // revisión etapa 4, 30/10/2026: el envío de Full sigue en el divisor, como la web (`gestDivVP`); antes 0 y el % del robot daba más
     const p = prodDe(v);
-    const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoPct(ym)) / 100;
+    const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoDeVentaBot(v, monoPct(ym))) / 100;   // 7a del 08/11: el % guardado en la venta
     const gest = gestDe(v, p, dk);
     let c;
     // El dólar de SU día, como `tcDeVenta` de la web (27/10/2026): a mano del mes → cierre viejo sin `tcPorVenta` → `v.tcSale` → el del mes.
@@ -745,7 +788,8 @@ async function armarCostoWeb(db, vp) {
       : (sn && !sn.tcPorVenta && (parseFloat(sn.tcMes) > 0 || parseFloat(sn.tipoCambio) > 0)) ? tcForYM(ym)
       : tS > 0 ? tS : tcForYM(ym);
     // Comprado en pesos (`costoEnPesosBot`, 27/10/2026): los pesos pagados ÷ ese dólar, como `costoEnPesos` de la web.
-    const baseUSD = p ? (hist[ym] && hist[ym][p.id] != null ? parseFloat(hist[ym][p.id]) || 0 : (costoEnPesosBot(p) && tc > 0 ? Number(p.cost) / tc : (parseFloat(p.costUSD) || 0))) : 0;
+    // 8a del 08/11/2026: lo comprado en pesos usa el costo en pesos que tenía el día de la venta (`v.costoPesosU`), como `_efectivoCostoVP`.
+    const baseUSD = p ? (costoEnPesosBot(p) && Number(v.costoPesosU) > 0 && tc > 0 ? Number(v.costoPesosU) / tc : hist[ym] && hist[ym][p.id] != null ? parseFloat(hist[ym][p.id]) || 0 : (costoEnPesosBot(p) && tc > 0 ? Number(p.cost) / tc : (parseFloat(p.costUSD) || 0))) : 0;
     const ship = p ? (parseFloat(p.shipUSD) || 0) : 0;
     if (!p || (!baseUSD && !ship)) c = (Number(v.costo) || 0) + imp;
     else {
@@ -39683,6 +39727,15 @@ async function main() {
       else if (fz != null) { console.log('  ya estaba congelado: no toco nada'); return; }
       else if (calc == null) { console.log('  todavía no hay cierre del mes anterior: no cargo nada'); return; }
       else v = calc;
+      // 3a del 08/11/2026 (él): el retiro queda FIJO recién 48 h después de cerrar el mes anterior (`snapshots/<mes>.ts`; si rehace el cierre
+      // en esas 48 h, se recalcula). Antes de eso sólo se deja escrito en `retiro_mes` (sin congelar ni avisar). Igual que `_cierreFirme` de la web.
+      const tsCierre = Number((snaps[prevYM(ym)] || {}).ts) || 0;
+      if (!mFix && tsCierre > 0 && Date.now() - tsCierre < 48 * 3600e3) {
+        const hsF = Math.ceil((tsCierre + 48 * 3600e3 - Date.now()) / 3600e3);
+        console.log(`  el cierre de ${prevYM(ym).replace('_', '/')} tiene menos de 48 h: queda fijo en ~${hsF} h (si se rehace el cierre, se recalcula)`);
+        if (GOr && Number(retM[ym]) !== v) { await db.set('cyc/retiro_mes/' + ym, v); console.log('  (dejé el número de hoy en retiro_mes, sin congelar)'); }
+        return;
+      }
       if (!GOr) { console.log(`  → con ;go queda ${money(v)}. No se guardó nada.`); return; }
       await db.set('cyc/retiro_congelado/' + ym, { v, ts: Date.now(), ...(nota ? { nota } : {}), quien: 'robot' });
       await db.set('cyc/retiro_mes/' + ym, v);
@@ -43615,7 +43668,7 @@ async function main() {
       // ficha (lo pagado, puesto en la oficina: sin reclamos ni envío a Full) y la ganancia. SÓLO para verla en Ver deudas: no toca ventas,
       // métricas, cierres ni stock.
       const extra = {}; const notaP = [];
-      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u|de|a)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
+      for (const x of partesP) { const mm = String(x).trim().match(/^(prod|local|u|de|a|color)=(.+)$/i); if (mm) extra[mm[1].toLowerCase()] = mm[2].trim(); else notaP.push(x); }
       // 29/10/2026 (él: "a partir de ahora todo lo que se le manda a la perfumería se le gana un 25%. salvo que yo te indique otra cosa.
       // tomás el costo del producto, le ponés un 25% y multiplicás por las unidades"): `=+25%|prod=…|local=…|u=N` → lo que paga c/u = costo × 1,25.
       // DEVOLUCIÓN DE LA PERFUMERÍA (11a de la revisión etapa 9, 30/10/2026, él): `debenmov:mercaderia perfumeria=devuelve[@AAAA-MM-DD]|prod=<ficha>
@@ -43692,9 +43745,19 @@ async function main() {
         for (const [kx, x] of ren) { const u = Number(x.u); antes += Number(x.m); despues += pu * u;
           ops[kx] = { ...x, pu, m: pu * u, ...(x.costoU != null ? { gan: (pu - Number(x.costoU)) * u } : {}) }; }
         console.log(`=== PRECIO "${_tapaNom(dP)}" ${GO ? '· APLICANDO' : '· PRUEBA'} === ${ren.length} renglón(es) de ${String(ren[0][1].prodNom || extra.prod).slice(0, 50)} → ${money(pu)} c/u · la deuda ${money(Math.round(antes))} → ${money(Math.round(despues))} (${despues >= antes ? '+' : ''}${money(Math.round(despues - antes))})`);
-        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        // 6a de la revisión del Local (08/11/2026, él): lo que cambia en renglones dejados en un mes YA CERRADO no es crecimiento de este mes:
+        // va a "lo viejo cargado tarde" del próximo cierre (`cyc/cobro_corr`, `_corrCobro`), no al cobro. Lo de un mes abierto entra como siempre.
+        let snapsP = null; try { snapsP = (await db.get('cyc/snapshots')) || {}; } catch { snapsP = null; }
+        if (!snapsP) { console.log('❌ no pude leer los cierres (cyc/snapshots): no sé si hay renglones de un mes cerrado. No escribo nada.'); return; }
+        const ymDe = (f) => String(f || '').slice(0, 7).replace('-', '_');
+        const renC = ren.filter(([, x]) => { const sn = snapsP[ymDe(x.f)]; return sn && sn.total != null; });
+        const deltaC = renC.reduce((t, [, x]) => t + pu * Number(x.u) - Number(x.m), 0);
+        if (renC.length) console.log(`  📅 ${renC.length} renglón(es) de un mes ya cerrado (${[...new Set(renC.map(([, x]) => ymDe(x.f).replace('_', '/')))].join(', ')}): ${deltaC >= 0 ? '+' : ''}${money(Math.round(deltaC))} van a lo viejo cargado tarde, no al cobro`);
+        if (!GO) { if (renC.length) await _corrCobro(deltaC, 'precio corregido de lo dejado en la perfumería'); console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${idP}/movs`, ops); const rr = (await db.get(`cyc/debencuotas/${idP}/movs`)) || {};
-        console.log(ren.every(([kx]) => rr[kx] && Number(rr[kx].pu) === pu) ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        const okP = ren.every(([kx]) => rr[kx] && Number(rr[kx].pu) === pu);
+        console.log(okP ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if (okP && renC.length) await _corrCobro(deltaC, 'precio corregido de lo dejado en la perfumería');
         return;
       }
       if (/^repartir$/i.test(String(numF).trim())) {
@@ -43802,6 +43865,25 @@ async function main() {
         const FA = deudaFifoBot(d), FB = deudaFifoBot({ ...d, movs: { ...(d.movs || {}), [kP]: mvP } });
         const txtF = (F) => `cubre ${F.ent} producto${F.ent === 1 ? '' : 's'} entero${F.ent === 1 ? '' : 's'}${F.medias ? ` y ${F.medias} a medias (${F.pctMedias.map((x) => x + '%').join(', ')})` : ''}${F.sobra > 0.5 ? ` · saldo a favor ${money(Math.round(F.sobra))} (cubre lo que se deje después)` : ''}`;
         if (Object.values(d.movs || {}).some((x) => x && Number(x.m) > 0 && (x.prodNom || x.prod)) || prodF) console.log(`  🛍️ lo pagado ${txtF(FA)} → ${txtF(FB)}`); }
+      // 12a del 08/11/2026 (él): lo que sale de la Oficina ML (`de=ml`) se RESTA SOLO de `cyc/inventory/<ficha>__Oficina_Mati` (antes había que
+      // correr `ofi:…=-N` aparte y se olvidaba: quedaba en la oficina Y en la deuda). Con colores: `|color=<color>`, o si no dice, de a una de los
+      // colores con más unidades (como `ofi:…!gral`). Si en la oficina no alcanzan, no se escribe NADA (ni la deuda).
+      let ofiML = null;
+      if (signo > 0 && prodF && extra.de && !/cyc|local/i.test(extra.de) && /mati|ml/i.test(extra.de)) {
+        const OK = 'Oficina_Mati', invO = (await db.get('cyc/inventory')) || {}; const kT = prodF.id + '__' + OK, kV = (v) => kT + '__v__' + sid(v);
+        const vs = Array.isArray(prodF.variantes) ? prodF.variantes : []; const saca = {};
+        if (vs.length) {
+          const cnt = Object.fromEntries(vs.map((v) => [v, parseInt(invO[kV(v)]) || 0]));
+          if (extra.color) { const cq = _n(extra.color); const vh = vs.filter((v) => _n(v) === cq).length ? vs.filter((v) => _n(v) === cq) : vs.filter((v) => _n(v).includes(cq));
+            if (vh.length !== 1) { console.log(`❌ color "${extra.color}" en ${prodF.name}: ${vh.length ? 'agarra ' + vh.join(' | ') : 'no está (tiene: ' + vs.slice(0, 10).join(', ') + ')'}. No escribo nada.`); return; }
+            if (cnt[vh[0]] < u) { console.log(`❌ en la Oficina ML hay ${cnt[vh[0]]} de ${prodF.name} · ${vh[0]}: no alcanzan para ${u}. Si no salió de ahí, usá |de=ninguna. No escribo nada.`); return; }
+            saca[vh[0]] = u; }
+          else { let r = u; while (r > 0) { const v = vs.slice().sort((a1, b1) => cnt[b1] - cnt[a1])[0]; if (!(cnt[v] > 0)) break; cnt[v]--; saca[v] = (saca[v] || 0) + 1; r--; }
+            if (r > 0) { console.log(`❌ en la Oficina ML no alcanzan las ${u} de ${prodF.name} (faltan ${r}). Si no salió de ahí, usá |de=ninguna. No escribo nada.`); return; } }
+        } else if ((parseInt(invO[kT]) || 0) < u) { console.log(`❌ en la Oficina ML hay ${parseInt(invO[kT]) || 0} de ${prodF.name}: no alcanzan para ${u}. Si no salió de ahí, usá |de=ninguna. No escribo nada.`); return; }
+        ofiML = { kT, kV, saca, tA: parseInt(invO[kT]) || 0 };
+        console.log(`  📦 Oficina ML: ${prodF.name} ${ofiML.tA} → ${Math.max(0, ofiML.tA - u)}${Object.keys(saca).length ? ' (' + Object.entries(saca).map(([v, n]) => `${v} −${n}`).join(', ') + ')' : ''}`);
+      }
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
       const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
@@ -43840,6 +43922,11 @@ async function main() {
             let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
             await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
         else console.log(ant === 0 && !Object.values(obj.v || {}).some((q) => parseInt(q) > 0) ? `  🏪 ${prodF.name} todavía no está contado en la Oficina Local: al contarlo, contá lo que quedó (sin estas ${u})` : `  ⚠️ en la Oficina Local hay ${ant} sin color de ${prodF.name}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
+      else if (ofiML) { const fr = (await db.get('cyc/inventory')) || {}; const upd = {};   // 12a del 08/11: se resta solo (se relee justo antes)
+        for (const [v, n] of Object.entries(ofiML.saca)) { const a = parseInt(fr[ofiML.kV(v)]) || 0; upd[ofiML.kV(v)] = Math.max(0, a - n) || null; }
+        const tA = parseInt(fr[ofiML.kT]) || 0, tN = Math.max(0, tA - u); upd[ofiML.kT] = tN || null;
+        await db.patch('cyc/inventory', upd); const rr = parseInt(await db.get('cyc/inventory/' + ofiML.kT)) || 0;
+        console.log(rr === tN ? `  📦 Oficina ML: ${prodF.name} ${tA} → ${tN} ✓ restado y releído` : `  ⚠️ Oficina ML: no lo pude releer (quedó ${rr}, esperaba ${tN}): mirarlo con ofi`); }
       else if (signo > 0 && prodF && extra.de && /mati|ml/i.test(extra.de)) console.log(`  ⚠️ OBLIGATORIO · salió de la Oficina ML: restalo YA con ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync; ofi no acepta el número de ficha). Hasta restarlo, Armar caja lo cuenta para mandar a Full.`);
       // Lo que se le dejó a la perfumería baja lo que ella había pedido (`cyc/pedperf`, 29/10/2026): ya no hay que comprarlo para ella.
       // Revisión etapa 9, 30/10/2026: sólo con la deuda de la perfumería (o con `local=`): antes bajaba con CUALQUIER deuda con `prod=` (lo que se
@@ -56057,8 +56144,9 @@ async function main() {
       const tcHoyL = parseFloat(fin.tipo_cambio) || tc;
       const recompra = (p, it) => {
         const pc = Number(it.pc) || 0, nuO = tc > 0 ? Math.round(pc / tc * 100) / 100 : 0;
-        if (costoEnPesosBot(p)) { const ant = Number(p.cost) || 0; return { sube: pc > ant + 0.5, usd: tcHoyL > 0 ? Math.round(pc / tcHoyL * 10000) / 10000 : nuO, txt: `$${Math.round(ant).toLocaleString('es-AR')} → $${Math.round(pc).toLocaleString('es-AR')}` }; }
-        const an = parseFloat(p.costUSD) || 0; return { sube: nuO > an + 0.005, usd: nuO, txt: `US$ ${an.toFixed(2)} → ${nuO.toFixed(2)}` };
+        // 9a del 08/11/2026 (él): una recompra más BARATA también baja el costo (`baja`), como Paraguay desde el 30/10; lo vendido queda con el viejo.
+        if (costoEnPesosBot(p)) { const ant = Number(p.cost) || 0; return { sube: pc > ant + 0.5, baja: pc > 0 && pc < ant - 0.5, usd: tcHoyL > 0 ? Math.round(pc / tcHoyL * 10000) / 10000 : nuO, txt: `$${Math.round(ant).toLocaleString('es-AR')} → $${Math.round(pc).toLocaleString('es-AR')}` }; }
+        const an = parseFloat(p.costUSD) || 0; return { sube: nuO > an + 0.005, baja: nuO > 0 && nuO < an - 0.005, usd: nuO, txt: `US$ ${an.toFixed(2)} → ${nuO.toFixed(2)}` };
       };
       const productsL = (await db.get('cyc/products')) || {};
       const prods = Object.values(productsL).filter((x) => x && x.name);
@@ -56078,7 +56166,7 @@ async function main() {
       for (const x of plan) {
         const u = llegoU(x.it), pe = parseInt(x.it.u) || 0, nu = tc > 0 ? Math.round((Number(x.it.pc) || 0) / tc * 100) / 100 : 0;
         const _rc = x.misma ? recompra(x.misma, x.it) : null;
-        const est = x.borrada ? 'probado con la ficha BORRADA: no se crea nada' : x.misma ? `${x.prob ? 'probado' : 'ya existe'}: ${x.misma.name}${_rc.sube ? ` (costo sube ${_rc.txt})` : ''}` : `ficha nueva: ${String(x.nombre).slice(0, 60)} · US$ ${nu.toFixed(2)}${x.it.mi ? ' · catálogo ' + x.it.mi : ''}`;
+        const est = x.borrada ? 'probado con la ficha BORRADA: no se crea nada' : x.misma ? `${x.prob ? 'probado' : 'ya existe'}: ${x.misma.name}${_rc.sube ? ` (costo sube ${_rc.txt})` : _rc.baja ? ` (costo baja ${_rc.txt})` : ''}` : `ficha nueva: ${String(x.nombre).slice(0, 60)} · US$ ${nu.toFixed(2)}${x.it.mi ? ' · catálogo ' + x.it.mi : ''}`;
         console.log(`  ${u} de ${pe} u. · ${_nomIt(x.it)}${x.it.variante ? ' · 🎨 ' + x.it.variante : ''} → ${est}${u < pe ? '  ⚠️ faltaron ' + (pe - u) : ''}`);
       }
       console.log(NOSUMAR ? 'Oficina: NO se suma nada (nosumar).' : 'Oficina: se SUMA lo que llegó.');
@@ -56101,12 +56189,12 @@ async function main() {
           if (!x.misma.listaProv) up.listaProv = c.prov;
           if (x.prob && !x.misma.codLista && x.it.cod) up.codLista = String(x.it.cod);
           const an = parseFloat(x.misma.costUSD) || 0, _rc = recompra(x.misma, x.it), nu = _rc.usd;   // revisión etapa 3, 29/10/2026: ver `recompra`
-          if (_rc.sube) {
+          if (_rc.sube || _rc.baja) {   // 9a del 08/11/2026: también la más barata
             // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como la web y Paraguay): sube; el costo viejo queda en los meses con ventas.
             if (an > 0) { const meses = new Set(); for (const [dk, o] of Object.entries(vp)) for (const v of Object.values(o || {})) if (v && v.prodId === x.misma.id) meses.add(String(dk).slice(0, 7)); for (const ym of meses) if (!(php[ym] && php[ym][x.misma.id] != null)) await db.set(`cyc/precios_hist_prod/${ym}/${x.misma.id}`, an); }
             const dev = DEV_LIVE[x.misma.id] != null ? DEV_LIVE[x.misma.id] : (parseFloat(x.misma.devPct) || 0);
             Object.assign(up, { costUSD: nu, cost: Math.round(Number(x.it.pc) || 0), costoPesos: true, costFullUSD: Math.round((nu * (1 + dev / 100) + (parseFloat(x.misma.shipUSD) || 0)) * 100) / 100 });
-            subio.push(`${x.misma.name} ${_rc.txt}`);
+            subio.push(`${_rc.baja ? '⬇️ ' : ''}${x.misma.name} ${_rc.txt}`);
           }
           if (Object.keys(up).length) await db.patch('cyc/products/' + x.misma.id, up);
           continue;
@@ -56136,7 +56224,7 @@ async function main() {
       const ulP = {}; if (faltoR.length) for (const [i, x] of plan.entries()) { const k = (c.items || []).indexOf(x.it); if (k >= 0) ulP['items/' + k + '/ul'] = llegoU(x.it); }
       await db.patch('cyc/compraslista/' + id, { sumoOfi: NOSUMAR ? null : { ts: Date.now(), por: 'chat', items: sumados }, ofiAlLlegar: Object.keys(quedan).length ? quedan : null, falto: faltoR.length ? faltoR : null, llegando: null, ...ulP });   // `llegando: null`: terminó (revisión etapa 3, 29/10/2026)
       const rel = await db.get('cyc/compraslista/' + id);
-      console.log(`\n${rel && rel.estado === 'llegado' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} llegado · ${nuevas.length} ficha(s) nueva(s)${nuevas.length ? ': ' + nuevas.map((x) => x.id + ' ' + x.name).join(' | ') : ''}${subio.length ? ' · costo subido: ' + subio.join(' · ') : ''}`);
+      console.log(`\n${rel && rel.estado === 'llegado' ? '✓' : '⚠️ NO QUEDÓ'} Pedido ${id} llegado · ${nuevas.length} ficha(s) nueva(s)${nuevas.length ? ': ' + nuevas.map((x) => x.id + ' ' + x.name).join(' | ') : ''}${subio.length ? ' · costo cambiado: ' + subio.join(' · ') : ''}`);
       if (sumados.length) console.log(`✓ Sumado a la oficina: ${sumados.reduce((a, x) => a + x.u, 0)} u.${faltoR.length ? ' · faltaron ' + faltoR.reduce((a, x) => a + x.pedidas - x.llegaron, 0) + ' u. (anotadas en el pedido)' : ''}`);
       if (aMano.length || NOSUMAR) {
         const lst = NOSUMAR ? plan.map((x, i) => ({ nom: (fichaDe[i] || {}).name || _nomIt(x.it), u: llegoU(x.it), pf: fichaDe[i], v: x.it.variante || '' })) : aMano;
@@ -56761,6 +56849,10 @@ async function main() {
             const pid = _fichaIdDe(it), pf = pid && _prodsAll.find((pp) => pp.id === pid);
             if (!pf) { _aMano.push({ it, u, why: 'sin ficha' }); continue; }
             if (CORTAR) { _aMano.push({ it, u, pf, why: 'cancelaron la corrida' }); continue; }
+            if (pf.soloLocal || pf.sololocal) {   // 8a de la revisión del Local (08/11/2026): lo "sólo local" entra a la Oficina Local, no a la Oficina ML
+              let rL = null; try { rL = await oficycSumarBot(db, pf, it.variante || '', u); } catch (eL) { _aMano.push({ it, u, pf, why: 'no se pudo escribir en la Oficina Local (' + String((eL && eL.message) || eL).slice(0, 40) + ')' }); continue; }
+              if (!rL) { _aMano.push({ it, u, pf, why: `la ficha no tiene el color "${it.variante}" (Oficina Local)` }); continue; }
+              console.log(`  🏪 Oficina Local · ${pf.name}${rL.color ? ' · ' + rL.color : ''}: ${rL.antes} → ${rL.ahora} (sólo local: no va a la Oficina ML)${rL.arq}`); continue; }
             let r = null; try { r = await ofiSumarBot(db, pf, it.variante || '', u, _inv); } catch (eS) { _aMano.push({ it, u, pf, why: 'no se pudo escribir (' + String((eS && eS.message) || eS).slice(0, 40) + ')' }); continue; }
             if (!r) { _aMano.push({ it, u, pf, why: it.variante ? `la ficha no tiene el color "${it.variante}"` : 'la ficha tiene colores y el renglón no dice cuál' }); continue; }
             _sumados.push({ prodId: pf.id, ...(r.color ? { v: r.color } : {}), u });
@@ -59936,6 +60028,12 @@ async function main() {
           costo, costBaseUSD, shipUSD,
           // El dólar de SU día queda fijo: al releer las ventas de 2 días no se pisa con el de hoy (revisión Plata 27/10/2026, el caso del 15/10).
           ...(Number(_prevV && _prevV.tcSale) > 0 ? { tcSale: Number(_prevV.tcSale) } : (tcReal > 0 ? { tcSale: tcReal } : {})),
+          // 7a del 08/11/2026 (él): el % del monotributo de SU día queda fijo en la venta (`monoPct`), como el dólar: el vigente se recalcula
+          // cada vuelta y movía la ganancia de días ya pasados. Al releer no se pisa.
+          ...(_prevV && _prevV.monoPct != null && isFinite(Number(_prevV.monoPct)) ? { monoPct: Number(_prevV.monoPct) } : (monoVenta > 0 ? { monoPct: monoVenta } : {})),
+          // 8a del 08/11/2026 (él): lo comprado en PESOS (Bs As, Paulvic, listas) guarda el costo en pesos por unidad del día de la venta
+          // (`costoPesosU`): un pedido nuevo que cambia `p.cost` ya no mueve la ganancia de las ventas de antes. Al releer no se pisa.
+          ...(Number(_prevV && _prevV.costoPesosU) > 0 ? { costoPesosU: Number(_prevV.costoPesosU) } : (p && costoEnPesosBot(p) ? { costoPesosU: Math.round(Number(p.cost) * 100) / 100 } : {})),
           numVenta: numDisplay, mla: mla || '',
           ts: new Date(o.date_created || o.date_closed).getTime(),
           origen: 'ml-api',

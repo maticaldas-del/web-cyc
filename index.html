@@ -4978,7 +4978,10 @@ const _ymDeVenta=v=>{
   return null;
 };
 // Impuestos que se suman al costo de una venta: IIBB (cargo ML, por cuenta) + monotributo (general).
-const impuestosDeVenta=v=>((v&&v.total)||0)*(mlExtraPct(v&&v.cuenta)+monoPct(_ymDeVenta(v)))/100;
+// 7a del 08/11/2026 (él): el % del monotributo de una venta = el que guardó el robot el día que se vendió (`v.monoPct`), como el dólar (`tcSale`):
+// el vigente se recalcula cada vuelta y movía la ganancia de días ya pasados. Las ventas de antes de la regla siguen con el del mes. Igual que `monoDeVentaBot`.
+function monoDeVenta(v){const m=v&&v.monoPct!=null&&v.monoPct!==''?Number(v.monoPct):NaN;return isFinite(m)&&m>=0?m:monoPct(_ymDeVenta(v));}
+const impuestosDeVenta=v=>((v&&v.total)||0)*(mlExtraPct(v&&v.cuenta)+monoDeVenta(v))/100;
 // Impuestos PROMEDIO por unidad vendida de cada producto. Los impuestos son un % del PRECIO, así que
 // para poder mostrarlos dentro del costo del producto (donde no hay precio) se usa lo que realmente
 // pagaste en sus ventas. Sale exacto y contempla que un mismo producto se venda por varias cuentas
@@ -5104,6 +5107,10 @@ function _retiroCalc(ym,_prof,_crudo){
   const fz=_retiroCongelado(pr);if(fz!=null){const cp=_retiroCalc(pr,(_prof||0)+1,true);if(cp!=null)v+=cp-fz;}   // lo que quedó corto o de más el mes pasado
   return _crudo?v:Math.max(0,v);
 }
+// 3a del 08/11/2026 (él): el retiro queda fijo 48 h después del cierre del mes anterior (`snapshots/<mes>.ts`; rehacer el cierre lo renueva).
+// Antes de eso se recalcula con cada cambio del cierre. Un cierre sin hora (cargado a mano viejo) cuenta como firme.
+const RETIRO_FIJO_HS=48;
+function _cierreFirme(ym){const sn=(state.snapshots||{})[ym];const t=sn&&parseFloat(sn.ts);return !(t>0)||Date.now()-t>=RETIRO_FIJO_HS*3600e3;}
 function _retiroAuto(ym){
   if(!ym||_puntMesPrev(ym)<COBRO_CRECE_DESDE)return null;
   const fz=_retiroCongelado(ym);return fz!=null?fz:_retiroCalc(ym);
@@ -5113,7 +5120,8 @@ function _retiroAutoGuardar(){
   const cur=_curYM();
   for(const k of Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE)){
     const sig=_mesSigYM(k);
-    if(sig<=cur&&_retiroCongelado(sig)==null){const v0=_retiroCalc(sig);if(v0!=null){state.retiro_congelado=state.retiro_congelado||{};state.retiro_congelado[sig]={v:v0,ts:Date.now()};fbSet('retiro_congelado/'+sig,{v:v0,ts:Date.now()});}}
+    // 3a del 08/11/2026 (él): queda FIJO recién 48 h después de cerrar el mes (si rehace el cierre en esas 48 h, se recalcula solo)
+    if(sig<=cur&&_retiroCongelado(sig)==null&&_cierreFirme(k)){const v0=_retiroCalc(sig);if(v0!=null){state.retiro_congelado=state.retiro_congelado||{};state.retiro_congelado[sig]={v:v0,ts:Date.now()};fbSet('retiro_congelado/'+sig,{v:v0,ts:Date.now()});}}
     const v=_retiroAuto(sig);if(v==null)continue;
     const r=(state.retiro_mes||{})[sig];
     if(r==null||r===''||Number(r)!==v){state.retiro_mes=state.retiro_mes||{};state.retiro_mes[sig]=v;fbSet('retiro_mes/'+sig,v);}
@@ -7754,7 +7762,7 @@ function renderCuotas(){
     const fechas=cuotaPagosFechas(d);
     const lin1=fin?(cuotaFija(d)?'✅ al día · 📌 siempre a la vista':'✅ pagada'):cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagEf!=null?d.pagEf:d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:(cuotaFija(d)?'📌 cuenta corriente':`sin cuotas · total ${_pesos(d.monto)}`);
     const lin2=[
-      d.sinGan?'sin ganancia':costo!=null?`costo ${_pesos(costo)} · ganancia <b style="color:${colPctLocal(gan,costo)}">${_pesos(gan)}</b>${costo>0?` (${Math.round(gan/costo*100)}% sobre el costo)`:''}`:'',
+      d.sinGan?'sin ganancia':costo!=null?`${gm.length?'deuda inicial: ':''}costo ${_pesos(costo)} · ganancia <b style="color:${colPctLocal(gan,costo)}">${_pesos(gan)}</b>${costo>0?` (${Math.round(gan/costo*100)}% sobre el costo)`:''}`:'',
       fechas.length?`pagos: ${fechas.map(_isoDM).join(', ')}`:''].filter(Boolean).join(' · ');
     const nMov=Object.keys(d.movs||{}).length;
     // MÁS RESUMIDO (28/10/2026, él: "dejar lo importante, % de ganancia y pesos cuánto falta, nombre de la persona, el detalle adentro. sacar
@@ -7763,8 +7771,11 @@ function renderCuotas(){
     // 29/10/2026 (él con Mercadería Perfumería: "¿por qué dice 20%? tiene que ser lo que nos deben y la ganancia de eso"): el % va sobre el COSTO
     // (como en toda la app: el 25% que se le gana a la perfumería se ve 25%, no 20%) y, en una deuda de mercadería dejada (renglones con
     // ganancia), afuera se ve la ganancia en pesos de lo que tiene costo cargado, no un % que deja afuera la deuda vieja sin costo.
-    const pct=d.sinGan?null:gan!=null&&costo>0?Math.round(gan/costo*100):gmV-gmG>0?Math.round(gmG/(gmV-gmG)*100):null;
-    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':d.tipo==='venta'&&!(Number(d.costo)>0)&&!gm.length?'<span style="font-size:.64rem;color:var(--muted)" title="Venta vieja sin el costo cargado: la ganancia no se sabe">costo sin cargar</span>':gm.length&&gan==null?`<span style="font-size:.7rem;font-weight:700;color:${colPctLocal(gmG,gmV-gmG)}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda que no tiene costo no entra.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${colPctLocalP(pct)};white-space:nowrap">${pct}%${gan!=null?` <span style="font-weight:600">${gan>=0?'+':'−'}${_pesos(Math.abs(gan))}</span>`:''}</span>`:'';
+    // 2a de la revisión del Local (08/11/2026, él): en MERCADERÍA Perfumería (deuda inicial con costo + lo dejado después por producto) la tarjeta
+    // muestra la ganancia de LO DEJADO (los renglones con producto), no la de la deuda inicial; la de la inicial queda adentro, en el detalle.
+    const _soloDej=gm.length>0&&gan!=null&&/mercader/.test(normTxt(d.nom||''))&&(/perfumer/.test(normTxt(d.nom||''))||(window._cuotaPerfIds||[]).includes(d.id));
+    const pct=d.sinGan?null:_soloDej?(gmV-gmG>0?Math.round(gmG/(gmV-gmG)*100):null):gan!=null&&costo>0?Math.round(gan/costo*100):gmV-gmG>0?Math.round(gmG/(gmV-gmG)*100):null;
+    const pctTxt=d.sinGan?'<span style="font-size:.66rem;color:var(--muted)">sin ganancia</span>':d.tipo==='venta'&&!(Number(d.costo)>0)&&!gm.length?'<span style="font-size:.64rem;color:var(--muted)" title="Venta vieja sin el costo cargado: la ganancia no se sabe">costo sin cargar</span>':gm.length&&(gan==null||_soloDej)?`<span style="font-size:.7rem;font-weight:700;color:${colPctLocal(gmG,gmV-gmG)}" title="Ganancia de lo dejado con costo cargado (${pct}% sobre el costo). La deuda inicial y lo que no tiene costo no entran.">gan. ${_pesos(gmG)}</span>`:pct!=null?`<span style="font-size:.7rem;font-weight:700;color:${colPctLocalP(pct)};white-space:nowrap">${pct}%${gan!=null?` <span style="font-weight:600">${gan>=0?'+':'−'}${_pesos(Math.abs(gan))}</span>`:''}</span>`:'';
     const bord=atr?'var(--red)':fin?'rgba(34,197,94,.55)':ab?'var(--border2)':'var(--border)',bg=atr?'background:rgba(239,68,68,.08);':fin?'background:rgba(34,197,94,.07);':'';
     const venceTxt=fin?'':v?`<span style="color:${atr?'var(--red)':'var(--text)'}">${atr?'⚠️ vencía':'📅 '+(cq?'próx. cuota':'paga')} <b>${_isoDM(v)}</b></span>`:(cuotaFija(d)?'':'<span style="color:var(--amber)">sin fecha (✏️)</span>');
     const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">
@@ -7788,7 +7799,8 @@ function renderCuotas(){
   const _nP=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const _pM=act.find(d=>/perfumeria/.test(_nP(d.nom))&&/mercader/.test(_nP(d.nom))),_pD=act.find(d=>/perfumeria/.test(_nP(d.nom))&&/deuda/.test(_nP(d.nom)));
   const _perfG=()=>{const ab=window._cuotaAbierta==='__perf'||(_pM&&window._cuotaAbierta===_pM.id)||(_pD&&window._cuotaAbierta===_pD.id);
-    const gan=[_pM,_pD].filter(Boolean).reduce((t,d)=>t+Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0).reduce((a,x)=>a+Number(x.gan),0)+(Number(d.costo)>0?d.monto-Number(d.costo):0),0);
+    // 2a del 08/11/2026: la ganancia de LO DEJADO; la de la deuda inicial cuenta sólo si esa deuda todavía no tiene nada dejado por producto.
+    const gan=[_pM,_pD].filter(Boolean).reduce((t,d)=>{const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0);return t+gm.reduce((a,x)=>a+Number(x.gan),0)+(Number(d.costo)>0&&!gm.length?d.monto-Number(d.costo):0);},0);
     const tot=[_pM,_pD].filter(Boolean).reduce((t,d)=>t+(Number(d.resta)||0),0);
     return `<div style="border:1px solid ${ab?'var(--border2)':'var(--border)'};border-radius:10px;background:var(--surface)">
       <div onclick="window._cuotaAbierta=window._cuotaAbierta==='__perf'?null:'__perf';window._cuotaPag=1;renderCuotas()" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 12px">
@@ -15182,6 +15194,7 @@ function efectivoCostoVP(v){
   const c=_efectivoCostoVP(v)+(ventaEstimadaVP(v)?gestDeVenta(v):0);
   return ventaSinCostoVP(v)?Math.max(Number(v.neto)||0,c):c;
 }
+function _costoPesosVentaUSD(v,p,tc){const c=Number(v&&v.costoPesosU);return costoEnPesos(p)&&c>0&&tc>0?c/tc:null;}
 function _efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
   // Cargo extra de ML (IIBB + almacenamiento) que ML cobra por débito, aparte de la venta: % del precio.
@@ -15198,7 +15211,9 @@ function _efectivoCostoVP(v){
   // El dólar del DÍA de la venta (27/10/2026, `tcDeVenta`): antes era el del mes, y el mes en curso usaba el de hoy.
   const tc=tcDeVenta(v,ym);
   // Comprado en pesos (`costoEnPesos`): los pesos pagados ÷ ese dólar, así por ese dólar vuelve a dar los mismos pesos.
-  const baseUSD=getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
+  // 8a del 08/11/2026 (él): lo comprado en pesos usa el costo en pesos que tenía el día de la venta (`v.costoPesosU`, lo guarda el robot): un
+  // pedido nuevo de Paulvic ya no mueve la ganancia de las ventas de antes. Las ventas de antes de la regla siguen como estaban.
+  const baseUSD=_costoPesosVentaUSD(v,p,tc)??getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
   // Envío/embalaje: usar SIEMPRE el valor actual del producto (no el congelado por venta).
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.
@@ -15214,7 +15229,7 @@ function costoMercaVP(v){
   if(!v||v.cancelada||ventaSinCostoVP(v))return 0;
   const p=v._dateKey&&prodDeVenta(v);if(!p)return 0;
   const ym=v._dateKey.substring(0,7),tc=tcDeVenta(v,ym);
-  const baseUSD=getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
+  const baseUSD=_costoPesosVentaUSD(v,p,tc)??getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
   const ship=parseFloat(p.shipUSD)||0;
   return ((baseUSD||0)+ship)*tc*(v.qty||1);
 }
@@ -19036,6 +19051,27 @@ async function llegadaSumarOfi(renglones){
   try{await syncOfiMati();}catch(_){}
   return {sum,mano};
 }
+// 🏪 8a de la revisión del Local (08/11/2026, él): lo "sólo local" (`soloLocal`) que llega de Paraguay va a la Oficina Local (`cyc/oficyc`), no a la
+// Oficina ML. Mientras la Oficina Local no está contada por unidades, se suma su costo al valor a mano (`finanzas/of_viejo`). Igual que `oficycSumarBot`.
+async function ofiLlegaLocal(renglones){
+  const sum=[],mano=[];if(!db)return{sum,mano};
+  const porU=(state.mlconfig||{}).oficycPorUnidades===true;
+  for(const r of renglones){
+    if(!(r.u>0))continue;
+    const vs=Array.isArray(r.p.variantes)?r.p.variantes:Object.values(r.p.variantes||{});
+    const col=r.variante&&vs.length?(vs.find(v=>sid(v)===sid(r.variante))||null):null;
+    if(r.variante&&vs.length&&!col){mano.push({...r,nom:r.p.name,why:'la ficha no tiene el color '+r.variante+' (Oficina Local)'});continue;}
+    try{
+      const res=await db.ref('cyc/oficyc/'+r.p.id).transaction(cur=>{const x=cur&&typeof cur==='object'?cur:{t:parseInt(cur)||0};
+        if(col){x.v=x.v||{};x.v[sid(col)]=(parseInt(x.v[sid(col)])||0)+r.u;}else x.t=(parseInt(x.t)||0)+r.u;return x;});
+      if(res&&res.snapshot){state.oficyc=state.oficyc||{};state.oficyc[r.p.id]=res.snapshot.val();}
+      try{if(!(state.oficycdesde||{})[r.p.id])await db.ref('cyc/oficycdesde/'+r.p.id).set({ts:Date.now()});}catch(_){}
+      if(!porU){const cu=costP(r.p)||0;if(cu>0){const vN=Math.round(((parseFloat((state.finanzas||{}).of_viejo)||0)+cu*r.u)*100)/100;state.finanzas.of_viejo=vN;await fbSet('finanzas/of_viejo',vN);}}
+      sum.push({prodId:r.p.id,...(col?{v:col}:{}),u:r.u,local:1});
+    }catch(e){mano.push({...r,nom:r.p.name,why:'no se guardó en la Oficina Local ('+String((e&&e.message)||e).slice(0,40)+')'});}
+  }
+  return{sum,mano};
+}
 const _llegadaTxt=(R)=>(R.sum.length?`🏠 Sumé a Oficina ML ${R.sum.reduce((a,x)=>a+x.u,0)} u. (${R.sum.length} renglón/es).`:'')
   +(R.mano.length?`\n\n⚠️ NO lo sumé, contalo en Oficina ML:\n${R.mano.map(x=>'· '+x.u+' u. '+(x.nom||'')+(x.variante?' · '+x.variante:'')+' ('+x.why+')').join('\n')}`:'');
 const _llegoTodoPreg=(n)=>confirm(`¿Llegó TODO lo del pedido (${n} u.)?\n\nAceptar = lo sumo solo a Oficina ML. Si después ves que faltó algo, decíselo a Claude (o restalo en Contar lo que hay).\nCancelar = no sumo nada: lo contás vos en Oficina ML.`);
@@ -19158,7 +19194,10 @@ async function _pyPedidoLlego(id){
   const _ofiLl={};for(const it of _repIts.filter(_vaOfiN))if(!(it.prodId in _ofiLl))_ofiLl[it.prodId]=getQ(it.prodId,OFI);
   const _fichaDe=it=>it.id?(hechasP[it.id]||(repe.find(x=>x.src.id===it.id)||{rep:[]}).rep[0]||prodById(((state.candidatos||{})[it.id]||{}).prodId)||null):prodById(it.prodId);
   // 1a de la revisión del Local (30/10/2026): lo marcado `paraLocal` (`pylocal`) ya es del local (está en Lo que nos deben): no entra a la oficina.
-  const R=_todo?await llegadaSumarOfi([...items,..._repIts].filter(it=>it&&!it.paraLocal&&!it.tienda).map(it=>({p:_fichaDe(it),variante:it.variante||'',u:parseInt(it.u)||0,nom:it.nom||''}))):{sum:[],mano:[]};
+  const _rgL=_todo?[...items,..._repIts].filter(it=>it&&!it.paraLocal&&!it.tienda).map(it=>({p:_fichaDe(it),variante:it.variante||'',u:parseInt(it.u)||0,nom:it.nom||''})):[];
+  const _esLoc=r=>r.p&&(r.p.soloLocal||r.p.sololocal);   // 8a del 08/11: lo "sólo local" va a la Oficina Local
+  const R=_todo?await llegadaSumarOfi(_rgL.filter(r=>!_esLoc(r))):{sum:[],mano:[]};
+  const RL=_todo?await ofiLlegaLocal(_rgL.filter(_esLoc)):{sum:[],mano:[]};R.mano.push(...RL.mano);
   if(_repIts.length){
     const _quedan={};for(const [pid,q] of Object.entries(_ofiLl))if(!_todo||!R.sum.some(x=>x.prodId===pid)||R.mano.some(x=>x.p&&x.p.id===pid))_quedan[pid]=q;
     try{await fbSet('compraspy/'+id+'/ofiAlLlegar',Object.keys(_quedan).length?_quedan:null);c.ofiAlLlegar=Object.keys(_quedan).length?_quedan:undefined;}catch(e){}
@@ -19174,7 +19213,7 @@ async function _pyPedidoLlego(id){
   // aparecer en ningún lado hasta que alguien los mire.
   // Y SE RECUERDA CONTAR (etapa 3, 29/09/2026): las fichas nacen con 0 en la oficina y el pedido deja
   // de contar "en camino", así que hasta contarlas el patrimonio baja lo que costó el pedido.
-  const _contar=_todo?'\n\n'+_llegadaTxt(R):`\n\nAhora contá estas unidades en Oficina ML (hasta que las cuentes no suman en el patrimonio):\n`
+  const _contar=_todo?'\n\n'+_llegadaTxt(R)+(RL.sum.length?`\n\n🏪 Sólo local, a la Oficina Local (no a la Oficina ML): ${RL.sum.map(x=>x.u+' × '+((prodById(x.prodId)||{}).name||'')+(x.v?' · '+x.v:'')).join(', ')}`:''):`\n\nAhora contá estas unidades en Oficina ML (hasta que las cuentes no suman en el patrimonio):\n`
     +[...items,..._repIts].filter(_vaOfiN).map(it=>'· '+(it.u||'?')+' u. '+(it.nom||'')+(it.variante?' · '+it.variante:'')).join('\n')
     +(()=>{const t=[...items,..._repIts].filter(it=>it&&it.tienda);return t.length?'\n\n🏬 De la Tienda (no van a la Oficina ML): falta cargar la venta: '+t.map(it=>(it.u||'?')+' × '+(it.nom||'')).join(', '):'';})()
   {
@@ -24085,7 +24124,9 @@ async function _listaYaLoPedi(k){
     +`Total ${fmt(tot)}`))return;
   if(!items.length)return;
   const hoy=new Date(ahora-3*3600e3).toISOString().slice(0,10),id='li'+k.slice(0,6)+hoy.replace(/-/g,'')+'_'+ahora.toString(36).slice(-4);
-  const rec={prov:k,provNom:nom,fecha:hoy,ts:ahora,estado:'camino',tc:curTC(),rec:_listaRec(k),items};
+  // 10a del 08/11/2026 (él): los pedidos de Bs As (Tito paga en el mostrador) arrancan 💵 pagados; se desmarca con "💵 No se pagó".
+  const _bsPag=_listaEsBsas(k)?{pagado:true,pagoTs:ahora,pagoAuto:1}:{};
+  const rec={prov:k,provNom:nom,fecha:hoy,ts:ahora,estado:'camino',tc:curTC(),rec:_listaRec(k),items,..._bsPag};
   // Etapa 4 (20/10/2026): el pedido y el vaciado del armado en UN solo `update()` multi-ruta: o queda todo o nada (antes, un corte
   // entre el `set` del pedido y el vaciado dejaba el pedido en camino Y las unidades cargadas para pedirlas de nuevo).
   try{await db.ref('cyc').update({['compraslista/'+id]:rec,['listas_pedido/'+k]:null,['listas_pedido_prob/'+k]:null});}catch(err){toast('No se guardó: '+(err.message||err),'err',5000);return;}
@@ -24106,8 +24147,10 @@ async function _listaYaLoPedi(k){
 // en suba una recompra MÁS BARATA "subía" el costo (y bajaba los pesos); en baja, una más cara no subía. Lo de dólares sigue en dólares.
 // Misma regla que `recompra` de `listaped:llego` (sync.mjs): si se toca una, se toca la otra.
 function _listaRecompra(p,pc,tc){pc=Number(pc)||0;const nuO=tc>0?Math.round(pc/tc*100)/100:0;
-  if(costoEnPesos(p)){const ant=Number(p.cost)||0,t=curTC();return{sube:pc>ant+0.5,usd:t>0?Math.round(pc/t*10000)/10000:nuO,txt:fmt(Math.round(ant))+' → '+fmt(Math.round(pc))};}
-  const an=costUSDof(p);return{sube:nuO>an+0.005,usd:nuO,txt:'US$ '+an.toFixed(2)+' → '+nuO.toFixed(2)};}
+  // 9a del 08/11/2026 (él): como Paraguay (6a del 30/10), una recompra más BARATA también baja el costo al que se pagó (`baja`); lo ya
+  // vendido queda con el viejo (`congelarCostoAnterior` en los meses con ventas y `costoPesosU` en cada venta).
+  if(costoEnPesos(p)){const ant=Number(p.cost)||0,t=curTC();return{sube:pc>ant+0.5,baja:pc>0&&pc<ant-0.5,usd:t>0?Math.round(pc/t*10000)/10000:nuO,txt:fmt(Math.round(ant))+' → '+fmt(Math.round(pc))};}
+  const an=costUSDof(p);return{sube:nuO>an+0.005,baja:nuO>0&&nuO<an-0.005,usd:nuO,txt:'US$ '+an.toFixed(2)+' → '+nuO.toFixed(2)};}
 // Etapa 4 (20/10/2026): candado (doble toque) y contador de operaciones en curso. La de adentro es `_listaLlego`.
 async function listaLlego(id){return conCandado('listaLlego:'+id,()=>_listaLlego(id));}
 async function _listaLlego(id){
@@ -24156,9 +24199,9 @@ async function _listaLlego(id){
       // RECOMPRA MÁS CARA (decisión 6a del 20/10/2026, como Paraguay): la ficha toma el costo nuevo; el viejo queda congelado
       // en los meses con ventas (`congelarCostoAnterior`). Sólo sube, nunca baja (misma regla que el robot en Paraguay).
       const _rc=_listaRecompra(x.misma,x.it.pc,tc),nu=_rc.usd,an=costUSDof(x.misma);   // revisión etapa 3, 29/10/2026: ver `_listaRecompra`
-      if(_rc.sube)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;x.misma.costoPesos=true;
+      if(_rc.sube||_rc.baja)try{const cg=await congelarCostoAnterior(x.misma,an);x.misma.costUSD=nu;x.misma.cost=x.it.pc;x.misma.costoPesos=true;
         await fbSet('products/'+x.misma.id+'/costUSD',nu);await fbSet('products/'+x.misma.id+'/cost',x.it.pc);await fbSet('products/'+x.misma.id+'/costoPesos',true);await recalcAndSaveFullUSD(x.misma);
-        subio.push(x.misma.name+' '+_rc.txt);await log('Costo '+x.misma.name+': US$'+nu+' (recompra a '+(c.provNom||c.prov)+(cg?', se congeló US$'+an+' en '+cg+' mes/es':'')+')');}catch(e){toast('No pude subir el costo de '+x.misma.name+': '+(e.message||e),'err',5000);}
+        subio.push((_rc.baja?'⬇️ ':'')+x.misma.name+' '+_rc.txt);await log('Costo '+x.misma.name+': US$'+nu+' (recompra a '+(c.provNom||c.prov)+(cg?', se congeló US$'+an+' en '+cg+' mes/es':'')+')');}catch(e){toast('No pude subir el costo de '+x.misma.name+': '+(e.message||e),'err',5000);}
       continue;}
     if(!x.nombre)continue;
     const usd=tc>0?Math.round(x.it.pc/tc*100)/100:0;
@@ -24176,7 +24219,16 @@ async function _listaLlego(id){
   }
   await log('Llegó el pedido a '+(c.provNom||c.prov)+' del '+c.fecha+': '+n+' ficha(s) nueva(s)'+(nProb?' · '+nProb+' probado(s)':'')+(_todo?' · sumado a la oficina':''));
   if(_todo&&R.mano.length)alert('Llegó ✓\n\n'+_llegadaTxt(R));
-  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s)':''}${subio.length?' · costo subido: '+subio.join(' · '):''}. ${_todo?_llegadaTxt({sum:R.sum,mano:[]}):'Contá las unidades en Oficina ML.'}`,'ok',8000);_listaRepintar();
+  toast(`✓ Llegó · ${n} ficha(s) nueva(s)${nProb?' · '+nProb+' probado(s)':''}${subio.length?' · costo cambiado: '+subio.join(' · '):''}. ${_todo?_llegadaTxt({sum:R.sum,mano:[]}):'Contá las unidades en Oficina ML.'}`,'ok',8000);_listaRepintar();
+}
+// 10a del 08/11/2026: desmarcar el 💵 (los de Bs As arrancan pagados). En camino vuelve a "sin pagar" (al llegar es deuda); ya llegado, es deuda.
+async function listaNoPagado(id){
+  const c=(state.comprasLista||{})[id];if(!c||c.pagado!==true)return;
+  const cam=c.estado==='camino';
+  if(!confirm(`¿El pedido a ${c.provNom||c.prov} del ${c.fecha} NO está pagado? ${cam?'Deja de contar como mercadería en camino y al llegar queda como deuda.':'Pasa a contar como deuda en el Arqueo.'}`))return;
+  const nv=cam?null:false;
+  try{await db.ref('cyc/compraslista/'+id).update({pagado:nv,pagoTs:null,pagoAuto:null});c.pagado=nv==null?undefined:nv;delete c.pagoTs;delete c.pagoAuto;}catch(e){toast('No se guardó: '+(e.message||e),'err',5000);return;}
+  await log('Desmarcado el pago del pedido a '+(c.provNom||c.prov)+' del '+c.fecha);toast('✓ Queda sin pagar');renderListas();
 }
 async function listaPagado(id){
   const c=(state.comprasLista||{})[id];if(!c)return;
@@ -24523,7 +24575,7 @@ async function renderListas(){
     const comp=c=>{const t=(c.items||[]).reduce((s,i)=>s+(i.pc||0)*(i.u||0),0),tL=(c.items||[]).reduce((s,i)=>s+(i.p||0)*(i.u||0),0);const cam=c.estado==='camino';
       return `<details style="background:var(--surface);border:1px solid ${cam?'var(--amber)':'var(--border)'};border-radius:8px;padding:8px 10px;margin-bottom:6px"><summary style="cursor:pointer;font-size:.74rem">${pedNumTag(c,'margin-right:4px')}${cam?(c.pagado===true?'🚚 en camino · pagado':'🚚 en camino'):c.pagado===false?'💵 llegó, falta pagar':'✅ llegó'} · <b>${c.fecha}</b> · ${(c.items||[]).length} productos · ${tL?'lista '+fmt(tL)+' · ':''}te sale ${fmt(t)}</summary>
         <div style="font-size:.66rem;margin-top:6px;line-height:1.6">${(c.items||[]).map(i=>`· ${i.prodId?'✅ ':''}${i.u} × ${escHtml(i.n)}${i.variante?' · '+escHtml(i.variante):''} <span style="color:var(--muted)">(${escHtml(i.cod)} · ${i.p?'<b style="color:var(--text)">lista '+fmt(i.p)+' c/u</b> · ':''}te sale ${fmt(i.pc)} c/u${i.m!=null?' · '+Math.round(i.m)+'% en ML':''})</span>${((_listaCache[c.prov]||{})[i.cod]||{}).noWeb?' <b style="color:var(--red)">🚫 no está en su web</b>':''}${((_listaCache[c.prov]||{})[i.cod]||{}).noFull?' <b style="color:var(--red)">🚫 no va a Full: '+escHtml(((_listaCache[c.prov]||{})[i.cod]||{}).noFull)+'</b>':''}${_listaUnVend((_listaCache[c.prov]||{})[i.cod])?' <b style="color:var(--amber)">⚠️ 1 solo vendedor en ML: el % puede estar inflado</b>':''}<br><span style="padding-left:10px"><a href="#" onclick="listaVerOri('${c.prov}','${String(i.cod).replace(/'/g,"\\'")}');return false" style="color:var(--blue)">📄 verlo en la lista</a>${i.mi?` · <a href="https://www.mercadolibre.com.ar/p/${escHtml(i.mi)}" target="_blank" rel="noopener" style="color:var(--green)">🔗 verlo en ML</a>`:' · <span style="color:var(--muted)">sin link de ML</span>'}</span>`).join('<br>')}</div>
-        ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó${(c.items||[]).every(i=>i&&i.prodId)?'':' · crear las fichas'}</button>${c.pagado===true?`<div style="font-size:.66rem;color:var(--green);margin-top:6px">💵 Pagado al pedir: cuenta como mercadería en camino en el Arqueo.</div>`:`<button class="btn" style="margin-top:6px;margin-left:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`}`:''}${c.estado==='llegado'&&c.pagado===false?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">💵 Llegó y falta pagar: cuenta como deuda en el Arqueo.</div><button class="btn" style="margin-top:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`:''}</details>`;};
+        ${cam?`<button class="btn" style="margin-top:8px;font-size:.7rem" onclick="listaLlego('${c.id}')">📦 Llegó${(c.items||[]).every(i=>i&&i.prodId)?'':' · crear las fichas'}</button>${c.pagado===true?`<div style="font-size:.66rem;color:var(--green);margin-top:6px">💵 Pagado al pedir: cuenta como mercadería en camino en el Arqueo.${c.pagoAuto?' (los de Bs As arrancan pagados)':''} <button class="btn" style="font-size:.64rem;padding:2px 6px;margin-left:4px" onclick="listaNoPagado('${c.id}')">💵 No se pagó</button></div>`:`<button class="btn" style="margin-top:6px;margin-left:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`}`:''}${c.estado==='llegado'&&c.pagado===false?`<div style="font-size:.66rem;color:var(--amber);margin-top:8px">💵 Llegó y falta pagar: cuenta como deuda en el Arqueo.</div><button class="btn" style="margin-top:6px;font-size:.7rem" onclick="listaPagado('${c.id}')">💵 Ya lo pagué</button>`:''}${c.estado==='llegado'&&c.pagado===true&&c.pagoAuto?`<div style="font-size:.66rem;color:var(--muted);margin-top:6px">💵 Arrancó pagado (los de Bs As). <button class="btn" style="font-size:.64rem;padding:2px 6px" onclick="listaNoPagado('${c.id}')">💵 No se pagó</button></div>`:''}</details>`;};
     el.innerHTML=cab+(A.length||PB.length?`<div style="background:var(--surface);border:1px solid var(--blue);border-radius:var(--r);padding:12px;margin-bottom:14px">
         <div style="font-size:1.3rem;font-weight:800">${fmt(tot)} <span style="font-size:.7rem;font-weight:400;color:var(--muted)">· ${A.length+PB.length} productos${PB.length?' ('+PB.length+' probados)':''} · ${uT} u.${rec?' · con el '+rec+'% del proveedor':''}${totL?' · a precio de lista '+fmt(totL)+' (lo que tiene que facturar)':''}</span></div>
         ${PB.length?`<div style="font-size:.7rem;font-weight:700;color:var(--green);margin-top:10px">✅ Probados · reposición (se descuentan de Pedidos al tocar "Ya lo pedí")</div><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${PB.map(filaP).join('')}</div>`:''}
@@ -26175,13 +26227,19 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   // COBRADO EN TODO EL PERÍODO (revisión etapa 9, 30/10/2026): R/RP van del primer al último día con ventas del local, y un pago que caía afuera
   // no contaba (octubre: "Cobrado $0" con "Mes a mes · oct: cobrado $290.000" en la misma pantalla: pagaron el 2 y el 29, lo dejado iba del 5 al
   // 28). Los pagos se filtran con la MISMA regla de período que los KPIs, aplicada a los días de los pagos (también el ▲▼ contra el anterior).
-  const _pagK=[...new Set(movs.filter(x=>Number(x.m)<0).map(x=>kOf(x.f)))];
+  // 5a de la revisión del Local (08/11/2026, él): "Cobrado" suma también lo cobrado de la deuda de MercadoPago (Deuda Perfumería): como "la
+  // perfumería pagó X" va primero ahí, un cobro podía salir $0. Se ve aparte cuánto fue a cada una.
+  const MP=D.find(d=>d!==M&&/perfumeria/.test(_n(d.nom))&&/deuda/.test(_n(d.nom)));
+  const movsMP=MP?Object.values(MP.movs||{}).filter(x=>x&&Number(x.m)<0):[];
+  const _pagK=[...new Set([...movs.filter(x=>Number(x.m)<0),...movsMP].map(x=>kOf(x.f)))];
   const _kC=new Set(getAllMetKeys(metScopeMode,_pagK)),_kP=new Set(getAllPrevMetKeys(metScopeMode,_pagK));
   const dej=r=>dejT.filter(x=>en(x.f,r)),cob=S=>movs.filter(x=>Number(x.m)<0&&S.has(kOf(x.f)));
   const sum=(a,k)=>a.reduce((t,x)=>t+(Number(x[k])||0),0);
   const gOf=a=>a.filter(x=>x.gan!=null).reduce((t,x)=>t+Number(x.gan),0),cOf=a=>a.filter(_ganConCosto).reduce((t,x)=>t+Number(x.m)-Number(x.gan),0);
   const dC=dej(R),dP=dej(RP),cC=cob(_kC),cP=cob(_kP);
-  const vend=sum(dC,'m'),vendP=sum(dP,'m'),gan=gOf(dC),costoC=cOf(dC),cobr=-sum(cC,'m'),cobrP=-sum(cP,'m');
+  const cobMP=S=>movsMP.filter(x=>S.has(kOf(x.f)));
+  const cobrMe=-sum(cC,'m'),cobrMP=-sum(cobMP(_kC),'m');
+  const vend=sum(dC,'m'),vendP=sum(dP,'m'),gan=gOf(dC),costoC=cOf(dC),cobr=cobrMe+cobrMP,cobrP=-sum(cP,'m')-sum(cobMP(_kP),'m');
   const falta=M?(Number(M.resta)||0):0;
   const pc=(g,c)=>c>0?Math.round(g/c*100)+'%':'—';
   const cmp=(c,p)=>p>0?` <span style="color:${c>=p?'var(--green)':'var(--red)'};font-size:.6rem">${c>=p?'▲':'▼'} ${Math.round(Math.abs(c/p-1)*100)}%</span>`:'';
@@ -26210,7 +26268,7 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   h+=tit('🛍️ Perfumerías')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
     ${box('Vendido',_pesos(vend)+cmp(vend,vendP),`${fmtN(sum(dC,'u'))} u. en ${dC.filter(x=>!x._dev).length} entrega${dC.filter(x=>!x._dev).length===1?'':'s'}${dC.some(x=>x._dev)?` · ↩️ ${fmtN(-sum(dC.filter(x=>x._dev),'u'))} devueltas`:''}`)}
     ${box('Ganancia',`<span style="color:${colPctLocal(gan,costoC)}">${_pesosSg(gan)}</span>`,pc(gan,costoC)+' sobre el costo · la regla es '+LOCAL_PCT+'%')}
-    ${box('Cobrado',_pesos(cobr)+cmp(cobr,cobrP),'pagos en el período')}
+    ${box('Cobrado',_pesos(cobr)+cmp(cobr,cobrP),MP?`pagos en el período · mercadería ${_pesos(cobrMe)} · MercadoPago ${_pesos(cobrMP)}`:'pagos en el período')}
     ${box('Falta cobrar',_pesos(falta),'lo que deben hoy (todo)')}</div>`;
   // 3 · Qué perfumería le vendemos más (barras): período y desde siempre
   const porLoc=a=>{const o={};a.forEach(x=>{const k=LOC[x.local]||x.local||'sin perfumería';const v=o[k]=o[k]||{m:0,g:0,c:0,u:0,deb:0};v.m+=Number(x.m)||0;v.u+=Number(x.u)||0;if(x.gan!=null){v.g+=Number(x.gan);if(_ganConCosto(x))v.c+=Number(x.m)-Number(x.gan);}v.deb+=Math.max(0,(Number(x._mHoy!=null?x._mHoy:x.m)||0)-(Number(x._pagF)||0));});return o;};   // sin pagar = lo que la plata pagada no cubre (pago por plata, 30/10/2026)
@@ -28076,7 +28134,7 @@ function renderResumen_page(){
   // por las 4 cuentas, la "Ganancia real CYC" está inflada y no hay forma de darse cuenta mirando.
   const brutoPer=_vpField(periodKeys,'total');
   // Etapa 2 (28/09): con el % de CADA mes (el mismo que usa el costo), no el de hoy.
-  let _monoC=0;(periodKeys||[]).forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v||v.cancelada)return;_monoC+=(Number(v.total)||0)*monoPct(_ymDeVenta(v))/100;});});
+  let _monoC=0;(periodKeys||[]).forEach(k=>{Object.values(state.ventaprod[k]||{}).forEach(v=>{if(!v||v.cancelada)return;_monoC+=(Number(v.total)||0)*monoDeVenta(v)/100;});});
   const monoEnCosto=Math.round(_monoC);
   // El "costo de lo vendido" NO es solo mercadería: adentro viajan el IIBB de cada cuenta y el
   // monotributo (impuesto integrado). Se abre acá para que se vea, porque el nombre viejo decía
@@ -28292,8 +28350,12 @@ const GASTOS_DEL_MES=[
   // **Pedir DOS cuando sólo va uno deja el mes en ámbar para siempre**, y un renglón que avisa de
   // algo que nunca va a llegar entrena a no mirar la lista — el mismo problema del cementerio de
   // marcas viejas y del «⚠️ VENDE» que saltaba en todos.
-  {n:'Intereses financieros',  cat:'Intereses financieros',
-   nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro'},
+  // 13a del 08/11/2026 (él): el interés del préstamo de Tito (US$ 8.800 al 1% mensual, desde el 02/11) va en SU renglón: con uno solo,
+  // cargar el de Tito pintaba verde el de intereses y no se veía si faltaba el otro (o al revés). Se reconoce por "papá"/"tito" en la descripción.
+  {n:'Intereses financieros',  cat:'Intereses financieros', no:['papá','papa','tito'],
+   nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro (el préstamo de Tito va en el renglón de abajo)'},
+  {n:'Intereses · Papá',  cat:'Intereses financieros', pal:['papá','papa','tito'],
+   nota:'~$127.000/mes: el 1% mensual del préstamo de Tito (US$ 8.800, 02/11/2026); si se devuelve una parte, baja en proporción'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'], auto:true,   // revisión etapa 2 (05/11/2026): sin casilla: un monto escrito acá dejaba al robot creer que ya estaba cargado y nunca entraban los cargos reales
    nota:'Lo carga el robot solo a principio de cada mes con cargosmes (sale de la factura de ML por tipo de cargo, las 4 cuentas): no hace falta que me pases el reporte. El período de un mes entra en los gastos del mes siguiente. '
       + 'Son almacenamiento + stock antiguo + retiro de stock + multas (ej. caja mal mandada). Julio fueron $127.835. Van SÓLO acá: desde el 26/09 el % de cada venta ya no los incluye. '
