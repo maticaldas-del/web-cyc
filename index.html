@@ -964,6 +964,27 @@ body.light [style*="color:#a78bfa"]{color:#6d28d9!important}
 body.light [style*="color:#22c55e"]{color:#15803d!important}
 body.light [style*="color:#facc15"],body.light [style*="color:#eab308"]{color:#a16207!important}
 body.light [style*="color:#fb923c"],body.light [style*="color:#f97316"]{color:#c2410c!important}
+/* DISEÑO 11 DEL 31/10 (hecho el 08/11): la tarjeta 💸 Cobro del mes armada como TICKET: cada renglón de la cuenta con su monto a la
+   derecha, la raya punteada, "÷ 3", el redondeo y lo que sobra (queda en CYC), y abajo lo que cobra cada uno. Sólo cambia cómo se ve. */
+.cobro-tk{position:relative;max-width:560px;background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--green);border-radius:4px;padding:14px 14px 16px;font-size:.8rem;line-height:1.45;
+  -webkit-mask:radial-gradient(circle 5px at 50% 100%,transparent 4.5px,#000 5px) 0 100%/12px 10px repeat-x,linear-gradient(#000,#000) 0 0/100% calc(100% - 9px) no-repeat;
+          mask:radial-gradient(circle 5px at 50% 100%,transparent 4.5px,#000 5px) 0 100%/12px 10px repeat-x,linear-gradient(#000,#000) 0 0/100% calc(100% - 9px) no-repeat}
+.cobro-tk .tk-cab{text-align:center;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:.78rem}
+.cobro-tk .tk-sub{text-align:center;color:var(--muted);font-size:.7rem;margin-top:1px}
+.cobro-tk .tk-r{display:grid;grid-template-columns:1.1em minmax(0,1fr) auto;column-gap:6px;align-items:baseline;margin-top:5px}
+.cobro-tk .tk-r>b{font-weight:600;text-align:center;color:var(--muted)}
+.cobro-tk .tk-r>span:last-child{font-family:'DM Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.cobro-tk .tk-r small{display:block;color:var(--muted);font-size:.68rem;line-height:1.35}
+.cobro-tk .tk-r.tk-sobra{color:var(--muted)}
+.cobro-tk .tk-r.tk-sobra>span:last-child{color:var(--green)}
+.cobro-tk hr{border:0;border-top:1px dashed var(--border2);margin:8px 0 2px}
+.cobro-tk hr.tk-doble{border-top:3px double var(--border2);margin:10px 0 6px}
+.cobro-tk .tk-tot{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.cobro-tk .tk-tot>div:first-child{font-weight:700}
+.cobro-tk .tk-tot .tk-big{font-family:'DM Mono',ui-monospace,monospace;font-size:1.25rem;font-weight:500;color:var(--green);white-space:nowrap}
+.cobro-tk .tk-ret{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.74rem;margin-top:2px}
+.cobro-tk .tk-ret>span:last-child{font-family:'DM Mono',ui-monospace,monospace;white-space:nowrap}
+.cobro-tk .tk-av{font-size:.74rem;color:var(--amber);margin-top:6px;line-height:1.5}
 body.light .tq-buy{background:repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0 4px,transparent 4px 8px);border-color:rgba(0,0,0,.35)}
 /* etapa 7 (20/10/2026): en claro el logo CYC (letras blancas sobre negro, mezcladas con "screen") desaparecía: se invierte */
 body.light #home-dolar-logo img{mix-blend-mode:multiply!important;filter:invert(1) contrast(2.2)!important}
@@ -5175,16 +5196,32 @@ function renderCobroCrec(){
   if(!c){el.innerHTML='';return;}
   const $=n=>(n<0?'−$':'$')+Math.abs(Math.round(n)).toLocaleString('es-AR');
   const sig=_mesSigYM(k);
-  el.innerHTML='<div class="card" style="padding:12px 14px;border-left:3px solid var(--green,#22c55e)">'
-    +(()=>{const ra=_retiroAuto(sig);const r=ra!=null?ra:c.porSocio*2;   // revisión etapa 2 (05/11/2026): el MISMO número que Gastos y el robot (congelado / con el ajuste del mes pasado)
-      const dif=ra!=null&&ra!==c.porSocio*2;
-      return '<div style="font-weight:600">💸 Cobro de '+_ymLabel(sig)+': '+$(r/2)+' cada uno <span style="color:var(--muted);font-weight:400">('+$(r)+' el retiro)</span></div>'
-      +(dif?'<div style="font-size:.74rem;color:var(--amber,#f59e0b);margin-top:2px">'+(_retiroCongelado(sig)!=null?'Ya quedó fijo cuando empezó '+_ymLabel(sig)+' (lo de este cierre: '+$(c.porSocio)+' c/u; la diferencia va al mes siguiente).':'Con el ajuste del mes pasado: este cierre solo daría '+$(c.porSocio)+' c/u.')+'</div>':'');})()
-    +'<div style="font-size:.74rem;color:var(--muted);margin-top:4px;line-height:1.5">Lo que creció CYC en '+_ymLabel(k)+' (todo: ML, local, perfumerías, deudas): '+$(c.crecio)+' (US$ '+Math.round(c.crecioUSD).toLocaleString('es-AR')+' al dólar '+c.tc+')'
-    +' + lo que ya sacaron ese mes '+$(c.retiro)+(c.retCargado?'':' (supuesto)')+(k>=COBRO_SOLO_COBRADO_DESDE?' (sólo los marcados ✅ Ya lo cobró)':'')
-    +(c.corr?' − lo viejo cargado tarde '+$(c.corr)+(c.corrNota?' ('+_esc(c.corrNota)+')':''):'')
-    +' = '+$(c.base)+' ÷ 3.</div>'
-    +((c.sinCobrar||[]).length?'<div style="font-size:.74rem;color:var(--amber,#f59e0b);margin-top:4px;line-height:1.5">⚠️ No suman porque no están marcados ✅ Ya lo cobró en Gastos de '+_ymLabel(k)+': '
+  // Diseño 11 del 31/10 (hecho el 08/11): la misma cuenta de siempre, armada como ticket (sólo cómo se ve).
+  const ra=_retiroAuto(sig);const r=ra!=null?ra:c.porSocio*2;   // revisión etapa 2 (05/11/2026): el MISMO número que Gastos y el robot (congelado / con el ajuste del mes pasado)
+  const dif=ra!=null&&ra!==c.porSocio*2;
+  const fila=(sg,txt,monto,sub,cls)=>'<div class="tk-r'+(cls?' '+cls:'')+'"><b>'+sg+'</b><span>'+txt+(sub?'<small>'+sub+'</small>':'')+'</span><span>'+monto+'</span></div>';
+  const tercio=c.base/3,sobra=c.base>0?Math.round(c.base-3*c.porSocio):0;
+  // 3a del 08/11/2026: el retiro queda fijo 48 h después de cerrar el mes; antes de eso se recalcula si se rehace el cierre.
+  const sn=(state.snapshots||{})[k]||{},tsC=parseFloat(sn.ts),firme=_cierreFirme(k);
+  const fijoTxt=(!firme&&tsC>0)?(()=>{const d=new Date(tsC+RETIRO_FIJO_HS*3600e3);return 'Queda fijo 48 h después de cerrar '+_ymLabel(k)+' (el '+d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+' a las '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})+'): si rehacés el cierre antes, se recalcula solo.';})():'';
+  el.innerHTML='<div class="cobro-tk">'
+    +'<div class="tk-cab">💸 Cobro de '+_ymLabel(sig)+'</div>'
+    +'<div class="tk-sub">cierre de '+_ymLabel(k)+' · lo que creció CYC ÷ 3</div>'
+    +'<hr>'
+    +fila('','Creció CYC en '+_ymLabel(k),$(c.crecio),'todo: ML, local, perfumerías, deudas · US$ '+Math.round(c.crecioUSD).toLocaleString('es-AR')+' al dólar '+c.tc)
+    +fila('+','Ya sacaron ese mes',$(c.retiro),[c.retCargado?'':'supuesto',k>=COBRO_SOLO_COBRADO_DESDE?'sólo los marcados ✅ Ya lo cobró':''].filter(Boolean).join(' · '))
+    +(c.corr?fila('−','Lo viejo cargado tarde',$(c.corr),c.corrNota?_esc(c.corrNota):''):'')
+    +'<hr>'
+    +fila('=','Total',$(c.base))
+    +fila('÷','Entre 3',$(c.base>0?tercio:c.base))
+    +fila('↓','Redondo de a $100.000',$(c.porSocio)+' c/u')
+    +(c.base>0?fila('','Sobra del redondeo (queda en CYC)',$(sobra),'',' tk-sobra'):'')
+    +'<hr class="tk-doble">'
+    +'<div class="tk-tot"><div>Cobra cada uno</div><div class="tk-big">'+$(r/2)+'</div></div>'
+    +'<div class="tk-ret"><span>Retiro de '+_ymLabel(sig)+' (los dos)</span><span>'+$(r)+'</span></div>'
+    +(dif?'<div class="tk-av">'+(_retiroCongelado(sig)!=null?'Ya quedó fijo (48 h después de cerrar '+_ymLabel(k)+'; lo de este cierre: '+$(c.porSocio)+' c/u; la diferencia va al mes siguiente).':'Con el ajuste del mes pasado: este cierre solo daría '+$(c.porSocio)+' c/u.')+'</div>':'')
+    +(fijoTxt?'<div class="tk-av" style="color:var(--muted)">⏳ '+fijoTxt+'</div>':'')
+    +((c.sinCobrar||[]).length?'<div class="tk-av">⚠️ No suman porque no están marcados ✅ Ya lo cobró en Gastos de '+_ymLabel(k)+': '
       +c.sinCobrar.map(x=>'retiro de '+x.nm+(x.v!=null?' ('+$(x.v)+')':'')).join(' y ')+'. Si ya lo cobraron, marcalo y el cobro se rehace.</div>':'')
     +'</div>';
 }
