@@ -4192,6 +4192,54 @@ Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `
   · **18 decisiones** en `notas/para_mati.md` ("Reglas del cerebro del 04/11").
   · **Qué chequear:** la próxima completa corre los scripts de add-folder (pedidos.txt no dice "un mes y medio" en Bs As); un `decido …!chico#techo` después de una suba sin confirmar sale "FRENO punto medio (aunque sea !chico)".
 
+### ✅ Reglas del 04/11 · contestadas el 08/11
+Él contestó **1a 2a 3a 4a 5a 6a 7a 8a 9a 10a 11a 12a 13a 14a 15b 16a 17a 18a**. Todo vive en `ml-sync/sync.mjs` (la web sólo en `_rayas`,
+para que las rayas den igual). Las reglas nuevas juzgan desde el **09/11 03:00 UTC** (`DET_REGLA_DESDE.reglas0811`): el detector mira cada
+cambio con la regla de su momento y no marca ❌ lo de antes. CEREBRO §0/§0c/§4/§6/§7/§8/§9 y VENTAS reemplazados en su renglón.
+- **1a una sola vara (ganancia por día neta):** `vueltaDeSuba` antes de los 10 días ya no pide "facturar ×1,5": vuelve sólo si el de antes
+  deja más ganancia por día (`ganUnidadModelo`, ahora neta: −3% del tope de H). `frenosBajas` regla `sobra-plata`: la baja pasa si deja
+  igual o más ganancia por día (parte neta de la línea, costo, impuestos, trabajo, tope de H, caja de más), no si factura 1,3×. F14 "vende
+  muchísimo menos" ya era ganancia por día (la mitad, 95%): no cambia (2a).
+- **2a** el 🎯 objetivo es para buscar arriba, F14 para las bajas: sólo texto (no cambia código).
+- **3a** la vuelta con ~80% (1 de 3 esperadas) queda como EXCEPCIÓN escrita a "bajar pide 95%": sólo texto.
+- **4a F14 = 10 días con visitas desde la última venta** (`vendioDesdeCambio` guarda `ultTs`; con `horasConVisitas` ≥ 10 días deja de frenar).
+- **5a 6a 7a la prueba del mes** (`detectarErrores`, lista 🔁): entra toda Clásica activa con 💰 o 🔴 (`cyc/rayas`) o precio que no rindió,
+  30+ días sin cambio de precio (`sinCambio30`: claudecambios 2%+ y descuentos de `promohist`), sin mirar la etiqueta (afuera sobra,
+  liquidando, remate, `cyc/nosubir`, mi descuento puesto, 🔒/🥊 y lo que ya está en la lista 📈). 6a: `techoNoRindio` (`cyc/techofreno`,
+  60 días) es techo medido en `puntoSinTecho`, `pruebaLentoOk`, la lista 🔎 de 48 h y la 🔁; si el +20% llega a ese precio, la prueba va al
+  medio (redondeado a 90). 7a: `sobraDeLinea` (90+ días de stock al ritmo con stock de 60 días) saca de la 🔁 y `decido` frena `!mensual` y
+  la prueba del lento con sobra. `decido !mensual` además pide 30 días sin cambio y no deja probar el precio que no rindió.
+- **8a lo lento a las 3 ventas esperadas:** `vueltaDeSuba` (`diasJ` = máx(10, 3 ÷ ritmo) si vendía menos de 1 por semana) y las rayas
+  (`diasSinVentaTecho` en el robot, `_dSV` en `_rayas` de la web; tope 60 días): el 🔴 por días sin vender de lo lento sale a las 3 esperadas.
+- **9a 🔥 con la caja en camino:** `escasezCubierta` (la caja más próxima no llegada de `cyc/envios_full`, `envSalidaTs` + 8 días, contra
+  stock ÷ ritmo a este precio). `decido` frena una suba #escasez "🚚 cubierto" (salida `!chico`+EXCEPCIÓN) y la lista 📈🔥 no la pide.
+- **10a la salida de una escasez con 30+ días de stock** (`#volviendo`/`#bajando`) no espera el 95% de F4 (`salidaEsc30`); F9, F2/F3 y F14 siguen.
+- **11a gemela de envío gratis:** la lista 📈 propone la Clásica AL precio de la gemela (90 de arriba) con `!vendio!cruza`; `decido` deja
+  esa suba aunque sea menos de +50% y no deja más que ese precio.
+- **12a Black Friday** (`bfVentana`/`enBlackFriday`/`horasBF`, de `fechasEspeciales`: 25-30/11): `decido` frena toda suba #techo/#nuevo/
+  `!mensual`; las listas 📈 🔁 🔎 no las piden; `vueltaDeSuba` descuenta sus horas, sus ventas y sus días del ritmo de antes; el detector
+  avisa ⚠️ una prueba arrancada esos días.
+- **13a liquidación sólo con visitas:** `liq30` (F13) y `liquidables` no cuentan los días con 0 visitas.
+- **14a** `ventana15` con la caja GANADA abre un escalón de ≤15% (antes nada).
+- **15b** perfumes: se sigue liquidando en ML hasta el 10% (sin cambios; anotado en CEREBRO fila 8b).
+- **16a** se borró "1-2 unidades no se tocan más" (CEREBRO §8 y VENTAS; en el código no existía).
+- **17a subir 🔒/🥊 es suyo:** `decido` frena una suba de algo en `cyc/nobajar` o `cyc/ganacaja` (con piso) y la guarda en `cyc/autoriza`
+  con la bandera `subirquieto` (sola, sin escribirla); con su "autorizo" el mismo renglón pasa y la autorización queda usada. El detector
+  avisa ⚠️ una suba así sin autorización. Otros caminos que suben (`volver`, `submargen`, `errores:go` al deshacer) no pasan por esto.
+- **18a `!golpe` con "precio mal puesto"** en el motivo pide la bandera suya `malpuesto` (F2/F3 la frenan como "F2 mal puesto"; el detector
+  la marca ❌ como toda salida suya sin autorización).
+- **Probado** (copia de sync.mjs en el scratchpad, mismas funciones, base inventada): BF 24/11 no · 26/11 sí · 01/12 no; `diasSinVentaTecho`
+  10 rápido / 42 a 1 cada 14 días / 10 antes del 09/11; rayas de un lento con 15 días sin vender a +50%: sin 🔴 (antes 🔴); `escasezCubierta`
+  6 u. a 1 por día con la caja a 6 días = cubierto; `frenosBajas`: sobra que deja menos ganancia frena y la que deja más pasa; liquidación
+  con 10 días sin visitas frena (F13) y con visitas pasa; F14 con la venta hace 12 días pasa y hace 5 frena; `!golpe` mal puesto frena y
+  stock antiguo pasa; 15 días antes ganando la caja pasa (con la regla vieja frenaba F7); salida de escasez con 60 u. pasa (vieja: F4);
+  `vueltaDeSuba`: lento 12 días se queda, 45 días vuelve; rápido 12 días vuelve; BF con 3 ventas sólo en el evento se mide como 24 h;
+  detector: 💰 con precio que no rindió a $11.500 propone `!mensual` a $10.690 (el medio) y el mismo con 300 u. sale "con sobra".
+- **No probado:** `decido` entero (necesita las cuentas de ML): los frenos nuevos de suba (Black Friday, 🚚 cubierto, `!mensual`, la gemela de
+  envío, `subirquieto`) sólo pasaron `node --check`.
+- **Qué chequear:** la primera completa después del 09/11: la 🔁 trae más renglones (todo 💰/🔴 quieto 30 días) y dice cuántos quedan
+  afuera por sobra; ningún ❌ nuevo en `errores` por cambios del 08/11; un `decido` de suba sobre la waflera (🔒/🥊) sale guardado en `autoriza`.
+
 - **28/10/2026 · sus 6 respuestas de la segunda revisión (1 2b 3b 4 5a 6a) · v27.49.** (1) `umbralTecho`/`umbralTechoW`: 95% hasta el día 30 con stock a ese precio, baja derecho hasta 70% el día 44 (él: *"alargar de 7 días a 30 y después sí bajar a 70%"*; los 30 días sin vender = 🔴 siguen) · (2b) la prueba que vendió sube +50% aunque le sobre stock (el detector ya lo hacía: sólo texto) · (3b) ML pausa por el precio → se le avisa en el chat, lo arregla él (texto) · (4) barrera $33.000: sin excepción por días, abajo del 35% sube ya salvo `liquidando` (sacado el "frenada en la barrera… cerca de pagar stock antiguo" de `planilla`) · (5a) `ganarcaja` prender pide su "autorizo" (bandera `ganarcaja` en `cyc/autoriza`, `autoriza` imprime el `ganarcaja:` listo; sacarla `=-` no pide nada) · (6a) `alinearGemelasEnvio`: con la Clásica activa en $33.000+ pausa la gemela de envío (`cyc/gemelabarrera/<MLA>`, releída) y la activa cuando la Clásica baja; `activarPausadasFull` no la activa mientras esté marcada. **Qué chequear:** la próxima hora de gemelas pausa la de la Lupa x10 (si su Clásica sigue arriba) y lo dice en el log; un `ganarcaja:…;go` sin autorizo queda en `autoriza`.
 - **28/10/2026 · segunda revisión (4 revisores en máximo) · v27.48.** **Textos:** CEREBRO, VENTAS y CLAUDE.md al día con todo lo de la semana (35% y F13, F11 en escasez/sin reposición, F14 con "vende muchísimo menos", 15 días antes del stock antiguo, perfumes 0% en esos días, 🔴/🟠 y la seguridad que baja con los días, 🔐 por el chat, lanzamiento al más alto con sentido, reponer sólo 35%+, 👯 al más caro, 🥊/🧊, cajas por la máxima plata, Paraguay US$500 por pedido, horarios de las vueltas, "💰 piso" → "💰 más plata"); VENTAS ya no cuenta "la última unidad" como excepción. Notas: 10 correcciones que faltaban anotadas (53 en la semana; meta 1-2), 9 preguntas generales nuevas, la 45 corregida. **Frenos (sync.mjs, probados con las funciones reales):** la edad de la unidad más vieja es la FIFO (`edadFifo`/`brkEdad`, como la lista 💸; antes un Excel viejo o una reposición sin agotarse abría F11-F14) · `pausadas:N`/`activarfull:go:N` nunca bajan el piso del 35% (se activaba al 25%) · `ventana15`: a 15 días del stock antiguo F4/F5/F7/F8 dejan bajar hacia el precio que gana la caja (o un escalón sin catálogo), nunca abajo de 0% · F12 en el peor caso · `GEMELA_CLA_OK` = piso − 2 después de leer el piso (quedaba en 28) · `mantenerCaja` mide el 35% con la cuenta de la app (`mgCajaPeor`) · el freno del 50% para subir frena si no puede leer · F1 sin `altaTs` usa el primer día de la línea · las rayas no cuentan días con 0 visitas (web `_rayas` igual) · pisos de respaldo 30/25 → 35 · 👯 en `planilla` dice "al MÁS CARO" e imprime el `decido` · F2 y el detector: "última unidad" no vale como EXCEPCIÓN desde el 24/10. **Qué chequear:** la próxima `activarfull` no activa nada abajo del 35%; un producto repuesto sin agotarse no aparece como "stock antiguo cerca"; las 👯 de `planilla` salen con su renglón listo. **Quedó para después:** chequeos del detector para 👯 y "💰 sin 🔴" (sólo están en `planilla`); `cercaAntiguo`/`barreraCercaAntiguo` con la edad vieja; F6 "recién llegado" mira la vuelta de cero y no la última caja; F14 no cuenta la salida de un descuento; `esPerfumeNom` sólo por título; 🧊 por producto y no por color.
 - **21/10/2026 · lo que dejó la primera:** sus 4 decisiones aplicadas — 1a bajar sin que sobre = descuento con tachado (CEREBRO §11)
