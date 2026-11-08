@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 📦 Gemelas de envío gratis: 8 pausadas y 12 nuevas (2a del 08/11/2026)
+- **Qué es:** él eligió 2a. **Pausadas** (las de envío, NO sus Clásicas; costaban más que la Clásica + el envío más caro del país): Plantillas metatarso MLA2225758499 · Chispero MLA2225782845 · Plantillas de silicona MLA2225759229 · Espejo redondo MLA2225759075 · Rebarbador MLA2225783451 · Almohadilla talón Negro MLA2225855959 y Nude MLA2225758471 · Cartas españolas MLA2225856073 (con `pausar:gemelaenvio+<MLA>…:go`, quedan con `noAutoActivar`). **Creadas** (`gemelaenviocrea`, releídas activas): Naipes Casino MLA4176406516 $31.090 (75,9%) · Centímetro blanco MLA4176406526 y MLA4176429516 $31.090 (80,7%) · Infusor acero MLA4176406550 $25.790 (39,3%) · Hub 8 en 1 MLA2273307687 $33.090 (57,6%) · Lupa 90 MLA4176406566 $32.990 (58,6%) · Cinta 7,5 m MLA2273307729 $34.590 (95,5%) · Gua Sha MLA4176383170 $33.090 (123,5%) · Mentonera MLA2273307753 $32.290 (41,6%) · Sony in ear MLA2273307759 $39.390 (43,8%) · Corta pelo MLA4176429620 $37.190 (35,3%) y MLA2273307777 $33.090 (56,9%). % = peor caso. **No se pudo:** Metatarso par (ML: "código universal usado en la publicación de otra marca"); la 2ª Lupa 90 (MLA3165633184) no se crea: es el mismo producto de ML que MLA3690637828 y tendría dos gemelas de envío.
+- **Dónde vive:** `alinearGemelasEnvio` (sync.mjs): la barrera de $33.000 ya no vuelve a prender una gemela de envío pausada a propósito (`!e.noAutoActivar`).
+- **Qué chequear:** que las 8 sigan pausadas en una semana (`pausar:gemelaenvio+<MLA>` sin go) y si las 12 nuevas venden (medición de gemelas del domingo).
+
 ### ✅ Las 10 del 08/11 a la noche (1a 2a 3a 4b 5b 6a 7a 8a 9b 10b · v28.151)
 - **6a (etapa 3):** `pedidostodo` → `M35 v365` toma la venta más cara de 365 días sólo de días a precio normal (`normalEn`) y de un precio con 2+ unidades vendidas (±3%). Chequear: el Centímetro ya no sale con $26.290.
 - **7a (etapa 3):** `juicios.txt` Crema Nivea = 4 de prueba (no 35).
