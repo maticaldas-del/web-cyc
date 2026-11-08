@@ -7558,7 +7558,8 @@ async function medirParamCompra(db, accounts, labels, GO) {
   // 22/10/2026 (7a): la que más lugar tiene contra el tope de H, no la que menos facturó en 90 días.
   const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db)), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
   // 23/10/2026 (él: "van en la de ayelen o luciana"): entre esas dos, como `repartopy` y la tarjeta ⚖️ (revisión Plata 27/10/2026: elegía entre las 4).
-  out.cuentaNuevos = ['ayelen', 'luciana'].sort((a, b) => fact[a] - fact[b])[0];
+  // 08/11/2026 (él): lo de Paraguay que no es perfume va a Ayelen o Matías (Luciana sólo lo que no es de Paraguay).
+  out.cuentaNuevos = ['ayelen', 'matias'].sort((a, b) => fact[a] - fact[b])[0];
   console.log(`\n🧾 IIBB · perfumes → Adriana ${ML_EXTRA_PCT.adriana}% · el resto → ${out.cuentaNuevos} ${ML_EXTRA_PCT[out.cuentaNuevos]}% (la que más lugar tiene contra el tope de H: ${money(Math.round(LH.porCta[out.cuentaNuevos].lugar))})`);
   // 4 · CUOTAS: ¿cuánto más barato tiene que estar uno SIN cuotas para ganarle la caja al que da cuotas?
   const links = (await db.get('cyc/mllinks')) || {};
@@ -54678,9 +54679,12 @@ async function main() {
           // 23/10/2026 (él: "van en la de ayelen o luciana. dependiendo el cupo de monotributo"): lo nuevo se reparte entre Ayelen y
           // Luciana; las otras dos sólo si en ninguna de esas llega al piso (y se dice).
           const ok0 = CTAS.filter((k) => m[k] >= piso).sort((a, b) => acum[a] - acum[b]);
-          const okAL = ok0.filter((k) => k === 'ayelen' || k === 'luciana');
-          const ok = okAL.length ? okAL : ok0;
-          if (ok.length) { elegida = ok[0]; motivo = okAL.length ? (okAL.length < 2 ? `entre Ayelen y Luciana sólo llega al ${piso}% en ${NOM[ok[0]]}` : 'entre Ayelen y Luciana, la que más lugar tiene contra H') : `⚠️ ni Ayelen ni Luciana llegan al ${piso}%: ${ok.map((k) => NOM[k]).join(', ')} · la que más lugar tiene contra H de ésas`; }
+          // 08/11/2026 (él: "a partir de ahora todo lo de paraguay sí o sí va a ayelen o matías. los perfumes de paraguay sí se pueden mandar a
+          // adriana… a luciana sólo cosas que no son de paraguay"): lo de Paraguay que no es perfume va entre AYELEN y MATÍAS (la de más lugar
+          // contra H, mirando también el lugar en Full); Luciana nunca. Si en ninguna de las dos llega al piso, NO se propone (se dice).
+          const okAL = ok0.filter((k) => k === 'ayelen' || k === 'matias');
+          const ok = okAL;
+          if (ok.length) { elegida = ok[0]; motivo = okAL.length ? (okAL.length < 2 ? `entre Ayelen y Matías sólo llega al ${piso}% en ${NOM[ok[0]]}` : 'entre Ayelen y Matías, la que más lugar tiene contra H') : `⚠️ ni Ayelen ni Matías llegan al ${piso}%`; }
         }
         if (elegida) {
           console.log(`    → ${NOM[elegida].toUpperCase()} (${motivo}) · ${m[elegida].toFixed(1)}%`);
