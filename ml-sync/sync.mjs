@@ -12209,7 +12209,10 @@ async function procesarExtractosMp(db, GO) {
     const upd = {}; const encF = R.conSaldo ? !R.rotas : null;
     for (const m of ms) {
       const viejo = ((await db.get('cyc/rendimientos_mp/' + cta + '/' + m + '/d')) || {});
-      const dd = { ...viejo }; for (const [k, D] of Object.entries(R.dias || {})) if (k.startsWith(m + '_')) dd[k.slice(8)] = { ...D, enc: encF };
+      // 08/11/2026: un archivo SIN columna de saldo (el "reporte de liquidaciones" que bajó el chat de Chrome el 07/11 en vez del extracto de
+      // cuenta) sólo agrega los días que faltan: nunca pisa un día que ya estaba guardado.
+      const dd = { ...viejo }; let saltados = 0; for (const [k, D] of Object.entries(R.dias || {})) if (k.startsWith(m + '_')) { if (!R.conSaldo && viejo[k.slice(8)]) { saltados++; continue; } dd[k.slice(8)] = { ...D, enc: encF }; }
+      if (saltados) console.log(`   ⚠️ ${cta} ${m}: el archivo no trae saldo (no es el extracto de cuenta): ${saltados} día(s) ya guardados NO se pisaron`);
       upd[cta + '/' + m] = { ...extractoMpJuntarDias(dd), d: dd, ts: Date.now() };
     }
     upd[cta + '/_cab'] = R.cab;

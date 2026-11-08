@@ -14,6 +14,8 @@ El robot suma esos días a lo que ya tenía (no pisa el mes). Si Matías pide ot
 1. Entrá a Mercado Pago con esa cuenta.
 2. **Tu negocio → Informes y facturación → Reportes de ventas y extractos de cuenta.** Si el menú cambió de nombre, buscá el reporte
    **"Todas las transacciones"** o **"Extracto de cuenta"**: es el que trae una columna de **saldo** en cada renglón.
+   **NO es el "reporte de liquidaciones" / "de ventas"** (el que tiene columnas en inglés como TRANSACTION_DATE, SETTLEMENT_DATE,
+   MONEY_RELEASE_DATE): ése no trae el saldo y no sirve (08/11/2026: el 07/11 se pegó ése por error).
 3. Elegí **Todas las transacciones** y el período.
 4. **Crear reporte** y, cuando esté, **Descargar en CSV** (no Excel). Queda en Descargas.
 
