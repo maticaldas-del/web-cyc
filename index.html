@@ -178,6 +178,13 @@ html{font-size:118%}
 /* 06/11/2026 (él: "números se van para el costado"): una tarjeta en columna con flex-wrap toma el ancho de su renglón más largo y empuja total/ganancia afuera. En columna no hace falta envolver. */
 .ingreso-item[style*="flex-direction:column"]{flex-wrap:nowrap}
 .vp-cab-fecha{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* 08/11/2026 (él: "al abrir el detalle quiero que no haya nada resumido, todo completo, ya que para eso abro detalle"): con el detalle
+   abierto la cabecera se parte en los renglones que haga falta y ningún chip, fecha ni texto se corta con "…". Cerrada sigue en un renglón. */
+.vp-open .vp-pc-cab{flex-wrap:wrap}
+.vp-open .vp-cab-chips{flex-wrap:wrap;overflow:visible;flex:1 1 100%;justify-content:flex-start;row-gap:4px}
+.vp-open .vp-cab-chips>*,.vp-open .vp-cab-fecha,.vp-open .vp-pc-cab>.who-badge{overflow:visible;text-overflow:clip;white-space:normal;flex:0 0 auto;max-width:none}
+.vp-open .vp-cab-num{flex:1 0 100%;justify-content:flex-end}
+.vp-open [style*="text-overflow:ellipsis"]{overflow:visible!important;text-overflow:clip!important;white-space:normal!important;max-width:none!important}
 @media(max-width:600px){.vp-pc-cab{flex-wrap:wrap}.vp-pc-cab>.who-badge{flex:none}.vp-cab-chips{justify-content:flex-start}.vp-cab-num{flex:1 0 100%;justify-content:flex-end}}
 @media(min-width:1100px){#vp-top{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start}
   #vp-top>#vp-day-list{grid-column:1;grid-row:1;margin:0!important;max-width:none;padding:8px}
@@ -3410,7 +3417,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.149';
+const APP_VERSION='28.150';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3430,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.150',f:'08/11',h:'17:20',c:[{n:2,t:'🧾 Tarjeta de venta: con el detalle abierto ya no se corta nada con "…": Premium y sus cuotas, 1ª venta, analizada y la fecha se ven completos (en los renglones que hagan falta).'}]},
   {v:'28.149',f:'08/11',h:'16:56',c:[{n:2,t:'⚖️ Tope de H: lo próximo de Paraguay que no es perfume va a Ayelen o Matías (la de más lugar); los perfumes de Paraguay a Adriana y Luciana sólo recibe lo que no es de Paraguay.'}]},
   {v:'28.148',f:'08/11',h:'04:37',c:[{n:3,t:'📦 Armar caja deja en la oficina lo que pidió la perfumería después de armarla.'},{n:2,t:'🇵🇾 🪄 Llenar cuenta los nuevos ya cargados en el tope de US$ 600.'},{n:2,t:'📋 Listas: lo que no tiene la ✅ de las fotos no entra al pedido ni a la tarjeta de Tito; los packs armados con sueltos dicen cuántas sueltas comprar.'}]},
   {v:'28.147',f:'07/11',h:'04:35',c:[{n:1,t:'🛍️ Revisión de la Tienda: 15 arreglos (Apple sin precio, perfumes más estrictos, el pedido se copia de verdad) y 15 decisiones para vos.'}]},
@@ -15855,7 +15863,7 @@ function renderVentaProd(){
       const nroLabel=isCancelled?'':ventaNroHTML(grp.items);   // A5 (21/10/2026): 🥇 1ª / 🥈 2ª venta desde el último cambio de precio
       const _esAv=!!(_vpAvisoIds&&grp.items.some(v=>_vpAvisoIds.has(v.id))),_avSt=_esAv?`--avc:${gpct!=null?pctColor(gpct):'var(--green)'};`:'';
       const _avTag=_esAv?`<span class="vp-aviso-tag">🔔 la del aviso</span>`:'';
-      const _pcHtml=`<div class="ingreso-item vp-pc${_esAv?' vp-aviso':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+      const _pcHtml=`<div class="ingreso-item vp-pc${_esAv?' vp-aviso':''}${vpDetOpen.has(grp.gid)?' vp-open':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:4px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div class="vp-pc-cab" style="display:flex;align-items:center;gap:8px;row-gap:4px;white-space:nowrap">
           ${_esNueva?_dot:''}<span class="who-badge" style="font-size:.6rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           ${fechaTag}
@@ -15875,7 +15883,7 @@ function renderVentaProd(){
         ${_hechoV}
         ${_det}
       </div>`;
-      const _celHtml=`<div class="ingreso-item vp-cel${_esAv?' vp-aviso':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
+      const _celHtml=`<div class="ingreso-item vp-cel${_esAv?' vp-aviso':''}${vpDetOpen.has(grp.gid)?' vp-open':''}" onclick="vpCardClick(event,'${grp.gid}')" title="Tocá para ver u ocultar el detalle" style="${_avSt}cursor:pointer;flex-direction:column;align-items:stretch;gap:6px;padding:12px 14px;${isCancelled?'border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)':''}">
         <div style="display:flex;align-items:center;gap:8px">
           ${_esNueva?_dot:''}<span class="who-badge" style="font-size:.62rem;${isCancelled?'opacity:.6':''}">${cuenta}</span>
           <span style="font-size:.68rem;color:var(--muted);white-space:nowrap">${_fh}</span>
