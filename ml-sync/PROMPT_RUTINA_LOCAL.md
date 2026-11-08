@@ -72,6 +72,12 @@ dudas: <lo que no pudiste ver y por qué>
 
 (Si una cuenta no separa grandes, poné sólo un número. Si no viste algo, escribí "?" en ese lugar.)
 
+== PARTE 4b · EL EXTRACTO DE MERCADO PAGO (TODOS LOS DÍAS, no te lo saltees) ==
+08/11/2026 (él: "¿por qué no hubo extracto de Mercado Pago?"): después de MIRAR TODO, hacé SIEMPRE el texto "EXTRACTO DE MERCADO PAGO"
+(PROMPT_EXTRACTO): las 4 cuentas, desde el día SIGUIENTE al último "hasta" del último mensaje EXTRACTO del buzón hasta AYER, con el
+reporte "Todas las transacciones / Extracto de cuenta" que trae la columna de SALDO (NO el de liquidaciones). Dejá el mensaje
+"EXTRACTO <fecha>: del … hasta … · 4 de 4 guardados en 🔒". Si no pudiste, el mensaje igual, diciendo por qué.
+
 == PARTE 5 · EL RESUMEN PARA MATÍAS ==
 Dos o tres renglones: "Listo: cupo de las 4 · Mercado Pago de las 4 · pedido: 9 iguales, 1 subió (Snowsky +US$2), 1 agotado
 (Xion)". Si algo cambió de precio o no hay stock en el pedido, decíselo primero, antes de que pague.
