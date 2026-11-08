@@ -90,7 +90,7 @@ rep('  var DET = {};', '''  // 🔎 FILTROS DE ABEL (idea 19, él eligió 19a el
   var MARCAS_RE = MARCAS.map(function (m) { return [m[0], new RegExp(m[1], "i")]; });
   function abelGen(p) {
     if (p._g !== undefined) return p._g; var t = sinTilde(p.n);
-    p._g = /\\bunisex|unissex\\b/.test(t) ? "U" : /\\b(hombre|hombres|masculin[oa]|men|man|homme|him|caballero|varon|uomo)\\b/.test(t) ? "M" : /\\b(mujer|mujeres|femenin[oa]|woman|women|femme|her|dama|donna|lady|girl)\\b/.test(t) ? "F" : "";
+    p._g = /\\bunisex|unissex\\b/.test(t) ? "U" : /\\b(hombre|hombres|masculin[oa]|men|man|homme|him|caballero|varon|uomo)\\b/.test(t) ? "M" : /\\b(mujer|mujeres|femenin[oa]|woman|women|femme|her|dama|donna|lady|girl)\\b/.test(t) ? "F" : (p.g || "");   // p.g: lo que dice el proveedor (análisis semanal del 08/11/2026)
     return p._g;
   }
   function abelMarca(p) {
@@ -119,5 +119,7 @@ rep('    pintarChips(); pintar(); actualizarBarra();\n', '    abelFiltrosInit();
 # Revisión etapa 9 (06/11/2026): ABEL y la Tienda están en el mismo sitio y compartían lo guardado en el navegador (el orden elegido en la
 # Tienda dejaba vacío el selector de ABEL y lo del carrito salía marcado): ABEL usa sus propias claves.
 s = s.replace('cycT_', 'abelT_')
+# Análisis semanal (08/11/2026): ABEL pedía su propio sw.js (abel/sw.js no existe: 404 en cada visita, sin efecto). Se saca el registro.
+rep('<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(function () {});</script>', '')
 (R / 'abel' / 'index.html').write_text(s)
 print('ok', len(s))

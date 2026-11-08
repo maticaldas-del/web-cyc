@@ -13918,7 +13918,11 @@ function tiendaLimpiarNombre(n) {
     .replace(/\b(amsterdamarg|masaromas|miltienda|tiendauy)\b/gi, ' ')
     .replace(/\blocal\s+barrio(\s+[a-záéíóúñ]+)?/gi, ' ')
     .replace(/\bagente(\s+(oficial|caba|autorizado))?\b/gi, ' ')
-    .replace(/\b(perfumer[ií]a|tienda)(\s+([a-záéíóúñ0-9]+))?/gi, (m, w, sp, sig) => (sig && (TIENDA_MARCAS.test(sig) || /^(de|para|y|con|color)$/i.test(sig)) ? ' ' + sig : ' '));
+    .replace(/\b(perfumer[ií]a|tienda)(\s+([a-záéíóúñ0-9]+))?/gi, (m, w, sp, sig) => (sig && (TIENDA_MARCAS.test(sig) || /^(de|para|y|con|color)$/i.test(sig)) ? ' ' + sig : ' '))
+    // Análisis semanal de ABEL (08/11/2026): restos del título de ML o del proveedor que se veían raros en la página.
+    .replace(/\bvolumen\s+de\s+la\s+unidad\s+\d+([.,]\d+)?\s*ml\b/gi, ' ')               // "… 100ml Volumen De La Unidad 100 Ml"
+    .replace(/(\d+\s*ml)perfume\b[^]*$/i, '$1')                                             // el nombre pegado dos veces: "… 100MLPERFUME Lattafa …"
+    .replace(/\b(edp|edt|eau\s+de\s+(?:parfum|toilette)|perfume)(\s+\1)+\b/gi, '$1');      // "Edt Edt"
   return s.replace(/\s+([,.;:])/g, '$1').replace(/[\s,.;:|–-]+$/, '').replace(/^[\s,.;:|–-]+/, '').replace(/\s{2,}/g, ' ').trim();
 }
 // El rubro de la tienda, por la palabra que dice QUÉ ES (30/10/2026, revisión de la tienda): gana la que aparece primero en el nombre
@@ -33313,9 +33317,11 @@ async function main() {
       const ABEL_COL = /\b(col[oô]nia|body\s*splash|splash)\b[^]*?\b2[0-5]\d\s*ml\b|\b2[0-5]\d\s*ml\b[^]*?\b(col[oô]nia|body\s*splash|splash)\b/i;
       const abelEsPerf = (n, nn) => ABEL_SI.test(n + ' ' + (nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (nn || '')) && !ABEL_COL.test(n + ' ' + (nn || '')) && !TIENDA_USADO.test(n + ' ' + (nn || ''));
       const abelFresco = (ts) => { if (Number(ts) > 0 && hoy - Number(ts) <= ABEL_DIAS * 864e5) return true; abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] = (abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] || 0) + 1; return false; };
-      const abelMeter = (id, n, fotos, usd, cod, como) => {
+      const abelGenProv = (nn) => { const t = String(nn || ''); return /\buniss?ex\b/i.test(t) ? 'U' : /\b(masculino|homme)\b/i.test(t) ? 'M' : /\b(feminino|femme)\b/i.test(t) ? 'F' : ''; };
+      const abelMeter = (id, n, fotos, usd, cod, como, ts, nn) => {
+        const g = abelGenProv(nn);   // análisis semanal del 08/11/2026: el filtro Ella/Él/Unisex usa el nombre; si no dice, el del proveedor ("- Masculino 100ML")
         const base = usd * tc * ABEL_ENVIO;
-        outAbel.push({ id: String(id).toUpperCase(), n: n.slice(0, 140), f: fotos, p: lindo(base * ABEL_EFECTIVO), pt: lindo(base * ABEL_TARJETA), ...(cod ? { k: String(cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (el botón de WhatsApp lo manda)
+        outAbel.push({ id: String(id).toUpperCase(), n: n.slice(0, 140), f: fotos, p: lindo(base * ABEL_EFECTIVO), pt: lindo(base * ABEL_TARJETA), ...(cod ? { k: String(cod) } : {}), c: 'Perfumes', ...(g ? { g } : {}), ...(Number(ts) > 0 ? { v: new Date(Number(ts) - 3 * 36e5).toISOString().slice(0, 10) } : {}) });   // k = el código del proveedor (el botón de WhatsApp lo manda) · v = el día en que se miró en el proveedor (análisis semanal del 08/11/2026: para contar que nada pase de ABEL_DIAS)
         abelCuenta[como] = (abelCuenta[como] || 0) + 1;
       };
       // 🎄 REGALOS DE NAVIDAD (idea 5 del 02/11, él eligió 5a el 08/11): lo caro del proveedor que NO publicamos en ML (no es una ficha nuestra) y
@@ -33343,7 +33349,7 @@ async function main() {
         // 🌸 ABEL (02/11/2026, él: "que aparezcan todos los perfumes que tienen stock en Nissei y que tengan 2 días máximo de última mirada…
         // sumando el 23% de envío + el 30% de ganancia que diga EN EFECTIVO y con tarjeta al 67%… con el 30% ganamos seguro a los
         // competidores"): sin comparar con ML. Efectivo = precio de Nissei × dólar × 1,23 × 1,30 · tarjeta = × 1,23 × 1,67.
-        if (abelEsPerf(n, x.nn) && x.usd > 0 && abelFresco(x.ts)) { abelMeter(ent.id, n, x.fotos, x.usd, x.cod, 'tienda'); abelKeys.add(x.key); }
+        if (abelEsPerf(n, x.nn) && x.usd > 0 && abelFresco(x.ts)) { abelMeter(ent.id, n, x.fotos, x.usd, x.cod, 'tienda', x.ts, x.nn); abelKeys.add(x.key); }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), ...(!cp && !x.ficha && p > TIENDA_NAV_MIN && p <= MONO_PRECIO_UNIT_MAX ? { nav: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: !om && x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });   // 11a: con otra medida, sin los detalles de ML (son del otro tamaño)
       }
       // 🌸 ABEL CON TODOS LOS PERFUMES DE NISSEI (6a del 08/11/2026, él eligió: que estén TODOS los perfumes con stock en Nissei mirados hace
@@ -33364,7 +33370,7 @@ async function main() {
       for (const { x, n } of abelPorPrecio) {
         if (abelKeys.has(x.key) || abelFueraKeys.has(x.key) || !abelEsPerf(n, x.nn) || !(x.usd > 0) || !abelFresco(x.ts)) continue;
         const id = abelIdDe(x.key, x, n); if (!id) { abelFueraKeys.add(x.key); continue; }
-        abelMeter(id, n, x.fotos, x.usd, x.cod, 'mlPorPrecio'); abelKeys.add(x.key);
+        abelMeter(id, n, x.fotos, x.usd, x.cod, 'mlPorPrecio', x.ts, x.nn); abelKeys.add(x.key);
       }
       for (const [k, k2] of repetidoDe) { if (abelKeys.has(k2)) abelKeys.add(k); if (abelFueraKeys.has(k2)) abelFueraKeys.add(k); }
       const abelYa = pyCodMatcher(abelCodsDe([...abelKeys, ...abelFueraKeys]));
@@ -33398,7 +33404,7 @@ async function main() {
       }
       for (const y of abelNissei.values()) {
         const id = abelIdDe('PY_' + y.cod, { cod: y.cod, nn: y.nn, usd: y.usd }, y.n); if (!id) { abelNoN('sacado a mano (ridículo)'); continue; }
-        abelMeter(id, y.n, [y.foto], y.usd, y.cod, 'nissei');
+        abelMeter(id, y.n, [y.foto], y.usd, y.cod, 'nissei', y.ts, y.nn);
       }
       // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
       out.sort((a, b) => (a.c === 'Otros') - (b.c === 'Otros') || a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
