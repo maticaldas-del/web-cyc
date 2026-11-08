@@ -9860,8 +9860,8 @@ function _pedidoViaja(pid,vari){
     return !conCol.length||conCol.some(it=>vk(it.v||it.variante)===vk(vari));};
   let mejor=null;
   for(const c of Object.values(state.compraspy||{})){
-    if(!c||c.estado!=='camino'||!(c.items||[]).some(it=>it&&it.prodId===pid))continue;
-    if(!traeColor(c.items,it=>it.prodId===pid))continue;
+    if(!c||c.estado!=='camino'||!(c.items||[]).some(it=>it&&it.prodId===pid&&!it.paraLocal&&!it.tienda))continue;   // revisión etapa 3 (08/11): lo del local / la Tienda no repone ML
+    if(!traeColor(c.items,it=>it.prodId===pid&&!it.paraLocal&&!it.tienda))continue;
     const e=dd(c.fecha),falta=Math.max(0,Math.ceil(PY_DIAS_VIAJE-(e==null?0:e)));
     if(!mejor||falta<mejor.falta)mejor={falta,fecha:c.fecha,de:'Paraguay'};
   }
@@ -9873,8 +9873,8 @@ function _pedidoViaja(pid,vari){
   }
   // 📋 LISTAS (20/10/2026, decisión 1a): un probado pedido a una lista que viaja (`compraslista`, estado camino, renglón con prodId).
   for(const c of Object.values(state.comprasLista||{})){
-    if(!c||c.estado!=='camino'||!(c.items||[]).some(it=>it&&it.prodId===pid))continue;
-    if(!traeColor(c.items,it=>it.prodId===pid))continue;
+    if(!c||c.estado!=='camino'||!(c.items||[]).some(it=>it&&it.prodId===pid&&!it.paraLocal&&!it.tienda))continue;   // revisión etapa 3 (08/11): lo del local / la Tienda no repone ML
+    if(!traeColor(c.items,it=>it.prodId===pid&&!it.paraLocal&&!it.tienda))continue;
     const e=dd(c.fecha),falta=Math.max(0,Math.ceil(LISTA_DIAS_VIAJE-(e==null?0:e)));
     if(!mejor||falta<mejor.falta)mejor={falta,fecha:c.fecha,de:String(c.provNom||c.prov||'la lista')};
   }
@@ -18654,7 +18654,9 @@ function pedViejosLista(g){
 function pedLlenarTodoPlan(g){
   g=g||null;const arm=state.pyArmado||{},prob=[],vistos=new Set();let usdP=0;
   const crA=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0)+pyPersonalFilas().filter(f=>pyMomEs(g,f.nom)).reduce((t,f)=>t+f.usd*f.u,0);
-  let libre=Math.max(0,pedTopeUSD()-crA);   // 31/10/2026: los probados tampoco pasan el tope (antes entraban todos y los nuevos usaban lo que sobraba)
+  // Revisión etapa 3 (08/11/2026): los NUEVOS ya cargados también ocupan el tope (con US$ 400 de nuevos cargados a mano, 🪄 llevaba el pedido a US$ 800).
+  const crN=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre)&&!(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado==='camino')).reduce((t,c)=>t+(parseFloat(c.usd)||0)*(parseInt(c.pedirU)||0),0);
+  let libre=Math.max(0,pedTopeUSD()-crA-crN);   // 31/10/2026: los probados tampoco pasan el tope (antes entraban todos y los nuevos usaban lo que sobraba)
   for(const ped of (state.pedidos_py||[])){
     if(!ped||esPedidoPaulvic(ped)||ped.estado==='suficiente')continue;
     const cant=parseInt(ped.cantidad)||0;if(cant<=0)continue;
@@ -18672,7 +18674,7 @@ function pedLlenarTodoPlan(g){
   }
   const tope=Math.max(0,pedTopeUSD()-crA-usdP);
   const vivos=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre));
-  return{prob,usdP:Math.round(usdP*100)/100,crA,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
+  return{prob,usdP:Math.round(usdP*100)/100,crA,crN,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
 }
 async function pedLlenarTodo(g){return conCandado('pedLlenarTodo:'+(g||''),()=>_pedLlenarTodo(g));}
 async function _pedLlenarTodo(g){
@@ -18692,7 +18694,7 @@ async function _pedLlenarTodo(g){
   if(!confirm(`Agregar al pedido${g==='perf'?' de PERFUMERÍA':g==='resto'?' del RESTO':''}:\n\n`
     +`✅ PROBADOS (lo que pide Pedidos, dan ${PY_PROB_PISO}%+): ${L.prob.length} · ${uP} u. · ${fmtUS2(L.usdP)}\n${detP||'  (ninguno)'}\n\n`
     +`🆕 NUEVOS (de ⭐ gana mucho y sale mucho para abajo): ${suma.length} · ${uN} u.\n${detN||'  (ninguno: no queda tope o no hay)'}\n\n`
-    +`El pedido queda en ${fmtUS2(fin)} de ${fmtUS2(topeT)} (máximo).${L.crA>topeT+0.005?' ⚠️ Lo que ya estaba cargado pasa el tope: no agrego nada, sacá algo a mano.':''}\nNo saco nada de lo que ya cargaste.`+vjTxt))return;
+    +`El pedido queda en ${fmtUS2(fin)} de ${fmtUS2(topeT)} (máximo).${L.crA+(L.crN||0)>topeT+0.005?' ⚠️ Lo que ya estaba cargado pasa el tope: no agrego nada, sacá algo a mano.':''}\nNo saco nada de lo que ya cargaste.`+vjTxt))return;
   let saltP=0;
   for(const x of L.prob){
     try{if(db){const sn=await db.ref('cyc/py_armado/'+x.pr.id).once('value');if((parseInt((sn.val()||{}).u)||0)>0){saltP++;continue;}}}catch(e){}

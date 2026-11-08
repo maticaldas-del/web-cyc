@@ -12037,6 +12037,8 @@ function candPorQueNoBot(c, viajaF, _tcP) {
   const mg = Number(c.margen);
   return c.no ? 'está descartado de la lista'
           : viajaF ? `ya está viajando en el pedido del ${viajaF}`
+          // Revisión etapa 3 (08/11/2026): la misma regla que la web (`candViejoPy`): mirado en Nissei hace 2 días o más no entra (`pedir` lo dejaba).
+          : (Date.now() - candVistoTsBot(c)) >= PY_VIEJO_DIAS * 864e5 ? `mirado en Nissei hace ${PY_VIEJO_DIAS} días o más (que el chat lo vuelva a mirar)`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
           // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
@@ -13246,7 +13248,10 @@ function pyCatParse(lineas) {
     const l = String(l0 || '').trim(); if (!l) continue;
     const mp = l.match(/^#\s*(\d+)(?:\s*@\s*([\w-]+))?\s*$/); if (mp) { pg = parseInt(mp[1], 10); if (mp[2]) orden = mp[2]; continue; }
     const [cod, nom, usdS, link, foto] = l.split('|').map((x) => (x || '').trim());
-    const usd = parseFloat(String(usdS).replace(/[^\d.,]/g, '').replace(',', '.'));
+    // Revisión etapa 3 (08/11/2026): un precio con separador de miles ("1.234,56", "1,234.56", "1.299") se leía 1,23 / 1,30 (un producto de
+    // US$ 1.299 salía regalado y 🪄 cargaba 4). Lo que tiene dos separadores o un punto/coma con 3 cifras atrás va a los malos (que se mire).
+    const _uS = String(usdS).replace(/[^\d.,]/g, '');
+    const usd = (/[.,].*[.,]/.test(_uS) || /^\d{1,3}[.,]\d{3}$/.test(_uS)) ? NaN : parseFloat(_uS.replace(',', '.'));
     if (!_pyDg(cod) || !nom || !(usd > 0)) { malos.push(l.slice(0, 120)); continue; }
     const okHttps = (u) => (/^https:\/\//.test(u) ? u.slice(0, 300) : '');
     const fotoUrl = okHttps(foto) || (/^[0-9a-f]{20,}\.(webp|jpg|jpeg|png)$/i.test(foto || '') ? 'https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/' + foto : '');
@@ -26094,12 +26099,16 @@ async function main() {
         let cur = vu.cur || null;
         // 27/10/2026: la página 1 en el OTRO orden (el chat termina de la Z para atrás) no reinicia una vuelta de menos de 24 h.
         // El 26/10 la reinició a las 21:10 y lo copiado de la A a la M quedó afuera: contó 26% con el catálogo entero copiado.
-        if (pgs.includes(1) && !(cur && ahora - Number(cur.desde) < 24 * 3600e3)) cur = { desde: ahora };
+        // Revisión etapa 3 (08/11/2026): una copia por CATEGORÍA (`@perfumes`, la diaria de ABEL) no arranca ni cierra la vuelta completa:
+        // su página 1 reiniciaba la vuelta y un "fin=1100" daba 100% y marcaba agotado TODO lo que no es perfume.
+        const _esCatV = /perfum/i.test(String(orden || ''));
+        if (!_esCatV && pgs.includes(1) && !(cur && ahora - Number(cur.desde) < 24 * 3600e3)) cur = { desde: ahora };
         let msgV = '';
-        if (FIN) {
+        if (FIN && _esCatV) msgV = '(copia de una categoría: no cierra la vuelta completa)';
+        else if (FIN) {
           const desde = cur ? cur.desde : ahora - 8 * 864e5;
           const nis = Object.entries({ ...cat, ...upd }).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
-          const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 ? FIN_TOT : nis.length;
+          const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 && FIN_TOT >= 0.5 * nis.length ? FIN_TOT : nis.length;   // revisión etapa 3 (08/11): un fin= de menos de la mitad que el catálogo guardado no se cree
           const pct = total > 0 ? Math.round(vistos / total * 1000) / 10 : 0;
           if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
           else msgV = `⚠️ vuelta INCOMPLETA: ${vistos} de ${total} productos (${pct}%), hace falta el 90%. NO cuenta.`;
@@ -26822,7 +26831,11 @@ async function main() {
       const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
       const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
       const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre) && !(PY_ELEGANCIA_OFF && (provPyDeBot(c) === 'elegancia' || /^EL_/i.test(String(c.cod || '')))));   // 05/11/2026: Elegancia está apagada (26/10): sus candidatos no se miran más y salían como "mirado hace 12 días"
-      const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0);
+      // Revisión etapa 3 (08/11/2026): el tope es del pedido ENTERO: también los probados cargados (`py_armado`) y lo de la Tienda (`py_personal`).
+      const armL = (await db.get('cyc/py_armado')) || {}, perL = (await db.get('cyc/py_personal')) || {}, prodsL = (await db.get('cyc/products')) || {};
+      const yaP = Object.entries(armL).reduce((t, [k, v]) => { const p = prodsL[k]; return p && enG(p.name) ? t + (parseInt((v || {}).u) || 0) * (parseFloat(p.nisseiUSD) || 0) : t; }, 0)
+        + Object.values(perL).reduce((t, v) => (v && enG(v.nom) ? t + (parseInt(v.u) || 0) * (parseFloat(v.usd) || 0) : t), 0);
+      const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0) + yaP;
       const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
       const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
       const maxU = (c) => { const usd = parseFloat(c.usd) || 0; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
@@ -49403,7 +49416,7 @@ async function main() {
       // 20/10/2026 · etapa 3: el respaldo también sabe de "no traer más" (`cyc/notraer`, igual que `noTraerDe` de la web):
       // un producto marcado no se repone, y sin esto pasaba a "Bs As 14 d" en cuanto `cyc/reponer` tenía más de 3 días.
       let notraerE = {}; try { notraerE = (await db.get('cyc/notraer')) || {}; } catch { noLeiE.push('cyc/notraer'); }
-      try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { noLeiE.push('cyc/compraspy'); }
+      try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId && !it.paraLocal && !it.tienda) compPyE[it.prodId] = c.fecha; } catch { noLeiE.push('cyc/compraspy'); }
       // 📋 Listas (20/10/2026, decisión 1a): un probado pedido a una lista que viaja (como `_pedidoViaja` de la web: ~7 días).
       const compLiE = {}; try { for (const c of Object.values((await db.get('cyc/compraslista')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compLiE[it.prodId] = { f: c.fecha, de: String(c.provNom || c.prov || 'la lista') }; } catch { noLeiE.push('cyc/compraslista'); }
       if (noLeiE.length) { console.log(`⚠️ NO LEÍ ${noLeiE.join(', ')}: no armo la 🔥 escasez, la 🚨 ni la 🔁${EXP ? ' (ni el expediente)' : ''} a medias (lo que tarda reponer y el ritmo saldrían mal: un color que no viene más pasaría por "se repone en una semana"). Volver a correr.`); return; }
@@ -56418,7 +56431,7 @@ async function main() {
           }
           const cr = plan.filter((x) => x.estado === 'crear');
           console.log(`Fichas a crear: ${cr.length}${_recReal ? ` · con el recargo REAL de este pedido (${((_recReal - 1) * 100).toFixed(1)}%)` : ` · con el ${((_recEst - 1) * 100).toFixed(1)}% estimado sobre lo pagado (faltan gastos del pedido; cuando estén, se pone el real)`}`);
-          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${_recUsar} = US$ ${r2((parseFloat(x.src.usd) || 0) * _recUsar).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
+          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ••• × ${_recUsar} = US$ •••${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
           plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  = ya tiene ficha (mismo código o nombre), se engancha: ${x.src.nombre} → ${x.rep[0].name}`));
           cr.filter((x) => x.par && x.par.length).forEach((x) => console.log(`  ℹ️ se crea aunque se parece a: ${x.src.nombre} ~ ${x.par.slice(0, 3).map((p) => p.name).join(' | ')}`));
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
@@ -56787,8 +56800,11 @@ async function main() {
                         ..._candsProv.map(([cid, c]) => ({ cod: String(c.cod || c.codPy || ''), src: { ...c, id: cid, nom: c.nombre || c.nom } }))];
           const buscar = (cod) => {
             const c = String(cod).replace(/\D/g, '');
-            return pool.find((x) => x.cod.replace(/\D/g, '') === c)
-                || pool.find((x) => _finIg(x.cod.replace(/\D/g, ''), c)) || null;
+            // Revisión etapa 3 (08/11/2026): primero los renglones que NO son de la Tienda (al recargar el ticket el renglón `t<cód>` aparecía
+            // primero y las unidades de ML pasaban a la Tienda: 2 de ML → 0, Tienda 1 → 3, y Pedidos las volvía a comprar).
+            const noT = pool.filter((x) => !(x.src && x.src.tienda));
+            return noT.find((x) => x.cod.replace(/\D/g, '') === c) || noT.find((x) => _finIg(x.cod.replace(/\D/g, ''), c))
+                || pool.find((x) => x.cod.replace(/\D/g, '') === c) || pool.find((x) => _finIg(x.cod.replace(/\D/g, ''), c)) || null;
           };
           itemsDet = []; const sinNombre = [];
           for (const tr of String(campos.det).split(';').map((x) => x.trim()).filter(Boolean)) {
