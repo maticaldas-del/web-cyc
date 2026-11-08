@@ -168,7 +168,46 @@ FIJO={
   ('p1794063798829','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Labial IDI 19 Sandy a $13.990); si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p1794063805405','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Maybelline Witty a $47.990); si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p1794063807731','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Mary Bosques Rubios Totales a $62.990); si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
+  ('p17904445725742','','Adriana'):(1,'Él eligió mandarlas igual (20b del 08/11): la Lattafa Sutoor de la oficina va a Full aunque hoy no dé 35%'),
+  ('p1779912655550','Velve Petals','Adriana'):(2,'Él eligió mandarlas igual (20b del 08/11): las 2 VS Velvet Petals splash de la oficina van a Full aunque hoy no den 35%'),   # el color en la ficha se llama "Velve Petals" (así, sin la t)
 }
+# 5a del 08/11/2026 (revisión de la Mercadería, él: "lo FIJO se cumple solo cuando salen esas unidades"): un FIJO de "van N" es de UNA vez.
+# Antes se descontaba sólo lo que iba EN CAMINO: al llegar a Full volvía a pedirse cada noche (las 3 Persea). Ahora `fijo_salio.txt` (al lado de
+# este script) guarda cuántas ya salieron de cada FIJO: lo que bajó la decisión en la base desde la última vuelta (la web le resta lo despachado)
+# y que hoy va en camino a esa cuenta. Cuando salieron todas, el FIJO se CUMPLIÓ y vuelve la cuenta automática (se avisa). Un FIJO de 0 no
+# se cumple nunca (es "no mandar"). Si él cambia el número, se cuenta de nuevo.
+_FS=os.path.join(os.path.dirname(os.path.abspath(__file__)),'fijo_salio.txt')
+_fsal={}
+if os.path.exists(_FS):
+    for l in open(_FS):
+        pp=l.rstrip('\n').split('\t')
+        if len(pp)>=3 and not pp[0].startswith('#'):
+            try: _fsal[pp[0]]=(int(pp[1]),int(pp[2]))
+            except ValueError: pass
+_CJ0=os.path.join(os.path.dirname(os.path.abspath(__file__)),'cajas.txt')
+_prevQ={}
+if os.path.exists(_CJ0):
+    for l in open(_CJ0):
+        mm=re.match(r'(caja:[^=]+)=u\|(\d+)\|',l.strip())
+        if mm: _prevQ[mm.group(1)]=int(mm.group(2))
+_byId={q['id']:q for q in P}
+FIJO_ACT={};fijoCumplidos=[];fijoSalio=[]
+for (pid,v,c),(fq,fm) in FIJO.items():
+    if fq<=0: FIJO_ACT[(pid,v,c)]=(fq,fm); continue
+    q=_byId.get(pid); x=next((y for y in q['vars'] if y['v']==v),None) if (q and v) else None
+    src=x if v else q
+    if src is None: FIJO_ACT[(pid,v,c)]=(fq,fm); continue        # no está en el log: queda como estaba
+    camNow=(src.get('camC') or {}).get(c,0); U=(src.get('dec') or {}).get(c)
+    k=f"{pid}|{v}|{c}"; cab=f"caja:{pid}@{c}"+(f"#{v}" if v else '')
+    if k not in _fsal or _fsal[k][0]!=fq: sal=camNow                  # primera vez (o cambió el número): lo que ya va en camino cuenta
+    else:
+        sal=_fsal[k][1]; pv=_prevQ.get(cab)
+        if pv is not None and U is not None and camNow>0: d=min(max(0,pv-U),camNow); sal+=d
+    _fsal[k]=(fq,sal)
+    nom=(q['n'][:38] if q else pid)+(f" · {v}" if v else '')
+    if sal>=fq: fijoCumplidos.append(f"{nom} → {c}: lo FIJO de {fq} ya salió entero → vuelve la cuenta automática"); continue
+    FIJO_ACT[(pid,v,c)]=(fq-sal,fm+(f" · ya salieron {sal} de {fq}: faltan {fq-sal}" if sal else ''))
+FIJO_TAG=' · (fijo de él)'   # lo lee `cajaarmar` (sync.mjs): lo fijo va aunque pase el cupo (6a del 08/11)
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[];soloPerfFuera=[]
 # Revisión etapa 3, 29/10/2026: lo que CALCULA este script lleva esta marca al final del motivo. Así se distingue, sin adivinar por el
 # comienzo del texto, de lo que escribí a mano en cajas.txt (ver "LAS DECISIONES A MANO" más abajo).
@@ -180,7 +219,7 @@ def txt_stock(fd,cd,otras):   # lo de la cuenta que recibe y, si hay, lo de las 
 # 🛍️ LO QUE PIDIÓ LA PERFUMERÍA queda en la oficina (29/10/2026, `cyc/pedperf`): esas unidades no van a Full.
 # 12b de la revisión etapa 9 (30/10/2026, él): lo FIJO de él para Full (el Persea de Luciana) va ANTES que lo que pide la perfumería: sus
 # unidades no se apartan; la perfumería se lleva lo que sobra.
-def fijo_q(pid,v): return max([q for (a,b,_c),(q,_m) in FIJO.items() if a==pid and b==v] or [0])
+def fijo_q(pid,v): return max([q for (a,b,_c),(q,_m) in FIJO_ACT.items() if a==pid and b==v] or [0])
 for p in P:
     pm=p.get('perf')
     if not pm: continue
@@ -227,7 +266,7 @@ for p in P:
     if pv: cta='Adriana'
     elif len(ctas)==1: cta=ctas[0]
     # 02/11/2026: si él fijó a qué cuenta va (FIJO con unidades), manda sobre las cuentas que "pueden" (una publicación recién cerrada sigue en el log)
-    elif any(a==p['id'] and q>0 and c in ctas for (a,_v,c),(q,_m) in FIJO.items()): cta=next(c for (a,_v,c),(q,_m) in FIJO.items() if a==p['id'] and q>0 and c in ctas)
+    elif any(a==p['id'] and q>0 and c in ctas for (a,_v,c),(q,_m) in FIJO_ACT.items()): cta=next(c for (a,_v,c),(q,_m) in FIJO_ACT.items() if a==p['id'] and q>0 and c in ctas)
     elif not ctas: sin.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): ninguna cuenta lo puede recibir (no publica o está en nomandar)"); continue
     else: amano.append(f"{p['n']} ({p['casa']} en la oficina{_apT}): puede ir a {', '.join(ctas)} — decidir a mano"); continue
     if p['vars'] and any(x['casa']>0 for x in p['vars']):
@@ -242,10 +281,9 @@ for p in P:
             if (p['id'],x['v']) in BAJA_ML:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola="ML lo dio de baja para siempre por la marca del nombre (24/10): no se manda más a Full. Lo de la oficina va al local.",
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=0,grande=p['grande'],enCero=False,dias=None,casa=x['casa'],baja=True,dec=x['dec'].get(c))); continue
-            if (p['id'],x['v'],c) in FIJO:
-                fq,fm=FIJO[(p['id'],x['v'],c)]
-                if fq>0 and x['camC'].get(c,0)>0: fm=f"{fm} · ya van {x['camC'].get(c,0)} en camino a {c}: no se piden de nuevo"; fq=max(0,fq-x['camC'].get(c,0))   # 05/11/2026
-                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm+perf_txt(x.get('perfR',0)),cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],fijo=True,dec=x['dec'].get(c))); continue
+            if (p['id'],x['v'],c) in FIJO_ACT:
+                fq,fm=FIJO_ACT[(p['id'],x['v'],c)]   # 5a del 08/11: ya descontado lo que salió (`fijo_salio.txt`)
+                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=min(fq,x['casa']),cola=fm+perf_txt(x.get('perfR',0))+FIJO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],fijo=True,dec=x['dec'].get(c))); continue
             # UN COLOR QUE ESA CUENTA NO PUBLICA NO SE MANDA (revisión etapa 3, 29/10/2026): el producto va a una sola cuenta, pero cada
             # color es su publicación. Sin publicación de ESE color no hay código de etiqueta, Armar caja de la web no lo muestra y el robot
             # no puede leer su llegada (el P47 blanco del 25/10, arreglado a mano en FIJO). Una cuenta `pasara` (todavía no publica nada del
@@ -259,12 +297,11 @@ for p in P:
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((x['full']+x['cam'])/r if r>0 else None),casa=x['casa'],dec=x['dec'].get(c)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
-    elif (p['id'],'',cta) in FIJO:
-        fq,fm=FIJO[(p['id'],'',cta)]
-        # 05/11/2026 (él con los Desatascadores: "porque me pide 4 mas si ayer mande 4 y nunca vendimos"): un FIJO de "van N" es de UNA vez;
-        # lo que ya va en camino a esa cuenta se descuenta (antes la completa lo volvía a pedir todas las noches). Cuando sale, se saca de FIJO.
-        if fq>0 and p['camC'].get(cta,0)>0: fm=f"{fm} · ya van {p['camC'].get(cta,0)} en camino a {cta}: no se piden de nuevo"; fq=max(0,fq-p['camC'].get(cta,0))
-        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm+perf_txt(p.get('perfR',0)),cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],fijo=True,dec=p['dec'].get(cta)))
+    elif (p['id'],'',cta) in FIJO_ACT:
+        fq,fm=FIJO_ACT[(p['id'],'',cta)]
+        # 05/11/2026 (él con los Desatascadores: "porque me pide 4 mas si ayer mande 4 y nunca vendimos"): un FIJO de "van N" es de UNA vez.
+        # 5a del 08/11: ya viene descontado lo que salió (en camino O que ya llegó, `fijo_salio.txt`); cumplido, vuelve la cuenta automática.
+        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm+perf_txt(p.get('perfR',0))+FIJO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],fijo=True,dec=p['dec'].get(cta)))
     else:
         fd=p['fullC'].get(cta,0);cd=p['camC'].get(cta,0);otras=max(0,(p['full']+p['cam'])-(fd+cd));sinPubOtras=(cta not in p['pub']) and otras>0
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
@@ -300,7 +337,7 @@ def _base_motivo(mot):
         mm=re.match(r'^📦 grande: (?:va en caja aparte \(ML no deja mezclarlo con chicos\)|espera a juntar una caja llena \([^)]*\)), quedan (\d+) para esa caja · (.*)$',mot) or re.match(r'^✂️ por el cupo de Full de \w+ \([^)]*\) entran \d+ de (\d+) \(faltan \d+\) · (.*)$',mot)
         if not mm:
             # 30/10/2026: el grande que sale en su propia caja no cambia las unidades (sólo se saca el prefijo para no repetirlo)
-            ms=re.match(r'^📦 grande: sale en SU PROPIA caja \(ML no deja mezclarlo con chicos\), porque .*? · (.*)$',mot)
+            ms=re.match(r'^📦 grande: sale en SU PROPIA caja \(ML no deja mezclarlo con chicos\), porque .*? · (.*)$',mot) or re.match(r'^📦 grande: sale porque .*? · (.*)$',mot)
             if not ms: return mot,q0
             mot=ms.group(1); continue
         q0=int(mm.group(1)); mot=mm.group(2)
@@ -375,23 +412,27 @@ for cta in sorted({o['cta'] for o in out}):
 # llenan una caja (cada unidad gasta 1/`porcaja`, la misma cuenta que la barra de lugar de la web; sin medidas no se da por llena) o si
 # alguno está en 0 o se corta antes de CAJA_CORTE_DIAS (14). Si no, esperan en la oficina a juntar la caja. Sin chicos para esa cuenta, van
 # como siempre (esa caja ya es sólo de grandes). La web (Armar caja y `cajaarmar`) los deja afuera de la caja de los chicos: van en otra.
+# 7a del 08/11/2026 (revisión de la Mercadería): también en una cuenta SIN chicos (antes salían igual aunque la caja no estuviera llena y nada
+# se cortara): los grandes salen sólo con una caja llena o si alguno se corta en 14 días. 6a del 08/11: lo FIJO de él no espera (va igual y
+# cuenta para llenar la caja).
 _porcaja={p['id']:p.get('porcaja') for p in P}
 grandesSalen=[]
 for cta in set(o['cta'] for o in out):
-    if any(o['cta']==cta and o['q']>0 and not o['grande'] for o in out):
-        G=[o for o in out if o['cta']==cta and o['grande'] and o['q']>0]
-        if not G: continue
-        _pc=lambda o:_porcaja.get(o['cab'].split(':',1)[1].split('@',1)[0])
-        lugar=sum(o['q']/_pc(o) for o in G if _pc(o))   # fracción de caja que llenan (sin medidas no suman: no se inventa)
-        corta=[o for o in G if o.get('enCero') or (o.get('dias') is not None and o['dias']<CAJA_CORTE_DIAS)]
-        if lugar>=1 or corta:
-            por=(f"juntan una caja llena ({round(lugar*100)}% de una caja)" if lugar>=1 else f"{'está en 0' if corta[0].get('enCero') else 'se corta en '+str(round(corta[0]['dias']))+' días'} ({corta[0]['nom'][:30].replace(' · ',' ')})")
-            for o in G: o['cola']=f"📦 grande: sale en SU PROPIA caja (ML no deja mezclarlo con chicos), porque {por} · "+o['cola']
-            grandesSalen.append(f"{cta}: {sum(o['q'] for o in G)} u. de {len(G)} producto(s) en su propia caja, porque {por}")
-        else:
-            sinMed=sum(1 for o in G if not _pc(o))
-            for o in G:
-                o['cola']=f"📦 grande: espera a juntar una caja llena (hay para {round(lugar*100)}% de una caja{', '+str(sinMed)+' sin medidas' if sinMed else ''} y ninguno se corta en {CAJA_CORTE_DIAS} días), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (espera a juntar una caja llena de grandes)");o['q']=0
+    hayChicos=any(o['cta']==cta and o['q']>0 and not o['grande'] for o in out)
+    G=[o for o in out if o['cta']==cta and o['grande'] and o['q']>0]
+    if not G: continue
+    _pc=lambda o:_porcaja.get(o['cab'].split(':',1)[1].split('@',1)[0])
+    lugar=sum(o['q']/_pc(o) for o in G if _pc(o))   # fracción de caja que llenan (sin medidas no suman: no se inventa)
+    corta=[o for o in G if o.get('enCero') or (o.get('dias') is not None and o['dias']<CAJA_CORTE_DIAS)]
+    fijoG=[o for o in G if o.get('fijo')]
+    if lugar>=1 or corta or fijoG:
+        por=(f"juntan una caja llena ({round(lugar*100)}% de una caja)" if lugar>=1 else f"{'está en 0' if corta[0].get('enCero') else 'se corta en '+str(round(corta[0]['dias']))+' días'} ({corta[0]['nom'][:30].replace(' · ',' ')})" if corta else f"lo fijó él ({fijoG[0]['nom'][:30].replace(' · ',' ')}): va igual")
+        for o in G: o['cola']=(f"📦 grande: sale en SU PROPIA caja (ML no deja mezclarlo con chicos), porque {por} · " if hayChicos else f"📦 grande: sale porque {por} · ")+o['cola']
+        grandesSalen.append(f"{cta}: {sum(o['q'] for o in G)} u. de {len(G)} producto(s) {'en su propia caja' if hayChicos else '(la cuenta no lleva chicos)'}, porque {por}")
+    else:
+        sinMed=sum(1 for o in G if not _pc(o))
+        for o in G:
+            o['cola']=f"📦 grande: espera a juntar una caja llena (hay para {round(lugar*100)}% de una caja{', '+str(sinMed)+' sin medidas' if sinMed else ''} y ninguno se corta en {CAJA_CORTE_DIAS} días), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (espera a juntar una caja llena de grandes)");o['q']=0
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
@@ -399,9 +440,14 @@ out=[f"{o['cab']}=u|{o['q']}|{o['cola']}" for o in out]
 bad=[x for x in out if ';' in x]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
 open(_CJ,'w').write('\n'.join(out)+'\n')
+with open(_FS,'w') as f:
+    f.write('# lo que ya salió de cada FIJO de decide_cajas.py (5a del 08/11/2026): producto|color|cuenta <tab> unidades fijadas <tab> ya salieron\n')
+    for k,(fq,sal) in sorted(_fsal.items()):
+        if any(f"{a}|{b}|{c}"==k for (a,b,c) in FIJO): f.write(f"{k}\t{fq}\t{sal}\n")
 print(len(out),'renglones de caja ·',nOfi,'productos con mercadería en la oficina · escrito en',_CJ);print('\n'.join(res))
 if mantenidos: print('🔒 DECISIONES ANTERIORES QUE SE QUEDAN (para pisarlas: correr con un 2º argumento cualquiera) ·',len(mantenidos),*mantenidos,sep='\n  ')
 if cumplidas: print('✅ DECISIONES A MANO QUE YA SALIERON (vuelve la cuenta automática) ·',len(cumplidas),*cumplidas,sep='\n  ')
+if fijoCumplidos: print('✅ LO FIJO DE ÉL YA SALIÓ ENTERO (vuelve la cuenta automática; sacarlo de FIJO cuando quieras) ·',len(fijoCumplidos),*fijoCumplidos,sep='\n  ')
 print(f"estirados a {T_LARGO} días (venden parejo, sin prueba abierta): {len(largos)}",*largos,sep='\n  ')
 if SIN_ESTIRAR is None: print('⚠️ no encontré sin_estirar.txt: todo quedó en 37 días')
 if CUPO: print('cupo de Full leído: '+' · '.join(f"{c} {v['peq'] if v['peq'] is not None else '?'}/{v['gra'] if v['gra'] is not None else '?'}" for c,v in CUPO.items()))

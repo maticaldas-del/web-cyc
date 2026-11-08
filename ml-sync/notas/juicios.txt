@@ -1,14 +1,9 @@
 # Juicios de Claude, producto por producto, mirando los 365 días (probe historia). Mandan sobre la cuenta automática.
 # <prodId>[#color]=<unidades>|<motivo>
-p1779912656300=0|Ultra Shift: en el año vendió 6 en julio y después 14 semanas sin vender a $42.500. las 4 de septiembre fueron de remate a pérdida. No se repone
-p1779912655860=20|Termómetro horno: vendió 10 a 38 cada dos semanas durante seis meses y se cortó por falta de stock hace seis meses (no por demanda). La cuenta de 180 días lo daba por muerto. Pido para volver a probar
-p1787786300945=40|Mini balanza: en la última tanda vendió 16 en dos semanas, se agotó hace 6 días y la subí a $11.990 para la próxima. Pido 40 porque vuela
-p1779912656420=0|Chispero: hay 23 en Full y 12 en la oficina. Desde que lo subí a $7.350 vendió 1 en dos semanas (antes 10 a 20). Primero miro el precio, no compres
-p1780699107690=0|Mini linterna llavero: vendió bien hace nueve meses y nunca se repuso. demasiado viejo para apostar sin preguntarte
-p1779912656310=0|Indoor: vendía a $9.000-13.000 pero hoy está publicado a $32.999. a ese precio no hay historia. Primero hay que revisar el precio
-p1781714867137=0|Tarjeta SanDisk Ultra con adaptador: las que vendíamos eran truchas y Matías las sacó. No se compra
+# 13a del 08/11/2026 (revisión de la Mercadería): limpiado. Afuera lo que chocaba con reglas nuevas (SanDisk "truchas": desde el 20/10 no hay; cantidades fijas y "primero miro el precio" del 09/10, que ahora decide el ritmo al precio de hoy y la compra de prueba) y los repetidos.
+p1779912656300=0|Pendrive Ultra Shift 128: vendió 6 en julio y después 14 semanas sin vender a $42.500; se remató porque estuvo parado meses. No traer
 p1779912655660#Rosa=0|Centímetro Rosa: en la oficina hay 150 Rosa que van a Full ahora y entre los tres colores tenemos más de 800 (Full, oficina y camino). Desde que subió a $3.450 se vende bastante menos. No compres hasta que eso baje
-p17833581096732=2|Xiaomi Watch S5: vendió 3 en todo el semestre (2 en el último mes) y cada uno cuesta US$135. Con 2 alcanza para ver si a $533.000 sigue saliendo
+p17833581096732=0|Xiaomi Watch S5: no se repone más (5a de Matías del 22/10)
 p1779912655500#Asher=0|Asher (De la Patagonia): no se consigue más, me lo dijiste el 14/10. No se pide. Quedan 21 en el Full de Adriana y se venden hasta terminarlas
 p1779912655500#Kosten (Hombre)=0|Kosten (De la Patagonia): no se consigue más (14/10). No se pide
 p1779912655510=0|Patagonia Estuche: no se consigue más (14/10). No se pide
@@ -16,15 +11,12 @@ p1787594663055=0|De la Patagonia KO UNISEX: no se consigue más (14/10). No se p
 p1788886838508#Kiss Sexy=0|Halloween Kiss Sexy: Nissei no lo tiene. No se pide hasta que vuelva
 p1788886838508#Kiss=0|Halloween Kiss: Nissei no lo tiene. No se pide hasta que vuelva
 p1788893559056=0|Ted Lapidus Rumba: Nissei no lo tiene. No se pide hasta que vuelva
-p1788886453710=0|Cool Water Woman: no se puede reponer a un precio que deje el 25%. No se pide
-p17833581096736=0|SSD 1TB: el precio de Paraguay no da el 25%. No se pide
-p1780106778739=0|Buds Core: el precio de Paraguay no da el 25%. No se pide
+p1788886453710=0|Cool Water Woman: no se puede reponer a un precio que deje el 35%. No se pide
+p17833581096736=0|SSD 1TB: el precio de Paraguay no da el 35% y el precio de ML quedó inflado (vendía 1 cada 3 meses). No traer por ahora
+p1780106778739=0|Buds Core: el precio de Paraguay no da el 35%. No se pide
 p1788904839781#Bare Vanilla=0|STARLIT Bare Vanilla: no se puede reponer. No se pide
 p1779912656290=0|Pendrive 128gb: se acaban de retirar 34 de Full porque iban a pagar stock antiguo. No comprar hasta vender lo que hay
-p1780106846533=0|Redmi Pad 2: se vendieron las 2 últimas a pérdida por descarte. No volver a traer
-p17833581096736=0|SSD 1TB: el precio de ML quedó inflado y vendía 1 cada 3 meses. No traer por ahora
-p1779912656300=0|Pendrive Ultra Shift 128: se remató porque estuvo parado meses. No traer
-p17833581096732=0|Watch S5: no se trae más (decisión 5a de Matías del 22/10)
+p1780106846533=0|Redmi Pad 2: no se repone más (5a de Matías del 22/10; las 2 últimas se vendieron a pérdida por descarte)
 p179218076128818=5|Waflera Atma Disney: es el mejor producto, deja más de 150% y vendió 1 por semana desde que llegó. Tener 5 (pido 4 y queda 1 en Full)
 p1785263851692#Pure Seduction=0|VS Pure Seduction: no vende hace más de 60 días y está en sobra (completa del 28/10). No se repone hasta que se venda lo que hay
 p1785263851692#Velvet Petals=0|VS Velvet Petals: no vende hace más de 60 días (completa del 28/10). No se repone hasta que vuelva a vender

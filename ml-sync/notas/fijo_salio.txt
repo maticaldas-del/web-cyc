@@ -1,0 +1,2 @@
+# lo que ya salió de cada FIJO de decide_cajas.py (5a del 08/11/2026): producto|color|cuenta <tab> unidades fijadas <tab> ya salieron
+p1779912655490|Persea|Luciana	3	3
