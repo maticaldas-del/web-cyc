@@ -23720,7 +23720,11 @@ function _listaDa(e,k){return _listaMed25(e,k)&&(_vendOk(e.mv,e.vend,e.res)||!!e
 function _listaRevisar(e,k){return _listaMed25(e,k)&&!_listaDa(e,k)&&!pocasVentasN(e.vend,e.res);}
 // pasó todo lo demás pero las vendidas cargadas no llegan a 100 (21/10/2026)
 function _listaPocasV(e,k){return _listaMed25(e,k)&&pocasVentasN(e.vend,e.res);}
-function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0);}
+// Revisión etapa 3 (08/11/2026): lo cargado que ya está medido y NO tiene la ✅ de las fotos (o se marcó otro producto) no entra al pedido
+// (03/11, él: "que ningún producto pase a pedido sin haberse revisado una por una las comparaciones de fotos"). Quedaba en la tarjeta de
+// Tito ("sin confirmar"), en "Ya lo pedí" y en el WhatsApp. Lo que todavía no se bajó de la lista (sin dato) no se saca.
+function _listaPedNoVale(k,cod){const e=(_listaCache[k]||{})[cod];return !!e&&!_listaOkVale(e);}
+function _listaArmado(k){return Object.entries(((state.listaPed||{})[k])||{}).map(([cod,u])=>({cod,u:parseInt(u)||0})).filter(x=>x.u>0&&!_listaPedNoVale(k,x.cod));}
 function _listaViajando(k){const s=new Set();Object.values(state.comprasLista||{}).forEach(c=>{if(c&&c.prov===k&&c.estado==='camino')(c.items||[]).forEach(it=>{if(!it.prodId)s.add(String(it.cod));});});return s;}
 // ── LO YA PROBADO DE UNA LISTA SE PIDE COMO PARAGUAY (20/10/2026, decisión 1a) ───────────────────────────────────────────
 // Antes el "Ya lo pedí" de una lista sólo anotaba productos NUEVOS (sin prodId) y no descontaba nada de lo decidido: mientras el
@@ -24168,7 +24172,7 @@ function listaLocalFilas(k){
     const mx=_llMaxNuevo(k,e);
     out.push({id,tipo:'nuevo',cod,u,nom:String(e.n||cod),mt:String(e.mt||''),foto:/^https:\/\//.test(e.mf||'')?e.mf:'',mi:e.mi||'',
       precio:Number(e.p)||0,pc:_listaPuesto(k,e),max:mx.max||null,maxMeta:mx.meta||null,maxMot:mx.motivo||'',P:mx.P||Number(e.mp)||0,sinConf:!_listaOkVale(e),reg:L[id]||null,e});};
-  for(const [cod,u0] of Object.entries(((state.listaPed||{})[k])||{})){const u=parseInt(u0)||0;if(u>0)nuevo(cod,u);}
+  for(const [cod,u0] of Object.entries(((state.listaPed||{})[k])||{})){const u=parseInt(u0)||0;if(u>0&&!_listaPedNoVale(k,cod))nuevo(cod,u);}
   for(const f of listaProbFilas(k)){
     const id=_llKey(f.pid+(f.key?'__'+f.key:''));vistos.add(id);
     const e=f.cod?cat[f.cod]:null;
@@ -24176,8 +24180,8 @@ function listaLocalFilas(k){
     const pub=f.pr?(f.color?pubDeVariante(f.pr.id,'',f.color):null)||Object.values(state.mllinks||{}).find(x=>x&&x.prodId===f.pr.id&&!x.ignored&&(x.status||'')!=='closed'&&x.title):null;
     const pm=M&&M.porProd&&M.porProd[f.pid]?Number(M.porProd[f.pid].p)||0:0;
     const mx=_llMaxProb(k,f,e);
-    out.push({id,tipo:'probado',pid:f.pid,key:f.key,u:f.u,nom:f.nomL||f.nom,color:f.color||'',mt:String((pub&&pub.title)||(e&&e.mt)||''),
-      foto:(ft&&ft.url)||(e&&/^https:\/\//.test(e.mf||'')?e.mf:''),mi:(e&&e.mi)||f.mi||'',precio:pm||f.p||0,pc:f.pc,max:mx.max||null,maxMeta:mx.meta||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:false,reg:L[id]||null,e});
+    out.push({id,tipo:'probado',pid:f.pid,key:f.key,u:f.u*(f.x||1),nom:(f.nomL||f.nom)+(f.x>1?` (${f.u} packs de ${f.x})`:''),color:f.color||'',mt:String((pub&&pub.title)||(e&&e.mt)||''),
+      foto:(ft&&ft.url)||(e&&/^https:\/\//.test(e.mf||'')?e.mf:''),mi:(e&&e.mi)||f.mi||'',precio:pm||(f.x>1?(f.p||0)/f.x:(f.p||0)),pc:f.pc,max:mx.max?(f.x>1?mx.max/f.x:mx.max):null,maxMeta:mx.meta||null,maxMot:mx.motivo||'',P:mx.P||0,sinConf:false,reg:L[id]||null,e});
   }
   // Lo que ya se marcó y salió del pedido (otro producto, o "Ya lo pedí"): se sigue viendo 7 días para poder deshacerlo.
   for(const [id,r] of Object.entries(L)){if(vistos.has(id)||!r||hoy-(Number(r.ts)||0)>7*864e5)continue;

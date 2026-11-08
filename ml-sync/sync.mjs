@@ -26377,6 +26377,7 @@ async function main() {
         while (pgS < 120) { let d = null; try { const r = await fetch(`${urlW}/products.json?limit=250&page=${pgS}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
           if (d == null) { if (++malS > 4) break; await new Promise((r) => setTimeout(r, 3000)); continue; }
           const ps = (d && d.products) || []; if (!ps.length) break; todoS.push(...ps); pgS++; }
+        if (malS > 4) { console.log(`❌ la tienda no contestó (página ${pgS}): NO cargo nada (con la lista a medias, lo demás quedaba "de una lista anterior"). Probá más tarde.`); return; }   // revisión etapa 3 (08/11)
         const itemsS = []; const fS = { marca: 0, rubro: 0, sinstock: 0, sinprecio: 0 };
         for (const x of todoS) { const v = (x.variants || []).find((y) => y && y.available) || null;
           const n = String(x.title || '').replace(/[;|=@]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
@@ -26392,6 +26393,7 @@ async function main() {
       while (pg < 200) { let d = null; try { const r = await fetch(`${urlW}/wp-json/wc/store/v1/products?per_page=100&page=${pg}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
         if (d == null) { if (++malas > 4) { console.log(`❌ la página no contestó (página ${pg}); cargado hasta ahí: ${todo.length}`); break; } await new Promise((r) => setTimeout(r, 3000)); continue; }
         if (!Array.isArray(d) || !d.length) break; todo.push(...d); pg++; }
+      if (malas > 4) { console.log(`❌ NO cargo nada: con la lista a medias (${todo.length} de una tienda más grande) lo demás quedaba "de una lista anterior". Probá más tarde.`); return; }   // revisión etapa 3 (08/11)
       const des = (t) => String(t || '').replace(/<[^>]+>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/&nbsp;/g, ' ');
       const items = []; const fuera = { marca: 0, rubro: 0, sinstock: 0, sinprecio: 0 };
       for (const x of todo) {
@@ -27072,7 +27074,7 @@ async function main() {
         const u = {}; for (const o of ops) { if (/^\d+$/.test(o)) u.vend = parseInt(o, 10); else if (/^\+?\d+$/.test(o.replace('+', ''))) u.vend = parseInt(o.replace('+', ''), 10);
           else if (o === 'borrar' || o === '-') u.vend = null;
           else if (/^r\d+$/i.test(o)) u.res = parseInt(o.slice(1), 10);   // reseñas (24/10/2026)   // 24/10/2026: saca las vendidas cargadas (catálogo que no las muestra = duda)
-          else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (o === 'duda') { u.ok = null; u.okCat = null; u.noEs = null; u.noEsCat = null; }   /* 03/11/2026: ✅ puesto sin mirar fotos y que en la foto no se ve seguro: vuelve a sin confirmar */ else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
+          else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (o === 'duda') { u.noEs = 1; u.ok = null; }   /* revisión etapa 3 (08/11): "lo dudoso es NO" (04/11) */   /* 03/11/2026: ✅ puesto sin mirar fotos y que en la foto no se ve seguro: vuelve a sin confirmar */ else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
         upd[prov + '/' + cod] = u; n++;
       }
       if (malos.length) { console.log(`❌ ${malos.length} mal escritos, no escribo nada:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
@@ -27083,7 +27085,9 @@ async function main() {
         // El ✅ vale para el catálogo que se miró (20/10/2026): si después el robot mide contra otro, deja de valer solo.
         if (u.ok) u.okCat = u.miFijo || e.miFijo || e.mi || null; else if (u.noEs) { u.okCat = null; u.noEsCat = e.miFijo || e.mi || null; }
         console.log(`  · ${pk} · ${String(e.n).slice(0, 60)} → ${u.vend != null ? u.vend + ' vendidas' : ''}${u.ok ? ' · ✅ mismo producto' : ''}${u.noEs ? ' · ❌ otro producto' : ''}${u.miFijo ? ' · catálogo ' + u.miFijo + ' (se vuelve a medir)' : ''}`);
-        if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk); } }
+        if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk);
+          // Revisión etapa 3 (08/11/2026): "otro producto" sale también del pedido del momento (como `|borrar`); quedaba cargado y se compraba.
+          if (u.noEs) { const enP = await db.get('cyc/listas_pedido/' + pk + '/' + cod); if (Number(enP) > 0) { await db.set('cyc/listas_pedido/' + pk + '/' + cod, null); console.log(`    ↳ estaba en el pedido del momento (${enP} u.): sacado`); } } } }
       if (APLICAR) for (const pk of tocados) await db.patch('cyc/mlconfig/listasProv/' + pk, cuentaLista((await db.get('mlapi/listas/' + pk)) || {}, ((await db.get('cyc/mlconfig/listasProv/' + pk)) || {}).fecha));
       if (!APLICAR) console.log('PRUEBA: agregá ;go al final.'); else console.log('✓ guardado. Los que tienen catálogo nuevo se miden con `listamedir`.');
       return;
@@ -39281,6 +39285,10 @@ async function main() {
         const est = b ? String(b.status || '?') : '(ML no contestó)';
         const stk = b ? (Number(b.available_quantity) || 0) : 0;
         const nom = b ? (b.title || mla) : (e.title || mla);
+        // Revisión etapa 3 (08/11/2026): sin respuesta de ML no se oculta (antes contaba como 0 unidades), y con unidades se frena aunque esté
+        // pausada (una oculta deja de contar su stock en el patrimonio y sigue pagando almacenamiento).
+        if (!b) { console.log(`  ⚠️ ${mla} · ML no contestó: NO la oculto (no sé si tiene unidades). Probá de nuevo.`); continue; }
+        if (b.status !== 'active' && stk > 0) { console.log(`  ⚠️ ${mla} · ${est} con ${stk} u. · ${String(nom).slice(0, 48)}\n       NO la oculto: todavía tiene mercadería (que se venda o retirarla primero).`); continue; }
         if (b && b.status === 'active' && stk > 0) {
           console.log(`  ⚠️ ${mla} · ACTIVA con ${stk} u. · ${String(nom).slice(0, 48)}`);
           console.log(`       NO la oculto: está a la venta con mercadería. Pausala en ML primero.`);
@@ -54981,7 +54989,7 @@ async function main() {
           }
           if (fotos.some((x) => x.length > 4.5e6)) { console.log('❌ Alguna foto pasa los 4 MB. No escribo nada.'); return; }
         }
-        const monto = opt.monto ? parseInt(String(opt.monto).replace(/\D/g, ''), 10) || null : null;
+        const monto = opt.monto ? (Math.round((numArg(opt.monto) || 0) * 100) / 100) || null : null;   // revisión etapa 3 (08/11): "758.820,25" daba 75.882.025
         const fecha = /^\d{4}-\d{2}-\d{2}$/.test(opt.fecha || '') ? opt.fecha : hoyAR;
         console.log(`=== PAGO DEL PEDIDO AL PAULVIC ${id} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===\n  ${fotos.length} comprobante(s) · pagado el ${fecha}${monto ? ' · $' + monto.toLocaleString('es-AR') : ''}`);
         if (!GO) return;
@@ -55029,7 +55037,7 @@ async function main() {
         if (RETOMA) console.log(`▶️ ${id} quedó a medias: lo retomo con lo que se anotó como llegado (no se vuelve a cerrar ni se suma dos veces).`);
         const cambios = {}, problemas = [], extraLl = {};
         const _OPT = /^(tester|regalo|apagar|flete)=(.+)$/i;
-        for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = parseFloat(String(m[2]).replace(/\./g, '').replace(',', '.')) || 0; extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
+        for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = numArg(m[2]) || 0;   /* revisión etapa 3 (08/11): "758820.25" daba ×100 */ extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
         // LA FECHA REAL DE LLEGADA (etapa 3, 20/10/2026): `fecha=AAAA-MM-DD`. Los 7 días hábiles para pagar se cuentan desde ahí; sin
         // ella quedaba la fecha en que se corrió el comando.
         let fechaLl = hoyAR; const _F = /^fecha=(\d{4}-\d{2}-\d{2})$/i;
