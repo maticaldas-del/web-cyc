@@ -3533,7 +3533,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.158';
+const APP_VERSION='28.159';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3546,6 +3546,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.159',f:'08/11',h:'23:55',c:[{n:2,t:'💵 Gastos → Intereses · Papá: el monto sale solo = el 1% de lo que Tito tiene en CYC al empezar el mes ("Dólares Tito" del cierre del mes anterior, al dólar de ese cierre). La casilla viene llena: sólo tocás 💾 Cargar.'}]},
   {v:'28.158',f:'08/11',h:'23:30',c:[{n:2,t:'📈 Línea de tiempo: en lo que vende menos de 1 por semana, el 🔴 "no vende" sale recién a las 3 ventas esperadas (10 días como mínimo), no a los 10 días (8a del 08/11); el cartel de revisiones cierra las 18 Reglas del cerebro del 04/11.'}]},
   {v:'28.157',f:'08/11',h:'22:20',c:[{n:2,t:'▶️ Pedidos: dentro del 🧠 hay "Siguiente ›" (y "‹") para leer los "Hola Tito!" de corrido, uno atrás del otro, sin cerrar la ventana.'}]},
   {v:'28.156',f:'08/11',h:'22:00',c:[{n:2,t:'💸 Arqueo (08/11): la tarjeta del Cobro del mes ahora es un ticket: cada paso de la cuenta con su monto (creció CYC, + lo retirado, − lo cargado tarde, = total, ÷ 3, redondeo) y lo que sobra del redondeo, que queda en CYC; abajo, grande, lo que cobra cada uno. Siguen los avisos de los retiros sin marcar ✅ y, mientras el cierre tiene menos de 48 h, a qué hora queda fijo. Las cuentas no cambiaron.'}]},
@@ -28617,8 +28618,8 @@ const GASTOS_DEL_MES=[
   // cargar el de Tito pintaba verde el de intereses y no se veía si faltaba el otro (o al revés). Se reconoce por "papá"/"tito" en la descripción.
   {n:'Intereses financieros',  cat:'Intereses financieros', no:['papá','papa','tito'],
    nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro (el préstamo de Tito va en el renglón de abajo)'},
-  {n:'Intereses · Papá',  cat:'Intereses financieros', pal:['papá','papa','tito'],
-   nota:'~$127.000/mes: el 1% mensual del préstamo de Tito (US$ 8.800, 02/11/2026); si se devuelve una parte, baja en proporción'},
+  {n:'Intereses · Papá',  cat:'Intereses financieros', pal:['papá','papa','tito'], interesPapa:true,
+   nota:'el 1% de lo que Tito tiene en CYC al EMPEZAR el mes ("Dólares Tito" del cierre del mes anterior, al dólar de ese cierre)'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'], auto:true,   // revisión etapa 2 (05/11/2026): sin casilla: un monto escrito acá dejaba al robot creer que ya estaba cargado y nunca entraban los cargos reales
    nota:'Lo carga el robot solo a principio de cada mes con cargosmes (sale de la factura de ML por tipo de cargo, las 4 cuentas): no hace falta que me pases el reporte. El período de un mes entra en los gastos del mes siguiente. '
       + 'Son almacenamiento + stock antiguo + retiro de stock + multas (ej. caja mal mandada). Julio fueron $127.835. Van SÓLO acá: desde el 26/09 el % de cada venta ya no los incluye. '
@@ -28633,6 +28634,19 @@ const _gnvKey=n=>String(n).toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,40);
 // CARGAR UN GASTO DESDE LA LISTA (02/11/2026, él: "quiero que haya un cuadradito así cargo los gastos de ahí. o sea no tener que ir y
 // cargar manual"): cada renglón que falta tiene su casilla de monto; se guarda como un gasto más (cyc/compras) con la categoría y el
 // nombre del renglón en la descripción, así la lista lo reconoce sola. Mes de hoy → hoy; un mes pasado → el último día de ese mes.
+// 💵 INTERESES · PAPÁ (08/11/2026, él: "es el 1% de lo que tiene en cyc… se le paga el 1% de lo que tiene a principio de mes"): el monto
+// sale solo = 1% de "Dólares Tito" (Arqueo → Lo que debemos) del CIERRE del mes anterior, en pesos al dólar de ese cierre. Si el mes
+// anterior no está cerrado, lo de hoy al dólar de hoy (y lo dice). La casilla viene llena: se toca 💾 Cargar.
+function _interesPapa(ym){
+  const [y,m]=String(ym).split('_').map(Number);const d=new Date(y,m-2,1);
+  const pk=d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');
+  const sn=(state.snapshots||{})[pk];
+  let usd,tc,de;
+  if(sn&&sn.finanzas&&sn.finanzas.dolares_tito!=null&&Number(sn.tipoCambio)>0){usd=Math.abs(parseFloat(sn.finanzas.dolares_tito)||0);tc=Number(sn.tipoCambio);de='cierre de '+pk.slice(5)+'/'+pk.slice(0,4);}
+  else{usd=Math.abs(parseFloat((state.finanzas||{}).dolares_tito)||0);tc=curTC()||0;de='hoy (el mes anterior no está cerrado)';}
+  if(!(usd>0)||!(tc>0))return null;
+  return{monto:Math.round(usd*tc*0.01),usd,tc,de};
+}
 async function gastoRapido(ym,i){
   const g=GASTOS_DEL_MES[i];if(!g)return;
   const el=document.getElementById('gr_'+_gnvKey(g.n));const monto=parseMoney(el&&el.value);
@@ -28772,9 +28786,9 @@ function renderComprasChecklist(){
         :f.hay?fmt(f.monto)+(f.n>1?` · ${f.n} renglones`:'')
              :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
                :`falta${f.n?'':` <button class="vbtn" style="font-size:.6rem;padding:1px 6px;color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
-      ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}</span>`}
+      ${f.hay?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${f.g.nota}${(()=>{const ip=f.g.interesPapa&&_interesPapa(ymL);return ip?` → <b>${fmt(ip.monto)}</b> (1% de US$ ${fmtN(Math.round(ip.usd))} × $${fmtN(Math.round(ip.tc))}, ${ip.de})`:(f.g.interesPapa?' → falta cargar "Dólares Tito" en el Arqueo':'');})()}</span>`}
       ${_mpPagadoHTML(ymL,f.g)}
-      ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}" style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn" style="font-size:.66rem;padding:3px 10px" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
+      ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}"${(()=>{const ip=f.g.interesPapa&&_interesPapa(ymL);return ip?` value="${fmtN(ip.monto)}" title="1% de US$ ${fmtN(Math.round(ip.usd))} × $${fmtN(Math.round(ip.tc))} (${ip.de})"`:'';})()} style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn" style="font-size:.66rem;padding:3px 10px" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
     </div>`).join('')}
     ${filasRet.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':'❌'}</span>
