@@ -25270,6 +25270,36 @@ async function main() {
       if (GOx && Object.keys(up).length) { await db.patch('mlapi/experiencia', up); console.log(`✓ guardadas ${Object.keys(up).length}`); }
       return;
     }
+    // BILLING_PROBE=reclamosprod:<MLA,…>[:<días>] (8a del 08/11/2026, él: "miro los reclamos de cada uno y no se reponen hasta saber qué pasa"):
+    // los reclamos (abiertos y cerrados) de esas publicaciones en los últimos N días (90), con el MOTIVO que da ML, el estado y si terminó en
+    // devolución, contra las unidades vendidas en el mismo tiempo. Sólo lee. Nunca imprime datos del comprador ni el número de orden entero.
+    if (/^reclamosprod:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE); const lista = new Set((raw.match(/MLA\d+/gi) || []).map((x) => x.toUpperCase()));
+      const dias = Number((raw.match(/:(\d{1,3})\s*$/) || [])[1]) || 90; const desde = Date.now() - dias * 864e5;
+      if (!lista.size) { console.log('Uso: reclamosprod:MLA1,MLA2[:días]'); return; }
+      const links = (await db.get('cyc/mllinks')) || {}; const vp = (await db.get('cyc/ventaprod')) || {};
+      const vend = {}; const kD = new Date(desde - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+      for (const [k, ents] of Object.entries(vp)) { if (k < kD) continue; for (const v of Object.values(ents || {})) { if (!v || !v.mla || !lista.has(v.mla) || v.cancelada) continue; vend[v.mla] = (vend[v.mla] || 0) + (Number(v.qty) || 1); } }
+      const R = {}; const razones = {}; const ctas = new Set([...lista].map((m) => (links[m] || {}).cuenta).filter(Boolean));
+      for (const l of labels) { if (![...ctas].some((c) => String(c).toLowerCase() === l.toLowerCase())) continue; const acc = accounts[l]; if (!acc?.refresh_token) continue;
+        let tk; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; } catch { console.log(`(${l}: sin permiso)`); continue; }
+        for (const st of ['opened', 'closed']) for (let off = 0; off < 1000; off += 50) {
+          let r; try { r = await mlGet(`/post-purchase/v1/claims/search?status=${st}&limit=50&offset=${off}&sort=date_desc`, tk); } catch { break; }
+          const d = (r && r.data) || []; let viejos = 0;
+          for (const c of d) { const f = Date.parse(c.date_created || 0); if (f < desde) { viejos++; continue; } if (c.resource !== 'order') continue;
+            let o; try { o = await mlGet('/orders/' + c.resource_id, tk); } catch { continue; }
+            const it = ((o && o.order_items) || []).map((x) => x && x.item && x.item.id).find((id) => lista.has(id)); if (!it) continue;
+            let rz = razones[c.reason_id]; if (rz === undefined) { try { const q = await mlGet('/post-purchase/v1/claims/reasons/' + c.reason_id, tk); rz = (q && (q.detail || q.name || q.flow)) || ''; } catch { rz = ''; } razones[c.reason_id] = rz; }
+            (R[it] = R[it] || []).push({ f: new Date(f - 3 * 3600e3).toISOString().slice(0, 10), st: c.status, stage: c.stage || '', tipo: c.type || '', rz: rz || c.reason_id, res: (c.resolution && c.resolution.reason) || '' }); }
+          if (d.length < 50 || viejos === d.length) break; } }
+      console.log(`=== 🧾 RECLAMOS POR PUBLICACIÓN · últimos ${dias} días ===`);
+      for (const m of lista) { const e = links[m] || {}; const rs = R[m] || [];
+        console.log(`\n${m} · ${e.cuenta || '?'} · ${String(e.title || '').slice(0, 50)} · vendidas ${vend[m] || 0} · reclamos ${rs.length}${vend[m] ? ` (${Math.round(rs.length / vend[m] * 100)}%)` : ''}`);
+        const cuenta = {}; for (const x of rs) { const k = String(x.rz).slice(0, 90); cuenta[k] = (cuenta[k] || 0) + 1; }
+        for (const [k, n] of Object.entries(cuenta).sort((a2, b2) => b2[1] - a2[1])) console.log(`   ${n} × ${k}`);
+        for (const x of rs.slice(0, 12)) console.log(`     · ${x.f} · ${x.st}${x.stage ? '/' + x.stage : ''}${x.tipo ? ' · ' + x.tipo : ''}${x.res ? ' · cierre: ' + x.res : ''}`); }
+      return;
+    }
     // BILLING_PROBE=barrera → mira YA si ML movió la barrera de $33.000 (idea 10 del 03/11). Sólo lee; no avisa ni guarda.
     if (/^barrera$/.test(String(process.env.BILLING_PROBE || ''))) {
       const TKb = {}; for (const l of labels) { const acc = accounts[l]; if (!acc || !acc.refresh_token) continue; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); TKb[l] = t.access_token; } catch { /* esa cuenta no */ } }
