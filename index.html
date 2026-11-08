@@ -3417,7 +3417,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.150';
+const APP_VERSION='28.151';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3430,6 +3430,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.151',f:'08/11',h:'17:48',c:[{n:2,t:'🪄 Llenar el pedido de Paraguay: si los nuevos ya cargados ocupan el tope, agrega lo que entra y te avisa qué probados de Pedidos quedaron afuera.'}]},
   {v:'28.150',f:'08/11',h:'17:20',c:[{n:2,t:'🧾 Tarjeta de venta: con el detalle abierto ya no se corta nada con "…": Premium y sus cuotas, 1ª venta, analizada y la fecha se ven completos (en los renglones que hagan falta).'}]},
   {v:'28.149',f:'08/11',h:'16:56',c:[{n:2,t:'⚖️ Tope de H: lo próximo de Paraguay que no es perfume va a Ayelen o Matías (la de más lugar); los perfumes de Paraguay a Adriana y Luciana sólo recibe lo que no es de Paraguay.'}]},
   {v:'28.148',f:'08/11',h:'04:37',c:[{n:3,t:'📦 Armar caja deja en la oficina lo que pidió la perfumería después de armarla.'},{n:2,t:'🇵🇾 🪄 Llenar cuenta los nuevos ya cargados en el tope de US$ 600.'},{n:2,t:'📋 Listas: lo que no tiene la ✅ de las fotos no entra al pedido ni a la tarjeta de Tito; los packs armados con sueltos dicen cuántas sueltas comprar.'}]},
@@ -18675,6 +18676,7 @@ function pedLlenarTodoPlan(g){
   // Revisión etapa 3 (08/11/2026): los NUEVOS ya cargados también ocupan el tope (con US$ 400 de nuevos cargados a mano, 🪄 llevaba el pedido a US$ 800).
   const crN=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre)&&!(c.pedidoEn&&((state.compraspy||{})[c.pedidoEn]||{}).estado==='camino')).reduce((t,c)=>t+(parseFloat(c.usd)||0)*(parseInt(c.pedirU)||0),0);
   let libre=Math.max(0,pedTopeUSD()-crA-crN);   // 31/10/2026: los probados tampoco pasan el tope (antes entraban todos y los nuevos usaban lo que sobraba)
+  const fueraP=[];   // 8a del 08/11/2026 (él): lo que entra se agrega aunque los probados no entren, y se avisa cuáles quedaron afuera
   for(const ped of (state.pedidos_py||[])){
     if(!ped||esPedidoPaulvic(ped)||ped.estado==='suficiente')continue;
     const cant=parseInt(ped.cantidad)||0;if(cant<=0)continue;
@@ -18687,19 +18689,19 @@ function pedLlenarTodoPlan(g){
     const nu=pyNuDePedido(pr,ped)||0;if(!(nu>0))continue;
     const cols=(ped.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>[String(x.v),parseInt(x.q)||0]);
     let u=cols.length?cols.reduce((a,[,q])=>a+q,0):cant;
-    if(nu*u>libre+0.0001){if(cols.length)continue;u=Math.floor((libre+0.0001)/nu);if(u<1)continue;}
+    if(nu*u>libre+0.0001){if(cols.length){fueraP.push(pr.name);continue;}u=Math.floor((libre+0.0001)/nu);if(u<1){fueraP.push(pr.name);continue;}}
     prob.push({pr,u,cols,nu});usdP+=nu*u;libre-=nu*u;
   }
   const tope=Math.max(0,pedTopeUSD()-crA-usdP);
   const vivos=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre));
-  return{prob,usdP:Math.round(usdP*100)/100,crA,crN,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
+  return{prob,fueraP,usdP:Math.round(usdP*100)/100,crA,crN,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
 }
 async function pedLlenarTodo(g){return conCandado('pedLlenarTodo:'+(g||''),()=>_pedLlenarTodo(g));}
 async function _pedLlenarTodo(g){
   g=g||null;
   const L=pedLlenarTodoPlan(g),{suma,total}=L.N,topeT=pedTopeUSD();
   const _vjN=L.prob.filter(x=>pyProbViejo(x.pr)).length+suma.filter(x=>candViejoPy(x.c)).length;
-  const vjTxt='';
+  const vjTxt=L.fueraP.length?`\n\n⚠️ ${L.fueraP.length} probado(s) que pide Pedidos NO entran en el tope (los nuevos ya cargados lo ocupan): ${L.fueraP.slice(0,8).join(', ')}${L.fueraP.length>8?'…':''}. Si los querés, sacá nuevos a mano.`:'';
   if(!L.prob.length&&!suma.length){
     alert(`No hay nada para agregar.\n\nTope: ${fmtUS2(topeT)} · ya cargado: ${fmtUS2(L.crA+total)}`
       +(L.N.flojos?`\n${L.N.flojos} nuevos tienen 1 solo vendedor (o ninguno) en el catálogo de ML.`:'')+vjTxt);
@@ -18722,7 +18724,7 @@ async function _pedLlenarTodo(g){
   }
   const saltN=suma.length?await _pedNuevosEscribir(suma):0;
   renderPedidos();
-  toast(`🪄 ${uP} u. de probados y ${uN} u. de nuevos · el pedido queda en ${fmtUS2(fin)}`+((saltP+saltN)?` · ${saltP+saltN} no se cargaron: alguien los cargó o pidió mientras tanto`:'')+(_vjN?` · ⛔ ${_vjN} en rojo: hacé correr el robot para que los mire`:''),'info',7000);
+  toast(`🪄 ${uP} u. de probados y ${uN} u. de nuevos · el pedido queda en ${fmtUS2(fin)}`+((saltP+saltN)?` · ${saltP+saltN} no se cargaron: alguien los cargó o pidió mientras tanto`:'')+(_vjN?` · ⛔ ${_vjN} en rojo: hacé correr el robot para que los mire`:'')+(L.fueraP.length?` · ⚠️ ${L.fueraP.length} probados no entraron en el tope`:''),'info',9000);
 }
 async function pedNuevosVaciar(g){
   const con=candList().filter(c=>(parseInt(c.pedirU)||0)>0).filter(c=>pyMomEs(g||null,c.nombre));

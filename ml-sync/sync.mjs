@@ -12552,7 +12552,8 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
       }
       // Revisión etapa 4, 30/10/2026: se vuelve a activar sólo si su Clásica está ACTIVA y bajó de la barrera. Antes bastaba con que la
       // Clásica no estuviera activa: una Clásica de $33.000+ pausada (por él, por ML o fuera de Full) le volvía a abrir la de envío a su precio viejo.
-      if (T.status === 'paused' && gemBar && gemBar[k] && !DRY && C.status === 'active') {
+      // 2a del 08/11/2026 (él): una gemela de envío pausada A PROPÓSITO (`noAutoActivar`, `pausar:gemelaenvio+<MLA>`) no la vuelve a prender la barrera.
+      if (T.status === 'paused' && gemBar && gemBar[k] && !DRY && C.status === 'active' && !e.noAutoActivar) {
         try { const rp = await fetch(ML_API + '/items/' + k, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'active' }) });
           const b2 = await mlGet('/items/' + k + '?attributes=id,status', tk);
           if (rp.ok && b2 && b2.status === 'active') { await db.set('cyc/gemelabarrera/' + k, null); out.activadasBarrera = (out.activadasBarrera || 0) + 1; console.log(`   📦 ${k} activada otra vez: su Clásica bajó a $${Math.round(C.price || 0).toLocaleString('es-AR')} · releída ✓ (se re-precia en la próxima vuelta)`); }
@@ -51214,7 +51215,11 @@ async function main() {
             }
           } catch { /* sin escalera: Pedidos sigue como siempre */ }
           const pc = Math.max(0, ...mlas.map((m) => Number((TF[m] || {}).t) || 0));
-          const pv = Math.max(0, ...(VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && !(L[v.mla] && L[v.mla].gemelaDe)).map((v) => v.pu));
+          // 6a del 08/11/2026 (él): "la venta más cara de 365 días" sólo cuenta ventas de días a precio normal (sin escasez, sobra, liquidando
+          // ni remate, `normalEn`) y un precio con 2+ unidades vendidas (±3%): una venta suelta de una prueba de techo no vale (el Centímetro
+          // tomaba $26.290 cuando su precio normal es $3.000-3.990).
+          const vv = (VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && !(L[v.mla] && L[v.mla].gemelaDe) && normalEn(v.mla, v.ts));
+          const pv = Math.max(0, ...vv.filter((v) => vv.reduce((s2, w) => s2 + (Math.abs(w.pu - v.pu) <= v.pu * 0.03 ? w.q : 0), 0) >= 2).map((v) => v.pu));
           const mc = await mg(pc), mv = await mg(pv);
           // Revisión etapa 4, 30/10/2026: los días se cuentan UNA vez aunque haya dos publicaciones del mismo stock (antes se sumaban los de cada una
           // y el ritmo daba la mitad: compra de menos); si no se pudo leer la línea de una, no se mide (antes se salteaba callada).
