@@ -13377,6 +13377,8 @@ const PY_TRAD = [
   [/\bcer[aâ]mic([oa]s?)\b/giu, 'cerámic$1'], [/\bmacad[aâ]mia\b/giu, 'macadamia'], [/\bdin[aâ]mic([oa]s?)\b/giu, 'dinámic$1'], [/\bpanor[aâ]mic([oa]s?)\b/giu, 'panorámic$1'],
   [/\boce[aâ]nic([oa]s?)\b/giu, 'oceánic$1'],
   // 07/11/2026 (control diario): 17 nombres con "Sobrancelhas" y 9 con "Fixador" quedaban en portugués ("Gel Fixador de Sobrancelhas Covergirl").
+  // 08/11/2026 (control diario): "Torradeira", "Leitor de Código de Barras", "Ferro A Vapor" quedaban en portugués en la Tienda.
+  [/\btorradeira\b/gi, 'tostadora'], [/\bleitor\b/gi, 'lector'], [/\bferro\s+a\s+vapor\b/gi, 'plancha a vapor'], [/\bferro\s+de\s+passar\b/gi, 'plancha'], [/\bc[aâ]mera\b/giu, 'cámara'], [/\bvigil[aâ]ncia\b/giu, 'vigilancia'],
   [/\bsobrancelhas\b/gi, 'cejas'], [/\bsobrancelha\b/gi, 'ceja'], [/\bfixador(es)?\b/gi, 'fijador$1'], [/\bcrescimento\b/gi, 'crecimiento'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
