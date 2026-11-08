@@ -9,6 +9,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 ## Abiertas
 
 ### ✅ Contestó las 10 de la noche del 08/11: 1b 2b 3b 4a 5a 6a 7 (si no se venden más en ML, a la perfumería) 8a 9b 10a + fotos en Inventario — APLICANDO
+### 8a del 08/11 · reclamos de los 10 con experiencia mala (`reclamosprod`, 120 días)
+- Auriculares F9 (Matías): 6 reclamos de 9 vendidas, "no es lo que dice la publicación / otro modelo" → no se repone (juicio 0). Hay que mirar la publicación (fotos y texto) contra lo que llega.
+- Batidor (Luciana, 2 publicaciones): 10 reclamos de 38, casi todos "llegó bien" (se arrepienten) → ya estaba en 0 por la caja perdida; sigue así.
+- P47 rojo/azul y P47 luz: 0 reclamos (el puntaje bajo no es por reclamos) · Philips TAT2206: 1 de 7 · Galaxy Buds: 2 de 9 · Espejo: 1 de 34 → se reponen normal.
 ### 08/11 · Las 20 siguientes (pasadas en el chat a la noche) — esperando respuesta
 (1-6 Plata · 7-10 Local/ABEL · 11-15 Tienda · 16-18 Mercadería · 19-20 Full; textos completos en el chat del 08/11)
 ### Las que hago yo sin preguntar (medio seguro, 08/11): Plata 7 8 9 13 14 15 · Local 2 3 5 6 8 12 14 16 · Tienda 3 4 5 8 10 12 13 14 15 · Mercadería 1 5 7 10 13 — con la (a) sugerida de cada una.
