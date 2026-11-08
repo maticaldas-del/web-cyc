@@ -62,6 +62,60 @@ rep('</style>', """.pe-abel { display: block; color: #16a34a; font-weight: 800; 
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pe-abel { color: #4ade80; } }
 :root[data-theme="dark"] .pe-abel { color: #4ade80; }
 </style>""")
+# 🎄 ABEL EN NAVIDAD (idea 6, él eligió 6a el 08/11/2026): cartel arriba "Pedí hasta el 6/12 y lo retirás para Navidad", hasta el 6/12.
+# La fila "Regalos de Navidad" y el botón "Mandáselo a alguien" son de la Tienda: en ABEL no van.
+rep('var NAV_ON = true,', 'var NAV_ON = false,')
+rep('<p class="sub-abel">', '<div class="aviso abel-nav" id="abelNav" hidden>🎄 <b>Pedí hasta el 6/12</b> y lo retirás para Navidad.</div>\n  <p class="sub-abel">')
+rep('  function navVigente() {', '  if (hoyISO() <= "2026-12-06") $("abelNav").hidden = false;\n  function navVigente() {')
+rep('</style>', '''.compartir, #verComp { display: none !important; }
+.abel-nav { margin: 10px 0 0; font-size: 14px; text-align: center; }
+/* 🔎 FILTROS (idea 19, 08/11/2026): para quién, marca y precio. */
+.filtros-abel { display: grid; grid-template-columns: 0.95fr 1.25fr 1fr; gap: 6px; padding-bottom: 10px; }
+.filtros-abel select { min-width: 0; width: 100%; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 13px; padding: 0 4px; cursor: pointer; }
+.filtros-abel select:focus { border-color: var(--acc); outline: none; }
+.filtros-abel select.on { border-color: var(--acc); background: var(--acc-soft); }
+@media (min-width: 900px) { .filtros-abel { grid-template-columns: 200px 260px 220px auto; } }
+</style>''')
+rep('<div class="chips" id="chips" role="toolbar" aria-label="Rubros"></div>', '''<div class="chips" id="chips" role="toolbar" aria-label="Rubros"></div>
+    <div class="filtros-abel" id="filtrosAbel">
+      <select id="fGen" aria-label="Para quién"><option value="">Para quién</option><option value="F">Ella</option><option value="M">Él</option><option value="U">Unisex</option></select>
+      <select id="fMarca" aria-label="Marca"><option value="">Marca</option></select>
+      <select id="fPrecio" aria-label="Precio en efectivo"><option value="">Precio</option><option value="0-100000">Hasta 100 mil</option><option value="100000-200000">100 a 200 mil</option><option value="200000-300000">200 a 300 mil</option><option value="300000-0">Más de 300 mil</option></select>
+    </div>''')
+rep('      if (rubro === "__nav") {', '      if (!abelFiltra(p)) return false;\n      if (rubro === "__nav") {')
+rep('  var DET = {};', '''  // 🔎 FILTROS DE ABEL (idea 19, él eligió 19a el 08/11/2026): Ella / Él / Unisex (lo que dice el nombre: "mujer", "hombre", "unisex"…; sin
+  // eso sale sólo sin filtro), la marca (la lista de abajo o la palabra que sigue a "Perfume") y el precio en efectivo.
+  var fGen = "", fMarca = "", fPrecio = "";
+  var MARCAS = [["Afnan","afnan"],["Ahmed Al Maghribi","ahmed al maghribi"],["Al Wataniah","(al )?wataniah"],["Animale","animale"],["Arabiyat","arabiyat"],["Armaf","armaf"],["Armani","giorgio armani|armani|acqua di gio"],["Assala","assala"],["Azzaro","azzaro"],["Antonio Banderas","antonio banderas|banderas"],["Beverly Hills Polo Club","beverly hills polo club"],["Boucheron","boucheron"],["Britney Spears","britney spears"],["Burberry","burberry"],["Calvin Klein","calvin klein|\\\\bck (one|be|in2u|everyone)"],["Carolina Herrera","carolina herrera|\\\\b212\\\\b|good girl|bad boy"],["Chloé","chlo[eé]"],["Creed","\\\\bcreed\\\\b"],["Cristiano Ronaldo","cristiano ronaldo|\\\\bcr7\\\\b"],["Dar El Ward","dar el ward"],["Davidoff","davidoff|cool water"],["Dior","\\\\bdior\\\\b|j.?adore|sauvage"],["Elizabeth Arden","elizabeth arden"],["Elizabeth Taylor","elizabeth taylor"],["Ferrari","ferrari"],["French Avenue","fren?ch?e? avenue"],["Gabriela Sabatini","sabatini"],["Georges Mezotti","mezotti"],["Givenchy","givenchy"],["Grandeur","grandeur"],["Hugo Boss","hugo boss|\\\\bboss bottled"],["Issey Miyake","issey miyake"],["Jacques Bogart","bogart"],["Jean Paul Gaultier","jean paul gaultier|\\\\bjpg\\\\b|le male"],["Jimmy Choo","jimmy choo"],["Joli Joli","joli joli"],["Juicy Couture","juicy couture"],["Karl Lagerfeld","lagerfeld"],["Kenzo","\\\\bkenzo\\\\b"],["Lancôme","lanc[oô]me"],["Lattafa","lattafa"],["Maison Alhambra","maison alhambra"],["Maison Asrar","maison asrar"],["Mercedes-Benz","mercedes"],["Michael Kors","michael kors"],["Mirada","\\\\bmirada\\\\b"],["Montblanc","mont ?blanc"],["Moschino","moschino"],["Nabeel","nabeel"],["Nishane","nishane"],["Orientica","orientica"],["Paris Corner","paris corner"],["Police","\\\\bpolice\\\\b"],["Prada","\\\\bprada\\\\b"],["Rabanne","paco rabanne|rabanne|one million|1 million|invictus|phantom"],["Ralph Lauren","ralph lauren|polo (red|blue|black)"],["Rasasi","rasasi"],["Rayhaan","rayhaan"],["Risala","risala"],["Rochas","rochas"],["Shakira","shakira"],["Stella Dustin","stella\\\\s*(&|and)?\\\\s*dustin"],["Swiss Arabian","swiss arabian"],["Trussardi","trussardi"],["Valentino","valentino"],["Versace","versace|\\\\beros\\\\b"],["Xerjoff","xerjoff"],["Yves Saint Laurent","yves saint laurent|\\\\bysl\\\\b|\\\\blibre\\\\b(?! de)"],["Zimaya","zimaya"],["Adidas","adidas"],["Bvlgari","bvlgari|bulgari"],["Victoria's Secret","victoria.?s secret"],["Tommy Hilfiger","\\\\btommy\\\\b"],["Lacoste","lacoste"],["Natura","\\\\bnatura\\\\b"],["Hamidi","hamidi"],["Al Haramain","al haramain"],["Emper","\\\\bemper\\\\b"],["Fragluxe","fragluxe"],["Maison de Milan","maison de milan"],["Mawwal","mawwal"],["Nasma","nasma"],["Niche Avenue","niche avenue"],["Pascal Morabito","morabito"],["Puccini","puccini"],["Royal Opera","royal opera"],["Sahari","sahari"],["Tonino Lamborghini","lamborghini|tonino"],["UFC","\\\\bufc\\\\b"],["Vurv","vurv"],["Zirconia","zirconia"],["Giorgio Beverly Hills","giorgio beverly"],["I Candy","i ?candy"],["La Rive","la rive"],["Linn Young","linn young"],["Mauboussin","mauboussin"],["Princesse Marina de Bourbon","marina de bourbon"],["Bidaya","bidaya"],["Cyrus","cyrus"],["Amaran","amaran"],["Al Absar","al absar"],["Aurora Scents","aurora scents"],["Lonkoom","lonkoom"],["Semike","semike"],["Sospiro","sospiro"],["Vulcan","vulcan"],["Ariana Grande","ariana grande"],["Hollister","hollister"],["Abercrombie","abercrombie"],["Dolce & Gabbana","dolce|gabbana"],["Gucci","gucci"],["Chanel","chanel"],["Hermès","herm[eè]s"],["Montale","montale"],["Mancera","mancera"],["Ard Al Zaafaran","zaafaran"],["Khadlaj","khadlaj"],["Fragrance World","fragrance world"],["Benetton","benetton"],["Salvatore Ferragamo","ferragamo"],["Guess","\\\\bguess\\\\b"],["Nautica","nautica"],["Kevin","\\\\bkevin\\\\b"],["Hinode","hinode"],["Coach","\\\\bcoach\\\\b"],["Marc Jacobs","marc jacobs"],["Thierry Mugler","mugler"],["Cacharel","cacharel"],["Nina Ricci","nina ricci"],["Halloween","halloween"],["Hugo","\\\\bhugo\\\\b"]];
+  var MARCAS_RE = MARCAS.map(function (m) { return [m[0], new RegExp(m[1], "i")]; });
+  function abelGen(p) {
+    if (p._g !== undefined) return p._g; var t = sinTilde(p.n);
+    p._g = /\\bunisex|unissex\\b/.test(t) ? "U" : /\\b(hombre|hombres|masculin[oa]|men|man|homme|him|caballero|varon|uomo)\\b/.test(t) ? "M" : /\\b(mujer|mujeres|femenin[oa]|woman|women|femme|her|dama|donna|lady|girl)\\b/.test(t) ? "F" : "";
+    return p._g;
+  }
+  function abelMarca(p) {
+    if (p._mk !== undefined) return p._mk; var best = null, i;
+    for (i = 0; i < MARCAS_RE.length; i++) { var m = MARCAS_RE[i][1].exec(p.n); if (m && (!best || m.index < best[0])) best = [m.index, MARCAS_RE[i][0]]; }
+    if (best) return (p._mk = best[1]);
+    var w = /^(?:kit\\s+)?perfume\\s+([\\w'’-]+)(?:\\s+([\\w'’-]+))?/i.exec(p.n), k = "";
+    if (w) { k = w[1]; if (/^(al|dar|dal|chris|aurora|maison|le|la|el|de|beverly|paris)$/i.test(k) && w[2]) k += " " + w[2]; k = k.charAt(0).toUpperCase() + k.slice(1); }
+    return (p._mk = k);
+  }
+  function abelFiltra(p) {
+    if (fGen && abelGen(p) !== fGen) return false;
+    if (fMarca && abelMarca(p) !== fMarca) return false;
+    if (fPrecio) { var r = fPrecio.split("-"), a = +r[0], b = +r[1]; if (!(p.p > 0) || p.p < a || (b && p.p > b)) return false; }
+    return true;
+  }
+  function abelFiltrosInit() {
+    var cu = {}; PRODS.forEach(function (p) { var m = abelMarca(p); if (m) cu[m] = (cu[m] || 0) + 1; });
+    $("fMarca").innerHTML = '<option value="">Marca</option>' + Object.keys(cu).sort(function (a, b) { return a.localeCompare(b, "es"); }).map(function (m) { return '<option value="' + esc(m) + '">' + esc(m) + " (" + cu[m] + ")</option>"; }).join("");
+    [["fGen", function (v) { fGen = v; }], ["fMarca", function (v) { fMarca = v; }], ["fPrecio", function (v) { fPrecio = v; }]].forEach(function (x) {
+      $(x[0]).onchange = function () { x[1](this.value); this.classList.toggle("on", !!this.value); pag = 1; pintar(); window.scrollTo(0, 0); };
+    });
+  }
+  var DET = {};''')
+rep('    pintarChips(); pintar(); actualizarBarra();\n', '    abelFiltrosInit(); pintarChips(); pintar(); actualizarBarra();\n')
 # Revisión etapa 9 (06/11/2026): ABEL y la Tienda están en el mismo sitio y compartían lo guardado en el navegador (el orden elegido en la
 # Tienda dejaba vacío el selector de ABEL y lo del carrito salía marcado): ABEL usa sus propias claves.
 s = s.replace('cycT_', 'abelT_')

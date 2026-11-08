@@ -142,7 +142,7 @@ if (process.env.BILLING_PROBE) {
 const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
-  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush']);
+  'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
 let CONSULTA_SOLO_LEE = false;
 if (EN_CONSULTA) {
   const _cmd = String(process.env.BILLING_PROBE || '').trim();
@@ -2668,6 +2668,100 @@ function respuestaIAValida(t) {
   if (!t || t.length < 10 || t.length > 500) return false;
   if (/@|https?:|www\.|\.com\b|\d[\d .-]{5,}\d|whats|telef|instagram|facebook/i.test(t)) return false;
   return true;
+}
+// ── 💬 PREGUNTA REPETIDA (idea 16 del 02/11, él eligió 16a el 08/11: "tenés que estar muy seguro, sino no") ───────────────
+// Si en la MISMA publicación ya contestamos (a mano en ML o con `contesto`) una pregunta prácticamente igual, la nueva se contesta con
+// esa respuesta. "Prácticamente igual" (`pregRepetidaIgual`): sacados saludos, gracias y relleno (artículos y poco más: "con", "sin",
+// "por", "no", "o" cuentan), las dos tienen EXACTAMENTE las mismas palabras (en cualquier orden, singular = plural), los mismos números, y la
+// pregunta no es de algo que cambia con el tiempo (stock, envío, precio, cuotas, una compra ya hecha). Si dos preguntas viejas iguales
+// tienen respuestas distintas, no se contesta. La respuesta vieja tampoco puede ser de algo que cambia (stock, precio, "hoy").
+// Memoria: `mlapi/pregrepetida/<MLA>/<id de la pregunta vieja>` = {q, a, ts} (sin datos del comprador). En el registro, sólo ids.
+const PREG_REP_DIAS = 365;
+const PREG_REP_SALUDO = /^(hola+|holis|buen[oa]s?( (dia|tarde|noche)s?)?|que tal|como (estas|estan|va)|consulta|una consulta|pregunta|una pregunta|disculp(a|e|en|ame)|perdon|buenas buenas|ey|hey)\b\s*/;
+const PREG_REP_FIN = /\s*\b(muchas gracias|mil gracias|gracias+|saludos|slds|desde ya|espero (su |tu )?respuesta|quedo atent[oa]|aguardo respuesta|abrazo|bendiciones)\b.*$/;
+const PREG_REP_STOP = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al', 'a', 'en', 'y', 'e', 'u', 'que', 'es', 'se', 'lo', 'le', 'les', 'me', 'te', 'nos', 'su', 'sus', 'mi', 'mis', 'tu', 'tus', 'este', 'esta', 'esto', 'eso', 'esa', 'ese', 'ya', 'muy', 'bien', 'favor', 'porfa', 'xfa', 'quisiera', 'queria', 'quiero', 'saber', 'consultar', 'preguntar', 'decir', 'podrias', 'podrian', 'dirias', 'dijeras', 'tal', 'vez', 'osea']);
+const PREG_REP_NUM = { cero: 0, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12, veinte: 20, cien: 100, mil: 1000 };
+const PREG_REP_TEMA_NO = /\b(stock|disponib\w*|quedan?|hay|tenes|tienen|tendras|llega\w*|envi\w*|mandan|despach\w*|demora\w*|tarda\w*|hoy|manana|cuando|precio|cuesta|sale|vale|descuento|oferta|rebaja|barato|cuotas?|interes|transferencia|efectivo|mayor\w*|compre|compra\w*|pedido|orden|reclamo|devol\w*|cambio|lleg[oó]|roto|falla\w*|retir\w*|direccion|ubicad\w*|local)\b/;
+const PREG_REP_RESP_NO = /\b(stock|quedan?|disponib\w*|unidades|hoy|manana|esta semana|precio|\$|cuotas?|descuento|oferta|promo\w*|lleg\w*)\b/i;
+function pregRepetidaNorm(t) {
+  let x = String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[¿?¡!.,;:()"'*_/\\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  x = x.replace(/\bq\b/g, 'que').replace(/\b(xq|pq|porq)\b/g, 'porque').replace(/\bx\b/g, 'por').replace(/\bd\b/g, 'de').replace(/\btmb\b/g, 'tambien');
+  for (let i = 0; i < 4; i++) { const y = x.replace(PREG_REP_SALUDO, '').trim(); if (y === x) break; x = y; }
+  x = x.replace(PREG_REP_FIN, '').trim();
+  return x;
+}
+function pregRepetidaPartes(t) {
+  const x = pregRepetidaNorm(t);
+  const nums = (x.match(/\d+([.,]\d+)?/g) || []).map((n) => n.replace(',', '.'));
+  const pal = [];
+  for (const w of x.split(' ')) { if (!w || /\d/.test(w)) continue; if (w in PREG_REP_NUM) { nums.push(String(PREG_REP_NUM[w])); continue; } if (PREG_REP_STOP.has(w)) continue; pal.push(w.length > 4 ? w.replace(/(es|s)$/, '') : w); }
+  return { x, nums: [...new Set(nums)].sort(), pal: [...new Set(pal)] };
+}
+// true SÓLO si la nueva es prácticamente la misma pregunta que la vieja (ver arriba). Cualquier duda → false.
+function pregRepetidaIgual(nueva, vieja) {
+  const A = pregRepetidaPartes(nueva), B = pregRepetidaPartes(vieja);
+  if (!A.x || !B.x || A.x.length > 220 || B.x.length > 220) return false;
+  if ((String(nueva).match(/\?/g) || []).length > 1) return false;   // dos preguntas juntas
+  if (PREG_REP_TEMA_NO.test(A.x) || PREG_REP_TEMA_NO.test(B.x)) return false;
+  if (A.nums.join('|') !== B.nums.join('|')) return false;
+  if (A.pal.length < 2) return false;
+  const SB = new Set(B.pal), SA = new Set(A.pal);
+  if (A.pal.some((w) => !SB.has(w))) return false;   // la nueva trae algo que la vieja no tenía
+  if (B.pal.some((w) => !SA.has(w))) return false;   // y la vieja no tenía nada que la nueva no tenga: las mismas palabras
+  return true;
+}
+async function preguntaRepetida(db, accounts, labels, GO) {
+  const out = { miradas: 0, contestadas: 0, filas: [], no: {}, error: 0, cuentas: 0 };
+  const no = (m) => { out.no[m] = (out.no[m] || 0) + 1; };
+  let mem = {}; try { mem = (await db.get('mlapi/pregrepetida')) || {}; } catch { out.error++; return out; }
+  const memUpd = {};
+  for (const label of labels) {
+    const acc = accounts[label]; if (!acc?.refresh_token) continue;
+    let tok; try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tok = t.access_token; } catch { out.error++; continue; }
+    out.cuentas++;
+    let qs = []; try { qs = (await mlGet(`/questions/search?seller_id=${acc.seller_id}&status=UNANSWERED&api_version=4&limit=50&sort_fields=date_created&sort_types=ASC`, tok))?.questions || []; } catch { out.error++; continue; }
+    const porItem = {}; for (const q of qs) if (q && q.item_id) (porItem[q.item_id] = porItem[q.item_id] || []).push(q);
+    for (const [mla, nuevas] of Object.entries(porItem)) {
+      // Lo contestado de esa publicación: lo de ML (a mano o con `contesto`) + la memoria.
+      const viejas = {}; for (const [qid, v] of Object.entries(mem[mla] || {})) if (v && v.q && v.a) viejas[qid] = v;
+      try {
+        for (let off = 0; off < 100; off += 50) {
+          const r = await mlGet(`/questions/search?item=${mla}&status=ANSWERED&api_version=4&limit=50&offset=${off}&sort_fields=date_created&sort_types=DESC`, tok);
+          const lst = r?.questions || [];
+          for (const v of lst) { const a = v && v.answer; if (!v || !v.text || !a || !a.text || String(a.status || 'ACTIVE').toUpperCase() !== 'ACTIVE') continue;
+            const ts = Date.parse(a.date_created || v.date_created || '') || 0; const k = String(v.id);
+            const reg = { q: String(v.text).slice(0, 400), a: String(a.text).slice(0, 600), ts };
+            if (!viejas[k] || viejas[k].a !== reg.a || viejas[k].q !== reg.q) { viejas[k] = reg; memUpd[mla + '/' + k] = reg; } }
+          if (lst.length < 50) break;
+        }
+      } catch { /* sin lo de ML queda sólo la memoria */ }
+      for (const q of nuevas) {
+        out.miradas++;
+        const hay = Object.entries(viejas).filter(([k, v]) => k !== String(q.id) && Date.now() - (Number(v.ts) || 0) <= PREG_REP_DIAS * 864e5 && pregRepetidaIgual(q.text, v.q));
+        if (!hay.length) { no('ninguna contestada prácticamente igual'); continue; }
+        const resps = [...new Set(hay.map(([, v]) => String(v.a).trim()))];
+        if (resps.length > 1) { no('dos respuestas viejas distintas (duda)'); continue; }
+        const txt = resps[0];
+        if (!respuestaIAValida(txt)) { no('la respuesta vieja no pasa el freno'); continue; }
+        if (PREG_REP_RESP_NO.test(txt)) { no('la respuesta vieja habla de algo que cambia (stock, precio, envío)'); continue; }
+        const de = hay.sort((x, y) => (Number(y[1].ts) || 0) - (Number(x[1].ts) || 0))[0][0];
+        if (!GO) { out.filas.push(`   🔁 q${q.id} · ${mla} · ${label} · contestaría con la respuesta de q${de}`); out.contestadas++; continue; }
+        try {
+          const r = await fetch(ML_API + '/answers', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: Number(q.id), text: txt }), signal: AbortSignal.timeout(25000) });
+          if (!r.ok) { out.error++; out.filas.push(`   ✗ q${q.id} · ${mla} · ML no la aceptó (${r.status})`); continue; }
+          const rel = await mlGet('/questions/' + q.id + '?api_version=4', tok).catch(() => null);
+          if (rel && String(rel.status).toUpperCase() === 'ANSWERED') {
+            out.contestadas++; out.filas.push(`   ✓ q${q.id} · ${mla} · ${label} · contestada sola (con la respuesta de q${de}, releída de ML)`);
+            try { await db.set('cyc/respuestasauto/' + q.id, { cat: 'repetida', de: 'q' + de, cuenta: label, mla, ts: Date.now() }); } catch { /* */ }
+            memUpd[mla + '/' + q.id] = { q: String(q.text).slice(0, 400), a: txt.slice(0, 600), ts: Date.now() };
+          } else { out.error++; out.filas.push(`   ⚠️ q${q.id} · la mandé pero al releer dice ${rel ? rel.status : 'nada'}`); }
+        } catch { out.error++; out.filas.push(`   ✗ q${q.id} · no pude mandarla`); }
+      }
+    }
+  }
+  if (Object.keys(memUpd).length && !CONSULTA_SOLO_LEE) { try { await db.patch('mlapi/pregrepetida', memUpd); } catch { out.error++; } }
+  out.guardadas = Object.keys(memUpd).length;
+  return out;
 }
 
 async function responderPreguntas(db, accounts, labels, GO, verTexto) {
@@ -33074,6 +33168,11 @@ async function main() {
         outAbel.push({ id: String(id).toUpperCase(), n: n.slice(0, 140), f: fotos, p: lindo(base * ABEL_EFECTIVO), pt: lindo(base * ABEL_TARJETA), ...(cod ? { k: String(cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (el botón de WhatsApp lo manda)
         abelCuenta[como] = (abelCuenta[como] || 0) + 1;
       };
+      // 🎄 REGALOS DE NAVIDAD (idea 5 del 02/11, él eligió 5a el 08/11): lo caro del proveedor que NO publicamos en ML (no es una ficha nuestra) y
+      // pasa de TIENDA_NAV_MIN, siempre debajo del máximo del monotributo (MONO_PRECIO_UNIT_MAX) y con las mismas reglas de la tienda (sin
+      // pesados, precio = costo × recargo × 1,25, foto y nombre del proveedor si no hay catálogo exacto). Va marcado `nav: 1`: la página lo
+      // muestra en su fila "🎄 Regalos de Navidad" (pedidos hasta el 12/12, se pagan completos al pedir). Apple ("consultar precio") no.
+      const TIENDA_NAV_MIN = 550000;
       for (const { x, n, p, om } of finales) {
         { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); abelFueraKeys.add(x.key); continue; } }
         const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
@@ -33095,7 +33194,7 @@ async function main() {
         // sumando el 23% de envío + el 30% de ganancia que diga EN EFECTIVO y con tarjeta al 67%… con el 30% ganamos seguro a los
         // competidores"): sin comparar con ML. Efectivo = precio de Nissei × dólar × 1,23 × 1,30 · tarjeta = × 1,23 × 1,67.
         if (abelEsPerf(n, x.nn) && x.usd > 0 && abelFresco(x.ts)) { abelMeter(ent.id, n, x.fotos, x.usd, x.cod, 'tienda'); abelKeys.add(x.key); }
-        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: !om && x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });   // 11a: con otra medida, sin los detalles de ML (son del otro tamaño)
+        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), ...(!cp && !x.ficha && p > TIENDA_NAV_MIN && p <= MONO_PRECIO_UNIT_MAX ? { nav: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: !om && x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });   // 11a: con otra medida, sin los detalles de ML (son del otro tamaño)
       }
       // 🌸 ABEL CON TODOS LOS PERFUMES DE NISSEI (6a del 08/11/2026, él eligió: que estén TODOS los perfumes con stock en Nissei mirados hace
       // ABEL_DIAS días o menos, sin comparar con ML). Hasta acá entraba sólo lo que pasaba los frenos de la TIENDA (catálogo de ML seguro y
@@ -33187,6 +33286,7 @@ async function main() {
       const json = JSON.stringify({ act: diaAR, wa: wa.length >= 8 ? wa : '', productos: out });
       const porRubro = {}; for (const x of out) porRubro[x.c] = (porRubro[x.c] || 0) + 1;
       console.log(`=== TIENDA CYC · ${out.length} productos · ${GOt ? 'SE ESCRIBE' : 'prueba (con ;go se escribe el archivo)'} ===`);
+      console.log(`🎄 Regalos de Navidad (más de $550.000 y hasta el máximo del monotributo, sin publicar en ML): ${out.filter((q) => q.nav).length}`);
       console.log('por rubro: ' + Object.entries(porRubro).map(([r, k]) => `${r} ${k}`).join(' · '));
       if (GOt) {
         // Con ;go, sólo cantidades: los motivos juntos y en palabras neutras (los de "no es el mismo" ya vienen sin el detalle).
@@ -50762,12 +50862,38 @@ async function main() {
           const r = await fetch(ML_API + '/answers', { method: 'POST', headers: { Authorization: 'Bearer ' + tokC[cta], 'Content-Type': 'application/json' }, body: JSON.stringify({ question_id: Number(qid), text: txt }), signal: AbortSignal.timeout(25000) });
           if (!r.ok) { console.log(`   ✗ ML no la aceptó (${r.status}): ${(await r.text().catch(() => '')).slice(0, 160)}`); mal++; continue; }
           const rel = await mlGet('/questions/' + qid + '?api_version=4', tokC[cta]).catch(() => null);
-          if (rel && String(rel.status).toUpperCase() === 'ANSWERED') { ok++; console.log('   ✓ contestada (releída de ML)'); try { await db.set('cyc/respuestasauto/' + qid, { cat: 'claude', cuenta: cta, mla: q.item_id, ts: Date.now() }); } catch { /* */ } }
+          if (rel && String(rel.status).toUpperCase() === 'ANSWERED') { ok++; console.log('   ✓ contestada (releída de ML)'); try { await db.set('cyc/respuestasauto/' + qid, { cat: 'claude', cuenta: cta, mla: q.item_id, ts: Date.now() }); } catch { /* */ }
+            // 💬 Pregunta repetida (08/11/2026): la respuesta queda guardada para contestar sola la misma pregunta en esta publicación.
+            try { if (q.item_id) await db.set('mlapi/pregrepetida/' + q.item_id + '/' + qid, { q: String(q.text || '').slice(0, 400), a: txt.slice(0, 600), ts: Date.now() }); } catch { /* */ } }
           else { mal++; console.log(`   ⚠️ la mandé pero al releer dice ${rel ? rel.status : 'nada'}`); }
         } catch (eA) { mal++; console.log('   ✗ no pude mandarla: ' + eA.message); }
       }
       console.log(`\n${GOc ? `Contestadas: ${ok}` : 'Prueba terminada'}${mal ? ` · con problema: ${mal}` : ''}`);
       if (mal) process.exitCode = 1;
+      return;
+    }
+
+    // BILLING_PROBE=pregrepetida[:go] → 💬 PREGUNTA REPETIDA (idea 16, él eligió 16a el 08/11/2026). Sin :go es la PRUEBA: lista qué
+    // preguntas sin responder contestaría con una respuesta ya dada en la misma publicación (sólo ids, nunca el texto). Con :go las
+    // contesta y relee de ML (va por ml-sync). `pregrepetida:on` / `pregrepetida:off` prende o apaga que lo haga solo la vuelta de cada hora
+    // (`cyc/mlconfig/preguntaRepetida`, arranca APAGADO). Ver `preguntaRepetida`.
+    if (/^pregrepetida(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const argP = String(process.env.BILLING_PROBE).split(':').slice(1).join(':').trim().toLowerCase();
+      if (argP === 'on' || argP === 'off') {
+        const antes = (await db.get('cyc/mlconfig/preguntaRepetida')) === true;
+        await db.set('cyc/mlconfig/preguntaRepetida', argP === 'on');
+        const rl = (await db.get('cyc/mlconfig/preguntaRepetida')) === true;
+        console.log(`💬 Pregunta repetida en la vuelta de cada hora: ${antes ? 'prendido' : 'apagado'} → ${rl ? 'prendido' : 'apagado'} ${rl === (argP === 'on') ? '✓' : '✗ NO quedó'}`); return;
+      }
+      const GOp = argP === 'go';
+      if (argP && !GOp) { console.log('❌ Usá pregrepetida (prueba), pregrepetida:go (contesta), pregrepetida:on / pregrepetida:off (la vuelta de cada hora).'); process.exitCode = 1; return; }
+      const sw = (await db.get('cyc/mlconfig/preguntaRepetida').catch(() => null)) === true;
+      console.log(`=== 💬 PREGUNTA REPETIDA · ${GOp ? 'SE CONTESTAN' : 'PRUEBA (sin :go no se manda nada)'} · vuelta de cada hora: ${sw ? 'prendida' : 'apagada'} ===`);
+      const rr = await preguntaRepetida(db, accounts, labels, GOp);
+      for (const l of rr.filas) console.log(l);
+      console.log(`\n${rr.miradas} sin responder miradas en ${rr.cuentas} cuenta(s) · ${GOp ? 'contestadas solas' : 'contestaría'}: ${rr.contestadas} · respuestas guardadas en la memoria: ${rr.guardadas || 0}`);
+      console.log('no: ' + (Object.entries(rr.no).map(([k, v]) => `${k} ${v}`).join(' · ') || 'ninguna'));
+      if (rr.error) { console.log(`⚠️ ${rr.error} problema(s) con ML o la base`); process.exitCode = 1; }
       return;
     }
 
@@ -61220,6 +61346,16 @@ async function main() {
         console.log(`💬 Preguntas: contesté ${rq.contestadas}${cats ? ' (' + cats + ')' : ''}${rq.sinIA ? ' · IA apagada (falta la clave ANTHROPIC_API_KEY)' : ` · IA: ${rq.iaLlamadas} miradas, ${rq.ia} contestadas, ${rq.iaNo} con duda`}${dud ? ' · no contesté por duda: ' + dud : ''}${rq.error ? ' · ' + rq.error + ' error(es)' : ''}`);
       } else console.log('💬 Contestar preguntas: apagado (cyc/mlconfig/responder).');
     } catch (e) { console.log('No pude contestar preguntas: ' + e.message); }
+    // 💬 PREGUNTA REPETIDA (idea 16, 08/11/2026): sólo con el interruptor `cyc/mlconfig/preguntaRepetida` = true (arranca apagado;
+    // `pregrepetida:on`). Contesta con la respuesta ya dada a la misma pregunta en la misma publicación. En el registro, sólo ids.
+    try {
+      let onP = false; try { onP = (await db.get('cyc/mlconfig/preguntaRepetida')) === true; } catch { onP = false; }
+      if (onP) {
+        const rr = await preguntaRepetida(db, accounts, labels, !DRY);
+        for (const l of rr.filas) console.log(l);
+        console.log(`💬 Pregunta repetida: ${rr.contestadas} contestada(s) sola(s) de ${rr.miradas} sin responder${rr.error ? ` · ⚠️ ${rr.error} problema(s)` : ''}`);
+      }
+    } catch (e) { console.log('No pude mirar las preguntas repetidas: ' + e.message); }
   }
 
   // EL DÓLAR, UNA VEZ POR DÍA. Va en la vuelta horaria (no en las de 2 minutos) y además con un

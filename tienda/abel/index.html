@@ -179,6 +179,17 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .ver-info .nom { -webkit-line-clamp: unset; min-height: 0; height: auto; display: block; font-size: 15px; }
 .toast { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; white-space: nowrap; }
 .toast.si { opacity: 1; }
+/* 🎄 REGALOS DE NAVIDAD (idea 5, él eligió 5a el 08/11/2026): fila arriba hasta el 12/12, con su aviso. */
+.navidad h2 { margin-bottom: 2px; }
+.nav-txt { margin: 0 0 8px; font-size: 13px; color: var(--ink2); }
+.nav-txt b { color: var(--ink); }
+.nav-ver { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; margin: 2px 0 6px; }
+.nav-nota { font-size: 13px; background: var(--acc-soft); border-radius: 10px; padding: 8px 10px; }
+/* 📲 MANDÁSELO A ALGUIEN (idea 19, 08/11/2026): cada producto se comparte por WhatsApp con su link. */
+.foto .compartir { position: absolute; left: 6px; bottom: 6px; z-index: 2; width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); display: grid; place-items: center; padding: 0; box-shadow: var(--sombra); }
+.foto .compartir svg { width: 16px; height: 16px; }
+.btn-comp { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 42px; border-radius: 10px; border: 1px solid #25d366; background: transparent; color: var(--ink); font-weight: 650; margin-top: 4px; }
+.btn-comp svg { width: 18px; height: 18px; color: #25d366; flex: none; }
 footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0 24px; }
 .det { margin-top: 14px; font-size: 14px; }
 .det:empty { display: none; }
@@ -202,6 +213,14 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 #verPrecio .pe-abel { font-size: 26px; } #verPrecio .pt-abel { font-size: 14px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pe-abel { color: #4ade80; } }
 :root[data-theme="dark"] .pe-abel { color: #4ade80; }
+.compartir, #verComp { display: none !important; }
+.abel-nav { margin: 10px 0 0; font-size: 14px; text-align: center; }
+/* 🔎 FILTROS (idea 19, 08/11/2026): para quién, marca y precio. */
+.filtros-abel { display: grid; grid-template-columns: 0.95fr 1.25fr 1fr; gap: 6px; padding-bottom: 10px; }
+.filtros-abel select { min-width: 0; width: 100%; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 13px; padding: 0 4px; cursor: pointer; }
+.filtros-abel select:focus { border-color: var(--acc); outline: none; }
+.filtros-abel select.on { border-color: var(--acc); background: var(--acc-soft); }
+@media (min-width: 900px) { .filtros-abel { grid-template-columns: 200px 260px 220px auto; } }
 </style>
 </head>
 <body>
@@ -217,10 +236,17 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
       <select class="rubroSel" id="rubroSel" aria-label="Rubro"></select>
     </div>
     <div class="chips" id="chips" role="toolbar" aria-label="Rubros"></div>
+    <div class="filtros-abel" id="filtrosAbel">
+      <select id="fGen" aria-label="Para quién"><option value="">Para quién</option><option value="F">Ella</option><option value="M">Él</option><option value="U">Unisex</option></select>
+      <select id="fMarca" aria-label="Marca"><option value="">Marca</option></select>
+      <select id="fPrecio" aria-label="Precio en efectivo"><option value="">Precio</option><option value="0-100000">Hasta 100 mil</option><option value="100000-200000">100 a 200 mil</option><option value="200000-300000">200 a 300 mil</option><option value="300000-0">Más de 300 mil</option></select>
+    </div>
   </div>
 </header>
 <main class="wrap">
+  <div class="aviso abel-nav" id="abelNav" hidden>🎄 <b>Pedí hasta el 6/12</b> y lo retirás para Navidad.</div>
   <p class="sub-abel">Perfumes importados por encargo · llega en 7 días hábiles · consultá en tu perfumería ABEL</p>
+  <section class="ofertas navidad" id="navidad" hidden><h2>🎄 Regalos de Navidad</h2><p class="nav-txt">Pedilos <b>hasta el 12/12</b> y llegan para Navidad. Estos se pagan <b>completos al hacer el pedido</b>.</p><div class="ofila" id="navfila"></div><button class="nav-ver" type="button" data-rubro="__nav" id="navVer">Ver todos</button></section>
   <section class="ofertas" id="ofertas" hidden><h2>🔥 Más barato que en Mercado Libre</h2><div class="ofila" id="ofila"></div></section>
   <div class="fila-orden"><div class="cuenta" id="cuenta">Cargando…</div>
     <select class="ordenSel" id="ordenSel" aria-label="Ordenar"><option value="">Destacados</option><option value="menor">Menor precio</option><option value="mayor">Mayor precio</option><option value="az">Nombre (A-Z)</option></select></div>
@@ -260,7 +286,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     <div class="dlg-cab"><h2 id="tVer">Producto</h2><button class="cerrar" type="button" data-cerrar aria-label="Cerrar">✕</button></div>
     <div class="dlg-cuerpo" style="padding:0">
       <div class="gal" id="gal"><div class="galeria" id="galeria" tabindex="0" aria-label="Fotos"></div><button class="flecha izq" type="button" data-foto="-1" aria-label="Foto anterior">‹</button><button class="flecha der" type="button" data-foto="1" aria-label="Foto siguiente">›</button><span class="num" id="galNum"></span></div>
-      <div class="ver-info"><div class="nom" id="verNom"></div><div class="precio" id="verPrecio"></div><div id="verCant"></div><div id="verWa"></div><div class="det" id="verDet"></div></div>
+      <div class="ver-info"><div class="nom" id="verNom"></div><div class="precio" id="verPrecio"></div><div class="nav-nota" id="verNav" hidden>🎄 Regalo de Navidad: pedilo hasta el 12/12. Se paga completo al hacer el pedido.</div><div id="verCant"></div><div id="verWa"></div><div id="verComp"></div><div class="det" id="verDet"></div></div>
     </div>
   </div>
 </dialog>
@@ -295,6 +321,23 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   var ACT = "", VIEJO = false;
   var grilla = $("grilla");
 
+  // 🎄 REGALOS DE NAVIDAD (idea 5, él eligió 5a el 08/11/2026): lo caro del proveedor que no publicamos en ML (más de $550.000 y nunca arriba del
+  // máximo por unidad del monotributo, $716.841). El robot lo marca `nav: 1`; si el archivo todavía no trae la marca, se usa el precio.
+  // Se muestra hasta el 12/12 (pedidos hasta esa fecha; se cobran completos antes de pedirlos).
+  var NAV_ON = false, NAV_HASTA = "2026-12-12", NAV_MIN = 550000, NAV_MAX = 716841, HAY_NAV = false;
+  function hoyISO() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  if (hoyISO() <= "2026-12-06") $("abelNav").hidden = false;
+  function navVigente() { return NAV_ON && hoyISO() <= NAV_HASTA; }
+  function esNav(p) { return navVigente() && !p.cp && (HAY_NAV ? !!p.nav : p.p > NAV_MIN && p.p <= NAV_MAX); }
+  // 📲 MANDÁSELO A ALGUIEN (idea 19, 08/11/2026): abre WhatsApp con el nombre, el precio y el link del producto (el link de siempre + #p=código).
+  var LINK = "https://tiendacyc.github.io/?v=3";
+  var ICONO_COMP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
+  function compartir(id) {
+    var p = POR_ID[id]; if (!p) return;
+    var t = "Mirá esto en CYC: " + p.n + (p.cp || VIEJO || !(p.p > 0) ? "" : " · " + pesos(p.p)) + "\n" + LINK + "#p=" + p.id;
+    window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank", "noopener");
+  }
+
   function toast(t) { var el = $("toast"); (document.querySelector("dialog[open]") || document.body).appendChild(el); el.textContent = t; el.classList.add("si"); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove("si"); }, 1800); }
 
   function cantHtml(id) {
@@ -308,14 +351,15 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function tarjeta(p) {
     var mas = p.f.length > 1 ? '<span class="mas">' + p.f.length + ' fotos</span>' : "";
     return '<article class="card' + (pedido[p.id] ? " en" : "") + '" data-id="' + p.id + '">' +
-      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + (p.ml && p.p > 0 && !VIEJO ? '<span class="ahorro">' + Math.round((1 - p.p / p.ml) * 100) + '% menos que en ML</span>' : '') + '</div>' +
+      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><button class="compartir" type="button" data-comp="' + p.id + '" aria-label="Mandáselo a alguien" title="Mandáselo a alguien">' + ICONO_COMP + '</button><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + (p.ml && p.p > 0 && !VIEJO ? '<span class="ahorro">' + Math.round((1 - p.p / p.ml) * 100) + '% menos que en ML</span>' : '') + '</div>' +
       '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + abelPrecio(p) + '</div><div class="cuotas">' + (p.cp || VIEJO ? "Te lo pasamos por WhatsApp" : "3 cuotas sin interés de " + pesos(Math.ceil(p.p / 3))) + '</div><div class="slot">' + cantHtml(p.id) + '</div>' + waBtn(p) + '</div></article>';
   }
 
   function filtrados() {
     var q = sinTilde($("q").value).split(/\s+/).filter(Boolean).map(function (w) { return w.length > 4 ? w.replace(/(es|s)$/, "") : w; });
     return PRODS.filter(function (p) {
-      if (rubro && p.c !== rubro) return false;
+      if (!abelFiltra(p)) return false;
+      if (rubro === "__nav") { if (!esNav(p)) return false; } else if (rubro && p.c !== rubro) return false;
       var t = p._t || (p._t = sinTilde(p.n + " " + p.c));
       return q.every(function (w) { return t.indexOf(w) >= 0; });
     });
@@ -375,7 +419,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var pp = porPagina(); if (pp !== POR_PAG) { pag = Math.floor((pag - 1) * POR_PAG / pp) + 1; POR_PAG = pp; }   // al girar el teléfono sigue en lo que miraba
     var ls = ordenado(filtrados()), pags = Math.max(1, Math.ceil(ls.length / POR_PAG));
     if (pag > pags) pag = pags;
-    $("cuenta").textContent = ls.length + (ls.length === 1 ? " producto" : " productos") + (rubro ? " en " + rubro : "") + (pags > 1 ? " · pág. " + pag + " de " + pags : "");
+    $("cuenta").textContent = ls.length + (ls.length === 1 ? " producto" : " productos") + (rubro === "__nav" ? " de Navidad" : rubro ? " en " + rubro : "") + (pags > 1 ? " · pág. " + pag + " de " + pags : "");
     var vis = ls.slice((pag - 1) * POR_PAG, pag * POR_PAG);
     // 🔥 MÁS BARATO QUE EN ML (31/10/2026, él eligió 1a): fila arriba, sólo en "Todo", sin búsqueda y en la página 1. De los 30 que más
     // ahorran, 12 que cambian cada día.
@@ -387,6 +431,14 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
         .sort(function (a, b) { return a.p / a.ml - b.p / b.ml; });
     }
     $("ofertas").hidden = !of.length; $("ofila").innerHTML = of.map(tarjeta).join("");
+    // 🎄 la fila de Navidad: en "Todo", sin búsqueda y en la página 1; 12 que cambian cada día, primero lo de marca.
+    var nv = [];
+    if (!rubro && !$("q").value.trim() && pag === 1 && navVigente()) {
+      var dn = new Date().toISOString().slice(0, 10), todosN = PRODS.filter(esNav);
+      nv = todosN.slice().sort(function (a, b) { return (b.m ? 1 : 0) - (a.m ? 1 : 0) || semilla(dn + "n" + a.id) - semilla(dn + "n" + b.id); }).slice(0, 12);
+      $("navVer").textContent = "Ver los " + todosN.length + " regalos de Navidad";
+    }
+    $("navidad").hidden = !nv.length; $("navfila").innerHTML = nv.map(tarjeta).join("");
     grilla.innerHTML = ls.length ? vis.map(tarjeta).join("") : '<div class="vacio" style="grid-column:1/-1">No encontré nada con eso.</div>';
     var nums = [], i;
     for (i = 1; i <= pags; i++) if (i === 1 || i === pags || Math.abs(i - pag) <= 1) nums.push(i); else if (nums[nums.length - 1] !== "…") nums.push("…");
@@ -401,8 +453,10 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     PRODS.forEach(function (p) { if (p.c && rubros.indexOf(p.c) < 0) rubros.push(p.c); });
     rubros.sort(function (a, b) { return (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"); });   // "Otros" al final
     if (rubros.length < 2) { $("chips").style.display = "none"; $("rubroSel").style.visibility = "hidden"; return; }
-    $("rubroSel").innerHTML = ['<option value="">Todos los rubros</option>'].concat(rubros.map(function (r) { return '<option value="' + esc(r) + '"' + (rubro === r ? " selected" : "") + ">" + esc(r) + "</option>"; })).join("");
+    var hayN = PRODS.some(esNav);
+    $("rubroSel").innerHTML = ['<option value="">Todos los rubros</option>'].concat(hayN ? ['<option value="__nav"' + (rubro === "__nav" ? " selected" : "") + '>🎄 Regalos de Navidad</option>'] : []).concat(rubros.map(function (r) { return '<option value="' + esc(r) + '"' + (rubro === r ? " selected" : "") + ">" + esc(r) + "</option>"; })).join("");
     $("chips").innerHTML = ['<button class="chip" type="button" data-rubro="" aria-pressed="' + (!rubro) + '">Todo</button>']
+      .concat(hayN ? ['<button class="chip" type="button" data-rubro="__nav" aria-pressed="' + (rubro === "__nav") + '">🎄 Navidad</button>'] : [])
       .concat(rubros.map(function (r) { return '<button class="chip" type="button" data-rubro="' + esc(r) + '" aria-pressed="' + (rubro === r) + '">' + esc(r) + "</button>"; })).join("");
   }
 
@@ -430,7 +484,10 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     r.push(VIEJO ? "Total: a confirmar" : (total(ls) > 0 ? "Total: " + pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + lo que hay que consultar" : "") : "Total: a consultar"));
     // 01/11/2026 (él eligió 4a: "que paguen una parte antes y el resto después… lo importante es vender"): seña de la mitad y el resto al recibir.
     if (!VIEJO && total(ls) > 0) r.push("O en 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)));
-    if (!VIEJO && total(ls) > 0) r.push("Seña al pedir: " + pesos(Math.ceil(total(ls) / 2)) + " · al recibir: " + pesos(total(ls) - Math.ceil(total(ls) / 2)));
+    // 🎄 Lo de Navidad se paga completo al pedir (idea 5, 08/11/2026); el resto, la mitad.
+    var tn = ls.reduce(function (s, l) { return s + (esNav(l.p) ? l.p.p * l.q : 0); }, 0), resto = total(ls) - tn, sena = tn + Math.ceil(resto / 2);
+    if (!VIEJO && total(ls) > 0) r.push("Seña al pedir: " + pesos(sena) + " · al recibir: " + pesos(total(ls) - sena));
+    if (tn > 0) r.push("🎄 Los regalos de Navidad se pagan completos al pedir (pedidos hasta el 12/12)");
     r.push("Llegaría aprox. el " + llegaAprox() + " (7 días hábiles)");
     return r.join("\n");
   }
@@ -463,6 +520,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     // Lo elegido que hoy no vino en la lista queda guardado (por si vuelve) pero no se muestra ni se suma; y si la lista es vieja, se avisa.
     var faltan = Object.keys(pedido).filter(function (id) { return !POR_ID[id]; }).length, notas = [];
     if (VIEJO && ls.length) notas.push("Los precios son del " + fechaCorta(ACT) + ": al contestarte te confirmamos el de hoy.");
+    if (ls.some(function (l) { return esNav(l.p); })) notas.push("🎄 Los regalos de Navidad se pagan completos al hacer el pedido (hasta el 12/12).");
     if (faltan) notas.push(faltan === 1 ? "1 producto que habías elegido hoy no está en la lista." : faltan + " productos que habías elegido hoy no están en la lista.");
     $("pedNota").hidden = !notas.length; $("pedNota").textContent = notas.join(" ");
   }
@@ -489,6 +547,37 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     if (p.cp || VIEJO || !(p.p > 0)) return "Consultar precio";   // 08/11/2026: lista de más de 3 días = consultar, como en la Tienda
     return '<span class="pe-abel">' + esc(pesos(p.p)) + '<small> en efectivo</small></span>' + (p.pt > 0 ? '<span class="pt-abel">' + esc(pesos(p.pt)) + ' con tarjeta, QR, transferencia u otro medio</span>' : '');
   }
+  // 🔎 FILTROS DE ABEL (idea 19, él eligió 19a el 08/11/2026): Ella / Él / Unisex (lo que dice el nombre: "mujer", "hombre", "unisex"…; sin
+  // eso sale sólo sin filtro), la marca (la lista de abajo o la palabra que sigue a "Perfume") y el precio en efectivo.
+  var fGen = "", fMarca = "", fPrecio = "";
+  var MARCAS = [["Afnan","afnan"],["Ahmed Al Maghribi","ahmed al maghribi"],["Al Wataniah","(al )?wataniah"],["Animale","animale"],["Arabiyat","arabiyat"],["Armaf","armaf"],["Armani","giorgio armani|armani|acqua di gio"],["Assala","assala"],["Azzaro","azzaro"],["Antonio Banderas","antonio banderas|banderas"],["Beverly Hills Polo Club","beverly hills polo club"],["Boucheron","boucheron"],["Britney Spears","britney spears"],["Burberry","burberry"],["Calvin Klein","calvin klein|\\bck (one|be|in2u|everyone)"],["Carolina Herrera","carolina herrera|\\b212\\b|good girl|bad boy"],["Chloé","chlo[eé]"],["Creed","\\bcreed\\b"],["Cristiano Ronaldo","cristiano ronaldo|\\bcr7\\b"],["Dar El Ward","dar el ward"],["Davidoff","davidoff|cool water"],["Dior","\\bdior\\b|j.?adore|sauvage"],["Elizabeth Arden","elizabeth arden"],["Elizabeth Taylor","elizabeth taylor"],["Ferrari","ferrari"],["French Avenue","fren?ch?e? avenue"],["Gabriela Sabatini","sabatini"],["Georges Mezotti","mezotti"],["Givenchy","givenchy"],["Grandeur","grandeur"],["Hugo Boss","hugo boss|\\bboss bottled"],["Issey Miyake","issey miyake"],["Jacques Bogart","bogart"],["Jean Paul Gaultier","jean paul gaultier|\\bjpg\\b|le male"],["Jimmy Choo","jimmy choo"],["Joli Joli","joli joli"],["Juicy Couture","juicy couture"],["Karl Lagerfeld","lagerfeld"],["Kenzo","\\bkenzo\\b"],["Lancôme","lanc[oô]me"],["Lattafa","lattafa"],["Maison Alhambra","maison alhambra"],["Maison Asrar","maison asrar"],["Mercedes-Benz","mercedes"],["Michael Kors","michael kors"],["Mirada","\\bmirada\\b"],["Montblanc","mont ?blanc"],["Moschino","moschino"],["Nabeel","nabeel"],["Nishane","nishane"],["Orientica","orientica"],["Paris Corner","paris corner"],["Police","\\bpolice\\b"],["Prada","\\bprada\\b"],["Rabanne","paco rabanne|rabanne|one million|1 million|invictus|phantom"],["Ralph Lauren","ralph lauren|polo (red|blue|black)"],["Rasasi","rasasi"],["Rayhaan","rayhaan"],["Risala","risala"],["Rochas","rochas"],["Shakira","shakira"],["Stella Dustin","stella\\s*(&|and)?\\s*dustin"],["Swiss Arabian","swiss arabian"],["Trussardi","trussardi"],["Valentino","valentino"],["Versace","versace|\\beros\\b"],["Xerjoff","xerjoff"],["Yves Saint Laurent","yves saint laurent|\\bysl\\b|\\blibre\\b(?! de)"],["Zimaya","zimaya"],["Adidas","adidas"],["Bvlgari","bvlgari|bulgari"],["Victoria's Secret","victoria.?s secret"],["Tommy Hilfiger","\\btommy\\b"],["Lacoste","lacoste"],["Natura","\\bnatura\\b"],["Hamidi","hamidi"],["Al Haramain","al haramain"],["Emper","\\bemper\\b"],["Fragluxe","fragluxe"],["Maison de Milan","maison de milan"],["Mawwal","mawwal"],["Nasma","nasma"],["Niche Avenue","niche avenue"],["Pascal Morabito","morabito"],["Puccini","puccini"],["Royal Opera","royal opera"],["Sahari","sahari"],["Tonino Lamborghini","lamborghini|tonino"],["UFC","\\bufc\\b"],["Vurv","vurv"],["Zirconia","zirconia"],["Giorgio Beverly Hills","giorgio beverly"],["I Candy","i ?candy"],["La Rive","la rive"],["Linn Young","linn young"],["Mauboussin","mauboussin"],["Princesse Marina de Bourbon","marina de bourbon"],["Bidaya","bidaya"],["Cyrus","cyrus"],["Amaran","amaran"],["Al Absar","al absar"],["Aurora Scents","aurora scents"],["Lonkoom","lonkoom"],["Semike","semike"],["Sospiro","sospiro"],["Vulcan","vulcan"],["Ariana Grande","ariana grande"],["Hollister","hollister"],["Abercrombie","abercrombie"],["Dolce & Gabbana","dolce|gabbana"],["Gucci","gucci"],["Chanel","chanel"],["Hermès","herm[eè]s"],["Montale","montale"],["Mancera","mancera"],["Ard Al Zaafaran","zaafaran"],["Khadlaj","khadlaj"],["Fragrance World","fragrance world"],["Benetton","benetton"],["Salvatore Ferragamo","ferragamo"],["Guess","\\bguess\\b"],["Nautica","nautica"],["Kevin","\\bkevin\\b"],["Hinode","hinode"],["Coach","\\bcoach\\b"],["Marc Jacobs","marc jacobs"],["Thierry Mugler","mugler"],["Cacharel","cacharel"],["Nina Ricci","nina ricci"],["Halloween","halloween"],["Hugo","\\bhugo\\b"]];
+  var MARCAS_RE = MARCAS.map(function (m) { return [m[0], new RegExp(m[1], "i")]; });
+  function abelGen(p) {
+    if (p._g !== undefined) return p._g; var t = sinTilde(p.n);
+    p._g = /\bunisex|unissex\b/.test(t) ? "U" : /\b(hombre|hombres|masculin[oa]|men|man|homme|him|caballero|varon|uomo)\b/.test(t) ? "M" : /\b(mujer|mujeres|femenin[oa]|woman|women|femme|her|dama|donna|lady|girl)\b/.test(t) ? "F" : "";
+    return p._g;
+  }
+  function abelMarca(p) {
+    if (p._mk !== undefined) return p._mk; var best = null, i;
+    for (i = 0; i < MARCAS_RE.length; i++) { var m = MARCAS_RE[i][1].exec(p.n); if (m && (!best || m.index < best[0])) best = [m.index, MARCAS_RE[i][0]]; }
+    if (best) return (p._mk = best[1]);
+    var w = /^(?:kit\s+)?perfume\s+([\w'’-]+)(?:\s+([\w'’-]+))?/i.exec(p.n), k = "";
+    if (w) { k = w[1]; if (/^(al|dar|dal|chris|aurora|maison|le|la|el|de|beverly|paris)$/i.test(k) && w[2]) k += " " + w[2]; k = k.charAt(0).toUpperCase() + k.slice(1); }
+    return (p._mk = k);
+  }
+  function abelFiltra(p) {
+    if (fGen && abelGen(p) !== fGen) return false;
+    if (fMarca && abelMarca(p) !== fMarca) return false;
+    if (fPrecio) { var r = fPrecio.split("-"), a = +r[0], b = +r[1]; if (!(p.p > 0) || p.p < a || (b && p.p > b)) return false; }
+    return true;
+  }
+  function abelFiltrosInit() {
+    var cu = {}; PRODS.forEach(function (p) { var m = abelMarca(p); if (m) cu[m] = (cu[m] || 0) + 1; });
+    $("fMarca").innerHTML = '<option value="">Marca</option>' + Object.keys(cu).sort(function (a, b) { return a.localeCompare(b, "es"); }).map(function (m) { return '<option value="' + esc(m) + '">' + esc(m) + " (" + cu[m] + ")</option>"; }).join("");
+    [["fGen", function (v) { fGen = v; }], ["fMarca", function (v) { fMarca = v; }], ["fPrecio", function (v) { fPrecio = v; }]].forEach(function (x) {
+      $(x[0]).onchange = function () { x[1](this.value); this.classList.toggle("on", !!this.value); pag = 1; pintar(); window.scrollTo(0, 0); };
+    });
+  }
   var DET = {};
   function balde(id) { var h = 0, t = String(id || ""); for (var i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) >>> 0; return h % 64; }
   function pintarDetalles(id) {
@@ -512,6 +601,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     $("galeria").scrollLeft = 0; $("gal").classList.toggle("varias", p.f.length > 1); $("galNum").textContent = p.f.length > 1 ? "1/" + p.f.length : ""; $("tVer").textContent = p.n.length > 40 ? p.n.slice(0, 38) + "…" : p.n;
     $("verNom").textContent = p.n; $("verPrecio").innerHTML = abelPrecio(p);
     $("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id); $("verWa").innerHTML = waBtn(p);
+    $("verNav").hidden = !esNav(p);
+    $("verComp").innerHTML = '<button class="btn-comp" type="button" data-comp="' + p.id + '">' + ICONO_COMP + 'Mandáselo a alguien</button>';
     pintarDetalles(id);
     abrir($("dlgVer"));
   }
@@ -521,6 +612,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
 
   document.addEventListener("click", function (e) {
     var b = e.target.closest("button,[data-ver]"); if (!b) { if (e.target.tagName === "DIALOG") cerrar(e.target); return; }
+    if (b.dataset.comp) { e.stopPropagation(); return compartir(b.dataset.comp); }
     if (b.dataset.mas) return cambiar(b.dataset.mas, 1);
     if (b.dataset.menos) return cambiar(b.dataset.menos, -1);
     if (b.dataset.ver) return ver(b.dataset.ver);
@@ -535,7 +627,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   $("rubroSel").addEventListener("change", function () { rubro = this.value; pag = 1; pintarChips(); pintar(); window.scrollTo(0, 0); });
   // teclado: Enter/Espacio en la foto abre el visor; flechas pasan las fotos
   document.addEventListener("keydown", function (e) {
-    var f = e.target.closest && e.target.closest("[data-ver]");
+    var f = e.target.closest && e.target.tagName !== "BUTTON" && e.target.closest("[data-ver]");   // Enter en 📲 no abre el visor
     if (f && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); ver(f.dataset.ver); return; }
     if ($("dlgVer").open && (e.key === "ArrowRight" || e.key === "ArrowLeft")) { var g = $("galeria"); g.scrollBy({ left: (e.key === "ArrowRight" ? 1 : -1) * g.clientWidth, behavior: "smooth" }); }
   });
@@ -569,6 +661,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   fetch("productos.json", { cache: "no-cache" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) {
     PRODS = (d && d.productos || []).filter(function (p) { return p && p.id && p.n && (p.p > 0 || p.cp) && p.f && p.f.length; });
     PRODS.forEach(function (p) { POR_ID[p.id] = p; });
+    HAY_NAV = PRODS.some(function (p) { return p.nav; });
     WA = String(d && d.wa || "").replace(/\D/g, "");
     if (WA.length >= 8) { $("wa").hidden = false; $("botones").classList.add("dos"); }
     // Lo del pedido guardado que hoy no vino NO se borra (30/10/2026): queda oculto y vuelve si mañana el producto está.
@@ -577,7 +670,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
       $("pie").textContent = "ABEL · precios actualizados el " + f[2] + "/" + f[1] + "/" + f[0] + (VIEJO ? " (a confirmar)" : ""); } }
     // Catálogo en "actualizando" (08/11/2026): el robot no tiene precios al día y deja la lista vacía a propósito.
     if (d && d.actualizando && !PRODS.length) { $("cuenta").textContent = ""; grilla.innerHTML = '<div class="vacio" style="grid-column:1/-1">Estamos actualizando los precios. Volvé en un rato.</div>'; return; }
-    pintarChips(); pintar(); actualizarBarra();
+    abelFiltrosInit(); pintarChips(); pintar(); actualizarBarra();
     // Link directo a un producto (31/10/2026, para los estados de WhatsApp): tiendacyc.github.io/#p=<código> abre ese producto.
     var mH = /[#&]p=([0-9A-Za-z]{4,8})/.exec(location.hash || ""); if (mH && POR_ID[mH[1].toUpperCase()]) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} ver(mH[1].toUpperCase()); }
   }).catch(function () {
