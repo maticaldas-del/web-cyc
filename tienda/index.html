@@ -273,7 +273,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   };
 
   var PRODS = [], POR_ID = {}, WA = "", rubro = "", pedido = pedidoValido(leer("cycT_pedido", {}));
-  // La fecha de la lista (`act`): con más de 3 días, el pedido copiado dice "consultar precio" en vez de los precios (30/10/2026).
+  // La fecha de la lista (`act`): con más de 3 días, el pedido copiado dice "consultar precio" en vez de los precios (30/10/2026); desde el
+  // 08/11/2026 también las tarjetas, el producto abierto y los totales, y no se muestra la fila "más barato que en ML".
   var ACT = "", VIEJO = false;
   var grilla = $("grilla");
 
@@ -290,8 +291,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function tarjeta(p) {
     var mas = p.f.length > 1 ? '<span class="mas">' + p.f.length + ' fotos</span>' : "";
     return '<article class="card' + (pedido[p.id] ? " en" : "") + '" data-id="' + p.id + '">' +
-      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + (p.ml && p.p > 0 ? '<span class="ahorro">' + Math.round((1 - p.p / p.ml) * 100) + '% menos que en ML</span>' : '') + '</div>' +
-      '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + (p.cp ? "Consultar precio" : pesos(p.p)) + '</div><div class="cuotas">' + (p.cp ? "Te lo pasamos por WhatsApp" : "3 cuotas sin interés de " + pesos(Math.ceil(p.p / 3))) + '</div><div class="slot">' + cantHtml(p.id) + '</div></div></article>';
+      '<div class="foto" role="button" tabindex="0" data-ver="' + p.id + '" aria-label="Ver fotos"><img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="' + esc(foto(p.f[0], "-O.jpg")) + '"' + respaldo(p.f[0]) + ' alt="">' + mas + (p.ml && p.p > 0 && !VIEJO ? '<span class="ahorro">' + Math.round((1 - p.p / p.ml) * 100) + '% menos que en ML</span>' : '') + '</div>' +
+      '<div class="info"><div class="nom">' + esc(p.n) + '</div><div class="precio">' + (p.cp || VIEJO ? "Consultar precio" : pesos(p.p)) + '</div><div class="cuotas">' + (p.cp || VIEJO ? "Te lo pasamos por WhatsApp" : "3 cuotas sin interés de " + pesos(Math.ceil(p.p / 3))) + '</div><div class="slot">' + cantHtml(p.id) + '</div></div></article>';
   }
 
   function filtrados() {
@@ -362,7 +363,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     // 🔥 MÁS BARATO QUE EN ML (31/10/2026, él eligió 1a): fila arriba, sólo en "Todo", sin búsqueda y en la página 1. De los 30 que más
     // ahorran, 12 que cambian cada día.
     var of = [];
-    if (!rubro && !$("q").value.trim() && pag === 1) {
+    if (!rubro && !$("q").value.trim() && pag === 1 && !VIEJO) {
       var dia = new Date().toISOString().slice(0, 10);
       of = PRODS.filter(function (p) { return p.ml && p.p > 0; }).sort(function (a, b) { return a.p / a.ml - b.p / b.ml; }).slice(0, 30)
         .sort(function (a, b) { return semilla(dia + a.id) - semilla(dia + b.id); }).slice(0, 12)
@@ -411,6 +412,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     r.push("");
     r.push(VIEJO ? "Total: a confirmar" : (total(ls) > 0 ? "Total: " + pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + lo que hay que consultar" : "") : "Total: a consultar"));
     // 01/11/2026 (él eligió 4a: "que paguen una parte antes y el resto después… lo importante es vender"): seña de la mitad y el resto al recibir.
+    if (!VIEJO && total(ls) > 0) r.push("O en 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)));
     if (!VIEJO && total(ls) > 0) r.push("Seña al pedir: " + pesos(Math.ceil(total(ls) / 2)) + " · al recibir: " + pesos(total(ls) - Math.ceil(total(ls) / 2)));
     r.push("Llegaría aprox. el " + llegaAprox() + " (7 días hábiles)");
     return r.join("\n");
@@ -427,18 +429,18 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   function actualizarBarra() {
     var ls = lineasPedido(), n = ls.reduce(function (s, l) { return s + l.q; }, 0);
     $("barra").classList.toggle("si", n > 0);
-    $("barraTot").textContent = total(ls) > 0 || !ls.some(function (l) { return l.p.cp; }) ? pesos(total(ls)) : "a consultar";
+    $("barraTot").textContent = VIEJO && ls.length ? "a confirmar" : total(ls) > 0 || !ls.some(function (l) { return l.p.cp; }) ? pesos(total(ls)) : "a consultar";
     $("barraN").textContent = n + (n === 1 ? " producto" : " productos") + " · tocá para cambiar";
   }
 
   function pintarPedido() {
     var ls = lineasPedido();
     $("lineas").innerHTML = ls.length ? ls.map(function (l) {
-      return '<div class="lin"><img src="' + esc(l.p.f[0]) + '" alt="" referrerpolicy="no-referrer"><div class="t">' + esc(l.p.n) + "<small>" + (l.p.cp ? "consultar precio" : pesos(l.p.p) + (l.q > 1 ? " c/u · " + pesos(l.p.p * l.q) : "")) + "</small></div>" +
+      return '<div class="lin"><img src="' + esc(l.p.f[0]) + '" alt="" referrerpolicy="no-referrer"><div class="t">' + esc(l.p.n) + "<small>" + (l.p.cp || VIEJO ? "consultar precio" : pesos(l.p.p) + (l.q > 1 ? " c/u · " + pesos(l.p.p * l.q) : "")) + "</small></div>" +
         '<div class="c"><button type="button" data-menos="' + l.p.id + '" aria-label="' + (l.q === 1 ? 'Sacar del pedido' : 'Uno menos') + '">' + (l.q === 1 ? '🗑' : '−') + '</button><span>' + l.q + '</span><button type="button" data-mas="' + l.p.id + '" aria-label="Uno más">+</button></div></div>';
     }).join("") : '<div class="vacio">Todavía no elegiste nada.</div>';
-    $("pedTot").textContent = total(ls) > 0 ? pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + a consultar" : "") : (ls.some(function (l) { return l.p.cp; }) ? "a consultar" : pesos(0));
-    $("pedCuo").textContent = total(ls) > 0 ? "o 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)) : "";
+    $("pedTot").textContent = VIEJO && ls.length ? "a confirmar" : total(ls) > 0 ? pesos(total(ls)) + (ls.some(function (l) { return l.p.cp; }) ? " + a consultar" : "") : (ls.some(function (l) { return l.p.cp; }) ? "a consultar" : pesos(0));
+    $("pedCuo").textContent = total(ls) > 0 && !VIEJO ? "o 3 cuotas sin interés de " + pesos(Math.ceil(total(ls) / 3)) : "";
     $("pedCod").textContent = ls.length ? codigo(ls) : "—";
     $("copiar").disabled = !ls.length; $("wa").disabled = !ls.length;
     // Lo elegido que hoy no vino en la lista queda guardado (por si vuelve) pero no se muestra ni se suma; y si la lista es vieja, se avisa.
@@ -482,7 +484,7 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     var p = POR_ID[id]; if (!p) return;
     $("galeria").innerHTML = p.f.map(function (u, i) { return '<img src="' + esc(foto(u, "-F.jpg")) + '"' + respaldo(u) + ' alt="Foto ' + (i + 1) + ' de ' + p.f.length + '" referrerpolicy="no-referrer">'; }).join("");
     $("galeria").scrollLeft = 0; $("gal").classList.toggle("varias", p.f.length > 1); $("galNum").textContent = p.f.length > 1 ? "1/" + p.f.length : ""; $("tVer").textContent = p.n.length > 40 ? p.n.slice(0, 38) + "…" : p.n;
-    $("verNom").textContent = p.n; $("verPrecio").innerHTML = p.cp ? "Consultar precio" : esc(pesos(p.p)) + (p.ml ? '<span class="enml">En Mercado Libre <s>' + esc(pesos(p.ml)) + "</s></span>" : "");
+    $("verNom").textContent = p.n; $("verPrecio").innerHTML = p.cp || VIEJO ? "Consultar precio" : esc(pesos(p.p)) + (p.ml ? '<span class="enml">En Mercado Libre <s>' + esc(pesos(p.ml)) + "</s></span>" : "");
     $("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);
     pintarDetalles(id);
     abrir($("dlgVer"));
@@ -547,6 +549,8 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
     if (d && d.act) { var f = String(d.act).split("-"); if (f.length === 3) {
       ACT = String(d.act); var h = new Date(), dias = Math.round((new Date(h.getFullYear(), h.getMonth(), h.getDate()) - new Date(+f[0], +f[1] - 1, +f[2])) / 864e5); VIEJO = dias > 3;
       $("pie").textContent = "CYC · precios actualizados el " + f[2] + "/" + f[1] + "/" + f[0] + (VIEJO ? " (a confirmar)" : ""); } }
+    // Catálogo en "actualizando" (08/11/2026): el robot no tiene precios al día y deja la lista vacía a propósito.
+    if (d && d.actualizando && !PRODS.length) { $("cuenta").textContent = ""; grilla.innerHTML = '<div class="vacio" style="grid-column:1/-1">Estamos actualizando los precios. Volvé en un rato.</div>'; return; }
     pintarChips(); pintar(); actualizarBarra();
     // Link directo a un producto (31/10/2026, para los estados de WhatsApp): tiendacyc.github.io/#p=<código> abre ese producto.
     var mH = /[#&]p=([0-9A-Za-z]{4,8})/.exec(location.hash || ""); if (mH && POR_ID[mH[1].toUpperCase()]) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} ver(mH[1].toUpperCase()); }

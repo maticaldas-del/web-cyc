@@ -42,7 +42,17 @@ jobs:
           BILLING_PROBE: tienda;go
         run: node ml-sync/sync.mjs | tee "$RUNNER_TEMP/tienda.log"; exit ${PIPESTATUS[0]}
         shell: bash
+      # 🏬 LA TIENDA DIRECTO A SU REPO (08/11/2026): igual que en ml-daily (ml-sync/tienda_subir.sh; sin el secreto TIENDA_TOKEN no hace nada).
+      - name: Subir la tienda directo
+        id: tiendadirecto
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          TIENDA_TOKEN: ${{ secrets.TIENDA_TOKEN }}
+          FORZAR: ${{ inputs.forzar }}
+        run: bash ml-sync/tienda_subir.sh "$RUNNER_TEMP/tienda/productos.json" "$([ "$FORZAR" = true ] && echo forzar)"
       - name: Subir la tienda a la web
+        if: ${{ !(steps.tiendadirecto.outputs.directo == 'ok' && steps.tiendadirecto.outputs.traer == 'no') }}
         timeout-minutes: 30
         env:
           ARCHIVO: ${{ runner.temp }}/tienda/productos.json
