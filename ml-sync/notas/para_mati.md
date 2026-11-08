@@ -13,7 +13,7 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 - Auriculares F9 (Matías): 6 reclamos de 9 vendidas, "no es lo que dice la publicación / otro modelo" → no se repone (juicio 0). Hay que mirar la publicación (fotos y texto) contra lo que llega.
 - Batidor (Luciana, 2 publicaciones): 10 reclamos de 38, casi todos "llegó bien" (se arrepienten) → ya estaba en 0 por la caja perdida; sigue así.
 - P47 rojo/azul y P47 luz: 0 reclamos (el puntaje bajo no es por reclamos) · Philips TAT2206: 1 de 7 · Galaxy Buds: 2 de 9 · Espejo: 1 de 34 → se reponen normal.
-### 08/11 · Las 20 siguientes (pasadas en el chat a la noche) — esperando respuesta
+### ✅ 08/11 · Las 20 siguientes — contestó: 1a 2a 3a 4a 5b 6a 7b 8a 9a 10a 11a 12b 13 (2 días en todos) 14a 15a 16b 17a 18a 19a 20b — APLICANDO
 (1-6 Plata · 7-10 Local/ABEL · 11-15 Tienda · 16-18 Mercadería · 19-20 Full; textos completos en el chat del 08/11)
 ### Las que hago yo sin preguntar (medio seguro, 08/11): Plata 7 8 9 13 14 15 · Local 2 3 5 6 8 12 14 16 · Tienda 3 4 5 8 10 12 13 14 15 · Mercadería 1 5 7 10 13 — con la (a) sugerida de cada una.
 
@@ -409,7 +409,7 @@ usan el ritmo AL PRECIO DE HOY (v27.45). Ver REVISION etapa 1.
 - Revisado todo por foto o nombre, lo dudoso = no (regla del 04/11). Dan 35%+ y son el mismo producto: **AnD 2** (destornillador 6 en 1 con linterna 132%, adaptador enchufe universal 95%) · **AVL 112 0** · **Pirineo 10** (protector térmico Iyosei, shampoo Issue Saloon neutro 900 y 1000 ml, lima Mundial, pala Samantha, shampoo Fidelité 5 L, crema Otowil Hola Rulos, desodorante Algabo Foot, cepillo Dompel Sissi, desodorante Kevingston Rugby) + el **Aer en pack x6** (pedido a Tito el 04/11).
 - Esperan confirmación del chat de Chrome: 0 (todo quedó ✅ o ❌).
 
-### Revisión de las Reglas del cerebro del 04/11 (18 decisiones, para cuando digas "resolvamos")
+### Revisión de las Reglas del cerebro del 04/11 (18 decisiones) — PASADAS OTRA VEZ EL 08/11 a la noche como 1-18 (con Ideas 5 6 16 18 19 = 19-23 y Codera/cajas Ayelen/mensajes/Muserose = 24-27)
 **Cómo se compara un precio contra otro**
 1. **Una sola vara para decidir entre dos precios:** hoy la vuelta usa la facturación ×1,5 (y la ganancia al día 10), la sobra la facturación ×1,3, la prueba del mes la ganancia por día y F14 "menos de la mitad". Ej. de sobra: a $10.990 dejaría +10% de ganancia por día y igual se frena porque no factura 1,3×. (a) sugerida: todas con la ganancia por día neta · (b) dejarlas como están.
 2. **El 🎯 objetivo (el precio que más ganancia da) contra F14 (lo que vendió a su precio no se baja):** (a) sugerida: el objetivo vale para buscar arriba (pruebas, vueltas) y F14 queda para las bajas · (b) también para abajo: un escalón si con 95% deja menos plata por día.
