@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### ✅ Respuestas de la noche del 08/11 (1b 2b 3b 4a 5a 6a 7 8a 9b 10a + fotos en Inventario)
+- **6a (etapa 9):** ABEL con todos los perfumes de Nissei (ver la entrada de la etapa 9). Chequear el renglón 🌸 de la próxima `tienda`.
+- **8a (etapa 3):** `reclamosprod:<MLA,…>[:días]` lista los reclamos por publicación con su motivo contra lo vendido (sólo lee, sin datos del comprador). Lo que tenga reclamos por el producto no se repone (juicio en `juicios.txt`).
+- **10a (etapa 3):** PROMPT_RUTINA_LOCAL parte 1 punto 4: el chat de Chrome mira en Ayelen si ML deja comprar lugar en Full y su precio (renglón `lugar:` del buzón). No compra nada.
+- 1b 2b 9b: sin cambios (cada mes por su cuenta, la Mercadería de octubre se cobra, los lanzamientos de Adriana se dejan).
 ### 🏷️ `gtin:<MLA>=<código>[:go]` (08/11/2026, él pasó el código del Metatarso par)
 - Cambia el código de barras de una publicación (chequea el dígito verificador, relee de ML). Para crear la gemela de envío del Metatarso par (MLA2029235796), que ML frenaba por un GTIN de otra marca. Chequear: releído ✓ y `gemelaenviocrea` la crea.
 - **Deshecho el mismo día (él: el código fue un error):** la gemela MLA2273308767 quedó pausada y frenada (`noAutoActivar`). ML no deja volver a poner el código viejo 6933698521134 ("ya usado en otra marca"), así que el Metatarso par queda con 7794626012525.

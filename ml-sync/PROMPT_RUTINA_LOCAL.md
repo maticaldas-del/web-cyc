@@ -21,6 +21,10 @@ Mercado Libre no le da este número al robot de CYC: sólo se ve en la pantalla.
    se cierran después de esa hora se descuentan solas del cupo, las de antes ya están adentro del número que viste.
 3. Repetilo en las otras 3 cuentas.
 Si no encontrás el número en una cuenta, escribí "no lo encontré" y dónde buscaste. No adivines.
+4. (10a del 08/11, SÓLO EN AYELEN, hasta que Matías diga basta) En esa misma pantalla de Full buscá si ML deja COMPRAR o AMPLIAR
+   lugar (puede decir "ampliar capacidad", "más espacio", "comprar cupo", "aumentar límite"). Si existe, anotá: cuántas unidades más,
+   cuánto cuesta (por unidad, por mes o en total) y por cuánto tiempo. NO compres ni aceptes nada: sólo mirá y anotá. Si no aparece
+   en ningún lado, escribí "no hay opción de comprar lugar" y dónde buscaste.
 
 == PARTE 2 · EL DINERO DISPONIBLE DE MERCADO PAGO ==
 1. Entrá a mercadopago.com.ar con la cuenta de Adriana (cada cuenta de ML tiene su Mercado Pago).
@@ -68,6 +72,7 @@ pedido: <N> iguales · <N> cambiaron · <N> sin stock · total de hoy US$ <núme
 ml: <cuenta> · MLA<número> · <título corto> · <qué pide ML>   (una por renglón; si no hay ninguna: "ml: nada")
 <código> · <nombre corto> · US$ <antes> → US$ <hoy> · <igual|SUBIÓ|BAJÓ|AGOTADO|NO LO ENCONTRÉ>   (sólo los que NO están iguales)
 visto: <código>=<US$ de hoy|AGOTADO|NO LO ENCONTRÉ>   (uno por renglón: los del cuadro rojo "⛔ no se pueden pedir" y los de "⏳ Para volver a mirar")
+lugar: Ayelen=<unidades más> por <precio> <por mes|total|por unidad> durante <tiempo>   (o "lugar: no hay opción"; NO compres nada)
 dudas: <lo que no pudiste ver y por qué>
 
 (Si una cuenta no separa grandes, poné sólo un número. Si no viste algo, escribí "?" en ese lugar.)
