@@ -14450,6 +14450,25 @@ const _CER_POR={venta:'para que vuelva a dejar la ganancia mínima',margen:'para
   remate:'para que se venda: estaba parada',escalera:'bajándolo de a poco porque no se vende',correccion:'porque antes lo había subido de más',
   volver:'porque el cambio anterior hizo perder plata',prueba:'para probar si se vende igual un poco más caro',grupo:'para igualarlo con sus hermanas',
   cerebro:'por decisión del cerebro',claude:'lo decidió Claude mirando todo lo que pasó'};
+// ▶️ "Siguiente ›" del 🧠 de Pedidos (idea 19, 08/11/2026): los 🧠 de Pedidos que se ven en pantalla, en orden, y sólo los que tienen
+// un motivo escrito ("Hola Tito!"). Uno por producto/color/pedido.
+let _cerPedActual='';
+function _cerPedClave(b){const x=(b&&b.dataset)||{};return [x.p||'',x.v||'',x.ped||''].join('|');}
+function _cerPedVecinos(){
+  const vistos=new Set(),out=[];
+  for(const b of document.querySelectorAll('button[data-ped]')){
+    if(!b.offsetParent||b.closest('#cerebro-modal'))continue;
+    const k=_cerPedClave(b);if(vistos.has(k))continue;
+    const n=_cerNotaCtx('ped',b.dataset.p,'',b.dataset.v||'');if(!n||!n.s)continue;
+    vistos.add(k);out.push(b);}
+  return out;
+}
+function _cerPedIr(dir){
+  const ls=_cerPedVecinos(),i=ls.findIndex(b=>_cerPedClave(b)===_cerPedActual),nx=ls[i+dir];if(!nx)return;
+  try{nx.scrollIntoView({block:'center'});}catch(e){}
+  const m=document.getElementById('cerebro-modal');if(m)m.scrollTop=0;
+  cerebroAbrir(nx);
+}
 async function cerebroAbrir(el,ev){
   if(ev&&ev.stopPropagation)ev.stopPropagation();
   const d=el.dataset||{};const p=prodById(d.p);if(!p)return;
@@ -14484,7 +14503,12 @@ async function cerebroAbrir(el,ev){
   let mem={};try{const sn=await db.ref('cyc/cerebro').once('value');mem=sn.val()||{};}catch(e){mem=null;}
   const L=state.mllinks||{},AP=state.autoprecio||{};
   const par=t=>`<p style="margin:8px 0 0">${t}</p>`;
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><b style="font-size:.95rem">${tit}</b><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></div>`;
+  // ▶️ TITO LEE LOS "HOLA TITO!" DE CORRIDO (idea 19, él eligió 19a el 08/11/2026): abierto desde Pedidos, "Siguiente ›" pasa al próximo
+  // pedido de la pantalla que tiene motivo escrito (y "‹" al anterior), sin cerrar la ventana.
+  let navPed='';
+  if(d.ped){const ls=_cerPedVecinos(),ky=_cerPedClave(el),i=ls.findIndex(b=>_cerPedClave(b)===ky);_cerPedActual=ky;
+    if(ls.length>1&&i>=0)navPed=`<span style="color:var(--muted);font-size:.75rem;white-space:nowrap">${i+1} de ${ls.length}</span><button class="btn" ${i>0?'':'disabled '}onclick="_cerPedIr(-1)" aria-label="Pedido anterior">‹</button><button class="btn" ${i<ls.length-1?'':'disabled '}onclick="_cerPedIr(1)" style="font-weight:700">Siguiente ›</button>`;}
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><b style="font-size:.95rem;min-width:0;flex:1">${tit}</b><span style="display:flex;gap:6px;align-items:center;flex:none">${navPed}<button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></span></div>`;
   // SÓLO LO QUE ESCRIBIÓ CLAUDE (08/10/2026, él: *"antes de ver uno escrito por el robot automático prefiero que no
   // aparezca nada, solo lo tuyo"*): en modo Claude no sale ningún texto armado solo (ni "la revisé el…", ni el %
   // de hoy, ni la cuenta del pedido): sólo mis notas, con su fecha. Si no escribí nada, lo dice y nada más.
