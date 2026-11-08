@@ -43,7 +43,7 @@
   la lista entera, numerada. Lo urgente que cuesta plata sigue por `pregunto:URGENTE: …` (CYC Avisos = sólo urgente y recordatorios).
 - **Horario para resolver** (24/10, él: *"12:30 entro a trabajar y puedo hacer de cyc tranquilo"*): **10:00** sólo lo que, si no lo resuelve antes de las 12:30, pierde plata o es súper importante (`trig_01XcMnTFRBwdBa5kgH1b2hko`, sale 9:48); **12:30** todo lo demás junto, con íconos y numerado, para resolver de 12:30 a 16:00 (`trig_011SxsjVECrbY9b8ZkkhdBUT`, sale 12:19). Las dos en este chat, todos los días.
 - **Lo chico y reversible lo elegís vos** y se lo contás (24/09: *"elegí vos qué hacer, excepto que sea una decisión muy
-  importante, grande y difícil"*). Se pregunta lo grande: precios que mueven plata fuerte, borrar datos, reglas del negocio,
+  importante, grande y difícil"*). **Si estoy medio seguro, lo hago yo** (08/11, él: *"no tengo problema con que preguntes… pero si estás medio seguro hacela vos"*): lo que una regla ya resuelve o lo que creo que conviene, lo aplico y se lo cuento; a él van sólo las dudas de verdad, con toda la info. Se pregunta lo grande: precios que mueven plata fuerte, borrar datos, reglas del negocio,
   algo irreversible, y lo que no tenga respuesta clara.
 - **Él no marca nada a mano** (26/09): "Ya lo pedí", "Llegó", caja recibida, oficina, disponible, vínculos, etc. me lo dice y lo
   hago yo por comando. **Las publicaciones en ML las crea él**; yo creo la ficha en CYC y la vinculo (elijo la cuenta).

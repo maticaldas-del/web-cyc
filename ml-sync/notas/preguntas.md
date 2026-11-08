@@ -86,3 +86,5 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 67. Antes de decirle "no hay nada más" o de resumirle una regla, ¿la leí del código/CLAUDE.md de HOY y corrí la misma cuenta que usa la carga (`pedir`/la web)? Un resumen de memoria le dio una regla vieja (04/11, "2 vendedores o más").
 
 - **(08/11) Antes de pasarle una decisión: ¿alguna regla del CEREBRO ya la resuelve?** Si sí, la aplico yo (con `decido`/`entrarpromo` y sus frenos) y se la cuento; a él sólo van reglas nuevas, plata fuera de precios, lo que sólo puede hacer él y los casos raros con duda real (y digo cuál es la duda).
+
+- **(08/11) ¿Estoy medio seguro? Entonces lo hago yo** (él: *"si estás medio seguro hacela vos"*) y se lo cuento; preguntar sólo lo que de verdad no sé, con toda la info.
