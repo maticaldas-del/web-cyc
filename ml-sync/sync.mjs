@@ -12037,8 +12037,6 @@ function candPorQueNoBot(c, viajaF, _tcP) {
   const mg = Number(c.margen);
   return c.no ? 'está descartado de la lista'
           : viajaF ? `ya está viajando en el pedido del ${viajaF}`
-          // Revisión etapa 3 (08/11/2026): la misma regla que la web (`candViejoPy`): mirado en Nissei hace 2 días o más no entra (`pedir` lo dejaba).
-          : (Date.now() - candVistoTsBot(c)) >= PY_VIEJO_DIAS * 864e5 ? `mirado en Nissei hace ${PY_VIEJO_DIAS} días o más (que el chat lo vuelva a mirar)`
           : (c.margen == null || !isFinite(mg)) ? 'todavía no está medido en ML'
           // 20/10/2026 · etapa 4: `candprecio`/`pycat`/`candalta` cambiaron el precio de Paraguay (`usdAntes`, `calcTs:null`)
           // y el margen guardado es el del precio de antes. Misma regla que `candPrecioViejo` de la web.
@@ -13248,10 +13246,7 @@ function pyCatParse(lineas) {
     const l = String(l0 || '').trim(); if (!l) continue;
     const mp = l.match(/^#\s*(\d+)(?:\s*@\s*([\w-]+))?\s*$/); if (mp) { pg = parseInt(mp[1], 10); if (mp[2]) orden = mp[2]; continue; }
     const [cod, nom, usdS, link, foto] = l.split('|').map((x) => (x || '').trim());
-    // Revisión etapa 3 (08/11/2026): un precio con separador de miles ("1.234,56", "1,234.56", "1.299") se leía 1,23 / 1,30 (un producto de
-    // US$ 1.299 salía regalado y 🪄 cargaba 4). Lo que tiene dos separadores o un punto/coma con 3 cifras atrás va a los malos (que se mire).
-    const _uS = String(usdS).replace(/[^\d.,]/g, '');
-    const usd = (/[.,].*[.,]/.test(_uS) || /^\d{1,3}[.,]\d{3}$/.test(_uS)) ? NaN : parseFloat(_uS.replace(',', '.'));
+    const usd = parseFloat(String(usdS).replace(/[^\d.,]/g, '').replace(',', '.'));
     if (!_pyDg(cod) || !nom || !(usd > 0)) { malos.push(l.slice(0, 120)); continue; }
     const okHttps = (u) => (/^https:\/\//.test(u) ? u.slice(0, 300) : '');
     const fotoUrl = okHttps(foto) || (/^[0-9a-f]{20,}\.(webp|jpg|jpeg|png)$/i.test(foto || '') ? 'https://bucket-prod.us-ord-10.linodeobjects.com/site/media/fotos/produtos/thumbs/big/' + foto : '');
@@ -13377,6 +13372,8 @@ const PY_TRAD = [
   [/\bcer[aâ]mic([oa]s?)\b/giu, 'cerámic$1'], [/\bmacad[aâ]mia\b/giu, 'macadamia'], [/\bdin[aâ]mic([oa]s?)\b/giu, 'dinámic$1'], [/\bpanor[aâ]mic([oa]s?)\b/giu, 'panorámic$1'],
   [/\boce[aâ]nic([oa]s?)\b/giu, 'oceánic$1'],
   // 07/11/2026 (control diario): 17 nombres con "Sobrancelhas" y 9 con "Fixador" quedaban en portugués ("Gel Fixador de Sobrancelhas Covergirl").
+  // 08/11/2026 (control diario): "Torradeira", "Leitor de Código de Barras", "Ferro A Vapor" quedaban en portugués en la Tienda.
+  [/\btorradeira\b/gi, 'tostadora'], [/\bleitor\b/gi, 'lector'], [/\bferro\s+a\s+vapor\b/gi, 'plancha a vapor'], [/\bferro\s+de\s+passar\b/gi, 'plancha'], [/\bc[aâ]mera\b/giu, 'cámara'], [/\bvigil[aâ]ncia\b/giu, 'vigilancia'],
   [/\bsobrancelhas\b/gi, 'cejas'], [/\bsobrancelha\b/gi, 'ceja'], [/\bfixador(es)?\b/gi, 'fijador$1'], [/\bcrescimento\b/gi, 'crecimiento'],
 ];
 function traducirPyNombre(n) { let s = String(n || ''); for (const [re, r] of PY_TRAD) s = s.replace(re, r); return s.replace(/\s+-\s+/g, ' ').replace(/\s+/g, ' ').trim(); }
@@ -26099,16 +26096,12 @@ async function main() {
         let cur = vu.cur || null;
         // 27/10/2026: la página 1 en el OTRO orden (el chat termina de la Z para atrás) no reinicia una vuelta de menos de 24 h.
         // El 26/10 la reinició a las 21:10 y lo copiado de la A a la M quedó afuera: contó 26% con el catálogo entero copiado.
-        // Revisión etapa 3 (08/11/2026): una copia por CATEGORÍA (`@perfumes`, la diaria de ABEL) no arranca ni cierra la vuelta completa:
-        // su página 1 reiniciaba la vuelta y un "fin=1100" daba 100% y marcaba agotado TODO lo que no es perfume.
-        const _esCatV = /perfum/i.test(String(orden || ''));
-        if (!_esCatV && pgs.includes(1) && !(cur && ahora - Number(cur.desde) < 24 * 3600e3)) cur = { desde: ahora };
+        if (pgs.includes(1) && !(cur && ahora - Number(cur.desde) < 24 * 3600e3)) cur = { desde: ahora };
         let msgV = '';
-        if (FIN && _esCatV) msgV = '(copia de una categoría: no cierra la vuelta completa)';
-        else if (FIN) {
+        if (FIN) {
           const desde = cur ? cur.desde : ahora - 8 * 864e5;
           const nis = Object.entries({ ...cat, ...upd }).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
-          const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 && FIN_TOT >= 0.5 * nis.length ? FIN_TOT : nis.length;   // revisión etapa 3 (08/11): un fin= de menos de la mitad que el catálogo guardado no se cree
+          const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 ? FIN_TOT : nis.length;
           const pct = total > 0 ? Math.round(vistos / total * 1000) / 10 : 0;
           if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
           else msgV = `⚠️ vuelta INCOMPLETA: ${vistos} de ${total} productos (${pct}%), hace falta el 90%. NO cuenta.`;
@@ -26386,7 +26379,6 @@ async function main() {
         while (pgS < 120) { let d = null; try { const r = await fetch(`${urlW}/products.json?limit=250&page=${pgS}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
           if (d == null) { if (++malS > 4) break; await new Promise((r) => setTimeout(r, 3000)); continue; }
           const ps = (d && d.products) || []; if (!ps.length) break; todoS.push(...ps); pgS++; }
-        if (malS > 4) { console.log(`❌ la tienda no contestó (página ${pgS}): NO cargo nada (con la lista a medias, lo demás quedaba "de una lista anterior"). Probá más tarde.`); return; }   // revisión etapa 3 (08/11)
         const itemsS = []; const fS = { marca: 0, rubro: 0, sinstock: 0, sinprecio: 0 };
         for (const x of todoS) { const v = (x.variants || []).find((y) => y && y.available) || null;
           const n = String(x.title || '').replace(/[;|=@]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90);
@@ -26402,7 +26394,6 @@ async function main() {
       while (pg < 200) { let d = null; try { const r = await fetch(`${urlW}/wp-json/wc/store/v1/products?per_page=100&page=${pg}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }); d = r.ok ? await r.json() : null; } catch { d = null; }
         if (d == null) { if (++malas > 4) { console.log(`❌ la página no contestó (página ${pg}); cargado hasta ahí: ${todo.length}`); break; } await new Promise((r) => setTimeout(r, 3000)); continue; }
         if (!Array.isArray(d) || !d.length) break; todo.push(...d); pg++; }
-      if (malas > 4) { console.log(`❌ NO cargo nada: con la lista a medias (${todo.length} de una tienda más grande) lo demás quedaba "de una lista anterior". Probá más tarde.`); return; }   // revisión etapa 3 (08/11)
       const des = (t) => String(t || '').replace(/<[^>]+>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/&nbsp;/g, ' ');
       const items = []; const fuera = { marca: 0, rubro: 0, sinstock: 0, sinprecio: 0 };
       for (const x of todo) {
@@ -26831,11 +26822,7 @@ async function main() {
       const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
       const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
       const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre) && !(PY_ELEGANCIA_OFF && (provPyDeBot(c) === 'elegancia' || /^EL_/i.test(String(c.cod || '')))));   // 05/11/2026: Elegancia está apagada (26/10): sus candidatos no se miran más y salían como "mirado hace 12 días"
-      // Revisión etapa 3 (08/11/2026): el tope es del pedido ENTERO: también los probados cargados (`py_armado`) y lo de la Tienda (`py_personal`).
-      const armL = (await db.get('cyc/py_armado')) || {}, perL = (await db.get('cyc/py_personal')) || {}, prodsL = (await db.get('cyc/products')) || {};
-      const yaP = Object.entries(armL).reduce((t, [k, v]) => { const p = prodsL[k]; return p && enG(p.name) ? t + (parseInt((v || {}).u) || 0) * (parseFloat(p.nisseiUSD) || 0) : t; }, 0)
-        + Object.values(perL).reduce((t, v) => (v && enG(v.nom) ? t + (parseInt(v.u) || 0) * (parseFloat(v.usd) || 0) : t), 0);
-      const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0) + yaP;
+      const ya = vivos.reduce((t, [, c]) => t + (Number(c.pedirU) || 0) * (parseFloat(c.usd) || 0), 0);
       const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
       const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
       const maxU = (c) => { const usd = parseFloat(c.usd) || 0; return usd > 0 ? Math.max(1, Math.min(4, Math.ceil(20 / usd - 1e-9))) : 1; };
@@ -27087,7 +27074,7 @@ async function main() {
         const u = {}; for (const o of ops) { if (/^\d+$/.test(o)) u.vend = parseInt(o, 10); else if (/^\+?\d+$/.test(o.replace('+', ''))) u.vend = parseInt(o.replace('+', ''), 10);
           else if (o === 'borrar' || o === '-') u.vend = null;
           else if (/^r\d+$/i.test(o)) u.res = parseInt(o.slice(1), 10);   // reseñas (24/10/2026)   // 24/10/2026: saca las vendidas cargadas (catálogo que no las muestra = duda)
-          else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (o === 'duda') { u.noEs = 1; u.ok = null; }   /* revisión etapa 3 (08/11): "lo dudoso es NO" (04/11) */   /* 03/11/2026: ✅ puesto sin mirar fotos y que en la foto no se ve seguro: vuelve a sin confirmar */ else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
+          else if (o === 'ok') { u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o === 'no') { u.noEs = 1; u.ok = null; } else if (o === 'duda') { u.ok = null; u.okCat = null; u.noEs = null; u.noEsCat = null; }   /* 03/11/2026: ✅ puesto sin mirar fotos y que en la foto no se ve seguro: vuelve a sin confirmar */ else if (/^mi=MLA\d+$/i.test(o)) { u.miFijo = o.slice(3).toUpperCase(); u.t = null; u.ok = 1; u.noEs = null; u.noEsCat = null; } else if (o) { malos.push(x); } }
         upd[prov + '/' + cod] = u; n++;
       }
       if (malos.length) { console.log(`❌ ${malos.length} mal escritos, no escribo nada:`); malos.slice(0, 10).forEach((m) => console.log('   ' + m)); return; }
@@ -27098,9 +27085,7 @@ async function main() {
         // El ✅ vale para el catálogo que se miró (20/10/2026): si después el robot mide contra otro, deja de valer solo.
         if (u.ok) u.okCat = u.miFijo || e.miFijo || e.mi || null; else if (u.noEs) { u.okCat = null; u.noEsCat = e.miFijo || e.mi || null; }
         console.log(`  · ${pk} · ${String(e.n).slice(0, 60)} → ${u.vend != null ? u.vend + ' vendidas' : ''}${u.ok ? ' · ✅ mismo producto' : ''}${u.noEs ? ' · ❌ otro producto' : ''}${u.miFijo ? ' · catálogo ' + u.miFijo + ' (se vuelve a medir)' : ''}`);
-        if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk);
-          // Revisión etapa 3 (08/11/2026): "otro producto" sale también del pedido del momento (como `|borrar`); quedaba cargado y se compraba.
-          if (u.noEs) { const enP = await db.get('cyc/listas_pedido/' + pk + '/' + cod); if (Number(enP) > 0) { await db.set('cyc/listas_pedido/' + pk + '/' + cod, null); console.log(`    ↳ estaba en el pedido del momento (${enP} u.): sacado`); } } } }
+        if (APLICAR) { await db.patch('mlapi/listas/' + pk + '/' + cod, u); tocados.add(pk); } }
       if (APLICAR) for (const pk of tocados) await db.patch('cyc/mlconfig/listasProv/' + pk, cuentaLista((await db.get('mlapi/listas/' + pk)) || {}, ((await db.get('cyc/mlconfig/listasProv/' + pk)) || {}).fecha));
       if (!APLICAR) console.log('PRUEBA: agregá ;go al final.'); else console.log('✓ guardado. Los que tienen catálogo nuevo se miden con `listamedir`.');
       return;
@@ -39298,10 +39283,6 @@ async function main() {
         const est = b ? String(b.status || '?') : '(ML no contestó)';
         const stk = b ? (Number(b.available_quantity) || 0) : 0;
         const nom = b ? (b.title || mla) : (e.title || mla);
-        // Revisión etapa 3 (08/11/2026): sin respuesta de ML no se oculta (antes contaba como 0 unidades), y con unidades se frena aunque esté
-        // pausada (una oculta deja de contar su stock en el patrimonio y sigue pagando almacenamiento).
-        if (!b) { console.log(`  ⚠️ ${mla} · ML no contestó: NO la oculto (no sé si tiene unidades). Probá de nuevo.`); continue; }
-        if (b.status !== 'active' && stk > 0) { console.log(`  ⚠️ ${mla} · ${est} con ${stk} u. · ${String(nom).slice(0, 48)}\n       NO la oculto: todavía tiene mercadería (que se venda o retirarla primero).`); continue; }
         if (b && b.status === 'active' && stk > 0) {
           console.log(`  ⚠️ ${mla} · ACTIVA con ${stk} u. · ${String(nom).slice(0, 48)}`);
           console.log(`       NO la oculto: está a la venta con mercadería. Pausala en ML primero.`);
@@ -49416,7 +49397,7 @@ async function main() {
       // 20/10/2026 · etapa 3: el respaldo también sabe de "no traer más" (`cyc/notraer`, igual que `noTraerDe` de la web):
       // un producto marcado no se repone, y sin esto pasaba a "Bs As 14 d" en cuanto `cyc/reponer` tenía más de 3 días.
       let notraerE = {}; try { notraerE = (await db.get('cyc/notraer')) || {}; } catch { noLeiE.push('cyc/notraer'); }
-      try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId && !it.paraLocal && !it.tienda) compPyE[it.prodId] = c.fecha; } catch { noLeiE.push('cyc/compraspy'); }
+      try { for (const c of Object.values((await db.get('cyc/compraspy')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compPyE[it.prodId] = c.fecha; } catch { noLeiE.push('cyc/compraspy'); }
       // 📋 Listas (20/10/2026, decisión 1a): un probado pedido a una lista que viaja (como `_pedidoViaja` de la web: ~7 días).
       const compLiE = {}; try { for (const c of Object.values((await db.get('cyc/compraslista')) || {})) if (c && c.estado === 'camino') for (const it of (c.items || [])) if (it && it.prodId) compLiE[it.prodId] = { f: c.fecha, de: String(c.provNom || c.prov || 'la lista') }; } catch { noLeiE.push('cyc/compraslista'); }
       if (noLeiE.length) { console.log(`⚠️ NO LEÍ ${noLeiE.join(', ')}: no armo la 🔥 escasez, la 🚨 ni la 🔁${EXP ? ' (ni el expediente)' : ''} a medias (lo que tarda reponer y el ritmo saldrían mal: un color que no viene más pasaría por "se repone en una semana"). Volver a correr.`); return; }
@@ -55002,7 +54983,7 @@ async function main() {
           }
           if (fotos.some((x) => x.length > 4.5e6)) { console.log('❌ Alguna foto pasa los 4 MB. No escribo nada.'); return; }
         }
-        const monto = opt.monto ? (Math.round((numArg(opt.monto) || 0) * 100) / 100) || null : null;   // revisión etapa 3 (08/11): "758.820,25" daba 75.882.025
+        const monto = opt.monto ? parseInt(String(opt.monto).replace(/\D/g, ''), 10) || null : null;
         const fecha = /^\d{4}-\d{2}-\d{2}$/.test(opt.fecha || '') ? opt.fecha : hoyAR;
         console.log(`=== PAGO DEL PEDIDO AL PAULVIC ${id} ${GO ? '' : '(PRUEBA — no escribo nada)'} ===\n  ${fotos.length} comprobante(s) · pagado el ${fecha}${monto ? ' · $' + monto.toLocaleString('es-AR') : ''}`);
         if (!GO) return;
@@ -55050,7 +55031,7 @@ async function main() {
         if (RETOMA) console.log(`▶️ ${id} quedó a medias: lo retomo con lo que se anotó como llegado (no se vuelve a cerrar ni se suma dos veces).`);
         const cambios = {}, problemas = [], extraLl = {};
         const _OPT = /^(tester|regalo|apagar|flete)=(.+)$/i;
-        for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = numArg(m[2]) || 0;   /* revisión etapa 3 (08/11): "758820.25" daba ×100 */ extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
+        for (const x of rest2) { const m = String(x).trim().match(_OPT); if (m) { const k = m[1].toLowerCase(), n = parseFloat(String(m[2]).replace(/\./g, '').replace(',', '.')) || 0; extraLl[k === 'tester' ? 'testers' : k === 'regalo' ? 'regalos' : k === 'apagar' ? 'aPagar' : 'flete'] = n; } }
         // LA FECHA REAL DE LLEGADA (etapa 3, 20/10/2026): `fecha=AAAA-MM-DD`. Los 7 días hábiles para pagar se cuentan desde ahí; sin
         // ella quedaba la fecha en que se corrió el comando.
         let fechaLl = hoyAR; const _F = /^fecha=(\d{4}-\d{2}-\d{2})$/i;
@@ -56431,7 +56412,7 @@ async function main() {
           }
           const cr = plan.filter((x) => x.estado === 'crear');
           console.log(`Fichas a crear: ${cr.length}${_recReal ? ` · con el recargo REAL de este pedido (${((_recReal - 1) * 100).toFixed(1)}%)` : ` · con el ${((_recEst - 1) * 100).toFixed(1)}% estimado sobre lo pagado (faltan gastos del pedido; cuando estén, se pone el real)`}`);
-          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ••• × ${_recUsar} = US$ •••${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
+          cr.forEach((x) => console.log(`  + ${x.src.nombre} · US$ ${(parseFloat(x.src.usd) || 0).toFixed(2)} × ${_recUsar} = US$ ${r2((parseFloat(x.src.usd) || 0) * _recUsar).toFixed(2)}${x.src.cod ? ' · cód ' + x.src.cod : ''}${(parseFloat(x.src.usd) || 0) > 0 ? '' : ' · ⚠️ SIN PRECIO: queda en costo 0'}`));
           plan.filter((x) => x.estado === 'repe').forEach((x) => console.log(`  = ya tiene ficha (mismo código o nombre), se engancha: ${x.src.nombre} → ${x.rep[0].name}`));
           cr.filter((x) => x.par && x.par.length).forEach((x) => console.log(`  ℹ️ se crea aunque se parece a: ${x.src.nombre} ~ ${x.par.slice(0, 3).map((p) => p.name).join(' | ')}`));
           plan.filter((x) => x.estado === 'ya').forEach((x) => console.log(`  = ya tenía ficha: ${x.src.nombre}`));
@@ -56800,11 +56781,8 @@ async function main() {
                         ..._candsProv.map(([cid, c]) => ({ cod: String(c.cod || c.codPy || ''), src: { ...c, id: cid, nom: c.nombre || c.nom } }))];
           const buscar = (cod) => {
             const c = String(cod).replace(/\D/g, '');
-            // Revisión etapa 3 (08/11/2026): primero los renglones que NO son de la Tienda (al recargar el ticket el renglón `t<cód>` aparecía
-            // primero y las unidades de ML pasaban a la Tienda: 2 de ML → 0, Tienda 1 → 3, y Pedidos las volvía a comprar).
-            const noT = pool.filter((x) => !(x.src && x.src.tienda));
-            return noT.find((x) => x.cod.replace(/\D/g, '') === c) || noT.find((x) => _finIg(x.cod.replace(/\D/g, ''), c))
-                || pool.find((x) => x.cod.replace(/\D/g, '') === c) || pool.find((x) => _finIg(x.cod.replace(/\D/g, ''), c)) || null;
+            return pool.find((x) => x.cod.replace(/\D/g, '') === c)
+                || pool.find((x) => _finIg(x.cod.replace(/\D/g, ''), c)) || null;
           };
           itemsDet = []; const sinNombre = [];
           for (const tr of String(campos.det).split(';').map((x) => x.trim()).filter(Boolean)) {
