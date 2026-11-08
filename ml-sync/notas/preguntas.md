@@ -84,3 +84,5 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 65. El ritmo que uso para mandar a Full o pedir, ¿es de un precio que todavía existe? Si subió mucho hace menos de 7 días, el de 30 días no vale: ver HOY (31/10, Cartas Casino 58 u. con el ritmo de $4.000 y el precio en $26.290).
 66. Cada decisión de precio que le paso, ¿dice el % de ganancia de HOY y cómo quedaría (precio y % en el peor caso) en cada opción? Sin eso no puede decidir (31/10).
 67. Antes de decirle "no hay nada más" o de resumirle una regla, ¿la leí del código/CLAUDE.md de HOY y corrí la misma cuenta que usa la carga (`pedir`/la web)? Un resumen de memoria le dio una regla vieja (04/11, "2 vendedores o más").
+
+- **(08/11) Antes de pasarle una decisión: ¿alguna regla del CEREBRO ya la resuelve?** Si sí, la aplico yo (con `decido`/`entrarpromo` y sus frenos) y se la cuento; a él sólo van reglas nuevas, plata fuera de precios, lo que sólo puede hacer él y los casos raros con duda real (y digo cuál es la duda).
