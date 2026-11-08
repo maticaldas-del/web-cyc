@@ -489,3 +489,20 @@ Ninguna toca precios de ML. Lo que era error claro ya quedó arreglado (ver REVI
 13. **La fila 🔥 "más barato que en ML"** muestra los que están 45-50% abajo, justo los que más chance tienen de estar mal emparejados. (a) sugerida: sólo los de catálogo exacto · (b) dejarla.
 14. **El mensaje de WhatsApp no dice "3 cuotas sin interés"** (el pedido en pantalla sí). (a) sugerida: agregarlo · (b) dejarlo.
 15. **Perfumes más estrictos (ya hecho):** desde hoy un perfume de ML con una palabra de más (Very Good Girl, Lady Million Empire, Acqua di Gio Profondo) o otro número (N°19) no cuenta como el mismo. Van a salir algunos perfumes de la Tienda y de ABEL. (a) sugerida: así · (b) volver a como estaba.
+
+### Revisión de la Mercadería del 08/11 (14 decisiones, para cuando digas "resolvamos")
+Ninguna toca precios de ML. Lo claro ya quedó arreglado (ver REVISION etapa 3). **Lo más importante:** el 06 y 07/11 los pedidos salieron sin tus decisiones guardadas (0 de 40: Watch S5 volvió a 1, los de Navidad del P47 y el filtro en 0). Ya no puede volver a pasar sin aviso.
+1. **Listas de mayoristas en el registro público:** los precios del PDF de Pirineo y de Dai Nippon viajan en el texto del comando y se ven. (a) sugerida: cargarlas siempre cerradas y sin precios en lo que se imprime · (b) dejarlo.
+2. **Nissei, vuelta completa:** con 90% copiado se marca "Nissei no lo tiene" hasta el 10% que no se vio. (a) sugerida: marcar agotados recién con 98%+ (el 90% queda para el contador) · (b) dejar 90%.
+3. **🪄 Llenar cuando los nuevos ya ocupan los US$ 600:** (a) sugerida: agrega sólo lo que entra, aunque no entren probados · (b) carga probados y te pregunta qué nuevos sacar.
+4. **La perfumería pide algo sin color de un producto con colores:** (a) sugerida: se aparta del color que más vende · (b) siempre pedir el color.
+5. **Lo FIJO para Full (ej. las 3 Persea):** hoy vuelve a pedirse cada noche después de que llegó. (a) sugerida: se cumple solo cuando salen esas unidades · (b) queda hasta que lo saque yo.
+6. **FIJO más grande que el cupo:** (a) sugerida: va igual y te aviso · (b) manda el cupo.
+7. **Tenders en una cuenta sin chicos:** hoy salen aunque la caja no esté llena y nada se corte. (a) sugerida: sólo con caja llena o si se cortan en 14 días · (b) como hoy.
+8. **"La venta más cara de 365 días" cuenta ventas sueltas de las pruebas de techo** (el Centímetro toma $26.290 cuando su precio normal es $3.000-3.990). (a) sugerida: sólo días a precio normal y 2+ ventas · (b) dejarlo.
+9. **Cuando el precio de hoy ya da 35%+ con 7+ días:** (a) sugerida: el ritmo de HOY decide cuántas y lo del 35% sólo si se repone · (b) como hoy.
+10. **"El más bajo" con 0 ventas en 2-6 días da 0** (Cinta 5M vende 14 por mes, 0 en 3 días → 0). (a) sugerida: pedir al menos lo de una venta esperada · (b) literal.
+11. **Crema Nivea, agotada desde junio después de 4 ventas en una semana:** pide 35 ($161.000) para 60 días. (a) sugerida: tope como compra de prueba · (b) dejarlo.
+12. **Navidad en Paraguay:** la regla dice "cada pedido lleva el pico de Navidad" pero no está en el código (se pide para 30 días normales). (a) sugerida: ponerlo en el código hasta el 24/12 · (b) el pedido de 45 días del 14/11.
+13. **juicios.txt viejo:** tiene juicios que chocan con reglas nuevas (SanDisk "truchas") y repetidos. (a) sugerida: limpiarlo y pasar Watch S5 y Redmi Pad 2 a "no traer" · (b) dejarlo.
+14. **Lo cargado en las listas sin ✅ de fotos (ya hecho):** desde hoy no entra al pedido, a la tarjeta de Tito ni al WhatsApp. (a) sugerida: así · (b) que se vea con aviso.

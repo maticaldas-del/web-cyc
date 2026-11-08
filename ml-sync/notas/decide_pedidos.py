@@ -63,7 +63,7 @@ def esc_armar(esc,t,T):
     if med: max(med,key=lambda f:f['gd'])['s']=1
     return filas
 def _pesos(v): return '$'+f"{int(round(v)):,}".replace(',','.')
-def esc_txt(filas,enUSD):
+def esc_txt(filas,enUSD,q=None):
     med=[f for f in (filas or []) if not f['poco']]
     if len(med)<2: return ''
     pl=(lambda v:f"US$ {v/tc:.2f}".replace('.',',')) if enUSD else _pesos
@@ -71,8 +71,10 @@ def esc_txt(filas,enUSD):
     # Sólo si dice algo que sirve (03/11): con 0 en el ⭐ el renglón ya dice "no lo compres" o "no hace falta" por otro lado y la frase lo
     # contradecía ("Te pido 74… conviene traer 0"); un escalón más barato sólo si deja traer MÁS, uno más caro sólo si pide MENOS.
     if not (st['n']>0): return ''
-    x=f"Según lo que lo pagues: vendiéndolo a {_pesos(st['p'])} (el precio al que lo pensamos vender) conviene pagarlo hasta {pl(st['c'])} y traer {st['n']}."
-    baratos=[f for f in med if f['c']<st['c'] and f['n']>st['n']]; caros=[f for f in med if f['c']>st['c'] and f['n']<st['n']]
+    # Revisión etapa 3 (08/11/2026): la frase va con las unidades que se le PIDEN (q), no con el ritmo del ⭐ (decía "Te pido 6… traer 66").
+    qn=q if q is not None else st['n']
+    x=f"Según lo que lo pagues: para estas {qn} conviene pagarlo hasta {pl(st['c'])} (vendiéndolo a {_pesos(st['p'])})."
+    baratos=[f for f in med if f['c']<st['c'] and f['n']>qn]; caros=[f for f in med if f['c']>st['c'] and f['n']<qn]
     if baratos: x+=f" Si lo conseguís a menos de {pl(baratos[0]['c'])}, podés traer hasta {baratos[0]['n']}."
     tope=max(f['c'] for f in med)
     if caros and caros[0]['n']>0: x+=f" Si cuesta más de {pl(st['c'])}, como mucho {caros[0]['n']} y si pasa de {pl(tope)}, no lo compres."
@@ -199,7 +201,22 @@ def ritmo(x,dcs=30):
     mm=x.get('m35')
     if mm and mm['f']!='no' and mm['d']>=7:   # el ritmo A ESE PRECIO (con 7+ días con stock a ese precio o más caro; si no, el de siempre)
         tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
-        return mm['u']/mm['d'],tiene,f"a ${mm['p']} ({'el de la competencia' if mm['f']=='comp' else 'la venta más cara de 365 días'}, deja {mm['pct']}%) vendió {mm['u']} en {mm['d']} días con stock"
+        base=f"a ${mm['p']} ({'el de la competencia' if mm['f']=='comp' else 'la venta más cara de 365 días'}, deja {mm['pct']}%) vendió {mm['u']} en {mm['d']} días con stock"
+        # Revisión etapa 3 (08/11/2026): el ritmo a ese precio pasa por los MISMOS frenos que el normal (antes salía directo): con 1-2 ventas
+        # la ventana entera · la escasez de los últimos 30 días no achica la compra (el Adaptador 8 en 1 vendió 14 en 7 días y pedía 0) ·
+        # precio cambiado hace menos de 7 días: el más bajo (1a del 03/11; la Cinta 5M pedía 16 con 1 venta).
+        if mm['u']<MIN_VENTAS_RITMO:
+            w=max(30,mm['d']); r=mm['u']/w; base+=f": con {'una sola venta' if mm['u']==1 else 'tan pocas ventas' if mm['u'] else 'ninguna venta'} no se saca un ritmo, cuento {w} días"
+        else: r=mm['u']/mm['d']
+        nr0=x.get('nor')
+        esc=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC)',x.get('cambios',''))]
+        if esc and min(esc)<=30:
+            rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
+            if rPre>r: r=rPre; base+=f" · subí el precio por escasez hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
+        elif nr0 and nr0.get('hoyD') is not None and 2<=nr0['hoyD']<7:
+            rN=nr0['hoyU']/nr0['hoyD']
+            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr0['hoyU']} en {nr0['hoyD']} días con stock: uso ése, el más bajo (1a del 03/11)"
+        return r,tiene,base
     nr=x.get('nor')
     # 🏷️ AL PRECIO DE HOY (27/10/2026 a la noche, la estrategia nueva: buscar techo, bajar hasta la primera venta y quedarse; "la idea se va
     # en tener 100 productos con pocas unidades que venden poco y ganan muchísimo"): con 7+ días con stock desde el último cambio de precio,
@@ -421,6 +438,10 @@ json.dump([(p,q,d,rent) for p,q,d,rent in res],open(out+'.json','w'),default=str
 # ml-sync/notas/juicios.txt · un renglón por producto: <prodId>[#color]=<unidades>|<motivo> · manda sobre la cuenta.
 JU={}
 _jp=os.path.join(os.path.dirname(os.path.abspath(__file__)),'juicios.txt')
+# Revisión etapa 3 (08/11/2026): sin juicios.txt al lado (una copia corrida en otra carpeta) NO se sigue: el 06/11 y el 07/11 salieron 0 de 40
+# juicios aplicados sin aviso (Watch S5 volvió a 1, los de Navidad en 0). Se corre siempre ESTE archivo, en notas/.
+if not os.path.exists(_jp):
+    print(f'❌ no encuentro {_jp}: corré ml-sync/notas/decide_pedidos.py desde el repo (no una copia). No escribo nada.'); sys.exit(1)
 if os.path.exists(_jp):
     for l in open(_jp):
         l=l.strip()
@@ -431,6 +452,7 @@ if os.path.exists(_jp):
 # JUICIOS DE UN COLOR SIN RENGLÓN (etapa 3, 20/10/2026): `pedidostodo` no imprime los colores sin ventas ni mercadería, y el juicio
 # de uno de ésos (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Ahora el color se busca en la FICHA (`## colores`, sin mirar mayúsculas)
 # y el juicio se aplica aunque no tenga renglón; si el color no existe en la ficha, se avisa y no se usa.
+print(f'📋 juicios leídos: {len(JU)}')
 _JUn={k.lower():k for k in JU}
 def juDe(pid,color=None):
     k=_JUn.get((pid+('#'+color if color else '')).lower()); return JU[k] if k else None
@@ -460,6 +482,8 @@ def juiciosSinRenglon(p,ya):
 # ($75.360) da ~27%. ml-sync/notas/venta_max.txt · <prodId>=<precio>|<motivo> · manda sobre la cuenta de abajo.
 VM={}
 _vp=os.path.join(os.path.dirname(os.path.abspath(__file__)),'venta_max.txt')
+if not os.path.exists(_vp):
+    print(f'❌ no encuentro {_vp}: corré el archivo del repo. No escribo nada.'); sys.exit(1)
 if os.path.exists(_vp):
     for _l in open(_vp):
         _m=re.match(r'^(p\d+)=(\d+)\|',_l.strip())
@@ -611,7 +635,7 @@ for p,q,d,rent in res:
                 if (p['id'],v['v']) in BAJA_ML or v.get('nunca'): avisos.append(f"{p['n']} #{v['v']}: la perfumería pide {p['perf'][0]} pero no viene más: no lo pido (avisale a Matías)")
                 else: qq,mot=qq+p['perf'][0],perf_mot(qq,p['perf'][0],mot)
             _ef=esc_armar(v.get('esc'),t,T_de(p,r,obj))
-            if _ef and qq>0 and not jv and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
+            if _ef and qq>0 and not jv and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY',qq);mot=mot+(' '+_et if _et else '')
             N.append(f"ped:{pid}#{v['v']}=u|{qq}|{mot}")
             if _ef: ESCN.append(esc_linea(f"{pid}#{v['v']}",_ef))
         if not filas:
@@ -658,7 +682,7 @@ for p,q,d,rent in res:
         # lo guarda aparte y la web resta de lo decidido sólo lo que ENTRÓ después; antes volvía a restar la oficina y el camino (Te pido 15
         # con 10 en la oficina y 5 en camino → la web lo dejaba en 0 y el renglón desaparecía de Pedidos).
         _ef=esc_armar(p.get('esc'),t,T_de(p,r,obj))
-        if _ef and q>0 and not juDe(pid) and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY');mot=mot+(' '+_et if _et else '')
+        if _ef and q>0 and not juDe(pid) and 'de prueba' not in mot: _et=esc_txt(_ef,p['g']=='PY',q);mot=mot+(' '+_et if _et else '')
         if _ef: ESCN.append(esc_linea(pid,_ef))
         if p.get('perf') and p['perf'][0]>0: q,mot=q+p['perf'][0],perf_mot(q,p['perf'][0],mot)
         # Revisión etapa 9, 30/10/2026: `cub` también lleva lo apartado para la perfumería en la oficina (`perfOfi`). La web resta (oficina +
@@ -670,7 +694,7 @@ for p,q,d,rent in res:
 N.extend(ESCN)   # 🪜 al final: `decido` aplica en orden y un `=auto` o el primer color no la borran
 bad=[n for n in N if ';' in n]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
-open('pedidos.txt','w').write('\n'.join(N)+'\n')
+open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'pedidos.txt'),'w').write('\n'.join(N)+'\n')   # revisión etapa 3 (08/11): al lado del script (lo lee decido:archivo=pedidos)
 sinCosto=[p['n'] for p in prods if p['motNoRenta']=='falta el costo' and (p['v30'] or p['v60'])]
 # "de N para decidir": las fichas que están afuera (papelera / no traer) no se cuentan (etapa 5, 20/10/2026).
 print(len(N),'renglones ·',len(prods),'productos'+(f' de {nDecidir} para decidir ({nfichas} fichas, {nFuera} fuera: papelera / no traer)' if nDecidir is not None else ''))

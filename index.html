@@ -3410,7 +3410,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.147';
+const APP_VERSION='28.148';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3423,6 +3423,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.148',f:'08/11',h:'04:37',c:[{n:3,t:'📦 Armar caja deja en la oficina lo que pidió la perfumería después de armarla.'},{n:2,t:'🇵🇾 🪄 Llenar cuenta los nuevos ya cargados en el tope de US$ 600.'},{n:2,t:'📋 Listas: lo que no tiene la ✅ de las fotos no entra al pedido ni a la tarjeta de Tito; los packs armados con sueltos dicen cuántas sueltas comprar.'}]},
   {v:'28.147',f:'07/11',h:'04:35',c:[{n:1,t:'🛍️ Revisión de la Tienda: 15 arreglos (Apple sin precio, perfumes más estrictos, el pedido se copia de verdad) y 15 decisiones para vos.'}]},
   {v:'28.146',f:'07/11',h:'22:15',c:[{n:3,t:'🏷️ Inicio → Ventas de hoy ya no se queda clavada: si una venta trae un dato raro, la tarjeta igual se dibuja con los mismos números de Ventas x Producto (antes quedaba la de horas antes).'}]},
   {v:'28.145',f:'06/11',h:'20:47',c:[{n:2,t:'🔔 El aviso de cada venta suena una vez por cada $10.000 de ganancia (2 veces con $20.000, 3 con $30.000…, hasta 10).'}]},
@@ -5709,6 +5710,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:3,t:'08/11 · 14 decisiones de la Mercadería',que:'listas en el registro · vuelta 98% · Llenar con nuevos · perfumería sin color · FIJO vence · FIJO y cupo · Tenders solos · venta más cara · HOY primero · el más bajo con 0 · Nivea · Navidad en el código · juicios viejos · listas sin ✅',pedi:'resolvamos'},
   {etapa:10,t:'07/11 · 15 decisiones de la Tienda',que:'fotos del proveedor · código de ABEL · rastro al repositorio · portugués · piso con cuotas · precio de 30 días · recargo · lista vieja · perfumes sin tamaño · pesados · otro pack · tope del monotributo · fila más barato · cuotas en WhatsApp · perfumes estrictos',pedi:'resolvamos'},
   {etapa:9,t:'06/11 · 16 decisiones del Local',que:'día de la devolución · ganancia de la tarjeta · dólar del +25% · Tienda que llega · cobrado con MercadoPago · precio de un mes cerrado · marcas prohibidas · sólo local a qué oficina · colonias en ABEL · ABEL con todos · ABEL vs Tienda · testers · cuándo llega · ABEL sin datos · los US$100 · Persea',pedi:'resolvamos'},
   {etapa:2,t:'05/11 · 16 decisiones de la Plata',que:'mes negativo · el dólar · cuándo se fija el retiro · retiro no sacado · redondeo · envío abajo de $33.000 · % del monotributo · costo en pesos · recompra de listas · Bs As pagado · Paulvic +10% · de=ml · intereses de Papá · datos fiscales en el registro · cobro en el registro · Mercadería inicial del 31/10',pedi:'resolvamos'},
@@ -5744,7 +5746,7 @@ const REV_HIST={
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
      {f:'2026-10-20',t:'Cerrada: él eligió 1b 2b 3a 4a 5a 6a 7a 8a (listas como deuda al llegar, recargo contra la web, filas de MP sin venta = ya en la cuenta). v25.33.'}],
-  3:[{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
+  3:[{f:'2026-11-08',t:'4 revisores en máximo (pedidos, cajas, Paraguay, listas/Paulvic/oficina): ~40 hallazgos, 20 arreglados (los juicios no se aplicaban sin aviso, ritmo M35 con sus frenos, tope US$600, Paulvic ×100, perfumería en la caja); 14 decisiones a para_mati.'},{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'},
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
   4:[{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
@@ -8382,7 +8384,10 @@ function cajaGanUnidad(p,cache){
   if(!p)return null;
   if(cache&&cache[p.id]!==undefined)return cache[p.id];
   let g=null;
-  const v=pedVentasNorm(p).vendidos;
+  // Revisión etapa 3 (08/11/2026): primero lo que deja HOY una unidad (como decide_cajas.py, neto − costo). La ganancia de `pedGananciaNorm`
+  // está llevada a 30 días con stock y dividirla por las unidades crudas la inflaba ×30/días (un $1.000 salía $3.000 con 10 días de stock).
+  {const gu=gananciaUnidad(p);if(gu!=null&&gu>0)g=gu;}
+  const v=g==null?pedVentasNorm(p).vendidos:0;
   if(v>0){const t=pedGananciaNorm(p);if(t>0)g=t/v;}
   if(g==null){const h=ventasHistoricas(p,'','');if(h&&h.u>0&&h.gan>0)g=h.gan/h.u;}
   // 26/10/2026 (él: *"la mercadería nueva que se va a vender por el % que dice que en teoría va a dar"*): lo que nunca vendió
@@ -9630,7 +9635,7 @@ async function _cerrarCaja(cuenta){
     if(!r||!r.committed){toast('No la despaché: esta caja '+(motivo||'no se pudo tomar')+'. Recargá y mirala antes de cerrarla.','err');return;}
     delete (state.cajas_armando||{})[cuenta];
   }
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=_isoHoy();   // revisión etapa 3 (08/11): la fecha de ACÁ (de 21 a 24 guardaba la de mañana)
   const id='env'+Date.now();
   const e={fecha:hoy,cuenta,correo:'Andreani',sucursal:'',cajas:1,seguimientos:track?[track]:[],obs:'',ts:Date.now(),
     cajasDet:[{n:1,track,items,recibida:false}]};
@@ -11019,7 +11024,7 @@ async function marcarCajaRecibida(id,i,valor){
   // usadas y faltantes): si no, lo que llegaba tarde se lo llevaba la caja siguiente y quedaban faltantes falsos.
   const ok=await _editarCajaTx(id,i,c=>{
     c.recibida=!!valor;
-    c.recFecha=valor?new Date().toISOString().slice(0,10):null;
+    c.recFecha=valor?_isoHoy():null;   // revisión etapa 3 (08/11): fecha de acá
     c.recUsadas=null;c.recUsadasCalc=null;c.faltan=null;
   });
   if(ok)await log('Caja '+(i+1)+' del envío '+e.fecha+': '+(valor?'llegó a Full':'vuelve a en camino'));
@@ -16910,7 +16915,10 @@ function _repartoVariantes(p,hayTotal,tr){
       if(da!==db)return da-db;
       return b.vMes-a.vMes;
     });
-    let quedan=hay;const sug=[];
+    // Revisión etapa 3 (08/11/2026): lo que pidió la perfumería DESPUÉS de la decisión de la caja queda en la oficina (si la perfumería pidió
+    // antes, la decisión de la madrugada ya lo apartó: no se resta dos veces y lo FIJO para Full sigue primero, 12b).
+    const _pp=(state.pedperf||{})[p.id],_apN=_pp&&publicadas.some(l=>{const o=clCajaDe(p.id,l,va||'');return o&&Number(_pp.ts)>Number(o.ts||0);})?pedPerfApartado(p,va):0;
+    let quedan=Math.max(0,hay-_apN);const sug=[];
     for(const c of cand){
       if(quedan<=0)break;
       // Sin una sola unidad en Full la publicación NO VENDE. Aunque la cuenta "no lo necesite"
@@ -16981,7 +16989,8 @@ function repartoOficina(){
       if(da!==db)return da-db;
       return b.vMes-a.vMes;
     });
-    let quedan=hay;
+    const _pp=(state.pedperf||{})[p.id],_apN=_pp&&publicadas.some(l=>{const o=clCajaDe(p.id,l,'');return o&&Number(_pp.ts)>Number(o.ts||0);})?pedPerfApartado(p,null):0;   // revisión etapa 3 (08/11): ver arriba
+    let quedan=Math.max(0,hay-_apN);
     const sug=[];
     for(const c of cand){
       if(quedan<=0)break;
@@ -21538,6 +21547,8 @@ function _etiqProdHTML(p){
   return L.map(x=>`<span style="${'display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap'}" title="Código de la etiqueta de Full de ${_esc(x.cta)}${x.col?' · '+_esc(x.col):''} (el que va pegado en el producto; no es el número de la publicación)">🏷️ ${_esc(x.cta)}${x.col?' · '+_esc(x.col):''} <b style="color:var(--text);font-family:'DM Mono',monospace;user-select:all">${_esc(x.cod)}</b></span>`).join('');
 }
 function etiquetaFullDe(prodId,cuenta,variante){
+  // Revisión etapa 3 (08/11/2026): sin color en un producto CON colores no se adivina el código (daba el del Rojo para un Rojo/Azul).
+  if(!variante){const pp=prodById(prodId);if(pp&&(pp.variantes||[]).length>1)return null;}
   const e=pubDeVariante(prodId,cuenta,variante,(x)=>(variante&&x.invVar&&x.invVar[sid(variante)])||x.inv);
   if(!e)return null;
   // Publicación con variantes adentro: el código es de la variante.
