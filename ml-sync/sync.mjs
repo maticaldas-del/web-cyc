@@ -994,6 +994,8 @@ const PUBLICAR_MIN_PCT = 35;   // 23/10/2026 (él): "siempre publicar todo arrib
 // máximo de venta de cosas muebles del monotributo es $716.841 (01/08/2026 a 31/01/2027); se crea hasta $600.000 y nada sube de $650.000
 // (`TECHO_DURO`), así siempre queda ~10% de margen. Antes 550.000 (23/10).
 const TOPE_CREAR = 600000;   // nunca se crea una publicación (Clásica o gemela) más cara que esto
+// 12a de la Tienda (08/11/2026, él): lo que en la Tienda cuesta más que el precio unitario máximo del monotributo, afuera. Actualizarlo en febrero 2027.
+const MONO_PRECIO_UNIT_MAX = 716841;
 function frenosSuba(from, to, o) {
   from = Number(from) || 0; to = Number(to) || 0;
   if (!(from > 0) || !(to > from)) return { err: 'no-sube' };
@@ -13478,6 +13480,11 @@ const TIENDA_GRANDE = [
   [/\b(gerador|generador|compresor|soldadora|betoneira|escada|piscina|cama\s+el[aá]stica|pula\s*-?pula|churrasqueira|parrilla)\b|\bcompressor\b(?!\s+de\s+ar\s+port|\s+port[aá]til|\s+mini)/i, 'grande o pesado'],
   [/\b(party\s*box|partybox|ult\s*tower|xboom\s*xl\w*|torre\s+de\s+(som|sonido)|boombox)\b|\bsrs-?x[vp]\d{3}\b|\bxv\d{3}\b|\b(soundbar|barra\s+de\s+(som|sonido))\b.*\bsubwoofer\b|\bventilador\s+de\s+(coluna|pie|torre|pared)\b/i, 'parlante o ventilador grande'],
   [/\bplotter\b/i, 'impresora grande'],
+  // 10a de la Tienda (08/11/2026, él): afuera los pesados que se colaban. Impresoras 3D de 15 kg o más (por modelo: el nombre no trae el peso),
+  // dispensers de agua de pie (con bidón/columna, o con hielo y frío/calor) y el home theater 5.1 (el equipo, no un par de parlantes "para home theater").
+  [/^(?=[^]*\bimpres+ora\s+3d\b)[^]*?\b(h2[dsc]|x1[ce]?|x1\s*carbon|x2d|p2s|a2\s*l|jupiter|k1\s*max|k2(\s*(plus|pro))?|neptune\s*4\s*max|saturn\s*4\s*ultra|p1s\s+combo)\b/i, 'impresora 3D de 15 kg o más'],
+  [/\b(dispens\w*|bebedouro|bebedero|purificador)\s+de\s+[aá]gua\b[^]*?\b(de\s+(coluna|columna|pie|ch[aã]o|piso)|gal[aã]o|garraf[aã]o|bid[oó]n)\b|\b(dispens\w*|bebedouro|bebedero)\b[^]*?\b(gelo|hielo)\b[^]*?\b(fr[ií]o|quente|caliente)\b/i, 'dispenser de agua de pie'],
+  [/^\s*home\s*theat(er|re)\b|\bhome\s*theat(er|re)\b[^]*?\b5\.1\b|\b5\.1\b[^]*?\bhome\s*theat(er|re)\b/i, 'home theater'],
 ];
 function tiendaGrande(nombre) {
   const n = String(nombre || '');
@@ -13491,6 +13498,11 @@ function tiendaGrande(nombre) {
   }
   if (esAcc) return null;
   for (const [re, mot] of TIENDA_GRANDE) if (re.test(n)) return mot;
+  // 10a (08/11/2026): climatizadores grandes = 10 litros o más, 150 W o más, o sin ninguna de las dos medidas (el chico de escritorio de 3,5 l / 60 W queda).
+  if (/\bclimatizador/i.test(n)) {
+    const lt = n.match(/(\d+(?:[.,]\d+)?)\s*(l|lt|litros?)\b/i), w = n.match(/(\d{2,4})\s*w\b/i);
+    if ((lt && parseFloat(lt[1].replace(',', '.')) >= 10) || (w && Number(w[1]) >= 150) || (!lt && !w)) return 'climatizador grande';
+  }
   if (/\b(110|115|120|127)\s*v\b/i.test(n) && !/\b(220\s*v|bivolt)\b/i.test(n)) return '110/127V (no anda acá)';
   return null;
 }
@@ -13534,10 +13546,39 @@ function tiendaMedidaFalta(a, b) {
 // El nombre del proveedor para la tienda (31/10/2026): traducido, medidas en minúscula con espacio ("3 KG" → "3 kg"), primera en mayúscula.
 // Palabras que delatan que el nombre quedó en portugués (01/11/2026: lo que entra con el nombre del proveedor tiene que estar en castellano).
 // 01/11: además, las letras que el castellano no usa (ç ã õ ô ê) delatan portugués.
-const TIENDA_PORTUGUES = /[çãõôê]|\b(senhora|senhor|grau|pele|unha|sabonete|hidratante corporal com)\b|\b(preto|preta|branco|branca|cinza|vermelh[oa]|amarel[oa]|roxo|roxa|dourad[oa]|prateado|feminino|feminina|masculino|masculina|unissex|sem fio|fone|ouvido|rel[oó]gio|caixa de som|carregador|cabo|suporte|pel[ií]cula|capa|bolsa|garrafa|copo|tamanho|jogo|controle|teclado sem|mouse sem|com|para o|para a|da|do|das|dos|n[aã]o|cor|conjunto|aparelho|escova|secador|chapinha|barbeador|aspirador|panela|liquidificador|cafeteira|ventilador|l[aâ]mpada|tomada|pilha|bateria recarreg[aá]vel|colônia|acessórios?|memória|creme|cart[aã]o|lente de contato|maquiagem|batom|sombra de olhos)\b/i;
+const TIENDA_PORTUGUES = /[çãõôê]|\b(senhora|senhor|grau|pele|unha|sabonete|hidratante corporal com)\b|\b(preto|preta|branco|branca|cinza|vermelh[oa]|amarel[oa]|roxo|roxa|dourad[oa]|prateado|feminino|feminina|masculino|masculina|unissex|sem fio|fone|ouvido|rel[oó]gio|caixa de som|carregador|cabo|suporte|pel[ií]cula|capa|bolsa|garrafa|copo|tamanho|jogo|controle|teclado sem|mouse sem|com|para o|para a|da|do|das|dos|n[aã]o|cor|conjunto|aparelho|escova|chapinha|barbeador|aspirador|panela|liquidificador|cafeteira|l[aâ]mpada|tomada|pilha|bateria recarreg[aá]vel|colônia|acessórios?|memória|creme|cart[aã]o|lente de contato|maquiagem|batom|sombra de olhos)\b/i;
+// 4a de la Tienda (08/11/2026, él: "traducir más palabras y sacar lo que siga en portugués"): más palabras que delatan portugués (las que
+// quedaban en ~560 nombres de la lista del 08/11: Condicionador, Série, Tratamento, Lápis, Batedeira, Furadeira…) y la "e"/"ou" sueltas en
+// minúscula (en castellano son "y"/"o"). Se chequea con `tiendaEnPortugues` (el nombre que queda así, afuera).
+const TIENDA_PORTUGUES2 = /(?<![\p{L}])(condicionador|tratamento|corretivo|batedeira|chaleira|sanduicheira|torradeira|aquecedor|umidificador|furadeira|parafusadeira|alicate|colher|vidro|falante|escuro|folhas|quartzo|profissional|animais|quente|meia|anel|chave|fitas?|adesivos?|mais|som|lápis|lapis|série|tripé|água|pincéis|esmalte para unhas|travesseiro|len[cç]ol|toalha|cadeira|banheiro|cozinha|janela|chuveiro|torneira|sab[aã]o|espelho|tamanhos?|tesoura|agulha|linha|boné|cal[cç]a|correia|janela|cozinha|espelho|queimadores|infravermelh[oa]|embut[ií]vel|ombro|bege|canais|\p{L}+dade|\p{L}*agem|\p{L}+[áí]vel|\p{L}+[áí]veis|dinheiro|chaveiro|\p{L}*porteiro|marinh[oa]|vinho|campainha|umidade|demaquilante|pipoqueira|prateleira|iogurteira|passadeira|waffleira|planchinha|sombrinha|mesinha|raspadinha|madeira|molhado|soprador|bast[aã]o|leve|camiseta\s+(masculina|feminina))(?![\p{L}])/iu;
+function tiendaEnPortugues(t) { const x = String(t || ''); return TIENDA_PORTUGUES.test(x) || TIENDA_PORTUGUES2.test(x) || /(?<=\S) (e|ou) (?=\S)/.test(x) || /(?<![\p{L}\p{N}-])(em|um|na)(?![\p{L}\p{N}-])/u.test(x); }
 function tiendaNombreProv(nn) {
   let t = traducirPyNombre(nn).replace(/(\d+)\s*(KG|ML|GB|TB|G|L)\b/g, (m0, d, u) => (u === 'G' && /^[2-6]$/.test(d) ? m0 : d + ' ' + (u === 'GB' || u === 'TB' ? u : u.toLowerCase())));   // 5G/4G (la red) no son gramos
-  for (const [re, r] of [[/\bmem[oó]ria\b/gi, 'memoria'], [/\bcol[oô]nia\b/gi, 'colonia'], [/\bacess[oó]rios\b/gi, 'accesorios'], [/\bacess[oó]rio\b/gi, 'accesorio'], [/\bcreme\b/gi, 'crema'], [/\bmanteiga\b/gi, 'manteca'], [/\bfixo\b/gi, 'fijo'], [/\bfixa\b/gi, 'fija'], [/\bnoturn([oa])\b/gi, 'nocturn$1'], [/\bcart[aã]o\b/gi, 'tarjeta'], [/\bmaquiagem\b/gi, 'maquillaje'], [/\bbatom\b/gi, 'labial'], [/\brob[oô](?![a-z])/gi, 'robot'], [/\bt[oô]nico\b/gi, 'tónico'], [/\bp[eé]rolas\b/gi, 'perlas'], [/\bnoturno\b/gi, 'nocturno'], [/\bcabelo\b/gi, 'cabello'], [/\bolhos\b/gi, 'ojos'], [/\bunhas\b/gi, 'uñas'], [/\bc[ií]lios\b/gi, 'pestañas'], [/\bl[aá]bios\b/gi, 'labios'], [/\brosto\b/gi, 'rostro'], [/\bcorpo\b/gi, 'cuerpo'], [/\bincr[ií]vel\b/gi, 'increíble'], [/\bimpressionante\b/gi, 'impresionante'], [/\bgelo\b/gi, 'hielo']]) t = t.replace(re, r);
+  for (const [re, r] of [[/\bmem[oó]ria\b/gi, 'memoria'], [/\bcol[oô]nia\b/gi, 'colonia'], [/\bacess[oó]rios\b/gi, 'accesorios'], [/\bacess[oó]rio\b/gi, 'accesorio'], [/\bcreme\b/gi, 'crema'], [/\bmanteiga\b/gi, 'manteca'], [/\bfixo\b/gi, 'fijo'], [/\bfixa\b/gi, 'fija'], [/\bnoturn([oa])\b/gi, 'nocturn$1'], [/\bcart[aã]o\b/gi, 'tarjeta'], [/\bmaquiagem\b/gi, 'maquillaje'], [/\bbatom\b/gi, 'labial'], [/\brob[oô](?![a-z])/gi, 'robot'], [/\bt[oô]nico\b/gi, 'tónico'], [/\bp[eé]rolas\b/gi, 'perlas'], [/\bnoturno\b/gi, 'nocturno'], [/\bcabelo\b/gi, 'cabello'], [/\bolhos\b/gi, 'ojos'], [/\bunhas\b/gi, 'uñas'], [/\bc[ií]lios\b/gi, 'pestañas'], [/\bl[aá]bios\b/gi, 'labios'], [/\brosto\b/gi, 'rostro'], [/\bcorpo\b/gi, 'cuerpo'], [/\bincr[ií]vel\b/gi, 'increíble'], [/\bimpressionante\b/gi, 'impresionante'], [/\bgelo\b/gi, 'hielo'],
+    // 4a de la Tienda (08/11/2026): lo que quedaba en portugués en ~560 nombres. Las palabras con acento van con \p{L} (el \b de JS no ve "á").
+    [/\bcondicionador(es)?\b/gi, 'acondicionador$1'], [/\btratamento(s)?\b/gi, 'tratamiento$1'], [/(?<![\p{L}])l[aá]pis(?![\p{L}])/giu, 'lápiz'],
+    [/(?<![\p{L}])s[ée]rie(?![\p{L}])/giu, 'serie'], [/\bcorretivo\b/gi, 'corrector'], [/(?<![\p{L}])[áÁ]gua(?![\p{L}])/gu, 'agua'], [/\bbarra\s+de\s+som\b/gi, 'barra de sonido'],
+    [/\bauto\s*-?\s*falantes?\b/gi, 'parlante para auto'], [/\bsom\b/gi, 'sonido'], [/(?<![\p{L}])trip[ée](?![\p{L}])/giu, 'trípode'], [/\bvidro\s+temperado\b/gi, 'vidrio templado'],
+    [/\bvidro\b/gi, 'vidrio'], [/\bbatedeira\b/gi, 'batidora'], [/\bchaleira\b/gi, 'pava'], [/\bsanduicheira\b/gi, 'sandwichera'], [/\btorradeira\b/gi, 'tostadora'],
+    [/\baquecedor(es)?\b/gi, 'calentador$1'], [/\bumidificador(es)?\b/gi, 'humidificador$1'], [/\bfuradeira\b/gi, 'taladro'], [/\bparafusadeira\b/gi, 'atornillador'],
+    [/\bchave\s+de\s+impacto\b/gi, 'llave de impacto'], [/\bchaves?\b/gi, 'llave'], [/\balicate\b/gi, 'pinza'], [/\bfitas?\b/gi, 'cinta'], [/\badesivos?\b/gi, 'adhesivo'],
+    [/\bmeia[- ]noite\b/gi, 'medianoche'], [/\bmeia\b/gi, 'media'], [/\banel\b/gi, 'anillo'], [/(?<![\p{L}])p[óÓ](?![\p{L}])/gu, 'polvo'], [/\bcolher\b/gi, 'cuchara'],
+    [/\bmais\s+escuro\b/gi, 'más oscuro'], [/\bescuro\b/gi, 'oscuro'], [/\bmais\b/gi, 'más'], [/\btela\s+dupla\b/gi, 'pantalla doble'], [/\bprotector\s+de\s+tela\b/gi, 'protector de pantalla'],
+    [/\bjato\s+de\s+tinta\b/gi, 'chorro de tinta'], [/\bfolhas\b/gi, 'hojas'], [/\bquartzo\b/gi, 'cuarzo'], [/\bprofissional\b/gi, 'profesional'], [/\bdupla\b/gi, 'doble'],
+    [/(?<![\p{L}])pinc[ée]is(?![\p{L}])/giu, 'pinceles'], [/\banimais\b/gi, 'animales'], [/\bquente\b/gi, 'caliente'], [/\btoalha(s)?\b/gi, 'toalla$1'], [/\btesoura\b/gi, 'tijera'],
+    [/\bcorreias?\b/gi, 'correa'], [/\bporta\s+(e|y)\s+janela\b/gi, 'puerta y ventana'], [/\bjanelas?\b/gi, 'ventana'], [/\bcozinha\b/gi, 'cocina'], [/\bespelho\b/gi, 'espejo'],
+    [/\bqueimadores\b/gi, 'quemadores'], [/\binfravermelh([oa])\b/gi, 'infrarroj$1'], [/(?<![\p{L}])embut[ií]vel(?![\p{L}])/giu, 'empotrable'],
+    [/\bombro\b/gi, 'hombro'], [/\bbege\b/gi, 'beige'], [/\bcanais\b/gi, 'canales'], [/(?<![\p{L}\p{N}-])em(?![\p{L}\p{N}-])/giu, 'en'], [/(?<![\p{L}\p{N}-])um(?![\p{L}\p{N}-])/gu, 'un'], [/(?<![\p{L}\p{N}-])na(?![\p{L}\p{N}-])/gu, 'en la'], [/(?<=\p{L})dade(?![\p{L}])/gu, 'dad'], [/\bmoinho\b/gi, 'molinillo'], [/\bventoinha\b/gi, 'ventilador'],
+    [/(?<![\p{L}])m[óo]vel(?![\p{L}])/giu, 'móvil'], [/(?<=\p{L})ável(?![\p{L}])/gu, 'able'], [/(?<=\p{L})ível(?![\p{L}])/gu, 'ible'], [/(?<=\p{L})áveis(?![\p{L}])/gu, 'ables'], [/(?<=\p{L})íveis(?![\p{L}])/gu, 'ibles'],
+    [/\bpassadeira\s+de\s+roupas?\b/gi, 'plancha de ropa'], [/\bpassadeira\b/gi, 'plancha'], [/\broupas?\b/gi, 'ropa'], [/(?<![\p{L}])[áÁ]udio(?![\p{L}])/gu, 'Audio'],
+    [/\bmontagem\b/gi, 'montaje'], [/\bviagem\b/gi, 'viaje'], [/\bvoltagem\b/gi, 'voltaje'], [/\bbagagem\b/gi, 'equipaje'], [/\btatuagem\b/gi, 'tatuaje'],
+    [/\bdinheiro\b/gi, 'dinero'], [/\bchaveiro\b/gi, 'llavero'], [/\bvideoporteiro\b/gi, 'videoportero'], [/\bporteiro\b/gi, 'portero'], [/\bmarinh([oa])\b/gi, 'marin$1'],
+    [/\bvinho\b/gi, 'vino'], [/\bcampainha\b/gi, 'timbre'], [/\bumidade\b/gi, 'humedad'], [/\bdemaquilante\b/gi, 'desmaquillante'], [/\bpipoqueira\b/gi, 'pochoclera'],
+    [/\bprateleira\b/gi, 'estante'], [/\biogurteira\b/gi, 'yogurtera'], [/\bwaffleira\b/gi, 'wafflera'], [/\bplanchinha\b/gi, 'planchita'], [/\bsombrinha\b/gi, 'sombrilla'],
+    [/\bmesinha\b/gi, 'mesita'], [/\braspadinha\b/gi, 'raspadita'], [/\bmadeira\b/gi, 'madera'], [/\bmolhado\b/gi, 'mojado'], [/\bsoprador\b/gi, 'soplador'],
+    [/(?<![\p{L}])bast[aã]o(?![\p{L}])/giu, 'bastón'], [/\bmagnetico\b/gi, 'magnético'], [/\bleve\b/gi, 'liviano'],
+    [/\bsony\s+e\s+(?=sel\b|pz\b|mount\b|fe\b)/gi, 'Sony E '], [/\bsel\s+e\s+(?=pz\b)/gi, 'SEL E '],   // la montura E de Sony no es la "e" del portugués
+    [/(?<=\S) e (?=\S)/g, ' y '], [/(?<=\S) ou (?=\S)/g, ' o ']].map(([re, r]) => [re, (m, ...a) => { const o = typeof r === 'function' ? r(m, ...a) : r.replace(/\$(\d)/g, (q, i) => (typeof a[i - 1] === 'string' ? a[i - 1] : '')); return /^\p{Lu}/u.test(m) && !/^\p{Lu}{2}/u.test(m) ? o[0].toUpperCase() + o.slice(1) : o; }])) t = t.replace(re, r);
   t = t.replace(/\s+/g, ' ').trim();
   return t ? t[0].toUpperCase() + t.slice(1) : '';
 }
@@ -32472,7 +32513,8 @@ async function main() {
       // 🔒 EL REGISTRO DE GITHUB ES PÚBLICO (revisión de privacidad, 30/10/2026): con ;go (cada noche) se imprimen sólo cantidades y palabras
       // neutras: ni el proveedor, ni el recargo, ni renglones de productos. El detalle y la muestra contra ML salen sólo sin ;go.
       const det = (t) => { if (!GOt) console.log(t); };
-      const TIENDA_DIAS = 30, GAN = 0.25;
+      // 6a de la Tienda (08/11/2026, él: el precio del proveedor vale 2 DÍAS en todos lados: Tienda, Pedidos y ABEL): antes 30.
+      const TIENDA_DIAS = 2, GAN = 0.25;
       try { await cargarParamCompra(db); } catch { /* queda el recargo de siempre */ }
       const fallos0 = dbConteo.fallos;
       let tc = 0; try { tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; } catch { tc = 0; }
@@ -32725,7 +32767,7 @@ async function main() {
           const nt = tiendaNombreProv(e.n), foto = String(e.f || '').trim();
           const motivoNo = String(r.no || 'sin catálogo en ML').replace(/ \(.*$/, '');
           if (!/^https?:\/\//.test(foto)) { nvNo(motivoNo + ' y sin foto del proveedor'); continue; }
-          if (!nt || TIENDA_PORTUGUES.test(nt)) { nvNo(motivoNo + ' y el nombre del proveedor no se pudo pasar al castellano'); continue; }
+          if (!nt || tiendaEnPortugues(nt)) { nvNo(motivoNo + ' y el nombre del proveedor no se pudo pasar al castellano'); continue; }
           meter({ key: 'PY_' + cod, usd, ts: Number(e.ts) || 0, cod, nn: e.n, nombre: nt, fotos: [foto], mpRef: null, nuevo: 1, prov: 1 });
           nv.prov = (nv.prov || 0) + 1; nv.entra++; continue;
         }
@@ -32770,7 +32812,7 @@ async function main() {
       for (const x of [...grupos.values()].flat()) { if (!x.cat || x.ficha) continue; const q = tmCache['Q_' + String(x.cat).toUpperCase()]; if (q && q.eq > 0) { x.mpRef = q.eq; x.mlRaw = q.raw; x.mlTipo = q.t; } else if (q && q.no) { x.mpRef = null; } }
       nv.cuotasML = { leidos: qLeidos, sinVendedores: qSin };
       for (const [c, xs] of porCat) { const m = tmCache['C_' + c];
-        for (const x of xs) { if (m && m.mn) { x.nombre = m.mn; x.fotos = m.f || []; if (!x.mpRef && Number(m.mp) > 0) x.mpRef = Number(m.mp); } else { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; } } }
+        for (const x of xs) { if (m && m.mn) { x.nombre = m.mn; x.fotos = m.f || []; if (!x.mpRef && Number(m.mp) > 0) { x.mpRef = Number(m.mp); x.mlCatRef = x.mpRef; } } else { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; } } }
       // DUPLICADOS (30/10/2026, revisión de la tienda): un mismo catálogo o el mismo nombre de ML = un solo producto. Dos códigos del proveedor
       // para el mismo producto → el MÁS CARO; si difieren más de 5%, afuera (puede ser otra versión y no sabemos cuál es la de la foto).
       // El mismo código dos veces (ficha y candidato) cuenta una sola vez, con el precio mirado más nuevo.
@@ -32831,9 +32873,15 @@ async function main() {
         let otraMedida = false;
         if (x.nn && tiendaMedidaDistinta(x.nn, n)) {
           const nt = tiendaNombreProv(x.nn);
-          if (!nt || prohibido(nt)) { no('el proveedor y ML dicen otra medida (y su nombre no se pudo traducir)'); continue; }
-          n = nt; otraMedida = true; nv.nombreProv = (nv.nombreProv || 0) + 1;
+          if (!nt || prohibido(nt) || tiendaEnPortugues(nt)) { no('el proveedor y ML dicen otra medida (y su nombre no se pudo traducir)'); continue; }
+          // 11a de la Tienda (08/11/2026, él): con otro pack o tamaño en ML, también la FOTO del proveedor (la de ML es del otro tamaño). Sin foto del proveedor, afuera.
+          const fp = String(((pycat || {})[String(x.cod || '')] || {}).f || '').trim();
+          if (!/^https:\/\/[^\s"'<>]+$/i.test(fp) || PROHIBIDO.test(fp)) { no('el proveedor y ML dicen otra medida (y no hay foto del proveedor)'); continue; }
+          n = nt; x.fotos = [fp]; otraMedida = true; nv.nombreProv = (nv.nombreProv || 0) + 1;
         }
+        // 9a de la Tienda (08/11/2026, él): un perfume cuyo nombre de ML no dice el tamaño, afuera (antes se le agregaba el del proveedor y uno era
+        // de 50 ml con la foto del de 100). En ABEL entra igual con el nombre y la foto del proveedor.
+        if (!otraMedida && x.cat && RE_TIENDA_PERF.test(n + ' ' + (x.nn || '')) && !/\d\s*ml\b/i.test(n)) { no('perfume sin el tamaño en el nombre de ML'); continue; }
         if (x.mpRef > 0 && !otraMedida) {
           const k = p / x.mpRef;
           if (k > 1.6) { no('más de 1,6 veces el precio de ML (casi seguro otro producto)'); continue; }
@@ -32842,10 +32890,13 @@ async function main() {
           // está; más caro se baja a 1,10 × ML si ahí deja 10%+ sobre el costo; si no, afuera.
           else if (k > 1.10) {
             const costo = x.usd * RECT * tc, m = x.mpRef * 1.10, pML = m >= 10000 ? Math.floor((m + 10) / 1000) * 1000 - 10 : Math.floor((m + 10) / 100) * 100 - 10;
-            if (!(pML > 0) || pML / costo - 1 < 0.10) { no('más de 10% arriba de ML y a ese precio deja menos del 10%'); if (!x.ap) abelPorPrecio.push({ x, n }); continue; }
+            // 5a de la Tienda (08/11/2026, él): el 10% es DESPUÉS de las 3 cuotas sin interés (dar 3 cuotas cuesta ~8%, `CUOTAS_CLASICA`).
+            if (!(pML > 0) || pML / CUOTAS_CLASICA / costo - 1 < 0.10) { no('más de 10% arriba de ML y a ese precio deja menos del 10% después de las cuotas'); if (!x.ap) abelPorPrecio.push({ x, n }); continue; }
             p = pML; nv.aML = (nv.aML || 0) + 1;
           }
         } else sinRef++;
+        // 12a de la Tienda (08/11/2026, él): el monotributo no deja vender una unidad a más de MONO_PRECIO_UNIT_MAX: afuera (Apple "consultar precio" también).
+        if (p > MONO_PRECIO_UNIT_MAX) { no('más caro que el máximo por unidad del monotributo'); if (!x.ap) abelPorPrecio.push({ x, n }); continue; }
         // 31/10/2026 (él: "que no haya cosas ridículas"): sin precio de ML no se puede comparar (son 7.761, no se pueden sacar todos). Para lo que
         // entró con el MÁS PARECIDO se mira el nombre: (1) si uno es un accesorio (funda, cable, soporte, lápiz…) y el otro no, es otro producto
         // (el iPad con la foto de una funda a $1.083.990); (2) si casi no comparten palabras (el shampoo a $5.308.990), también afuera.
@@ -32897,7 +32948,10 @@ async function main() {
       const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
       // Ayudas de ABEL (6a del 08/11/2026): las mismas reglas para lo que viene de la tienda, de un catálogo seguro sacado por precio y de Nissei solo.
       const abelKeys = new Set(), abelFueraKeys = new Set(), abelPorCod = {};
-      const abelEsPerf = (n, nn) => ABEL_SI.test(n + ' ' + (nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (nn || ''));
+      // 9a y 12a de la revisión del Local (08/11/2026, él): sin colonias ni body splash de 200/250 ml (Stella Dustin, Joli Joli, Icandy, Lattafa,
+      // Maison Alhambra) y sin testers, mirando el nombre de ML Y el del proveedor (el 08/11 ya no salía ninguno: esto lo deja fijo).
+      const ABEL_COL = /\b(col[oô]nia|body\s*splash|splash)\b[^]*?\b2[0-5]\d\s*ml\b|\b2[0-5]\d\s*ml\b[^]*?\b(col[oô]nia|body\s*splash|splash)\b/i;
+      const abelEsPerf = (n, nn) => ABEL_SI.test(n + ' ' + (nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (nn || '')) && !ABEL_COL.test(n + ' ' + (nn || '')) && !TIENDA_USADO.test(n + ' ' + (nn || ''));
       const abelFresco = (ts) => { if (Number(ts) > 0 && hoy - Number(ts) <= ABEL_DIAS * 864e5) return true; abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] = (abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] || 0) + 1; return false; };
       const abelMeter = (id, n, fotos, usd, cod, como) => {
         const base = usd * tc * ABEL_ENVIO;
@@ -32918,12 +32972,14 @@ async function main() {
         const cp = esAppleTienda(n) ? 1 : 0; if (cp) nv.apple = (nv.apple || 0) + 1;
         // 31/10/2026 (él eligió 1a: "mostrar el ahorro contra ML"): `ml` = el precio de ML cuando la tienda sale 5%+ más barata y el
         // catálogo es el EXACTO (no el más parecido, ni otra medida, ni Apple sin precio). La página lo muestra como "En ML $X".
-        const mlR = x.mlRaw > 0 ? x.mlRaw : x.mpRef; const mlVer = !cp && !om && !x.ap && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
+        // 13a de la Tienda (08/11/2026, él): "En ML" (y la fila 🔥 "más barato que en ML") SÓLO con el precio del catálogo EXACTO de ML (las
+        // publicaciones del catálogo o su ganador), nunca el precio de nuestra propia publicación ni el del más parecido.
+        const mlR = x.mlRaw > 0 ? x.mlRaw : (x.mlCatRef > 0 ? x.mlCatRef : 0); const mlVer = !cp && !om && !x.ap && x.cat && /^MLA\d+$/i.test(String(x.cat)) && mlR > 0 && p <= mlR * 0.95 && p >= mlR * 0.5 ? Math.round(mlR) : 0;   // "En ML $X": el precio que se ve en ML (sin el ajuste de cuotas)
         // 🌸 ABEL (02/11/2026, él: "que aparezcan todos los perfumes que tienen stock en Nissei y que tengan 2 días máximo de última mirada…
         // sumando el 23% de envío + el 30% de ganancia que diga EN EFECTIVO y con tarjeta al 67%… con el 30% ganamos seguro a los
         // competidores"): sin comparar con ML. Efectivo = precio de Nissei × dólar × 1,23 × 1,30 · tarjeta = × 1,23 × 1,67.
         if (abelEsPerf(n, x.nn) && x.usd > 0 && abelFresco(x.ts)) { abelMeter(ent.id, n, x.fotos, x.usd, x.cod, 'tienda'); abelKeys.add(x.key); }
-        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
+        out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: !om && x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });   // 11a: con otra medida, sin los detalles de ML (son del otro tamaño)
       }
       // 🌸 ABEL CON TODOS LOS PERFUMES DE NISSEI (6a del 08/11/2026, él eligió: que estén TODOS los perfumes con stock en Nissei mirados hace
       // ABEL_DIAS días o menos, sin comparar con ML). Hasta acá entraba sólo lo que pasaba los frenos de la TIENDA (catálogo de ML seguro y
@@ -32969,7 +33025,7 @@ async function main() {
         const foto = String(e.f || '').trim();
         if (!/^https?:\/\//.test(foto) || PROHIBIDO.test(foto)) { abelNoN('sin catálogo seguro en ML y sin foto de Nissei'); continue; }
         const n = tiendaLimpiarNombre(nt);
-        if (!n || TIENDA_PORTUGUES.test(n) || prohibido(n)) { abelNoN('sin catálogo seguro en ML y el nombre de Nissei no se pudo pasar al castellano'); continue; }
+        if (!n || tiendaEnPortugues(n) || prohibido(n)) { abelNoN('sin catálogo seguro en ML y el nombre de Nissei no se pudo pasar al castellano'); continue; }
         if (abelNombresML.some((m) => tiendaPerfumeSeguro(e.n, m))) { abelNoN('repetido (otro código del mismo perfume ya está)'); continue; }
         const k = normNom(n), v = abelNissei.get(k);
         if (v) { abelNoN('repetido (mismo nombre)'); if (ts <= v.ts) continue; }
@@ -33061,7 +33117,14 @@ async function main() {
         outAbel.sort((a, b) => a.n.localeCompare(b.n, 'es'));
         const waA = String(waRaw || '').replace(/\D/g, ''); const jA = JSON.stringify({ act: diaAR, wa: waA.length >= 8 ? waA : '', productos: outAbel });
         if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
-        else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
+        else if (outAbel.length < 20) {
+          // 14a de la revisión del Local (08/11/2026, él): con menos de 20 perfumes al día la página dice "actualizando" (no queda la lista vieja
+          // con precios de hace días) y se avisa. `actualizando: 1` lo lee tienda/abel/index.html.
+          console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes al día: la página queda en "actualizando".`);
+          const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true });
+          writeFileSync(dA + '/productos.json', JSON.stringify({ act: diaAR, wa: waA.length >= 8 ? waA : '', actualizando: 1, productos: [] }) + '\n');
+          try { await sendAlerta(`🌸 <b>ABEL quedó en "actualizando"</b>\nSólo ${outAbel.length} perfumes mirados hace ${ABEL_DIAS} días o menos (hacen falta 20). Vuelve sola cuando se mire de nuevo el catálogo.`, { info: true }); } catch { /* sólo log */ }
+        }
         else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
         console.log(`🌸 ABEL (Nissei × dólar × ${ABEL_ENVIO} × ${ABEL_EFECTIVO} efectivo / × ${ABEL_TARJETA} tarjeta · mirado hace ${ABEL_DIAS} días o menos): ${outAbel.length} perfumes (${abelCuenta.tienda} como en la tienda · ${abelCuenta.mlPorPrecio} con catálogo de ML que la tienda saca por precio · ${abelCuenta.nissei} con foto y nombre de Nissei) · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
