@@ -2983,6 +2983,9 @@ function startApp(){
   // 06/11/2026 (él, con Inicio clavado en las 19:11: "no carga"): `cyc/extracto_mp` y `cyc/rendimientos_mp` (del 05/11) iban en CYC_KEYS y
   // la carga espera a TODAS; se leen aparte como `oficycdesde`: si la base no deja leer una, el panel abre igual.
   _alEntrar(()=>{[['extracto_mp','_exMpV'],['rendimientos_mp','_rMpV']].forEach(([k,w])=>{try{db.ref('cyc/'+k).on('value',sn=>{window[w]=sn.val()||{};state[k]=window[w];},()=>{window[w]=window[w]||{};});}catch(_){}});});
+  // 📷 08/11/2026: `cyc/mlfotos` (la foto de cada variante de ML, para Inventario) se lee APARTE como `oficycdesde`: si no se pudiera
+  // leer, el panel abre igual (sin fotos de variante cae a la de la publicación). Al llegar se redibujan las dos listas de Inventario.
+  _alEntrar(()=>{try{db.ref('cyc/mlfotos').on('value',sn=>{state.mlfotos=sn.val()||{};try{renderOfiContar();}catch(_){}try{if(document.getElementById('prod-inventario')?.open)renderInv();}catch(_){}},()=>{if(!state.mlfotos)state.mlfotos={};});}catch(_){state.mlfotos={};}});
   const _cycLazyOn=new Set();
   window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_alEntrar(()=>_cycOir(k));}};
 }
@@ -3417,7 +3420,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.151';
+const APP_VERSION='28.152';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3430,6 +3433,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.152',f:'08/11',h:'18:47',c:[{n:2,t:'📷 Inventario (Contar lo que hay y la tabla de unidades por cuenta): cada producto y cada variante con su foto chiquita a la izquierda; sin foto, un cuadrito vacío del mismo tamaño. La foto de cada color de una publicación con colores la trae el robot.'},{n:3,t:'💸 Cobro del mes: desde el cierre de noviembre, "lo que ya sacaron ese mes" son sólo los retiros marcados ✅ Ya lo cobró en Gastos; la tarjeta dice cuál falta marcar.'},{n:3,t:'🚚 Ventas de menos de $33.000 en las que igual pagamos el envío (por la gemela con envío gratis, o 2+ unidades/carrito que pasan $33.000): el % ahora lo cuenta, también en las ventas viejas (algunas pasan de verde a naranja).'},{n:2,t:'↩️ Lo que devuelve la perfumería sin vender resta la ganancia el día que vuelve, no el día que se dejó (no cambia un mes cerrado). En Ver deudas sale como renglón en su día.'}]},
   {v:'28.151',f:'08/11',h:'17:48',c:[{n:2,t:'🪄 Llenar el pedido de Paraguay: si los nuevos ya cargados ocupan el tope, agrega lo que entra y te avisa qué probados de Pedidos quedaron afuera.'}]},
   {v:'28.150',f:'08/11',h:'17:20',c:[{n:2,t:'🧾 Tarjeta de venta: con el detalle abierto ya no se corta nada con "…": Premium y sus cuotas, 1ª venta, analizada y la fecha se ven completos (en los renglones que hagan falta).'}]},
   {v:'28.149',f:'08/11',h:'16:56',c:[{n:2,t:'⚖️ Tope de H: lo próximo de Paraguay que no es perfume va a Ayelen o Matías (la de más lugar); los perfumes de Paraguay a Adriana y Luciana sólo recibe lo que no es de Paraguay.'}]},
@@ -5034,18 +5038,34 @@ const RETIRO_FIJO=1800000, RETIRO_FIJO_DESDE='2026_08', RETIRO_TARJETA_DESDE='20
 // + el retiro que se sacó ESE mes, porque el arqueo se hace después de retirar − lo viejo que se cargó tarde) ÷ 3.
 // Sin promedio de meses: desde octubre CYC cambió mucho y los meses de antes no sirven (él, 29/10).
 const COBRO_CRECE_DESDE='2026_10';   // primer cierre que se cobra así (se cobra en noviembre)
+// 3b del 08/11/2026: desde el cierre de noviembre (el primer mes con el ✅ "Ya lo cobró" en Gastos) lo ya retirado son sólo los marcados.
+// Octubre queda con la cuenta de antes: su cobro ya se usó para el retiro de noviembre, que está congelado.
+const COBRO_SOLO_COBRADO_DESDE='2026_11';
 function _cobroCrec(ym){
   const S=state.snapshots||{};const B=S[ym],A=S[_puntMesPrev(ym)];
   if(!B||!A||B.total==null||A.total==null)return null;
   const tc=parseFloat(B.tipoCambio)||curTC()||0;if(!tc)return null;
   const crecio=Math.round((Number(B.total)-Number(A.total))*tc);
-  const rv=_retiroMesVal(ym);const retCargado=rv!=null;
-  const retiro=retCargado?rv:retiroDefMes(ym,0);
+  let retiro,retCargado,sinCobrar=[];
+  if(ym>=COBRO_SOLO_COBRADO_DESDE){
+    // 3b del 08/11/2026 (él): "lo que ya retiraron ese mes" = SÓLO los retiros marcados ✅ "Ya lo cobró" en Gastos (`cyc/retiro_cobrado`).
+    // Cada uno con el monto que quedó guardado al marcarlo; los que no están marcados no suman y la tarjeta los nombra.
+    const rc=(state.retiro_cobrado||{})[ym]||{},ra=_retiroAuto(ym);
+    retiro=0;retCargado=true;
+    for(const [q,nm] of [['mati','Mati'],['tito','Tito']]){
+      const x=rc[q];
+      if(x){const v=Number(x.v);retiro+=isFinite(v)&&x.v!=null?Math.round(v):Math.round((ra||0)/2);}
+      else sinCobrar.push({q,nm,v:ra!=null?Math.round(ra/2):null});
+    }
+  }else{
+    const rv=_retiroMesVal(ym);retCargado=rv!=null;
+    retiro=retCargado?rv:retiroDefMes(ym,0);
+  }
   const cc=(state.cobro_corr||{})[ym]||{};const corr=Number(cc.ars)||0;
   const base=crecio+retiro-corr;
   // Redondo para abajo, de a $100.000 (29/10/2026, él: "1.699 → 1.6m"): lo que sobra queda en CYC y entra en el crecimiento del mes que viene.
   const porSocio=base>0?Math.floor(base/3/100000)*100000:0;
-  return{ym,crecio,crecioUSD:Number(B.total)-Number(A.total),tc,retiro,retCargado,corr,corrNota:cc.nota||'',base,porSocio};
+  return{ym,crecio,crecioUSD:Number(B.total)-Number(A.total),tc,retiro,retCargado,sinCobrar,corr,corrNota:cc.nota||'',base,porSocio};
 }
 function renderCobroCrec(){
   try{_retiroAutoGuardar();}catch(_){}
@@ -5063,9 +5083,12 @@ function renderCobroCrec(){
       return '<div style="font-weight:600">💸 Cobro de '+_ymLabel(sig)+': '+$(r/2)+' cada uno <span style="color:var(--muted);font-weight:400">('+$(r)+' el retiro)</span></div>'
       +(dif?'<div style="font-size:.74rem;color:var(--amber,#f59e0b);margin-top:2px">'+(_retiroCongelado(sig)!=null?'Ya quedó fijo cuando empezó '+_ymLabel(sig)+' (lo de este cierre: '+$(c.porSocio)+' c/u; la diferencia va al mes siguiente).':'Con el ajuste del mes pasado: este cierre solo daría '+$(c.porSocio)+' c/u.')+'</div>':'');})()
     +'<div style="font-size:.74rem;color:var(--muted);margin-top:4px;line-height:1.5">Lo que creció CYC en '+_ymLabel(k)+' (todo: ML, local, perfumerías, deudas): '+$(c.crecio)+' (US$ '+Math.round(c.crecioUSD).toLocaleString('es-AR')+' al dólar '+c.tc+')'
-    +' + lo que ya sacaron ese mes '+$(c.retiro)+(c.retCargado?'':' (supuesto)')
+    +' + lo que ya sacaron ese mes '+$(c.retiro)+(c.retCargado?'':' (supuesto)')+(k>=COBRO_SOLO_COBRADO_DESDE?' (sólo los marcados ✅ Ya lo cobró)':'')
     +(c.corr?' − lo viejo cargado tarde '+$(c.corr)+(c.corrNota?' ('+_esc(c.corrNota)+')':''):'')
-    +' = '+$(c.base)+' ÷ 3.</div></div>';
+    +' = '+$(c.base)+' ÷ 3.</div>'
+    +((c.sinCobrar||[]).length?'<div style="font-size:.74rem;color:var(--amber,#f59e0b);margin-top:4px;line-height:1.5">⚠️ No suman porque no están marcados ✅ Ya lo cobró en Gastos de '+_ymLabel(k)+': '
+      +c.sinCobrar.map(x=>'retiro de '+x.nm+(x.v!=null?' ('+$(x.v)+')':'')).join(' y ')+'. Si ya lo cobraron, marcalo y el cobro se rehace.</div>':'')
+    +'</div>';
 }
 // EL RETIRO ES AUTOMÁTICO desde noviembre 2026 (29/10/2026, él: "siempre vamos a cobrar lo que diga ahí en 'cobro de
 // noviembre'"): el de un mes = 2 × el cobro del cierre del mes anterior. No hay casilla. null = no hay cierre todavía.
@@ -5459,9 +5482,29 @@ async function verFoto(prodId,nombre,variante,cuenta){
 // En un renglón sin variante manda lo de siempre: lo que él cargó.
 // Y si no se puede identificar la publicación de la variante, NO se inventa: se cae a la de la
 // ficha, que es lo que se mostraba hasta hoy.
+// 📷 LA FOTO DE CADA VARIANTE DE UNA PUBLICACIÓN CON VARIANTES DE ML (08/11/2026, él: "que aparezca la foto de cada publicación y de
+// cada variante" en Inventario). Una publicación con colores adentro tiene UNA foto de portada (`mllinks.foto`), que es de un solo color;
+// la de cada color la guarda el robot aparte en `cyc/mlfotos/<MLA>` = {v:[{n:'Rojo',f:'https://…'}]} (sale de `picture_ids` de cada
+// variante). Primero la de la misma cuenta; si no, la del mismo color en otra cuenta. Sin coincidencia exacta de color, nada.
+function _fotoVarML(p,variante,cuenta){
+  const F=state.mlfotos||{};if(!variante||!p)return null;
+  const nv=normTxt(variante);let otra=null;
+  for(const [m,x] of Object.entries(F)){
+    const L=(state.mllinks||{})[m];if(!L||L.prodId!==p.id||L.ignored||!x||!Array.isArray(x.v))continue;
+    for(const it of x.v){
+      if(!it||!/^https:\/\//.test(String(it.f||'')))continue;
+      const ok=normTxt(it.n||'')===nv||_matchProdVariant(String(it.n||''),p.variantes||[])===variante;
+      if(!ok)continue;
+      if(!cuenta||L.cuenta===cuenta)return it.f;
+      if(!otra)otra=it.f;
+    }
+  }
+  return otra;
+}
 function fotoDeProducto(p,variante,cuenta){
   if(!p)return null;
   if(variante){
+    {const fv=_fotoVarML(p,variante,cuenta);if(fv)return {url:fv,fuente:'ml-var'};}
     const e=pubDeVariante(p.id,cuenta||'',variante,(x)=>!!x.foto)
       // La publicación de ESA cuenta todavía sin foto (recién creada): la del mismo color en otra cuenta.
       ||(cuenta?pubDeVariante(p.id,'',variante,(x)=>!!x.foto):null);
@@ -5498,6 +5541,13 @@ function fotoChipHTML(p,px,variante,cuenta){
     :(f.fuente==='ml-var'?'Foto de la publicación de ESTA variante · tocá para verla grande'
     :'Foto de la publicación de ML · tocá para verla grande');
   return `<img src="${f.url}" alt="" loading="lazy" onclick="verFoto('${p.id}',''${_vArg})" title="${tit}" style="${comun};object-fit:cover;background:#fff;border:1px solid rgba(148,163,184,.25)" onerror="this.style.display='none'">`;
+}
+// La miniatura de Inventario (08/11/2026): la foto o, sin foto, un cuadrito vacío del MISMO tamaño, así los renglones con y sin
+// foto quedan alineados y nada corre las casillas de la derecha.
+function fotoMiniHTML(p,px,variante,cuenta){
+  const lado=px||32;
+  let h='';try{h=p?fotoChipHTML(p,lado,variante,cuenta):'';}catch(e){h='';}
+  return `<span class="foto-mini" style="flex:0 0 ${lado}px;width:${lado}px;height:${lado}px;display:inline-flex;border-radius:6px;overflow:hidden;background:var(--surface2);border:1px solid var(--border)">${h}</span>`;
 }
 // LA FOTO DE LO QUE SE VENDIÓ (05/10/2026, pedido suyo: "¿se puede poner foto del producto vendido?").
 // Primero la de la PUBLICACIÓN que vendió (es exactamente lo que se mandó, color incluido); si esa no
@@ -5914,7 +5964,7 @@ function renderInv(){
     const _negStyle=n=>n<0?'color:var(--red);font-weight:700':'';
     if(!hasVars){
       return`<tr>
-        <td title="${p.name.replace(/"/g,'&quot;')}">${p.name}</td><td>${costCell}</td>
+        <td title="${p.name.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:6px;min-width:0">${fotoMiniHTML(p,24)}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div></td><td>${costCell}</td>
         ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
         <td class="ac" id="st_${p.id}" style="${_negStyle(sub)}">${fmtN(sub)}</td>
         <td class="ac" id="vt_${p.id}">${fmtUS(val)}</td>
@@ -5927,10 +5977,10 @@ function renderInv(){
     const varRows=[...varsFiltered].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>{
       let vSub=0;
       const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('');
-      return`<tr class="inv-var-row"><td>↳ ${v}</td><td></td>${locCells}<td class="ac" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac">${fmtUS(vSub*cp)}</td><td></td></tr>`;
+      return`<tr class="inv-var-row"><td><div style="display:flex;align-items:center;gap:6px;min-width:0">↳ ${fotoMiniHTML(p,22,v)}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${v}</span></div></td><td></td>${locCells}<td class="ac" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac">${fmtUS(vSub*cp)}</td><td></td></tr>`;
     }).join('');
     return`<tr style="background:rgba(124,58,237,.06)">
-      <td title="${p.name.replace(/"/g,'&quot;')}"><strong>${p.name}</strong></td><td>${costCell}</td>
+      <td title="${p.name.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:6px;min-width:0">${fotoMiniHTML(p,24)}<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis">${p.name}</strong></div></td><td>${costCell}</td>
       ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="font-size:.72rem;${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
       <td class="ac" id="st_${p.id}">${fmtN(sub)}</td>
       <td class="ac" id="vt_${p.id}">${fmtUS(val)}</td>
@@ -7565,6 +7615,21 @@ const LOCAL_PCT=25;
 const _ganConCosto=x=>!!x&&x.gan!=null&&Math.abs(Number(x.gan))>0.5;
 function colPctLocal(g,c){if(g==null||!isFinite(Number(g)))return 'var(--muted)';if(!(Number(c)>0))return Number(g)>=0?'var(--green)':'var(--red)';return Math.round(Number(g)/Number(c)*100)>=LOCAL_PCT?'var(--green)':'var(--red)';}
 function colPctLocalP(p){return p==null||!isFinite(p)?'var(--muted)':Math.round(p)>=LOCAL_PCT?'var(--green)':'var(--red)';}
+// ↩️ LO QUE DEVUELVE LA PERFUMERÍA VA AL DÍA EN QUE VUELVE (5a del 08/11/2026, él): `debenmov:…=devuelve` achica el renglón de lo dejado
+// (unidades, plata y ganancia, así la deuda y los totales quedan bien) y desde el 08/11 guarda en cada `devs` lo que salió ({u,f,m,gan}).
+// Para lo que va POR DÍA (Métricas → Perfumería, ¿Cierra el mes?) el renglón vuelve a valer lo que valía el día que se dejó y la
+// devolución resta en SU día: así una devolución no le cambia nada a un mes ya cerrado. Las devoluciones viejas (sin `m` en `devs`)
+// quedan como estaban (ya restadas en el día que se dejó). Devuelve la lista de partes {…renglón, f, m, u, gan, _dev}. Misma regla en
+// el robot (`perfPartesMovBot`).
+function perfPartesMov(x){
+  if(!x)return [];
+  const dv=Object.values(x.devs||{}).filter(z=>z&&z.m!=null&&isFinite(Number(z.m)));
+  if(!dv.length)return Number(x.m)>0?[x]:[];
+  const sm=dv.reduce((t,z)=>t+Number(z.m),0),sg=dv.reduce((t,z)=>t+(Number(z.gan)||0),0),su=dv.reduce((t,z)=>t+(Number(z.u)||0),0);
+  const out=[{...x,m:(Number(x.m)||0)+sm,u:(Number(x.u)||0)+su,...(x.gan!=null?{gan:Number(x.gan)+sg}:{})}];
+  dv.forEach(z=>out.push({...x,f:z.f||x.f,m:-Number(z.m),u:-(Number(z.u)||0),...(x.gan!=null?{gan:-(Number(z.gan)||0)}:{}),_dev:true}));
+  return out;
+}
 function deudaMovsProd(d){return Object.values((d&&d.movs)||{}).filter(x=>x&&Number(x.m)>0&&(x.prodNom||x.gan!=null));}
 // EL DÍA DE UNA DEUDA (revisión etapa 9, 30/10/2026): `fecha0` o el día de ACÁ en que se cargó (`_isoDe`). Antes `new Date(ts).toISOString()`
 // (hora de Londres): una venta cargada después de las 21 caía al día siguiente, y la del 31 a las 22 en el mes siguiente.
@@ -7618,7 +7683,11 @@ function cuotaHistoria(d){const H=[];const _F=deudaFifo(d);   // pago por plata 
   const LOC={soares:'Soares',sarmiento:'Sarmiento',ceballos:'Ceballos'};
   // ↩️ Lo que la perfumería devolvió sin vender (11a del 30/10, `debenmov:…=devuelve`): el renglón ya viene achicado y dice cuántas volvieron.
   Object.entries(d.movs||{}).forEach(([k,v])=>{if(!v||(!Number(v.m)&&!(Number(v.devU)>0)))return;const _dv=Number(v.devU)>0?` · ↩️ devolvió ${v.devU} (${Object.values(v.devs||{}).map(z=>z&&z.f).filter(Boolean).join(', ')})`:'';const pr=v.prodNom?`🛍️ ${Number(v.u)>1?v.u+' × ':''}${v.prodNom}${v.local?' · en '+(LOC[v.local]||v.local):''}${_dv}`:'';
-    H.push({nom:v.prodNom||'',u:Number(v.u)||0,loc:v.prodNom?(LOC[v.local]||v.local||''):'',nota:v.nota||'',f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:[pr,v.nota].filter(Boolean).join(' · ')||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k,prod:!!v.prodNom&&Number(v.m)>0,pagado:(_F.por[k]&&_F.por[k].full)?(_F.por[k].f||v.f||'')||'—':null,pagadoM:_F.por[k]?_F.por[k].pag:0,pagPct:_F.por[k]?_F.por[k].pct:0,gan:Number.isFinite(Number(v.gan))&&v.gan!==undefined&&v.gan!==null?Number(v.gan):null,costoU:Number(v.costoU)||null,pu:Number(v.pu)||null});});
+    H.push({nom:v.prodNom||'',u:Number(v.u)||0,loc:v.prodNom?(LOC[v.local]||v.local||''):'',nota:v.nota||'',f:v.f||_isoDe(k),ts:Number(k),m:Number(v.m),txt:[pr,v.nota].filter(Boolean).join(' · ')||(Number(v.m)>0?'sumó deuda':'devolvió'),mov:k,prod:!!v.prodNom&&Number(v.m)>0,pagado:(_F.por[k]&&_F.por[k].full)?(_F.por[k].f||v.f||'')||'—':null,pagadoM:_F.por[k]?_F.por[k].pag:0,pagPct:_F.por[k]?_F.por[k].pct:0,gan:Number.isFinite(Number(v.gan))&&v.gan!==undefined&&v.gan!==null?Number(v.gan):null,costoU:Number(v.costoU)||null,pu:Number(v.pu)||null});
+    // ↩️ 5a del 08/11/2026: cada devolución nueva (con `m` en `devs`) también es un renglón en SU día, con la ganancia que se sacó.
+    if(v.prodNom)Object.entries(v.devs||{}).forEach(([kz,z])=>{if(!z||z.m==null||!isFinite(Number(z.m)))return;const gz=Number(z.gan);
+      H.push({nom:v.prodNom,u:-(Number(z.u)||0),loc:LOC[v.local]||v.local||'',nota:'',f:z.f||'',ts:Number(kz)||0,m:-Number(z.m),gan:null,
+        txt:`↩️ devolvió ${Number(z.u)||0} × ${v.prodNom}${v.local?' · en '+(LOC[v.local]||v.local):''} (dejado el ${v.f||'—'})${isFinite(gz)&&v.gan!=null?` · sale ${_pesos(Math.abs(gz))} de ganancia ese día`:''}`});});});
   return H.sort((a,b)=>String(b.f).localeCompare(String(a.f))||b.ts-a.ts);}
 let _debenMig=false;
 async function cuotasSync(){
@@ -9200,7 +9269,8 @@ function renderOfiContar(){
       const filas=visibles.map(v=>{
         const hay=getQV(p.id,OFI,v);
         const enFull=cta?getQV(p.id,cta,v):stockOfVar(p,v);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
+          ${fotoMiniHTML(p,30,v,cta)}
           <div style="flex:1;min-width:0">
             <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}${_sinEtiqChip(sinEtiq(p.id,v),hay)}</div>
             <div style="font-size:.6rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(enFull)}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,v))}`:`en Full · ${porCuenta(p,v)}`}</div>
@@ -9210,7 +9280,8 @@ function renderOfiContar(){
         </div>`;
       }).join('');
       return `<div style="padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${fotoMiniHTML(p,34,'',cta)}
           <div style="flex:1;min-width:0">
             <div style="font-size:.8rem;font-weight:700;line-height:1.3;word-break:break-word">${p.name}</div>
             <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))} · ${visibles.length<(p.variantes||[]).length?`${visibles.length} de ${(p.variantes||[]).length}`:(p.variantes||[]).length} variantes</div>
@@ -9220,7 +9291,8 @@ function renderOfiContar(){
         ${filas||'<div style="font-size:.65rem;color:var(--muted);padding-top:8px">Ninguna variante coincide con la búsqueda.</div>'}
       </div>`;
     }
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+    return `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+      ${fotoMiniHTML(p,34,'',cta)}
       <div style="flex:1;min-width:0">
         <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}${_sinEtiqChip(sinEtiq(p.id,''),enCasa)}</div>
         <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(getQ(p.id,cta))}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,''))}`:`en Full · ${porCuenta(p,'')}`}</div>
@@ -14981,15 +15053,37 @@ function devPctActual(p){
 // netoweb, del gestFull cargado a mano. Es el valor de HOY, no el del día de esa venta: para las
 // ventas viejas es una aproximación, y es la mejor que hay — el envío exacto de cada venta no
 // quedó guardado.
+// 🚚 4a del 08/11/2026 (él: el 41,8% que en realidad era 32,1%): una venta de menos de $33.000 por unidad TAMBIÉN pagó el envío
+// cuando salió por la gemela Clásica con envío gratis (`gemelaTipo:'envio'`) o cuando la compra entera pasó los $33.000 (2+
+// unidades, o un carrito). Antes daba 0 y esas ventas salían más verdes. Cuál envío: el REAL de la venta si el robot lo guardó
+// (`v.envio`, desde el 08/11); si no, el de la publicación (`cyc/netopub`: la gemela usa el de su Clásica arriba de la barrera),
+// y si no hay, el de la ficha o el peor medido. Uno solo por compra: en un carrito se reparte por lo que vale cada renglón.
+// La MISMA regla está en el robot (`envioDeVentaBot`). La ganancia en pesos de una venta con el neto REAL no cambia (ML ya se lo
+// descontó); cambia el divisor del % y, en las estimadas, el costo (como siempre con `gestDeVenta`).
+let _ctCache=null,_ctSrc=null;
+function _cartTotVP(v){
+  if(!v||!v.numVenta||!v._dateKey)return 0;
+  const src=state.ventaprod||{};
+  if(_ctSrc!==src||!_ctCache){_ctCache={};for(const [k,dd] of Object.entries(src))for(const x of Object.values(dd||{})){if(!x||x.cancelada||!x.numVenta)continue;const c=k+'|'+(x.cuenta||'')+'|'+x.numVenta;_ctCache[c]=(_ctCache[c]||0)+(Number(x.total)||0);}_ctSrc=src;}
+  return _ctCache[v._dateKey+'|'+(v.cuenta||'')+'|'+v.numVenta]||0;
+}
+function _envGemelaWeb(np){return np&&Number(np.precio)>=UMBRAL_ENVIO_GRATIS&&Number(np.envio)>0&&!np.envioML&&!np.sinEnvio?Number(np.envio):0;}
 function gestDeVenta(v){
   if(!v||v.cancelada)return 0;
   const p=prodDeVenta(v);if(!p)return 0;
-  // Una venta ABAJO de los $33.000 (por unidad) no pagó envío de Full: ML no le cobra al vendedor.
-  // Sumarle el de hoy al divisor bajaba su % de mentira (revisión max, 26/09/2026).
-  const _pu=(Number(v.total)||0)/(v.qty||1);
-  if(_pu>0&&_pu<UMBRAL_ENVIO_GRATIS)return 0;
+  const er=Number(v.envio);if(er>0)return Math.round(er);   // el que cobró ML en ESTA venta (lo guarda el robot desde el 08/11)
+  const q=Number(v.qty)||1,tot=Number(v.total)||0,_pu=tot/q;
   const g=Number(p.netoCalcEnvio)>0?Number(p.netoCalcEnvio):(Number(p.gestFull)||0);
-  return g>0?g*(v.qty||1):0;
+  if(!(_pu>0&&_pu<UMBRAL_ENVIO_GRATIS))return g>0?g*q:0;   // arriba de la barrera: como siempre
+  // Abajo de la barrera por unidad: sólo si igual pagamos el envío.
+  const L=(state.mllinks||{})[v.mla]||null,NP=state.netopub||{};
+  const porGemela=!!(L&&L.gemelaTipo==='envio');
+  const cartT=_cartTotVP(v),compra=Math.max(tot,cartT);
+  if(!porGemela&&compra<UMBRAL_ENVIO_GRATIS)return 0;   // lo pagó el comprador (revisión max, 26/09/2026)
+  const np=NP[v.mla]||null;
+  let e=(L&&L.gemelaDe?_envGemelaWeb(NP[L.gemelaDe]):0)||_envGemelaWeb(np)||(np&&Number(np.envio)>0&&!np.sinEnvio?Number(np.envio):0)||g||SIM_ENVIO_ARRIBA;
+  if(!porGemela&&cartT>tot&&tot<UMBRAL_ENVIO_GRATIS&&cartT>0)e=e*tot/cartT;   // carrito: un envío para toda la compra
+  return Math.round(e);
 }
 // ── EL % DE GANANCIA ES UNO SOLO, Y SIEMPRE LLEVA EL ENVÍO DE FULL EN EL DIVISOR ──
 // Regla suya del 22/09/2026, textual: *"dividilo con el costo de envío adentro siempre en todos
@@ -25146,7 +25240,7 @@ function _metLocalDia(){
   const add=(k,a,v,g,c)=>{if(!/^\d{4}_\d{2}_\d{2}$/.test(k))return;if(a==='loc_sinperf')_metLocSinPerf=true;const d=out[k]=out[k]||{};const o=d[a]=d[a]||{v:0,g:0,c:0};o.v+=v;o.g+=g;o.c+=c;};
   const D=(typeof cuotasLista==='function'?cuotasLista():Object.values(state.debencuotas||{})).filter(d=>d&&d.nom);
   const M=D.find(d=>/perfumeria/.test(_n(d.nom))&&/mercader/.test(_n(d.nom)));
-  if(M)Object.values(M.movs||{}).forEach(x=>{if(!x||!(Number(x.m)>0)||!x.prodNom)return;const lc=_n(x.local);const a=['soares','sarmiento','ceballos'].includes(lc)?'loc_'+lc:'loc_sinperf';
+  if(M)Object.values(M.movs||{}).filter(x=>x&&x.prodNom).flatMap(perfPartesMov).forEach(x=>{const lc=_n(x.local);const a=['soares','sarmiento','ceballos'].includes(lc)?'loc_'+lc:'loc_sinperf';
     const m=Number(x.m)||0,g=x.gan!=null?Number(x.gan)||0:0;add(kOf(x.f),a,m,g,_ganConCosto(x)?m-g:0);});
   // Revisión etapa 9, 30/10/2026: venta = `esVentaDeuda` (la de Ver deudas), el día de ACÁ (`fechaDeuda`; antes la hora de Londres) y, además
   // de la deuda, cada producto que se le dejó a una persona (`debenmov:<persona>=…|prod=…`) en su día, como lo de la perfumería: antes Ver deudas
@@ -26076,7 +26170,8 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   // Pago por plata (30/10/2026): cuánto está pagado de cada producto dejado sale de `deudaFifo` (del más viejo al más nuevo), no de su marca.
   const _FM=M?deudaFifo(M):null;
   const movs=M?Object.entries(M.movs||{}).filter(([,x])=>x&&Number(x.m)).map(([k,x])=>({...x,_pagF:_FM&&_FM.por[k]?_FM.por[k].pag:0})):[];
-  const dejT=movs.filter(x=>Number(x.m)>0&&x.prodNom);
+  // ↩️ 5a del 08/11/2026: lo devuelto resta en el día que vuelve (`perfPartesMov`), no en el día que se dejó.
+  const dejT=M?Object.entries(M.movs||{}).filter(([,x])=>x&&x.prodNom).flatMap(([k,x])=>perfPartesMov(x).map(y=>({...y,_mHoy:y._dev?0:(Number(x.m)||0),_pagF:y._dev?0:(_FM&&_FM.por[k]?_FM.por[k].pag:0)}))):[];
   // COBRADO EN TODO EL PERÍODO (revisión etapa 9, 30/10/2026): R/RP van del primer al último día con ventas del local, y un pago que caía afuera
   // no contaba (octubre: "Cobrado $0" con "Mes a mes · oct: cobrado $290.000" en la misma pantalla: pagaron el 2 y el 29, lo dejado iba del 5 al
   // 28). Los pagos se filtran con la MISMA regla de período que los KPIs, aplicada a los días de los pagos (también el ▲▼ contra el anterior).
@@ -26113,12 +26208,12 @@ function renderMetLocal(curKeys,prevKeys,lbl){
   const _gc=v=>v<0?'var(--red)':'var(--green)';
   if(!VT){   // ganancia con su signo (`_pesosSg`) y en rojo si es negativa (revisión etapa 9, 30/10/2026: decía "+$-5.000")
   h+=tit('🛍️ Perfumerías')+`<div style="display:flex;gap:8px;flex-wrap:wrap">
-    ${box('Vendido',_pesos(vend)+cmp(vend,vendP),`${fmtN(sum(dC,'u'))} u. en ${dC.length} entrega${dC.length===1?'':'s'}`)}
+    ${box('Vendido',_pesos(vend)+cmp(vend,vendP),`${fmtN(sum(dC,'u'))} u. en ${dC.filter(x=>!x._dev).length} entrega${dC.filter(x=>!x._dev).length===1?'':'s'}${dC.some(x=>x._dev)?` · ↩️ ${fmtN(-sum(dC.filter(x=>x._dev),'u'))} devueltas`:''}`)}
     ${box('Ganancia',`<span style="color:${colPctLocal(gan,costoC)}">${_pesosSg(gan)}</span>`,pc(gan,costoC)+' sobre el costo · la regla es '+LOCAL_PCT+'%')}
     ${box('Cobrado',_pesos(cobr)+cmp(cobr,cobrP),'pagos en el período')}
     ${box('Falta cobrar',_pesos(falta),'lo que deben hoy (todo)')}</div>`;
   // 3 · Qué perfumería le vendemos más (barras): período y desde siempre
-  const porLoc=a=>{const o={};a.forEach(x=>{const k=LOC[x.local]||x.local||'sin perfumería';const v=o[k]=o[k]||{m:0,g:0,c:0,u:0,deb:0};v.m+=Number(x.m)||0;v.u+=Number(x.u)||0;if(x.gan!=null){v.g+=Number(x.gan);if(_ganConCosto(x))v.c+=Number(x.m)-Number(x.gan);}v.deb+=Math.max(0,(Number(x.m)||0)-(Number(x._pagF)||0));});return o;};   // sin pagar = lo que la plata pagada no cubre (pago por plata, 30/10/2026)
+  const porLoc=a=>{const o={};a.forEach(x=>{const k=LOC[x.local]||x.local||'sin perfumería';const v=o[k]=o[k]||{m:0,g:0,c:0,u:0,deb:0};v.m+=Number(x.m)||0;v.u+=Number(x.u)||0;if(x.gan!=null){v.g+=Number(x.gan);if(_ganConCosto(x))v.c+=Number(x.m)-Number(x.gan);}v.deb+=Math.max(0,(Number(x._mHoy!=null?x._mHoy:x.m)||0)-(Number(x._pagF)||0));});return o;};   // sin pagar = lo que la plata pagada no cubre (pago por plata, 30/10/2026)
   const pL=porLoc(dC),pLT=porLoc(dejT);
   const tablaLoc=(o,deb)=>{const arr=Object.entries(o).sort((a,b)=>b[1].m-a[1].m),mx=Math.max(1,...arr.map(([,v])=>v.m));
     return arr.length?arr.map(([k,v])=>`<div style="padding:5px 0;border-top:1px solid var(--border);font-size:.68rem"><div style="display:flex;gap:8px;align-items:baseline"><b style="flex:1">${_escC(k)}</b><span style="color:var(--muted)">${fmtN(v.u)} u.</span><b style="font-family:'DM Mono',monospace">${_pesos(v.m)}</b><span style="color:${colPctLocal(v.g,v.c)};font-family:'DM Mono',monospace">${_pesosSg(v.g)} · ${pc(v.g,v.c)}</span></div>${barra(v.m/mx*100,'#ec4899')}${deb&&v.deb>0?`<div style="font-size:.6rem;color:var(--muted);margin-top:2px">productos sin pagar: ${_pesos(v.deb)}</div>`:''}</div>`).join(''):'<div style="font-size:.66rem;color:var(--muted)">Nada dejado.</div>';};

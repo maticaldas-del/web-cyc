@@ -652,6 +652,33 @@ async function leerMonoPct(db) {
 // `monoPct` / `tcForYM` de index.html, paso por paso: si se toca una, se toca la otra.
 // Devuelve { costo, sinCosto, gest }: `costo` con los impuestos y, si el neto es estimado, el envío
 // de Full adentro (igual que `efectivoCostoVP`); `gest` es el envío de Full para el divisor del %.
+// 🚚 EL ENVÍO DE FULL DE UNA VENTA, PARA EL DIVISOR DEL % (4a del 08/11/2026; copia de `gestDeVenta` de index.html: si se toca una,
+// se toca la otra). Abajo de $33.000 por unidad también lo pagamos si salió por la gemela con envío gratis (`gemelaTipo:'envio'`) o si
+// la compra entera pasó los $33.000 (2+ unidades o un carrito). El REAL de la venta (`v.envio`) si está; si no, el de la publicación
+// (`netopub`; la gemela, el de su Clásica arriba de la barrera), el de la ficha o el peor medido. En un carrito, uno solo repartido.
+// `ctx` = { links, netopub, cartTot(v) }.
+function envioDeVentaBot(v, p, ctx = {}) {
+  if (!v || v.cancelada || !p) return 0;
+  const er = Number(v.envio); if (er > 0) return Math.round(er);
+  const q = Number(v.qty) || 1, tot = Number(v.total) || 0, pu = tot / q;
+  const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
+  if (!(pu > 0 && pu < UMBRAL_ENVIO_GRATIS)) return g > 0 ? g * q : 0;
+  const L = (ctx.links || {})[v.mla] || null, NP = ctx.netopub || {};
+  const porGemela = !!(L && L.gemelaTipo === 'envio');
+  const cartT = typeof ctx.cartTot === 'function' ? (Number(ctx.cartTot(v)) || 0) : 0, compra = Math.max(tot, cartT);
+  if (!porGemela && compra < UMBRAL_ENVIO_GRATIS) return 0;
+  const eg = (np) => (np && Number(np.precio) >= UMBRAL_ENVIO_GRATIS && Number(np.envio) > 0 && !np.envioML && !np.sinEnvio ? Number(np.envio) : 0);
+  const np = NP[v.mla] || null;
+  let e = (L && L.gemelaDe ? eg(NP[L.gemelaDe]) : 0) || eg(np) || (np && Number(np.envio) > 0 && !np.sinEnvio ? Number(np.envio) : 0) || g || CAND_ENVIO_ARRIBA;
+  if (!porGemela && cartT > tot && tot < UMBRAL_ENVIO_GRATIS && cartT > 0) e = e * tot / cartT;
+  return Math.round(e);
+}
+// El total de cada compra (carrito) por día|cuenta|número de venta, para `envioDeVentaBot`.
+function cartTotDeVp(vp) {
+  const m = {};
+  for (const [k, dd] of Object.entries(vp || {})) for (const x of Object.values(dd || {})) { if (!x || x.cancelada || !x.numVenta) continue; const c = k + '|' + (x.cuenta || '') + '|' + x.numVenta; m[c] = (m[c] || 0) + (Number(x.total) || 0); }
+  return (v, dk) => (v && v.numVenta && dk ? (m[dk + '|' + (v.cuenta || '') + '|' + v.numVenta] || 0) : 0);
+}
 async function armarCostoWeb(db, vp) {
   const prods = {}, porNombre = {};
   const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -695,13 +722,10 @@ async function armarCostoWeb(db, vp) {
     return monoVig();
   };
   const prodDe = (v) => (v && v.prodId && prods[v.prodId]) || porNombre[nrm(v && v.prod)] || null;
-  const gestDe = (v, p) => {
-    if (!p) return 0;
-    const q = v.qty || 1, pu = (Number(v.total) || 0) / q;
-    if (pu > 0 && pu < UMBRAL_ENVIO_GRATIS) return 0;
-    const g = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
-    return g > 0 ? g * q : 0;
-  };
+  // 4a del 08/11/2026: el envío también abajo de la barrera cuando lo pagamos (gemela de envío, compra de $33.000+), `envioDeVentaBot`.
+  let _lnk = {}, _npb = {}; try { [_lnk, _npb] = await Promise.all([db.get('cyc/mllinks'), db.get('cyc/netopub')]).then((r) => r.map((x) => x || {})); } catch { _lnk = {}; _npb = {}; }
+  const _ct = cartTotDeVp(vp);
+  const gestDe = (v, p, dk) => envioDeVentaBot(v, p, { links: _lnk, netopub: _npb, cartTot: (x) => _ct(x, dk) });
   // Revisión etapa 2 (05/11/2026): si no se pudo leer lo congelado NO se sigue como si no hubiera (los meses cerrados se recalculaban sin avisar).
   let congel; try { congel = (await db.get('cyc/costocongelado')) || {}; } catch (e) { console.log('  ⚠️ no pude leer los meses cerrados congelados (cyc/costocongelado): los números de meses cerrados pueden salir distintos de la web'); congel = {}; }
   // Revisión etapa 2 (05/11/2026): sin el % de reclamos cargado (el `timbre` de cada hora, `widgethoy`) el costo salía sin los reclamos y una venta
@@ -710,10 +734,10 @@ async function armarCostoWeb(db, vp) {
   return (v, dk) => {
     if (!v || v.cancelada) return { costo: 0, sinCosto: false, gest: 0 };
     const ym = String(dk || '').slice(0, 7);
-    { const fz = congel[ym]; if (fz && v.id && fz[v.id] != null) return { costo: Number(fz[v.id]) || 0, sinCosto: false, gest: gestDe(v, prodDe(v)), congelado: true }; }   // revisión etapa 4, 30/10/2026: el envío de Full sigue en el divisor, como la web (`gestDivVP`); antes 0 y el % del robot daba más
+    { const fz = congel[ym]; if (fz && v.id && fz[v.id] != null) return { costo: Number(fz[v.id]) || 0, sinCosto: false, gest: gestDe(v, prodDe(v), dk), congelado: true }; }   // revisión etapa 4, 30/10/2026: el envío de Full sigue en el divisor, como la web (`gestDivVP`); antes 0 y el % del robot daba más
     const p = prodDe(v);
     const imp = (Number(v.total) || 0) * (mlExtraPct(v.cuenta) + monoPct(ym)) / 100;
-    const gest = gestDe(v, p);
+    const gest = gestDe(v, p, dk);
     let c;
     // El dólar de SU día, como `tcDeVenta` de la web (27/10/2026): a mano del mes → cierre viejo sin `tcPorVenta` → `v.tcSale` → el del mes.
     const man = tcMes[ym], sn = snaps[ym], tS = parseFloat(v.tcSale);
@@ -2243,9 +2267,33 @@ function mgCajaPeor(to, npM, cu, cuenta, mono) {
   const g = to * (1 - comPct) - envTo - cu - to * imp;
   return den > 0 ? ((g - to * PEOR_RET_PCT) / den) * 100 : null;
 }
+// 📷 La foto de cada variante de una publicación con variantes de ML (08/11/2026). Cada variante trae `picture_ids` y la publicación
+// trae `pictures` con la dirección de cada una; la primera foto de la variante es la suya. Se guarda sólo por https y sólo de los
+// servidores de ML (misma regla que `foto` de mllinks: el panel es https y una imagen http no se ve). Devuelve [] si la publicación
+// no tiene variantes, y undefined si ML no mandó con qué medir (no se borra nada por falta de dato).
+function fotosVariantesML(b) {
+  if (!b || !Array.isArray(b.variations)) return undefined;
+  if (!b.variations.length) return [];
+  if (!Array.isArray(b.pictures)) return undefined;
+  const segura = (u) => { const t = String(u || ''); return /^https:\/\/(?:[^/]*\.)?mlstatic\.com\//i.test(t) ? t : (/^http:\/\/(?:[^/]*\.)?mlstatic\.com\//i.test(t) ? t.replace(/^http:/i, 'https:') : null); };
+  const pics = {}; for (const pc of b.pictures) if (pc && pc.id) pics[pc.id] = segura(pc.secure_url || pc.url);
+  const out = [], vistos = new Set();
+  for (const v of b.variations) {
+    const n = (v.attribute_combinations || []).map((a) => String(a.value_name || '').trim()).filter(Boolean).join(' ').slice(0, 80);
+    const f = pics[(v.picture_ids || [])[0]];
+    if (!n || !f || vistos.has(n)) continue;
+    vistos.add(n); out.push({ n, f });
+  }
+  return out;
+}
 async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
   const links = (await db.get('cyc/mllinks')) || {};
   const upd = {};
+  // 📷 08/11/2026 (él: "que aparezca la foto de cada publicación y de cada variante" en Inventario): la foto de CADA VARIANTE de una
+  // publicación con variantes de ML va en un nodo APARTE (`cyc/mlfotos/<MLA>` = {v:[{n:'Rojo',f:'https://…'}]}), no adentro de
+  // mllinks (que se reescribe entero al vender, §10). Sólo se escribe lo que cambió.
+  let fotosYa = {}; try { fotosYa = (await db.get('cyc/mlfotos')) || {}; } catch { fotosYa = null; }
+  const updFotos = {};
   const res = { winning: 0, sharing: 0, losing: 0, nocat: 0, sincaja: 0, mirados: 0, filas: [], cats: new Set(), catsNuevas: 0, catsFaltan: 0, fotos: 0, porCuotas: 0, sug: 0, sugSin: 0 };
   let tokUno = null;
   const _sugPend = [];   // 6.D4: las sin catálogo a las que hay que pedirles el precio sugerido de ML en esta vuelta
@@ -2263,7 +2311,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
       m.startsWith('MLA') && e && e.cuenta === label && !e.ignored && (e.status || '') !== 'closed').map(([m]) => m);
     for (let k = 0; k < ids.length; k += 20) {
       let arr;
-      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id,user_product_id,tags,health', tok); }
+      try { arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,title,status,price,catalog_listing,category_id,secure_thumbnail,thumbnail,domain_id,user_product_id,tags,health,variations,pictures', tok); }
       catch { continue; }
       for (const row of (arr || [])) {
         const b = row.body || {}; const mla = b.id; if (!mla || !links[mla]) continue;
@@ -2299,6 +2347,13 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
           : (/^http:\/\/(?:[^/]*\.)?mlstatic\.com(?:[:/]|$)/i.test(_th) ? _th.replace(/^http:/i, 'https:') : null);
         if (fotoML && links[mla].foto !== fotoML) upd[mla + '/foto'] = fotoML;
         if (fotoML) res.fotos++;
+        if (fotosYa) {
+          const _fv = fotosVariantesML(b);
+          const _ya = fotosYa[mla] && Array.isArray(fotosYa[mla].v) ? fotosYa[mla].v : null;
+          if (_fv === undefined) { /* ML no mandó variantes ni fotos: falta de dato, se deja lo de antes */ }
+          else if (!_fv.length) { if (_ya) updFotos[mla] = null; }
+          else if (JSON.stringify(_ya) !== JSON.stringify(_fv)) updFotos[mla] = { v: _fv, ts: Date.now() };
+        }
         if (b.domain_id && links[mla].dom !== b.domain_id) upd[mla + '/dom'] = b.domain_id;
         // EL IDENTIFICADOR CON EL QUE ML DICE "ESTAS SON EL MISMO PRODUCTO". Medido el 21/09 con
         // `mismoprod` sobre 384 publicaciones: cuando ML las junta, **nunca contradijo nuestras
@@ -2406,6 +2461,7 @@ async function cajaDeCompraML(db, accounts, labels, DRY, soloCta) {
     if (e.catNom !== yaNom[cat]) upd[mla + '/catNom'] = yaNom[cat];
   }
   if (!DRY && Object.keys(upd).length) await db.patch('cyc/mllinks', upd);
+  if (Object.keys(updFotos).length) { res.fotosVar = Object.keys(updFotos).length; if (!DRY) { try { await db.patch('cyc/mlfotos', updFotos); } catch (e) { console.log('⚠️ mlfotos: ' + String(e.message || e).slice(0, 120)); } } }
   return res;
 }
 
@@ -11629,6 +11685,18 @@ function pyPersonalARS(c) {
 // de cada renglón ya no mandan (los pagos con producto también son plata). La ganancia del local no cambia (cuenta el día que se deja).
 // Devuelve { por: {<movKey|_ini>: {m, pag, pct, full, f}}, sobra, ent, medias, pctMedias[] } (ent/medias sólo de renglones con producto).
 // Misma regla que `deudaFifo` de index.html: si se toca una, la otra.
+// ↩️ 5a del 08/11/2026: lo devuelto por la perfumería va al DÍA EN QUE VUELVE (copia de `perfPartesMov` de index.html: si se toca una, se
+// toca la otra). El renglón de lo dejado está achicado; para lo que va por día vuelve a valer lo del día que se dejó y cada devolución nueva
+// (con `m` en `devs`) resta en su día. Las viejas (sin `m`) quedan como estaban.
+function perfPartesMovBot(x) {
+  if (!x) return [];
+  const dv = Object.values(x.devs || {}).filter((z) => z && z.m != null && Number.isFinite(Number(z.m)));
+  if (!dv.length) return Number(x.m) > 0 ? [x] : [];
+  const sm = dv.reduce((t, z) => t + Number(z.m), 0), sg = dv.reduce((t, z) => t + (Number(z.gan) || 0), 0), su = dv.reduce((t, z) => t + (Number(z.u) || 0), 0);
+  const out = [{ ...x, m: (Number(x.m) || 0) + sm, u: (Number(x.u) || 0) + su, ...(x.gan != null ? { gan: Number(x.gan) + sg } : {}) }];
+  for (const z of dv) out.push({ ...x, f: z.f || x.f, m: -Number(z.m), u: -(Number(z.u) || 0), ...(x.gan != null ? { gan: -(Number(z.gan) || 0) } : {}), _dev: true });
+  return out;
+}
 function deudaFifoBot(d) {
   const dia = (ts) => new Date(Number(ts) - 3 * 3600e3).toISOString().slice(0, 10);
   const n = Math.max(1, Number(d && d.n) || 1), monto = Number(d && d.monto) || 0, pagadas = Math.min(n, Number(d && d.pagadas) || 0);
@@ -21159,6 +21227,8 @@ async function main() {
       const mono = (await db.get('cyc/monotributo')) || {};
       const monoP = parseFloat(mono.pct) || 0;
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const _lnkE = (await db.get('cyc/mllinks')) || {}, _npE = (await db.get('cyc/netopub')) || {}, _ctE = cartTotDeVp(vp);
+      const _envCtx = (k) => ({ links: _lnkE, netopub: _npE, cartTot: (x) => _ctE(x, k) });
       const desde = Date.now() - DIAS * 86400e3;
       const kDesde = new Date(desde - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
       const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR');
@@ -21171,8 +21241,7 @@ async function main() {
           const p = pIdx[v.prodId] || {};
           const q = v.qty || 1;
           const imp = (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
-          const g1 = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
-          const gest = (v.total || 0) / q >= 33000 ? g1 * q : 0;
+          const gest = envioDeVentaBot(v, p, _envCtx(k));   // 4a del 08/11/2026: la misma regla que la web (gemela de envío, compra de $33.000+)
           const gan = (v.neto || 0) - v.costo - imp, base = v.costo + imp + gest;
           const nom = p.name || v.prod || '?';
           filas.push({ fac: v.total || 0, gan, base, u: q, nom, var: v.variante || '', clave: (v.prodId || nom) + '|' + (v.variante || ''), pv: /paulvic/i.test(nom + ' ' + (v.prod || '')) });
@@ -21695,6 +21764,8 @@ async function main() {
       const compras = (await db.get('cyc/compras')) || {};
       const cfg = (await db.get('cyc/mlconfig')) || {};
       const pIdx = {}; for (const p of products) pIdx[p.id] = p;
+      const _lnkE = (await db.get('cyc/mllinks')) || {}, _npE = (await db.get('cyc/netopub')) || {}, _ctE = cartTotDeVp(vp);
+      const _envCtx = (k) => ({ links: _lnkE, netopub: _npE, cartTot: (x) => _ctE(x, k) });
       const desde = Date.now() - DIAS * 86400e3;
       const kDesde = new Date(desde - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
       let nV = 0, total = 0, gan = 0, base = 0, sinCosto = 0;
@@ -21706,8 +21777,7 @@ async function main() {
           const p = pIdx[v.prodId] || {};
           const q = v.qty || 1;
           const imp = (v.total || 0) * (mlExtraPct(v.cuenta) + monoP) / 100;
-          const g1 = Number(p.netoCalcEnvio) > 0 ? Number(p.netoCalcEnvio) : (Number(p.gestFull) || 0);
-          const gest = (v.total || 0) / q >= 33000 ? g1 * q : 0;
+          const gest = envioDeVentaBot(v, p, _envCtx(k));   // 4a del 08/11/2026: la misma regla que la web (gemela de envío, compra de $33.000+)
           nV++; total += v.total || 0;
           gan += (v.neto || 0) - v.costo - imp;
           base += v.costo + imp + gest;
@@ -39578,12 +39648,17 @@ async function main() {
       const DESDE = '2026_10';
       const prevYM = (ym) => { const [y, m] = ym.split('_').map(Number); return m === 1 ? (y - 1) + '_12' : y + '_' + String(m - 1).padStart(2, '0'); };
       const curYM = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7).replace('-', '_');
-      const [snaps, retM, corrA, cong] = await Promise.all([db.get('cyc/snapshots'), db.get('cyc/retiro_mes'), db.get('cyc/cobro_corr'), db.get('cyc/retiro_congelado')].map((p) => p.then((x) => x || {})));
+      const [snaps, retM, corrA, cong, retCob] = await Promise.all([db.get('cyc/snapshots'), db.get('cyc/retiro_mes'), db.get('cyc/cobro_corr'), db.get('cyc/retiro_congelado'), db.get('cyc/retiro_cobrado')].map((p) => p.then((x) => x || {})));
+      // 3b del 08/11/2026 (él): desde el cierre de noviembre, "lo ya retirado ese mes" = SÓLO los retiros marcados ✅ "Ya lo cobró" (`cyc/retiro_cobrado`),
+      // con el monto guardado al marcarlo. Igual que `_cobroCrec` de la web (COBRO_SOLO_COBRADO_DESDE). Octubre queda como estaba.
+      const SOLO_COBRADO_DESDE = '2026_11';
+      const retiroCobradoVal = (ym) => { const rc = retCob[ym] || {}; const ra = retiroAuto(ym); let t = 0;
+        for (const q of ['mati', 'tito']) { const x = rc[q]; if (!x) continue; const v = Number(x.v); t += (x.v != null && Number.isFinite(v)) ? Math.round(v) : Math.round((ra || 0) / 2); } return t; };
       const congV = (ym) => { const z = cong[ym]; return z && z.v != null && isFinite(Number(z.v)) ? Math.round(Number(z.v)) : null; };
       const retiroMesVal = (ym) => { const au = retiroAuto(ym); if (au != null) return au; const r = retM[ym]; return r != null && r !== '' ? Math.round(Number(r) || 0) : null; };
       function cobroCrec(ym) { const B = snaps[ym], A = snaps[prevYM(ym)]; if (!B || !A || B.total == null || A.total == null) return null;
         const tc = parseFloat(B.tipoCambio) || 0; if (!tc) return null; const crecio = Math.round((Number(B.total) - Number(A.total)) * tc);
-        const retiro = retiroMesVal(ym); if (retiro == null) return null; const corr = Number((corrA[ym] || {}).ars) || 0; const base = crecio + retiro - corr;
+        const retiro = ym >= SOLO_COBRADO_DESDE ? retiroCobradoVal(ym) : retiroMesVal(ym); if (retiro == null) return null; const corr = Number((corrA[ym] || {}).ars) || 0; const base = crecio + retiro - corr;
         return { crecio, retiro, corr, base, porSocio: base > 0 ? Math.floor(base / 3 / 100000) * 100000 : 0 }; }
       // Revisión etapa 2 (05/11/2026): el de adentro va SIN el piso de 0 (`crudo`): si el mes pasado debía dar negativo, esa parte se descuenta
       // del siguiente; antes se perdía (quedaba en 0 y el mes de después cobraba de más). Igual que `_retiroCalc` de la web.
@@ -42181,7 +42256,7 @@ async function main() {
           const D = Object.values(debC || {}).filter((d) => d && typeof d === 'object' && d.nom);
           const M = D.find((d) => /perfumeria/.test(_n(d.nom)) && /mercader/.test(_n(d.nom)));
           const kOf = (f) => String(f || '').slice(0, 10).replace(/-/g, '_');
-          if (M) for (const x of Object.values(M.movs || {})) if (x && Number(x.m) > 0 && x.prodNom && kOf(x.f).startsWith(km) && (!desde || kOf(x.f) > diaC) && x.gan != null) ganLoc += Number(x.gan) || 0;
+          if (M) for (const x of Object.values(M.movs || {}).filter((y) => y && y.prodNom).flatMap(perfPartesMovBot)) if (kOf(x.f).startsWith(km) && (!desde || kOf(x.f) > diaC) && x.gan != null) ganLoc += Number(x.gan) || 0;   // 5a del 08/11: lo devuelto, en su día
           // Revisión etapa 9, 30/10/2026: misma regla que `esVentaDeuda` de la web (con costo o ganancia anotada, o `tipo:'venta'`), el día de ACÁ
           // (antes la hora de Londres: lo cargado después de las 21 caía al día siguiente) y además cada producto dejado a una persona
           // (`debenmov:<persona>=…|prod=…`, ganancia en el movimiento): antes Ver deudas lo sumaba y esto no.
@@ -43575,7 +43650,9 @@ async function main() {
         for (const [k, x] of ab) { if (!falta) break; const uX = Number(x.u), q = Math.min(falta, uX), pu = Number(x.pu) > 0 ? Number(x.pu) : Number(x.m) / uX;
           const gU = x.gan != null ? Number(x.gan) / uX : null, nuevoU = uX - q, nuevoM = Math.round(Number(x.m) - pu * q);
           // Lo que ya estaba pagado a medias de este renglón no se pierde: al achicarlo, la plata sigue al próximo (la cuenta es derivada).
-          const devs = { ...(x.devs || {}) }; devs[String(Date.now() + cambios.length)] = { u: q, f: fD };
+          // 5a del 08/11/2026 (él): la devolución guarda lo que sale (`m` plata, `gan` ganancia) para que Métricas, Ver deudas y ¿Cierra el mes? lo
+          // resten el DÍA EN QUE VUELVE (`perfPartesMov` / `perfPartesMovBot`), no el día en que se dejó: así no cambia un mes cerrado.
+          const devs = { ...(x.devs || {}) }; devs[String(Date.now() + cambios.length)] = { u: q, f: fD, m: Math.round(Number(x.m) - nuevoM), ...(gU != null ? { gan: Math.round(Number(x.gan) - gU * nuevoU) } : {}) };
           cambios.push([k, { u: nuevoU, m: nuevoM, ...(gU != null ? { gan: Math.round(gU * nuevoU) } : {}), devU: (Number(x.devU) || 0) + q, devs }]);
           bajaM += Number(x.m) - nuevoM; if (gU != null) bajaG += gU * q;
           console.log(`  ↩️ ${q} × ${x.prodNom} dejado el ${x.f}: ${uX} → ${nuevoU} u. · ${money(Number(x.m))} → ${money(nuevoM)}${gU != null ? ` · ganancia ${money(Math.round(Number(x.gan)))} → ${money(Math.round(gU * nuevoU))}` : ''}`);
@@ -59864,6 +59941,10 @@ async function main() {
           origen: 'ml-api',
         };
         if (netoEst) obj.netoEstimado = true;   // lo busca el repaso de la noche (netoreal:…:estimadas)
+        // 🚚 4a del 08/11/2026: el envío de Full que ML cobró en ESTA venta queda guardado (`envio`), así el % de la web y del robot
+        // (`gestDeVenta` / `envioDeVentaBot`) usa el real, también abajo de $33.000 cuando salió por la gemela de envío gratis o la compra
+        // pasó la barrera. Si esta vuelta el pago no se pudo leer, queda el que ya estaba.
+        if (envioVenta > 0) obj.envio = envioVenta; else if (orderNetAmt == null && _prevV && Number(_prevV.envio) > 0) obj.envio = Math.round(Number(_prevV.envio));
         // CLÁSICA O PREMIUM, Y EN CUÁNTAS CUOTAS (20/10/2026, pedido suyo). `tipoPub` sale de la orden (la publicación
         // con la que se vendió: con las gemelas, el mismo producto se vende por las dos). Las cuotas salen del pago de
         // Mercado Pago y, si no se pudo leer, de la orden; `cuotasSI` = el interés lo pagamos nosotros (cuotas sin interés).
@@ -59900,7 +59981,7 @@ async function main() {
         else if (_aMano && _vHoyOk && _vHoy && _vHoy.netoEstimado && !_vHoy.cancelada && !netoEst) {
           // Etapa 4: tocada a mano pero con el neto todavía ESTIMADO. Se congelaba para siempre: se
           // actualiza SÓLO el neto real que dio ML (campo por campo), lo demás queda como lo dejó él.
-          await db.patch(`cyc/ventaprod/${dayKey}/${id}`, { neto: obj.neto, mlfee: obj.mlfee, netoEstimado: null });
+          await db.patch(`cyc/ventaprod/${dayKey}/${id}`, { neto: obj.neto, mlfee: obj.mlfee, netoEstimado: null, ...(obj.envio > 0 ? { envio: obj.envio } : {}) });
           console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano; sólo le pongo el neto real de ML`);
         }
         else if (_aMano) console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano, no la reescribo`);
