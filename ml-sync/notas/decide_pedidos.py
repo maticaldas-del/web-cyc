@@ -159,7 +159,8 @@ for l in L:
         cm=re.search(r'precio \$\d+ \((.*?)\)',rest)
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
-          env=g(r' · envFull \$(\d+)'),   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
+          env=g(r' · envFull \$(\d+)'),
+          nav=(float(re.search(r' · NAV ([\d.]+)',rest).group(1)) if re.search(r' · NAV ([\d.]+)',rest) else 0),   # 🎄 9a del 08/11/2026   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
           cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest),soloPerf=soloperf_de(rest),esc=esc_de(rest),ocy=(int(re.search(r' · OFICYC (\d+)',rest).group(1)) if re.search(r' · OFICYC (\d+)',rest) else 0))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
@@ -295,6 +296,17 @@ def ritmo(x,dcs=30):
 # vende medio por día o más y deja 25%+ se compra para 45 días (con ~14 días de compra a Full, 30 no alcanzaba y se volvía a
 # cortar). Y lo nuevo que vuela (1+ por día en su primera semana con stock) también. El resto sigue en 30.
 def Tde(p,x,r,m=None):
+    # 🎄 PICO DE NAVIDAD EN PARAGUAY (9a del 08/11/2026, él: "a"): hasta el 24/12 cada pedido de Paraguay lleva el pico de Navidad del
+    # producto (`NAV x` de pedidostodo = cuánto más vendió del 03/12 al 24/12 del año pasado, sólo regalable, ×1,3 a ×5). Lo que llega
+    # (~16 días de viaje) y se vende en los 30 días del pedido dentro de esa ventana cuenta x veces: se suman (x-1) × esos días.
+    if p['g']=='PY' and r>0 and p.get('nav',0)>1:
+        import datetime as _dt
+        hoyD=_dt.date.today(); a=_dt.date(hoyD.year,12,3); b=_dt.date(hoyD.year,12,24)
+        ini=hoyD+_dt.timedelta(days=16); fin=ini+_dt.timedelta(days=T)
+        sol=max(0,(min(fin,b)-max(ini,a)).days+1) if hoyD<=b else 0
+        if sol>0:
+            extra=round((p['nav']-1)*sol)
+            return T+extra,f"🎄 pico de Navidad ×{p['nav']:.1f}: {sol} días del pedido caen del 03/12 al 24/12".replace('.',',')
     # PAULVIC: pedido cada 15 días para 45 días de su ritmo (análisis a fondo, 16/10/2026, idea 3 · CEREBRO.md).
     if p['g']=='PAULVIC' and r>0: return 45,'el Paulvic se pide cada 15 días'
     # 🏬 BS AS A 60 DÍAS (03/11/2026, él: "Paulvic hay siempre. Nissei también y Bs As la mitad de las veces" → eligió 60 días): como en Bs
