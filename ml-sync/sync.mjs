@@ -32694,6 +32694,10 @@ async function main() {
       const normNom = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       // Precio de referencia de ML para el freno: el que vio la medición (pycat), el del candidato, el de nuestra publicación o el ganador del catálogo.
       const lista = []; let sinRef = 0;
+      // 🌸 ABEL SIN MIRAR ML (6a del 08/11/2026): los perfumes con catálogo SEGURO que la tienda deja afuera sólo por el precio de ML (ML más
+      // barato que nuestro costo) entran igual a ABEL con el nombre y las fotos de ESE catálogo. A más de 1,6 veces ML no (puede ser otro
+      // producto): ésos van por el camino de Nissei de abajo (foto y nombre del proveedor).
+      const abelPorPrecio = [];
       for (const x of elegidos) {
         let n = tiendaLimpiarNombre(String(x.nombre || '').replace(/\s+/g, ' ').trim());
         if (!n) { no('sin nombre de ML'); continue; }
@@ -32738,7 +32742,7 @@ async function main() {
           // está; más caro se baja a 1,10 × ML si ahí deja 10%+ sobre el costo; si no, afuera.
           else if (k > 1.10) {
             const costo = x.usd * RECT * tc, m = x.mpRef * 1.10, pML = m >= 10000 ? Math.floor((m + 10) / 1000) * 1000 - 10 : Math.floor((m + 10) / 100) * 100 - 10;
-            if (!(pML > 0) || pML / costo - 1 < 0.10) { no('más de 10% arriba de ML y a ese precio deja menos del 10%'); continue; }
+            if (!(pML > 0) || pML / costo - 1 < 0.10) { no('más de 10% arriba de ML y a ese precio deja menos del 10%'); if (!x.ap) abelPorPrecio.push({ x, n }); continue; }
             p = pML; nv.aML = (nv.aML || 0) + 1;
           }
         } else sinRef++;
@@ -32757,13 +32761,14 @@ async function main() {
       }
       // El mismo nombre en dos catálogos: uno solo (el más caro; si difieren más de 5%, afuera los dos).
       const porNom = new Map(); for (const y of lista) (porNom.get(y.nn) || porNom.set(y.nn, []).get(y.nn)).push(y);
-      const finales = [];
+      const finales = []; const repetidoDe = new Map();   // clave que quedó afuera por repetida → la clave que quedó (para ABEL)
       for (const ys of porNom.values()) {
         if (ys.length === 1) { finales.push(ys[0]); continue; }
         const max = ys.reduce((a, b) => (b.x.usd > a.x.usd ? b : a)), min = Math.min(...ys.map((y) => y.x.usd));
         // 31/10/2026: con precios distintos queda el que más se parece al nombre de ML (antes afuera los dos).
         const elegido = max.x.usd > min * 1.05 ? ys.slice().sort((a, b) => tiendaParecido(b.x.nn || '', b.n) - tiendaParecido(a.x.nn || '', a.n) || a.x.usd - b.x.usd)[0] : max;
         finales.push(elegido); for (let i = 1; i < ys.length; i++) no('repetido (mismo nombre)');
+        for (const y of ys) if (y !== elegido) repetidoDe.set(y.x.key, elegido.x.key);
       }
       // IDS FIJOS (30/10/2026, revisión de la tienda): el código de cada producto (`id`, el [XXXXX] del pedido) se asigna UNA vez y no cambia más,
       // en `mlapi/tiendaids/<clave>` = {id, cod (código del proveedor), nn (su nombre), desde, usd, p, n}. Los que ya estaban publicados conservan su código de 5;
@@ -32785,13 +32790,22 @@ async function main() {
       // Brutos (~5.800): en efectivo le queda ~30%, con tarjeta ~26%. Antes 1,30 (sin contar esos impuestos).
       const ABEL_MULT = 1.65;   // ya no se usa (02/11/2026: efectivo/tarjeta)
       const ABEL_ENVIO = 1.23, ABEL_EFECTIVO = 1.30, ABEL_TARJETA = 1.67, ABEL_DIAS = 2;   // 02/11/2026 (él)
-      const outAbel = []; const abelNo = {}; const abelCuenta = { sinML: 0, abajo: 0, hasta10: 0 };
+      const outAbel = []; const abelNo = {}; const abelCuenta = { tienda: 0, mlPorPrecio: 0, nissei: 0 };
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
       // Control del 01/11: "Aqua Kiss Shimmer Victoria's Secret 250 ml" (en el proveedor "Colônia") es una bruma, no un perfume.
       const ABEL_MIST = /\bshimmer\b|col[oô]nia\s+(victoria|bath)|(victoria.?s\s+secret|bath\s*(&|and)?\s*body)[^]{0,80}\b2(36|50)\s*ml/i;
       const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
+      // Ayudas de ABEL (6a del 08/11/2026): las mismas reglas para lo que viene de la tienda, de un catálogo seguro sacado por precio y de Nissei solo.
+      const abelKeys = new Set(), abelFueraKeys = new Set(), abelPorCod = {};
+      const abelEsPerf = (n, nn) => ABEL_SI.test(n + ' ' + (nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (nn || ''));
+      const abelFresco = (ts) => { if (Number(ts) > 0 && hoy - Number(ts) <= ABEL_DIAS * 864e5) return true; abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] = (abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] || 0) + 1; return false; };
+      const abelMeter = (id, n, fotos, usd, cod, como) => {
+        const base = usd * tc * ABEL_ENVIO;
+        outAbel.push({ id: String(id).toUpperCase(), n: n.slice(0, 140), f: fotos, p: lindo(base * ABEL_EFECTIVO), pt: lindo(base * ABEL_TARJETA), ...(cod ? { k: String(cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (el botón de WhatsApp lo manda)
+        abelCuenta[como] = (abelCuenta[como] || 0) + 1;
+      };
       for (const { x, n, p, om } of finales) {
-        { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); continue; } }
+        { const entF = mapaIds[String(x.key).replace(/[.#$[\]/]/g, '_')]; if (entF && entF.id && fueraMano[String(entF.id).toUpperCase()]) { no('sacado a mano (ridículo)'); abelFueraKeys.add(x.key); continue; } }
         const clave = String(x.key).replace(/[.#$[\]/]/g, '_');
         let ent = mapaIds[clave];
         if (!ent || !ent.id) {
@@ -32808,17 +32822,62 @@ async function main() {
         // 🌸 ABEL (02/11/2026, él: "que aparezcan todos los perfumes que tienen stock en Nissei y que tengan 2 días máximo de última mirada…
         // sumando el 23% de envío + el 30% de ganancia que diga EN EFECTIVO y con tarjeta al 67%… con el 30% ganamos seguro a los
         // competidores"): sin comparar con ML. Efectivo = precio de Nissei × dólar × 1,23 × 1,30 · tarjeta = × 1,23 × 1,67.
-        if (ABEL_SI.test(n + ' ' + (x.nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (x.nn || '')) && x.usd > 0) {
-          const tsA = Number(x.ts) || 0;
-          if (!(tsA > 0) || hoy - tsA > ABEL_DIAS * 864e5) { abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] = (abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] || 0) + 1; }
-          else {
-            const base = x.usd * tc * ABEL_ENVIO;
-            const pE = lindo(base * ABEL_EFECTIVO), pT = lindo(base * ABEL_TARJETA);
-            abelCuenta.abajo++;
-            outAbel.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: pE, pt: pT, ...(x.cod ? { k: String(x.cod) } : {}), c: 'Perfumes' });   // k = el código del proveedor (el botón de WhatsApp lo manda)
-          }
-        }
+        if (abelEsPerf(n, x.nn) && x.usd > 0 && abelFresco(x.ts)) { abelMeter(ent.id, n, x.fotos, x.usd, x.cod, 'tienda'); abelKeys.add(x.key); }
         out.push({ id: String(ent.id).toUpperCase(), n: n.slice(0, 140), f: x.fotos, p: cp ? 0 : p, ...(cp ? { cp: 1 } : {}), ...(mlVer ? { ml: mlVer } : {}), c: tiendaRubro(n), ...(TIENDA_MARCAS.test(n) ? { m: 1 } : {}), _nuevo: x.nuevo ? 1 : 0, _cat: x.cat && /^MLA\d+$/i.test(String(x.cat)) ? String(x.cat).toUpperCase() : '' });
+      }
+      // 🌸 ABEL CON TODOS LOS PERFUMES DE NISSEI (6a del 08/11/2026, él eligió: que estén TODOS los perfumes con stock en Nissei mirados hace
+      // ABEL_DIAS días o menos, sin comparar con ML). Hasta acá entraba sólo lo que pasaba los frenos de la TIENDA (catálogo de ML seguro y
+      // precio contra ML); la tienda de CYC queda igual, esto es SÓLO para ABEL:
+      //  (a) catálogo de ML seguro que la tienda saca por el precio de ML (ML más barato que nuestro costo): con el nombre y las fotos de ese catálogo;
+      //  (b) todo otro perfume de Nissei (sin catálogo seguro, sin buscar todavía, "no es seguro que sea el mismo"…): con la FOTO y el NOMBRE de
+      //      Nissei pasado al castellano (`tiendaNombreProv`). Nunca la foto ni el nombre de otro producto: sin foto del proveedor o con el
+      //      nombre todavía en portugués, afuera. Los mismos frenos de tipo de siempre (testers, body mist/splash, brumas, cremas, D&G…).
+      const abelIdDe = (key, x, n) => {
+        const clave = String(key).replace(/[.#$[\]/]/g, '_'); let ent = mapaIds[clave] || idsCambia[clave];
+        if (ent && ent.id && fueraMano[String(ent.id).toUpperCase()]) return null;
+        if (!ent || !ent.id) { ent = { id: idNuevo(), cod: x.cod || null, nn: String(x.nn || '').slice(0, 120), desde: diaAR, usd: x.usd, p: 0, n: n.slice(0, 120), abel: 1 }; idsCambia[clave] = ent; idsNuevos++; }
+        return ent.id;
+      };
+      // Los códigos de Nissei que ya están (o que se sacaron a mano): todos los de su grupo (el mismo catálogo) y los repetidos por nombre.
+      const abelCodsDe = (keys) => { const cs = []; for (const k of keys) for (const y of grupos.get(k) || []) if (y.cod) cs.push(String(y.cod)); return cs; };
+      for (const { x, n } of abelPorPrecio) {
+        if (abelKeys.has(x.key) || abelFueraKeys.has(x.key) || !abelEsPerf(n, x.nn) || !(x.usd > 0) || !abelFresco(x.ts)) continue;
+        const id = abelIdDe(x.key, x, n); if (!id) { abelFueraKeys.add(x.key); continue; }
+        abelMeter(id, n, x.fotos, x.usd, x.cod, 'mlPorPrecio'); abelKeys.add(x.key);
+      }
+      for (const [k, k2] of repetidoDe) { if (abelKeys.has(k2)) abelKeys.add(k); if (abelFueraKeys.has(k2)) abelFueraKeys.add(k); }
+      const abelYa = pyCodMatcher(abelCodsDe([...abelKeys, ...abelFueraKeys]));
+      const abelNombresML = outAbel.map((q) => q.n);
+      // Lo más fresco de cada código: la copia de Nissei (pycat), la ficha (nisseiUSD/nisseiTs) y el candidato (usd/visto).
+      const abelFresca = new Map();
+      const abelAnotar = (cod, usd, ts) => { const c = _pyDg(cod); if (!c || !(usd > 0) || !(ts > 0)) return; const v = abelFresca.get(c); if (!v || ts > v.ts) abelFresca.set(c, { usd, ts }); };
+      for (const p of Object.values(prodsObj || {})) if (p && p.codPy && String(p.origen || '').toLowerCase() === 'py' && provPyDeBot(p) === 'nissei' && !(sinSt && sinSt[p.id])) abelAnotar(p.codPy, Number(p.nisseiUSD) || 0, Number(p.nisseiTs) || 0);
+      for (const c of Object.values(cands || {})) if (c && c.cod && !c.no && provPyDeBot(c) === 'nissei') abelAnotar(c.cod, Number(c.usd) || 0, candVistoTsBot(c));
+      const abelNissei = new Map();   // nombre normalizado → el elegido (el mismo nombre dos veces: uno solo, el mirado más nuevo)
+      const abelNoN = (m) => { abelNo[m] = (abelNo[m] || 0) + 1; };
+      for (const [cod, e] of Object.entries(pycat || {})) {
+        if (!e || !e.n || pycatProvDe(cod, e) !== 'nissei') continue;
+        const nt = tiendaNombreProv(e.n);
+        if (!abelEsPerf(nt || '', e.n) || ABEL_NO.test(e.n) || /\b(lo[cç][aã]o|hidratante|sabonete|creme|desodorante)\b/i.test(e.n)) continue;
+        if (abelYa(cod)) continue;   // ya está (con el catálogo de ML) o se sacó a mano
+        const fr = abelFresca.get(_pyDg(cod)); const ts = Math.max(Number(e.ts) || 0, fr ? fr.ts : 0);
+        const usd = fr && fr.ts > (Number(e.ts) || 0) ? fr.usd : Number(e.u) || 0;
+        if (!(usd > 0) || usd > TM_USD_MAX) { abelNoN('sin precio en Nissei'); continue; }
+        if (!fresco(ts) || !abelFresco(ts)) continue;
+        if (TIENDA_USADO.test(e.n)) { abelNoN('tester, usado o sin caja'); continue; }
+        if (/dolce\s*(&|y|and|e)?\s*gabbana|\bd\s*&\s*g\b/i.test(e.n + ' ' + nt)) { abelNoN('marca prohibida (Dolce & Gabbana)'); continue; }
+        const foto = String(e.f || '').trim();
+        if (!/^https?:\/\//.test(foto) || PROHIBIDO.test(foto)) { abelNoN('sin catálogo seguro en ML y sin foto de Nissei'); continue; }
+        const n = tiendaLimpiarNombre(nt);
+        if (!n || TIENDA_PORTUGUES.test(n) || prohibido(n)) { abelNoN('sin catálogo seguro en ML y el nombre de Nissei no se pudo pasar al castellano'); continue; }
+        if (abelNombresML.some((m) => tiendaPerfumeSeguro(e.n, m))) { abelNoN('repetido (otro código del mismo perfume ya está)'); continue; }
+        const k = normNom(n), v = abelNissei.get(k);
+        if (v) { abelNoN('repetido (mismo nombre)'); if (ts <= v.ts) continue; }
+        abelNissei.set(k, { cod, nn: e.n, n, foto, usd, ts });
+      }
+      for (const y of abelNissei.values()) {
+        const id = abelIdDe('PY_' + y.cod, { cod: y.cod, nn: y.nn, usd: y.usd }, y.n); if (!id) { abelNoN('sacado a mano (ridículo)'); continue; }
+        abelMeter(id, y.n, [y.foto], y.usd, y.cod, 'nissei');
       }
       // Rubros en orden alfabético con "Otros" al final; adentro, por nombre.
       out.sort((a, b) => (a.c === 'Otros') - (b.c === 'Otros') || a.c.localeCompare(b.c, 'es') || a.n.localeCompare(b.n, 'es'));
@@ -32904,7 +32963,7 @@ async function main() {
         if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
         else if (outAbel.length < 20) console.log(`⚠️ ABEL: sólo ${outAbel.length} perfumes: no lo escribo (algo raro).`);
         else { const dA = (ruta.replace(/\/[^/]*$/, '') || '.') + '/abel'; mkdirSync(dA, { recursive: true }); writeFileSync(dA + '/productos.json', jA + '\n'); }
-        console.log(`🌸 ABEL (Nissei × dólar × ${ABEL_ENVIO} × ${ABEL_EFECTIVO} efectivo / × ${ABEL_TARJETA} tarjeta · mirado hace ${ABEL_DIAS} días o menos): ${outAbel.length} perfumes · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
+        console.log(`🌸 ABEL (Nissei × dólar × ${ABEL_ENVIO} × ${ABEL_EFECTIVO} efectivo / × ${ABEL_TARJETA} tarjeta · mirado hace ${ABEL_DIAS} días o menos): ${outAbel.length} perfumes (${abelCuenta.tienda} como en la tienda · ${abelCuenta.mlPorPrecio} con catálogo de ML que la tienda saca por precio · ${abelCuenta.nissei} con foto y nombre de Nissei) · afuera: ${Object.entries(abelNo).map(([m, k]) => `${m} ${k}`).join(' · ') || 'ninguno'}`); }
       return;
     }
     // BILLING_PROBE=listafotos:<prov> → SOLO LEE (04/11/2026, él con la Pila AA x10 de AnD pegada a otra cosa de ML: "no pegan ni con moco.
