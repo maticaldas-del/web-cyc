@@ -8,6 +8,11 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó las 10 de la noche del 08/11: 1b 2b 3b 4a 5a 6a 7 (si no se venden más en ML, a la perfumería) 8a 9b 10a + fotos en Inventario — APLICANDO
+### 08/11 · Las 20 siguientes (pasadas en el chat a la noche) — esperando respuesta
+(1-6 Plata · 7-10 Local/ABEL · 11-15 Tienda · 16-18 Mercadería · 19-20 Full; textos completos en el chat del 08/11)
+### Las que hago yo sin preguntar (medio seguro, 08/11): Plata 7 8 9 13 14 15 · Local 2 3 5 6 8 12 14 16 · Tienda 3 4 5 8 10 12 13 14 15 · Mercadería 1 5 7 10 13 — con la (a) sugerida de cada una.
+
 ### 08/11 · Las 10 siguientes (pasadas en el chat el 08/11 a la noche)
 1. **Mes que da negativo en el cobro:** si un mes CYC achica $2.000.000 y al siguiente crece $4.000.000, hoy se cobra el segundo entero ($4M ÷ 3 = ~$1.300.000 c/u) aunque en los dos meses juntos creció $2M (~$650.000 c/u). (a) sugerida: lo negativo se descuenta del mes siguiente · (b) cada mes por su cuenta, como hoy.
 2. **La Mercadería de la perfumería que corregiste el 31/10** (+$452.000: de $1.613.400 a $2.065.400) era deuda vieja, no crecimiento, pero hoy entra al cobro de noviembre como si CYC hubiera ganado eso (~$150.000 más c/u). (a) sugerida: cargarla como "lo viejo cargado tarde" de noviembre (no se cobra) · (b) dejarla y se cobra.
