@@ -148,7 +148,10 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   (2) **La suba que salió mal** (menos de la mitad de lo esperado con 3+ esperadas, o 10 días sin vender) **vuelve DE UNA al escalón
   MEDIDO que más ganancia por día dejó** (2+ días con stock y alguna venta; si arriba hay uno que vendió y no se llegó a medir, primero a
   ése: la Lupa Monóculo) con `decido:<MLA>=<precio>!vuelve#volviendo|…`. Se mide en PLATA: si hoy vende algo, vuelve sólo si el de antes
-  facturaba 1,5 veces lo de hoy (Almohadillas Metatarso); a los 10 días decide la ganancia por día. Nunca abajo del 💰 ni del 35% (Sony
+  dejaba más GANANCIA POR DÍA NETA (1a del 08/11, una sola vara; antes facturar 1,5×; Almohadillas Metatarso); a los 10 días decide la
+  ganancia por día; lo que vende menos de 1 por semana, a las 3 ventas esperadas con 10 días como mínimo (8a del 08/11). Se decide con
+  ~80% (1 de 3 esperadas): excepción a "bajar pide 95%" (3a del 08/11). En el Black Friday (25-30/11) no se arranca ninguna prueba y la
+  vuelta se mide sin esos días (12a del 08/11). Nunca abajo del 💰 ni del 35% (Sony
   EX15C: *"dejalo al precio que está, nunca bajar el 35"*), ni sobre un 🔒; el stock que dura mucho no hace volver (si sobra, sigue la
   regla de sobra); en 🔥/⏳ sólo con 10 días sin vender. Lista 📉 de `errores`: vacía. (3) La **escalera de ≤15%** queda para lo que NO
   tiene un precio anterior que vendía (lanzamientos, lo que nunca vendió). (4) **La próxima +50% espera a confirmar**
@@ -160,14 +163,15 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   (`entrarpromo:<MLA>=<precio>@PRICE_DISCOUNT#bajando|…`); `decido` frena bajar la LISTA de algo que ya probó techo salvo `!lista` con
   "EXCEPCIÓN: …". La vuelta y la primera baja 🪜 anotan solas el precio que no rindió (`techofreno`).
 - 🔒 **Vende cualquier forma de venta = vale para todas** (30/10, él con el Aer Jasmín): si vendió la gemela de envío gratis arriba de
-  $33.000, el +50% va sobre ESE precio y la Clásica cruza la barrera (`!vendio!cruza`, o `!cruza` en 🔥/⏳). 🧠 Las formas de venta siguen
+  $33.000, la Clásica se prueba AL PRECIO DE LA GEMELA (11a del 08/11; antes +50% de ese precio) y cruza la barrera (`!vendio!cruza`, o `!cruza` en 🔥/⏳). 🧠 Las formas de venta siguen
   al % más alto en las subas y **bajan todas juntas** en las bajas a propósito (3a del 30/10).
 - 🧠 **Aunque le sobre stock, la que vendió sin techo sube igual** (2b del 28/10). **Vender menos por las subas es a propósito** (29/10):
   la caída de unidades después de subir no es motivo para bajar.
 - 🔒 **🔁 Precios vivos: una prueba por mes, sólo para arriba** (02/11, él: *"que cada un mes se cuestione… sólo para arriba, nunca abajo
-  del precio que más da… 10 días como máximo en decidir"*): todo 💰/🏔️ sin suba en 30 días prueba más caro (con techo +20%, `!mensual`;
-  sin techo +50%), y lo que vende menos de 1 por semana prueba UNA suba de +50% por mes si no tiene 🔴 y no subió en 30 días
-  (`pruebaLentoOk`, 1a del 02/11). A los 10 días como máximo decide la ganancia por día: si arriba deja igual o más, se queda; si no,
+  del precio que más da… 10 días como máximo en decidir"*): entra todo lo activo con 💰 o 🔴 y 30+ días SIN CAMBIO de
+  precio, sin mirar la etiqueta (5a del 08/11), salvo que le sobre (7a). Con techo +20% (`!mensual`); el precio que no rindió
+  (`techofreno`) cuenta como techo y si el +20% llega ahí, la prueba va al MEDIO (6a); sin techo +50% (lo lento: `pruebaLentoOk`, 1a del
+  02/11). A los 10 días como máximo (lo lento, a las 3 ventas esperadas: 8a) decide la ganancia por día: si arriba deja igual o más, se queda; si no,
   vuelve de una. La prueba del mes que vende se queda en ese precio (19a del 03/11). Nunca abajo del 💰. Listas 🔁 y 🧪 de `errores`.
 - **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (Persea).
 - 🔒 **🏔️ techo encontrado sólo lo anota `techo95`** (`techo95:<MLA>;go`), con la certeza que pide ese día: 95% hasta el día 30 con
@@ -224,8 +228,9 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   del 03/11); a los 90 días se abre hasta el 0%. 🔐 `!bajocero`.
 - 🔒 **F14 · lo que vendió a su precio no se baja** (27/10 a la noche, él: *"primero buscar techo, segundo buscar 1 venta y quedarse ahí…
   normalmente siempre conviene mantener el precio más caro posible… 100 productos con pocas unidades que venden poco y ganan muchísimo"*):
-  una venta (ésta, su gemela o las de su stock) desde el último cambio del precio que ve el comprador, en 30 días, frena toda baja y
-  descuento. Sólo baja si sobra (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
+  una venta (ésta, su gemela o las de su stock) desde el último cambio del precio que ve el comprador frena toda baja y descuento
+  mientras sea de hace menos de 10 días CON VISITAS (4a del 08/11; antes 30 días). F14 es la regla de las bajas; el 🎯 objetivo, la de
+  buscar arriba (2a del 08/11). Sólo baja si sobra (90+ días de stock al ritmo de ESE precio con 7+ días medidos, o al de 60 días, o la unidad más vieja con
   90+ días), ⏳ a 20 días o menos del stock antiguo, en los 15 días antes del stock antiguo, con remate autorizado, renovando el mismo
   descuento o si **vende muchísimo menos** (1a del 28/10: en ese escalón deja menos de la MITAD de la plata por día que el 💰, 95% seguro
   y 7+ días con stock → baja un escalón hacia el 💰, sin pasarlo). **Una venta que entró bajando del techo = el precio donde se queda**:
@@ -259,17 +264,18 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   precio con 7+ días medidos), o sin ventas con stock en 60 d, o la unidad más vieja con 90+ días en Full. La oficina no hace "sobra".
   Con sobra NO se ARRANCA a buscar techo: primero sale lo que sobra (escalera, como descuento); lo que ya venía subiendo y vendió sube
   igual (2b del 28/10). 🔒 **La baja por sobra pasa sólo si deja igual o más plata** (02/11, él eligió 1a: *"si vende más lo suficiente
-  bajalo… o sino dejalo a este precio"*): con ventas hoy, el precio nuevo tiene que facturar por día 1,3 veces lo de hoy con su ritmo
-  medido; sin ritmo medido, se queda (freno `sobra-plata`; "lo pide él" no la saltea: es la 🔐 `!pideel`, 22a del 03/11). Nunca abajo
+  bajalo… o sino dejalo a este precio"*): con ventas hoy, el precio nuevo tiene que dejar igual o más GANANCIA POR DÍA NETA con su
+  ritmo medido (1a del 08/11; antes facturar 1,3×); sin ritmo medido, se queda (freno `sobra-plata`; "lo pide él" no la saltea: es la 🔐 `!pideel`, 22a del 03/11). Nunca abajo
   del 💰 (F5), del 35% si la unidad más vieja tiene menos de 90 días (F13) ni del 10% en perfumes (F12).
-- 🔒 **🧲 30 días sin vender con stock = se liquida** (29/10, él: *"ir a los extremos"*; `liq30`): un escalón (≤15%, como descuento)
+- 🔒 **🧲 30 días sin vender con stock = se liquida** (29/10, él: *"ir a los extremos"*; `liq30`; sólo cuentan los días CON visitas, 13a del 08/11): un escalón (≤15%, como descuento)
   hasta el primero que vende y ahí se queda (abajo del 35%, uno por semana; arriba, la escalera de siempre: 23b del 03/11), con el
   motivo "30 días sin vender" y `#liquidando` (así se ve 📉 liquidando, 30/10); abre F5, F7, F8 y F13, pero **no baja del 30% en el peor
   caso mientras la unidad más vieja tenga menos de 90 días** (3a del 03/11); desde los 90, hasta el 0%; perfumes 10% (F12). 🎄 Del
   15/11 al 24/12 no se liquida ni baja por sobra lo que vendió ×2+ en la Navidad pasada (4a del 03/11).
 - **Sin reposición** (Nissei no lo tiene, Paraguay no da 35%, Bs As no se consigue, "no lo consigo"): vender TODO en ~100 días (nunca
-  120) al precio más alto que lo vacía. Más rápido → sube; más lento → **no baja sin techo al 95% (F11)** ni si vendió a ese precio en
-  30 días (F14); con techo, en escalera. A 20 días del stock antiguo se abre (F11). 1-2 unidades no se tocan más.
+  120) al precio más alto que lo vacía. Más rápido → sube; más lento → **no baja sin techo al 95% (F11)** ni si vendió a ese precio hace
+  menos de 10 días con visitas (F14); con techo, en escalera. A 20 días del stock antiguo se abre (F11). Con 1-2 unidades también se sube
+  si vende rápido (16a del 08/11: se borró "1-2 unidades no se tocan más"; para dejar una quieta, 🧊 congelar).
 - **Stock antiguo** (ML cobra a los 120 d lo chico, 60 lo grande): gana sobre el 35%, pero abajo del 35% sólo con la unidad más vieja
   de 90+ días o en los 15 días antes (F13); se baja (📦 o ⏳ con `!piso`) para que salga a tiempo, y lo que falta para el 35% se anota al
   error de origen (mandar o comprar de más), no al precio. **15 días antes: ganar la caja hasta el 0% (al costo; sin catálogo, en
@@ -387,7 +393,9 @@ techofreno:<MLA>=<precio probado>|<motivo>;go
 | `!vendio` | subir +50% una prueba 📈 que vendió a este precio, con el precio ya confirmado (decido verifica la venta y el punto medio; el freno 50% pide la certeza de techo95, 🟠) | decido | no |
 | `!vendiocaro` | volver al precio más caro que vendió en 60 días (decido lo verifica en la línea; no lo frenan 4a ni el 50%; no va si el de hoy, medido, deja igual o más plata por día: 7 del 03/11, Barbarella) | decido | no |
 | `!vuelve` | la vuelta del punto medio: volver de una al escalón medido que más ganancia dejó (decido la mide con `vueltaDeSuba`; no la frenan F1-F4, F7, F8 ni F14; sí F5, F10 y el 35%) | decido | no |
-| `!mensual` | la prueba del mes: hasta +20% a lo que no subió en 30 días (no la frenan el +50%, la 4a ni el 50%) | decido | no |
+| `!mensual` | la prueba del mes: hasta +20% (o el medio hasta el precio que no rindió) a lo que no cambió de precio en 30 días y no tiene sobra (5a 6a 7a del 08/11; no la frenan el +50%, la 4a ni el 50%) | decido | no |
+| `malpuesto` | `!golpe` con "precio mal puesto" en el motivo (18a del 08/11): el renglón la pide sola | decido, entrarpromo | 🔐 **suya** |
+| `subirquieto` | SUBIR algo marcado 🔒 no bajar o 🥊 mantener la caja (17a del 08/11): decido la pide sola | decido | 🔐 **suya** |
 | `!lista` | bajar la LISTA de algo que ya probó techo | decido | **sí** |
 | `!nobajar` | F10 bajar una publicación que él marcó 🔒 | decido, entrarpromo | 🔐 **suya** |
 | `!pideel` | la regla de sobra-plata: bajar por sobra lo que no deja más plata, porque lo pide él (22a del 03/11) | decido, entrarpromo | 🔐 **suya** |
