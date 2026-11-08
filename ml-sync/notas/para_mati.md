@@ -8,6 +8,8 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó las 27 del 08/11 a la noche: reglas 1a-14a 15b 16a 17a 18a · ideas 19a 20a 21a 22b 23a · 24a (autorizo Coderas a $20.290) 25a 26a ("tenés que estar muy seguro, si no no") 27b — APLICANDO
+
 ### ✅ Contestó las 10 de la noche del 08/11: 1b 2b 3b 4a 5a 6a 7 (si no se venden más en ML, a la perfumería) 8a 9b 10a + fotos en Inventario — APLICANDO
 ### 8a del 08/11 · reclamos de los 10 con experiencia mala (`reclamosprod`, 120 días)
 - Auriculares F9 (Matías): 6 reclamos de 9 vendidas, "no es lo que dice la publicación / otro modelo" → no se repone (juicio 0). Hay que mirar la publicación (fotos y texto) contra lo que llega.
