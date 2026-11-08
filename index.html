@@ -9384,6 +9384,20 @@ async function privadoGuardar(){
   const ta=document.getElementById('priv-txt'),fi=document.getElementById('priv-file');
   let txt=String(ta&&ta.value||'');
   if(!txt&&fi&&fi.files&&fi.files[0])txt=await fi.files[0].text();
+  // 🔒 LISTA DE UN MAYORISTA (1a del 08/11/2026, revisión de la Mercadería: "los precios del PDF de Pirineo y de Dai Nippon se ven en el
+  // registro público"): el mismo candado que el extracto. Adentro va el comando entero `lista:<prov>|fecha=…;<producto>=<pesos>@<cód>;…`
+  // (en uno o varios renglones); el robot la carga sola en unos minutos (`listapriv`) y no imprime los precios.
+  if((document.getElementById('priv-tipo')?.value||'')==='lista'){
+    const t1=txt.replace(/^\uFEFF/,'').trim();const mP=t1.match(/^lista:([^;|\n]+)/);
+    if(!mP){toast('La lista va como el comando: lista:<mayorista>|fecha=AAAA-MM-DD;<producto>=<pesos>@<código>;…','err',7000);return;}
+    if(!/\|\s*fecha=\d{4}-\d{2}-\d{2}/.test(t1.split(/[;\n]/)[0])){toast('Falta |fecha=AAAA-MM-DD de la lista (nunca se carga una lista vieja)','err',6000);return;}
+    if(t1.length>6e6){toast('Muy grande: partila en dos','err',6000);return;}
+    const tsL=Date.now();
+    try{const e=await privadoCerrar(t1);await db.ref('mlapi/privado_in/'+tsL).set({...e,tipo:'lista',prov:mP[1].trim().slice(0,60),ts:tsL,len:t1.length});}
+    catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+    if(ta)ta.value='';if(fi)fi.value='';
+    toast(`🔒 Lista de ${mP[1].trim()} guardada cerrada (${Math.round(t1.length/1024)} KB). El robot la carga en unos minutos (el resultado sale en 📥 Para el robot).`,'ok',6000);return;
+  }
   if(!cta){toast('Elegí de qué cuenta es','err');return;}
   if(txt.length<50){toast('Pegá el contenido del archivo (o elegilo)','err');return;}
   if(txt.length>6e6){toast('Muy grande: partilo en dos (por meses)','err',6000);return;}
@@ -9397,8 +9411,9 @@ function renderPrivadoCard(){
   const el=document.getElementById('ofi-privado-card');if(!el||el.dataset.ok)return;el.dataset.ok='1';
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px">
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">🔒 Archivo para Claude (queda cerrado)</summary>
-    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el extracto de Mercado Pago ("Todas las transacciones"). Se cierra con candado acá mismo: sólo el robot lo puede abrir y guarda únicamente los totales (rendimientos, saldo). Trae nombres de otras personas: nunca lo pegues en otro lado.</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el extracto de Mercado Pago ("Todas las transacciones") y para la lista de precios de un mayorista que llega en PDF o WhatsApp (Pirineo, Dai Nippon…). Se cierra con candado acá mismo: sólo el robot lo puede abrir. El extracto guarda únicamente los totales (rendimientos, saldo) y trae nombres de otras personas: nunca lo pegues en otro lado. La lista va como el comando entero (<code>lista:&lt;mayorista&gt;|fecha=AAAA-MM-DD;&lt;producto&gt;=&lt;pesos&gt;@&lt;código&gt;;…</code>) y se carga sola en unos minutos, sin que sus precios aparezcan en ningún registro.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      <select id="priv-tipo" class="cal-select" style="font-size:.72rem"><option value="extracto">Extracto de Mercado Pago</option><option value="lista">Lista de un mayorista</option></select>
       <select id="priv-cta" class="cal-select" style="font-size:.72rem"><option value="">¿De qué cuenta?</option><option>Adriana</option><option>Luciana</option><option>Ayelen</option><option>Matias</option></select>
       <input id="priv-per" class="fin-input" placeholder="período (ej. 2026-10)" style="width:150px;font-size:.72rem">
       <input id="priv-file" type="file" accept=".csv,.txt,text/csv,text/plain" style="font-size:.66rem">
@@ -18313,9 +18328,23 @@ function pyParaMirarHTML(){
     <div style="font-size:.64rem;color:var(--muted);margin:6px 0">No se muestran ni entran al pedido hasta volver a mirarlos. El chat de Chrome los busca en la rutina de cada día (renglón <code>visto:</code> del buzón).</div>
     ${L.map(x=>`<div style="font-size:.68rem;padding:2px 0">${x.cod?'🔖 '+x.cod:'<span style="color:var(--amber)">sin código</span>'} · ${x.nom} <span style="color:var(--muted)">· ${x.t} · ${x.d==null?'sin fecha':'hace '+x.d+' d'}</span>${pyLinkDe(x.url,x.cod)?` · <a href="${String(pyLinkDe(x.url,x.cod)).replace(/"/g,'%22')}" target="_blank" rel="noopener" style="color:var(--accent2)">🔗 Nissei</a>`:''}</div>`).join('')}</details>`;
 }
+// 7a de la revisión del Local del 06/11 (él eligió el 08/11): lo marcado "no da en ML" y las marcas prohibidas sólo para ML (Calvin Klein,
+// `cyc/mlconfig/marcasNoML`) no se compran por el % del local: a la perfumería va sólo lo que ella pide (`pedperf`). La misma cuenta que
+// `marcaFrenadaDe` del robot (marca o nombre, con las abreviadas).
+function candMarcaNoML(c){
+  const mm=(state.mlconfig||{}).marcasNoML||{};const ks=Object.keys(mm).filter(k=>mm[k]);if(!c||!ks.length)return null;
+  const nz=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const ALI={'dolce gabbana':['d g'],'calvin klein':['ck']};
+  const marca=String(c.marca||'').trim().toLowerCase();if(marca&&mm[encodeURIComponent(marca)])return c.marca;
+  const nom=' '+nz(c.nombre)+' ';
+  for(const k of ks){let d=k;try{d=decodeURIComponent(k);}catch(e){}const n=nz(d);if(n&&nom.includes(' '+n+' '))return d;for(const a of (ALI[n]||[]))if(nom.includes(' '+a+' '))return d;}
+  return null;
+}
 function candPuedePedir(c,o){
   if(!c)return{ok:false,motivo:'no existe'};
   if(c.no)return{ok:false,motivo:'está descartado de la lista'};
+  if(c.noML)return{ok:false,motivo:'lo marcaste "no da en ML": para la perfumería entra sólo lo que ella pide, no se compra por el % del local'};
+  {const _mn=candMarcaNoML(c);if(_mn)return{ok:false,motivo:`marca prohibida para ML (${_mn}): para la perfumería entra sólo lo que ella pide`};}
   // O1 de la segunda vuelta (25/09/2026): lo que ya viaja en un pedido no se vuelve a cargar. El
   // botón de llenar ya lo salteaba, pero a mano (la casilla o el comando `pedir`) se podía comprar
   // dos veces. Cuando llega pasa a ser producto probado y sale de esta lista.
@@ -20440,7 +20469,7 @@ function candidatosHTML(){
   // LOS QUE NO LLEGAN AL PISO, JUNTOS ABAJO Y CERRADOS (02/10/2026, pedido suyo: *"todos los candidatos
   // que dan abajo de 25% (los rojos) ponerlos juntos ABAJO en un desplegable cerrado, así no molestan"*).
   // No se esconden: el robot los vuelve a medir y si cruzan el piso vuelven arriba solos.
-  const _esRojo=c=>c.noML?!candLocalOk(c):(c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c)&&!(PERF_LOCAL_ENTRA&&candLocalOk(c)));
+  const _esRojo=c=>(c.noML||candMarcaNoML(c))?true:(c.margen!=null&&isFinite(c.margen)&&Number(c.margen)<candPisoDe(c)&&!(PERF_LOCAL_ENTRA&&candLocalOk(c)));
   const _card=c=>{
     const d=candDias(c);
     const usd=parseFloat(c.usd)||0;
@@ -20575,7 +20604,7 @@ function candidatosHTML(){
   const _sinAnalizar=vivos.filter(c=>!_medido(c)&&_fOk(c));
   const _menos100=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&!c.noML&&candPocasVentas(c));
   const _sinChequear=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&!c.noML&&!candCatChequeado(c)&&!candPocasVentas(c));
-  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&(c.noML||(candCatChequeado(c)&&!candPocasVentas(c)))), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
+  const _arriba=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&!_pocas(c)&&candCatChequeado(c)&&!candPocasVentas(c)), _rojos=vivos.filter(c=>_fOk(c)&&_medido(c)&&_esRojo(c)), _flojas=vivos.filter(c=>_fOk(c)&&_medido(c)&&!_esRojo(c)&&_pocas(c));
   // ORDENAR (03/10/2026, pedido suyo: "poder buscar de mayor a menor los que más unidades vendieron, mayor
   // porcentaje y eso"). Los sin dato van siempre al final.
   {const k=_candOrden, val=c=>{const n=x=>(x!=null&&isFinite(x))?Number(x):null;

@@ -200,7 +200,12 @@ def ritmo(x,dcs=30):
     # compra y lo vendido barato por sobra no la agranda. 60 días; con menos de 14 días normales, 180; si tampoco, 365 (con 7+ días).
     # Con 3+ ventas en los últimos 30 días normales manda el más alto entre ése y el 80% del largo (como antes con v30/v60).
     mm=x.get('m35')
-    if mm and mm['f']!='no' and mm['d']>=7:   # el ritmo A ESE PRECIO (con 7+ días con stock a ese precio o más caro; si no, el de siempre)
+    # 9a del 08/11/2026 (revisión de la Mercadería): si el precio de HOY ya deja 35%+ (`_hoy35`, lo pone quien llama) y lleva 7+ días con
+    # stock desde el último cambio (sin escasez en 30 días), cuántas traer lo decide el ritmo de HOY; el M35 sólo dice si se repone.
+    _nrH=x.get('nor') or {}
+    _escH=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC)',x.get('cambios',''))]
+    _usaHoy=bool(x.get('_hoy35') and _nrH.get('hoyD') is not None and _nrH['hoyD']>=7 and not (_escH and min(_escH)<=30))
+    if mm and mm['f']!='no' and mm['d']>=7 and not _usaHoy:   # el ritmo A ESE PRECIO (con 7+ días con stock a ese precio o más caro; si no, el de siempre)
         tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
         base=f"a ${mm['p']} ({'el de la competencia' if mm['f']=='comp' else 'la venta más cara de 365 días'}, deja {mm['pct']}%) vendió {mm['u']} en {mm['d']} días con stock"
         # Revisión etapa 3 (08/11/2026): el ritmo a ese precio pasa por los MISMOS frenos que el normal (antes salía directo): con 1-2 ventas
@@ -215,8 +220,9 @@ def ritmo(x,dcs=30):
             rPre=max((x['v60']-x['v30'])/30, x['v60']/60)
             if rPre>r: r=rPre; base+=f" · subí el precio por escasez hace {min(esc)} d: uso el ritmo de antes ({round(x['v60']-x['v30'])} en los 30 d previos)"
         elif nr0 and nr0.get('hoyD') is not None and 2<=nr0['hoyD']<7:
-            rN=nr0['hoyU']/nr0['hoyD']
-            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr0['hoyU']} en {nr0['hoyD']} días con stock: uso ése, el más bajo (1a del 03/11)"
+            # 10a del 08/11/2026: con 0 ventas en tan pocos días cuenta UNA (la que se esperaba): no da 0 (Cinta 5M: 14 por mes, 0 en 3 días)
+            rN=max(nr0['hoyU'],1)/nr0['hoyD']
+            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr0['hoyU']} en {nr0['hoyD']} días con stock: uso ése, el más bajo (1a del 03/11)"+(" contando 1 venta, la esperada (10a del 08/11)" if not nr0['hoyU'] else '')
         return r,tiene,base
     nr=x.get('nor')
     # 🏷️ AL PRECIO DE HOY (27/10/2026 a la noche, la estrategia nueva: buscar techo, bajar hasta la primera venta y quedarse; "la idea se va
@@ -232,12 +238,12 @@ def ritmo(x,dcs=30):
             # días pedía 5): se divide por la ventana entera (sus días de calendario, nunca menos de 30, como la web).
             if u<MIN_VENTAS_RITMO:
                 w=max(30,nr.get('hoyW') or d)
-                return u/w,tiene,(f"al precio de hoy vendió {u} en {d} días con stock: con {'una sola venta' if u==1 else 'tan pocas ventas'} no se saca un ritmo, cuento {w} días" if u else f"al precio de hoy no vendió en {d} días con stock")
+                return u/w,tiene,(f"al precio de hoy vendió {u} en {d} días con stock: con {'una sola venta' if u==1 else 'tan pocas ventas'} no se saca un ritmo, cuento {w} días" if u else f"al precio de hoy no vendió en {d} días con stock")+(" · el precio de hoy ya deja 35%+: manda su ritmo, no el del M35 (9a del 08/11)" if _usaHoy and mm and mm['f']!='no' else '')
             # La ventana es de 60 días como mucho (pedidostodo) y, como el NOR, con 3+ ventas en los últimos 30 a ese precio manda el más alto
             # entre ése y el 80% del de la ventana (antes un precio quieto hace meses tapaba que se aceleró: pedía 10 de algo que vende 60 por mes).
             rL=u/d; r=rL
             if (nr.get('hoyU30') or 0)>=3 and (nr.get('hoyD30') or 0)>=7: r=max(nr['hoyU30']/nr['hoyD30'],rL*0.8)
-            base=f"al precio de hoy vendió {u} en {d} días con stock (desde el último cambio de precio, como mucho 60 días)"
+            base=f"al precio de hoy vendió {u} en {d} días con stock (desde el último cambio de precio, como mucho 60 días)"+(" · el precio de hoy ya deja 35%+: manda su ritmo, no el del M35 (9a del 08/11)" if _usaHoy and mm and mm['f']!='no' else '')
             if r!=rL: base+=f" · {nr['hoyU30']} en los últimos {nr['hoyD30']}"
             return r,tiene,base
     if nr and (nr['d']>=14 or (nr['w']==365 and nr['d']>=7)):
@@ -261,8 +267,9 @@ def ritmo(x,dcs=30):
         # menos de 7 días (2+ días con stock al precio nuevo), manda el MÁS BAJO entre el ritmo de antes y lo que vendió al precio nuevo, para
         # no comprar de más. Reemplaza la 2b del 28/10 ("los primeros 7 días con el ritmo de antes"). La escasez sigue con su regla de arriba.
         elif nr.get('hoyD') is not None and 2<=nr['hoyD']<7:
-            rN=nr['hoyU']/nr['hoyD']
-            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr['hoyU']} en {nr['hoyD']} días con stock: uso ese ritmo, el más bajo (1a del 03/11)"
+            # 10a del 08/11/2026: con 0 ventas en tan pocos días cuenta UNA (la que se esperaba): no da 0 (Cinta 5M: 14 por mes, 0 en 3 días)
+            rN=max(nr['hoyU'],1)/nr['hoyD']
+            if rN<r: r=rN; base+=f" · el precio cambió hace poco y al precio nuevo vendió {nr['hoyU']} en {nr['hoyD']} días con stock: uso ese ritmo, el más bajo (1a del 03/11)"+(" contando 1 venta, la esperada (10a del 08/11)" if not nr['hoyU'] else '')
         return r,tiene,base
     # `li` (20/10/2026, decisión 1a): lo ya probado pedido a una lista que viaja (o llegó y falta contar), igual que Paraguay y el Paulvic.
     tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
@@ -405,7 +412,7 @@ for p in prods:
             # Cada color con SUS cambios de precio (etapa 3, 20/10/2026): un log nuevo los trae en el renglón del color; un log viejo no, y
             # ahí se usan los del producto como antes. Sin hora de venta propia, el `hist` del producto.
             vc=v['cambios'] if p.get('colFicha') is not None else p['cambios']
-            r,t,b=ritmo(dict(v,cambios=vc or '',hist=v.get('hist') or p.get('hist')),v['dcs']); Tv,por=Tde(p,v,r,vm); need=max(0.0,r*Tv-t) if v['rent'] else 0.0
+            r,t,b=ritmo(dict(v,cambios=vc or '',hist=v.get('hist') or p.get('hist'),_hoy35=(p['costo']>0 and vm>=0.35)),v['dcs']); Tv,por=Tde(p,v,r,vm); need=max(0.0,r*Tv-t) if v['rent'] else 0.0
             _mmv=v.get('m35') or (p.get('m35') if not v.get('m35') else None)
             if v['rent'] and _mmv and _mmv['f']=='no' and not m35_probado(_mmv) and not m35_compite(_mmv) and r>0:   # compra de prueba al 35% (de ESE color, si se vendía)
                 need=max(0.0,max(2,math.ceil(r*7))-t); v['prueba']=_mmv.get('p35') or 0; b+=f" · 🧪 prueba al 35%{' ($'+str(v['prueba'])+')' if v['prueba'] else ''}: nunca se probó con stock a un precio que deje 35%"
@@ -426,6 +433,7 @@ for p in prods:
         dets=[(d[0],q,d[2],d[3],d[4],d[5]) for d,q in zip(dets,qs)]
         res.append((p,tot,dets,rentable))
     else:
+        p['_hoy35']=p['costo']>0 and p['neto']>0 and _m>=0.35   # 9a del 08/11: el precio de hoy deja 35%+
         r,t,b=ritmo(p,p['dcs']); Tp,por=Tde(p,p,r,_m); need=r*Tp-t
         if rentable and p.get('m35') and p['m35']['f']=='no' and not m35_probado(p['m35']) and not m35_compite(p['m35']) and r>0:   # compra de prueba al 35% (sólo lo que se vendía)
             need=max(0,max(2,math.ceil(r*7))-t); p['prueba']=p['m35'].get('p35') or 0; b+=f" · 🧪 prueba al 35%{' ($'+str(p['prueba'])+')' if p['prueba'] else ''}: nunca se probó con stock a un precio que deje 35%"
