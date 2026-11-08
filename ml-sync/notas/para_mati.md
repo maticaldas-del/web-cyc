@@ -8,6 +8,10 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 08/11 (1a 2a 3a 4a 5a 6 7a 8a 9a + regla de cuentas) — APLICADO
+- 1a Pendrive 8GB descuento a $21.290 (gana la caja, 66% peor caso) · 2a Recortadora descuento a $29.190 (gana la caja, 7% peor caso) · 3a 4a 5a retiros de Luna (11), Only Glow (4) y Reflector (5): recordatorio el 09/11 10:15 · 6 Rodillera descuento a $9.990 (ML lo aceptó, 70% peor caso) · 7a Switch TP-Link a $199.990 (49,7%), segundo escalón el 10/11 · 8a/regla nueva: Paraguay que no es perfume → Ayelen o Matías, perfumes de Paraguay → Adriana, Luciana sólo lo que no es de Paraguay · 9a pico de Navidad en Paraguay en el código.
+- Los mismos puntos más abajo (07/11 y 08/11 de la completa, domingo 5) quedan resueltos por esto.
+
 ### ✅ Contestó la lista de las 12:30 del 07/11 (2 contestá vos · 3 ok · 4 pagó CYC, no tocar · 5 dejar Imega · 6 al 0% · 7 manejalo · 8 no entendió)
 - 2 mensaje de la funda (Luciana): contestado con `msjventa` (factura C, somos monotributo), releído ✓ · 4 Pirineo y Dai Nippon: no se carga nada · 6 Rose, Teikirisi y 1.4 Sexy Men a $11.190 como descuento (1,2% peor caso; la caja pide $10.512 = pierde) · 7 VS Coconut: se deja a $54.990 (deja ~$9.900 por unidad, el stock antiguo cuesta ~$9.800 en total) · 8: el envío de Matías …5641 (20 u.) está en pausa desde antes: explicárselo.
 
