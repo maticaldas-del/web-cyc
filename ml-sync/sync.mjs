@@ -43207,6 +43207,7 @@ async function main() {
       // 8a de la revisión del Local (30/10/2026, él): si devuelven de más, la deuda queda EN NEGATIVO (lo que le debemos), no se recorta a 0 (el
       // resto se perdía). La misma cuenta que `cuotasLista` de index.html: si se toca una, la otra.
       const saldo = (d) => { const n = Math.max(1, Number(d.n) || 1), monto = Number(d.monto) || 0, pag = Math.min(n, Number(d.pagadas) || 0);
+        return monto - pag * (monto / n) + Object.values(d.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0); };
       // 🛍️ AVISO DE PAGO DE LA PERFUMERÍA AL GRUPO DE LOS SOCIOS (07/11/2026, él: "cuando la perfumería paga no se manda por telegram lo que
       // resta y lo que se pagó. Una vez sí llegó la primera" — esa la mandé a mano con `tgsocios`). Cada cobro de la perfumería (la de
       // MercadoPago o la de Mercadería) manda al grupo (él y Tito) lo pagado y lo que queda de cada una, releído de la base. Sin nombres.
@@ -43221,7 +43222,6 @@ async function main() {
           console.log(ok ? '  ✓ aviso del pago mandado al grupo de los socios' : '  ⚠️ el aviso del pago NO salió por Telegram');
         } catch (e) { console.log('  ⚠️ el aviso del pago NO salió: ' + String(e.message || e).slice(0, 90)); }
       };
-        return monto - pag * (monto / n) + Object.values(d.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0); };
       const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) { const sd = Math.round(saldo(d)); console.log(`  ${id} · ${_tapaNom(d)} · ${sd < 0 ? 'le debemos ' + money(-sd) : 'falta ' + money(sd)} · ${Object.keys(d.movs || {}).length} movimiento(s)`); } return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
