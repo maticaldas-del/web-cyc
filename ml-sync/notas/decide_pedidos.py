@@ -467,7 +467,7 @@ if os.path.exists(_jp):
         l=l.strip()
         if not l or l.startswith('#') or '=' not in l: continue
         k,r=l.split('=',1); n,_,mo=r.partition('|')
-        try: JU[k.strip()]=(int(n),mo.strip())
+        try: JU[k.strip()]=(int(n),mo.strip().replace(';',','))   # revisión etapa 4 (09/11): un ";" en el motivo frenaba el script entero
         except ValueError: print(f"⚠️ juicio que no entiendo: {l[:80]}")
 # JUICIOS DE UN COLOR SIN RENGLÓN (etapa 3, 20/10/2026): `pedidostodo` no imprime los colores sin ventas ni mercadería, y el juicio
 # de uno de ésos (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Ahora el color se busca en la FICHA (`## colores`, sin mirar mayúsculas)

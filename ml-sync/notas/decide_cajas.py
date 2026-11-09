@@ -171,6 +171,7 @@ FIJO={
   ('p17904445725742','','Adriana'):(1,'Él eligió mandarlas igual (20b del 08/11): la Lattafa Sutoor de la oficina va a Full aunque hoy no dé 35%'),
   ('p1779912655550','Velve Petals','Adriana'):(2,'Él eligió mandarlas igual (20b del 08/11): las 2 VS Velvet Petals splash de la oficina van a Full aunque hoy no den 35%'),   # el color en la ficha se llama "Velve Petals" (así, sin la t)
 }
+FIJO={k:(q,str(m).replace(';',',')) for k,(q,m) in FIJO.items()}   # revisión etapa 4 (09/11): un ";" en el motivo frenaba el script entero (03:00 sin cajas)
 # 5a del 08/11/2026 (revisión de la Mercadería, él: "lo FIJO se cumple solo cuando salen esas unidades"): un FIJO de "van N" es de UNA vez.
 # Antes se descontaba sólo lo que iba EN CAMINO: al llegar a Full volvía a pedirse cada noche (las 3 Persea). Ahora `fijo_salio.txt` (al lado de
 # este script) guarda cuántas ya salieron de cada FIJO: lo que bajó la decisión en la base desde la última vuelta (la web le resta lo despachado)
