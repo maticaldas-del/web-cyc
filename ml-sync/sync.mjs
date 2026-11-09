@@ -20345,6 +20345,27 @@ async function main() {
     // BILLING_PROBE=cajasllegaron[:go] → MARCA LAS CAJAS QUE YA ENTRARON A FULL.
     // Sin ':go' solo dice cuáles marcaría. Es la misma función que corre sola una vez por hora, no
     // una copia: si un día se cambia la regla, se cambia en un solo lado.
+    // BILLING_PROBE=enviofecha:<últimos dígitos del envío o del seguimiento>=<AAAA-MM-DD>[:go] (09/11/2026, él con la caja …8840 de Adriana:
+    // "todavía no salió, sale mañana") → CAMBIA EL DÍA EN QUE SALE una caja todavía no recibida: `fecha` del envío y de sus cajas sin recibir
+    // (la salida la calcula `envSalidaTs` desde ahí, web y robot). Lo mismo que la web hace al reanudar, pero con el día que él dice.
+    if (/^enviofecha:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('enviofecha:'.length);
+      const GO = /:go$/i.test(_r); const m = _r.replace(/:go$/i, '').match(/^(\d{4,})=(\d{4}-\d{2}-\d{2})$/);
+      if (!m) { console.log('Usá: enviofecha:<últimos 4+ dígitos>=<AAAA-MM-DD>[:go]'); return; }
+      const [, fin, dia] = m;
+      const envs = (await db.get('cyc/envios_full')) || {};
+      const hits = Object.entries(envs).filter(([id, e]) => e && (String(id).endsWith(fin) || (Array.isArray(e.cajasDet) && e.cajasDet.some((c) => c && String(c.track || c.seg || '').endsWith(fin)))));
+      if (hits.length !== 1) { console.log(`"…${fin}" agarra ${hits.length} envío(s). Tiene que ser uno solo.`); return; }
+      const [id, e] = hits[0];
+      console.log(`Envío …${String(id).slice(-4)} · ${e.cuenta || '?'} · fecha ${e.fecha || '?'} → ${dia}`);
+      if (!GO) { console.log('PRUEBA: no toqué nada. Agregá :go.'); return; }
+      const cajas = Array.isArray(e.cajasDet) ? e.cajasDet.map((c) => (c && !c.recibida ? { ...c, fecha: dia } : c)) : null;
+      await db.patch('cyc/envios_full/' + id, { fecha: dia, pausado: null, ...(e.fechaArmada ? {} : { fechaArmada: e.fecha || null }) });
+      if (cajas) await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
+      const rel = (await db.get('cyc/envios_full/' + id)) || {};
+      console.log(String(rel.fecha) === dia ? `✓ Releído: sale el ${dia}` : '✗ No quedó la fecha');
+      return;
+    }
     // BILLING_PROBE=envioreanudar:<últimos dígitos del envío o del seguimiento>[:go] (07/11/2026, él con la caja …5641 de Matías que figuraba
     // ⏸️ en pausa: "esa caja ya salió y ya llegó"). Lo mismo que el botón ▶️ Reanudar de la web, pero sin pisar la fecha: la caja ya salió,
     // así que `reanudado` = cuando se puso en pausa (no hoy) y la fecha queda. Después la marca sola la vuelta de la hora cuando ML la da de
