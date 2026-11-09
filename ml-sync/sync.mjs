@@ -43949,6 +43949,20 @@ async function main() {
           console.log(ok ? '  ✓ aviso del pago mandado al grupo de los socios' : '  ⚠️ el aviso del pago NO salió por Telegram');
         } catch (e) { console.log('  ⚠️ el aviso del pago NO salió: ' + String(e.message || e).slice(0, 90)); }
       };
+      // 📨 CADA MOVIMIENTO AL TELEGRAM (09/11/2026, él: "cuando vendemos algo a la perfumería o cualquier movimiento de pago, venta, cancelación,
+      // mandar el movimiento con detalle al telegram"): al grupo de los socios (él y Tito, el mismo de los pagos), con qué fue (producto, unidades,
+      // precio, costo, ganancia, perfumería, nota) y cuánto queda, releído de la base. El texto no se imprime (el registro es público).
+      const avisoMov = async (idA, titulo, renglones) => {
+        try {
+          const dA = (await db.get('cyc/debencuotas/' + idA)) || {};
+          const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const sA = Math.round(saldo(dA));
+          const txt = `${titulo}\n<b>${esc(dA.nom || '?')}</b>\n` + renglones.filter(Boolean).map((r) => '· ' + esc(r)).join('\n')
+            + `\n${sA < 0 ? 'Le debemos ' + money(-sA) : '<b>Queda debiendo: ' + money(sA) + '</b>'}`;
+          const ok = await sendTelegram(txt, 'resumen');
+          console.log(ok ? '  ✓ movimiento mandado al Telegram de los socios' : '  ⚠️ el movimiento NO salió por Telegram');
+        } catch (e) { console.log('  ⚠️ el movimiento NO salió por Telegram: ' + String(e.message || e).slice(0, 90)); }
+      };
       const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) { const sd = Math.round(saldo(d)); console.log(`  ${id} · ${_tapaNom(d)} · ${sd < 0 ? 'le debemos ' + money(-sd) : 'falta ' + money(sd)} · ${Object.keys(d.movs || {}).length} movimiento(s)`); } return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
@@ -43980,6 +43994,7 @@ async function main() {
         const idN = 'c' + ts0; await db.set('cyc/debencuotas/' + idN, dN);
         const rN = await db.get('cyc/debencuotas/' + idN);
         console.log(rN && Number(rN.monto) === dN.monto ? `  ✓ guardada y releída (${idN})` : '  ⚠️ no la pude releer');
+        if (rN) await avisoMov(idN, `🆕 <b>Venta nueva: ${money(dN.monto)}</b> (${f0N.split('-').reverse().join('/')})`, [kv.det ? 'se llevó: ' + kv.det.slice(0, 120) : '', `${nC} cuota(s) de ${money(cuota)}${frec ? ' (' + frec + ')' : ''}`, costo > 0 ? `costo ${money(costo)} · ganancia ${money(dN.monto - costo)}` : '', pagosF.length ? `ya pagó ${pagosF.length}` : '']);
         return;
       }
       // CUÁNTO NOS COSTÓ UNA DEUDA (28/10/2026, él con la Notebook Tati: "costo 330 dolares"): `=costo <N>[usd]` → `costo` en pesos (con usd,
@@ -44149,6 +44164,7 @@ async function main() {
         for (const [k, pt] of cambios) await db.patch(`cyc/debencuotas/${idD}/movs/${k}`, pt);
         const rD = await db.get(`cyc/debencuotas/${idD}/movs/${cambios[0][0]}`);
         console.log(rD && Number(rD.u) === cambios[0][1].u ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if (rD) await avisoMov(idD, `↩️ <b>Devolvieron sin vender</b> (${String(fD).split('-').reverse().join('/')})`, [`${uD} × ${String(pD.name).slice(0, 70)} · vuelve a la Oficina ${aD === 'local' ? 'Local' : 'ML'}`, `debe ${money(Math.round(bajaM))} menos · sale ${money(Math.round(bajaG))} de ganancia`, locD ? 'perfumería: ' + locD : '']);
         if (aD === 'local') { const x = (await db.get('cyc/oficyc/' + pD.id)) || null; const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
           obj.t = ant + uD; await db.set('cyc/oficyc/' + pD.id, obj); console.log(`  🏪 Oficina Local: ${pD.name} ${ant} → ${ant + uD} (sin color; si tiene color, corregilo con oficyc:${pD.id}@<color>=…;go)`);
           // 2a (30/10/2026): lo mismo al revés: sin contar por unidades, lo que vuelve sube el valor a mano (`of_viejo`) en lo que costó.
@@ -44339,6 +44355,11 @@ async function main() {
         console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       }
       if (signo < 0 && /perfumer/.test(_n(d.nom)) && !extra.prod) await avisoPagoPerf(monto, f);
+      else { const fD2 = String(f).split('-').reverse().join('/');
+        await avisoMov(id, signo > 0 ? (prodF ? `🛍️ <b>Venta: ${money(Math.round(monto))}</b> (${fD2})` : `➕ <b>Nos debe ${money(Math.round(monto))} más</b> (${fD2})`) : `💵 <b>Pagó ${money(Math.round(monto))}</b> (${fD2})`,
+          [prodF ? `${u} × ${String(prodF.name).slice(0, 70)}${extra.color ? ' · ' + extra.color : ''} a ${money(Math.round(montoU))} c/u` : '',
+           prodF && costoU != null ? `costo ${money(Math.round(costoU))} c/u · ganancia ${money(Math.round((montoU - costoU) * u))}` : '',
+           local ? 'perfumería: ' + local : (sinLocal && prodF ? 'repartido entre las tres perfumerías' : ''), nota ? 'nota: ' + nota : '']); }
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
         const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
