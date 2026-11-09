@@ -1,7 +1,7 @@
 # Juicios de Claude, producto por producto, mirando los 365 días (probe historia). Mandan sobre la cuenta automática.
 # <prodId>[#color]=<unidades>|<motivo>
-# 13a del 08/11/2026 (revisión de la Mercadería): limpiado. Afuera lo que chocaba con reglas nuevas (SanDisk "truchas": desde el 20/10 no hay; cantidades fijas y "primero miro el precio" del 09/10, que ahora decide el ritmo al precio de hoy y la compra de prueba) y los repetidos.
-p1779912656300=0|Pendrive Ultra Shift 128: vendió 6 en julio y después 14 semanas sin vender a $42.500; se remató porque estuvo parado meses. No traer
+# 13a del 08/11/2026 (revisión de la Mercadería): limpiado. Afuera lo que chocaba con reglas nuevas (SanDisk "truchas": desde el 20/10 no hay, cantidades fijas y "primero miro el precio" del 09/10, que ahora decide el ritmo al precio de hoy y la compra de prueba) y los repetidos.
+p1779912656300=0|Pendrive Ultra Shift 128: vendió 6 en julio y después 14 semanas sin vender a $42.500, se remató porque estuvo parado meses. No traer
 p1779912655660#Rosa=0|Centímetro Rosa: en la oficina hay 150 Rosa que van a Full ahora y entre los tres colores tenemos más de 800 (Full, oficina y camino). Desde que subió a $3.450 se vende bastante menos. No compres hasta que eso baje
 p17833581096732=0|Xiaomi Watch S5: no se repone más (5a de Matías del 22/10)
 p1779912655500#Asher=0|Asher (De la Patagonia): no se consigue más, me lo dijiste el 14/10. No se pide. Quedan 21 en el Full de Adriana y se venden hasta terminarlas
@@ -16,7 +16,7 @@ p17833581096736=0|SSD 1TB: el precio de Paraguay no da el 35% y el precio de ML 
 p1780106778739=0|Buds Core: el precio de Paraguay no da el 35%. No se pide
 p1788904839781#Bare Vanilla=0|STARLIT Bare Vanilla: no se puede reponer. No se pide
 p1779912656290=0|Pendrive 128gb: se acaban de retirar 34 de Full porque iban a pagar stock antiguo. No comprar hasta vender lo que hay
-p1780106846533=0|Redmi Pad 2: no se repone más (5a de Matías del 22/10; las 2 últimas se vendieron a pérdida por descarte)
+p1780106846533=0|Redmi Pad 2: no se repone más (5a de Matías del 22/10, las 2 últimas se vendieron a pérdida por descarte)
 p179218076128818=5|Waflera Atma Disney: es el mejor producto, deja más de 150% y vendió 1 por semana desde que llegó. Tener 5 (pido 4 y queda 1 en Full)
 p1785263851692#Pure Seduction=0|VS Pure Seduction: no vende hace más de 60 días y está en sobra (completa del 28/10). No se repone hasta que se venda lo que hay
 p1785263851692#Velvet Petals=0|VS Velvet Petals: no vende hace más de 60 días (completa del 28/10). No se repone hasta que vuelva a vender
