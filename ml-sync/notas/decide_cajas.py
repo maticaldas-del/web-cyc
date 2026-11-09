@@ -172,7 +172,7 @@ FIJO={
   ('p1794063805405','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Maybelline Witty a $47.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p1794063807731','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Mary Bosques Rubios Totales a $62.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p17904445725742','','Adriana'):(1,'Él eligió mandarlas igual (20b del 08/11): la Lattafa Sutoor de la oficina va a Full aunque hoy no dé 35%'),
-  ('p1779912655550','Velve Petals','Adriana'):(2,'Él eligió mandarlas igual (20b del 08/11): las 2 VS Velvet Petals splash de la oficina van a Full aunque hoy no den 35%'),   # el color en la ficha se llama "Velve Petals" (así, sin la t)
+  ('p1779912655550','Velve Petals','Adriana'):(0,'Él 09/11 (1a): no van a Full; nunca vendió arriba del 35% (vendía a 44-45 mil, ~5%) y quedan en la oficina para la perfumería'),   # el color en la ficha se llama "Velve Petals" (así, sin la t)
 }
 FIJO={k:(q,str(m).replace(';',',')) for k,(q,m) in FIJO.items()}   # revisión etapa 4 (09/11): un ";" en el motivo frenaba el script entero (03:00 sin cajas)
 # 5a del 08/11/2026 (revisión de la Mercadería, él: "lo FIJO se cumple solo cuando salen esas unidades"): un FIJO de "van N" es de UNA vez.
