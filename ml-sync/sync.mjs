@@ -51680,7 +51680,7 @@ async function main() {
       const ESC_TAGS = new Set(['escasez', 'sinrepo']), PRU_TAGS = new Set(['techo', 'nuevo']);
       // El precio de HOY de cada color (27/10/2026): el tope del máximo de compra de un color es el precio de hoy de SU publicación,
       // no el de otra del mismo producto (`cyc/netopub`, al día con cada cambio). Sin dato, el del producto.
-      let NPp = {}; try { NPp = (await db.get('cyc/netopub')) || {}; } catch { NPp = {}; console.log('⚠️ no leí cyc/netopub: el tope de cada color es el precio del producto'); }
+      let NPp = {}; try { NPp = (await db.get('cyc/netopub')) || {}; } catch { NPp = {}; console.log('⚠️ NO LEÍ: cyc/netopub (el tope de cada color sería el precio del producto)'); }
       const tagEnMomento = (mla, ts) => {
         const h = (esP || {})[mla] || {}; let best = null, dBest = Infinity, antes = null, tAntes = -Infinity;
         for (const [k0, x] of Object.entries(h)) { const kt = Number(k0); if (!(kt > 0) || !x || !x.t) continue;
@@ -51876,7 +51876,7 @@ async function main() {
         const TF = await db.get('cyc/techofull').then((x) => x || {}, () => null);
         if (TF == null) throw new Error('no leí cyc/techofull');
         if (mono35 == null) throw new Error('sin % de monotributo');
-        const tk35 = {}; for (const l of labels) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[l].refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk35[l] = t.access_token; } catch { /* esa cuenta sin dato */ } }
+        const tk35 = {}; for (const l of labels) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[l].refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk35[l] = t.access_token; } catch { console.log(`⚠️ NO LEÍ: el token de ${l} para el 35% contra la competencia (sus productos se medirían al precio de hoy y se compraría de más)`); } }
         const todos = [...grupos.bsas, ...grupos.py, ...grupos.paulvic];
         const clas = (pid) => Object.entries(L).filter(([m, e]) => e && e.prodId === pid && !e.ignored && !e.gemelaDe && !e.gemelaTipo && /^MLA/i.test(m) && (e.status || '') !== 'closed');
         const colorDe = (p, m, e) => e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []);
@@ -51884,7 +51884,7 @@ async function main() {
         for (const p of todos) for (const [m, e] of clas(p.id)) if (tk35[e.cuenta]) (porCta[e.cuenta] = porCta[e.cuenta] || []).push(m);
         for (const [l, ids] of Object.entries(porCta)) for (let k = 0; k < ids.length; k += 20) {
           try { const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,listing_type_id,category_id,site_id', tk35[l]);
-            for (const r of arr || []) if (r && r.code === 200 && r.body) IT[r.body.id] = { ...r.body, cuenta: l }; } catch { /* sin dato */ } }
+            for (const r of arr || []) if (r && r.code === 200 && r.body) IT[r.body.id] = { ...r.body, cuenta: l }; } catch { console.log(`⚠️ NO LEÍ: ${Math.min(20, ids.length - k)} publicaciones de ${l} para el 35% contra la competencia`); } }
         const feeC = {};
         const fee = async (b, pr) => { const k = b.listing_type_id + '|' + b.category_id + '|' + Math.round(pr); if (feeC[k] !== undefined) return feeC[k];
           let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(pr)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk35[b.cuenta]); const x = Array.isArray(d) ? d[0] : d; if (typeof x?.sale_fee_amount === 'number') o = x.sale_fee_amount; } catch { o = null; }
@@ -51965,7 +51965,7 @@ async function main() {
           M35[p.id] = await medir(p, cs.map(([m]) => m), '');
           for (const va of (p.variantes || [])) { const mv = cs.filter(([m, e]) => colorDe(p, m, e) === va).map(([m]) => m); if (mv.length) M35[p.id + '#' + va] = await medir(p, mv, va); }
         }
-      } catch (e) { console.log(`⚠️ el 35% contra la competencia / la venta más cara no se pudo medir (${e.message}): Pedidos usa el precio de hoy`); }
+      } catch (e) { console.log(`⚠️ NO LEÍ: el 35% contra la competencia / la venta más cara (${e.message}) — sin eso Pedidos compraba de más (revisión etapa 4, 09/11: los scripts se frenan y quedan las decisiones de ayer)`); }
       // 🛍️ lo que pidió la perfumería (`pedperf`, 29/10/2026): decide_pedidos.py lo suma a lo de ML (`PERF <u>[@<color>]`).
       const PERFT = PERF0;   // leído arriba, con `cyc/oficyc` (revisión etapa 9, 30/10/2026: una falla ahí es NO LEÍ)
       // Revisión etapa 9, 30/10/2026: si la perfumería pidió un color, `OFICYC` es lo de ESE color en la Oficina Local (`v/<color>`). Antes era la

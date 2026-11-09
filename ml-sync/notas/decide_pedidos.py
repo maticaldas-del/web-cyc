@@ -19,6 +19,9 @@ src=sys.argv[1]; out=sys.argv[2]
 T=30
 # El log de GitHub trae la hora adelante de cada renglón ("2026-10-13T11:52:03.1234567Z "): se saca, si no no se lee nada.
 L=[re.sub(r'^\d{4}-\d\d-\d\dT[\d:.]+Z ?','',l) for l in open(src).read().split('\n')]
+# Revisión etapa 4 (09/11/2026): también "DATOS INCOMPLETOS" (lecturas de la base que fallaron aun reintentando; sale al final del log).
+if any('DATOS INCOMPLETOS' in l for l in L):
+    print('⚠️ el log dice DATOS INCOMPLETOS: alguna lectura de la base falló. No armo pedidos a medias (quedan las decisiones de ayer).'); sys.exit(1)
 if any('NO LEÍ' in l for l in L):
     print('⚠️ el log dice NO LEÍ: pedidostodo no pudo leer algo de la base. No armo pedidos a medias:',*[l for l in L if 'NO LEÍ' in l],sep='\n  '); sys.exit(1)
 tc=next((float(m.group(1)) for l in L for m in [re.match(r'^dólar ([\d.]+) ·',l)] if m),0)
