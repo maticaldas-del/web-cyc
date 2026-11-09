@@ -3543,7 +3543,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.160';
+const APP_VERSION='28.161';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3556,6 +3556,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.161',f:'09/11',h:'10:05',c:[{n:2,t:'📅 Inicio · Mes y Año: "ventas del mes" y "ganancia del mes" (y el por día) cuentan hasta ayer, sólo días cerrados; el cuadrito de hoy sigue con lo suyo.'}]},
   {v:'28.160',f:'09/11',h:'00:40',c:[{n:2,t:'🪙 Arqueo → Efectivo & Digital: Binance, como MercadoPago (total que se suma solo + una casilla por cuenta, en dólares; hoy sólo la de Tito). Entra al patrimonio y al cobro.'}]},
   {v:'28.159',f:'08/11',h:'23:55',c:[{n:2,t:'💵 Gastos → Intereses · Papá: el monto sale solo = el 1% de lo que Tito tiene en CYC al empezar el mes ("Dólares Tito" del cierre del mes anterior, al dólar de ese cierre). La casilla viene llena: sólo tocás 💾 Cargar.'}]},
   {v:'28.158',f:'08/11',h:'23:30',c:[{n:2,t:'📈 Línea de tiempo: en lo que vende menos de 1 por semana, el 🔴 "no vende" sale recién a las 3 ventas esperadas (10 días como mínimo), no a los 10 días (8a del 08/11); el cartel de revisiones cierra las 18 Reglas del cerebro del 04/11.'}]},
@@ -10474,8 +10475,12 @@ function _mesRachas(Y,M){
 function homeCalMes(Y,M){const n=new Date();_homeHoyEsc='mes';_homeHoyOff=Math.max(0,(n.getFullYear()-Y)*12+(n.getMonth()-M));renderHomeHoy();}
 // VENTAS BRUTAS Y GANANCIA ARRIBA DEL CALENDARIO (22/10/2026, él: "poner los dos, ventas brutas en blanco y ganancia en verde").
 // Bruto = lo que pagaron los compradores (`total`, misma cuenta que la tarjeta de hoy); ganancia = neto − costo.
-function _hcalTotHTML(q,bruto,gan,dias){
-  return `<div class="hcal-tot"><div>🧾 ventas del ${q} <b>${fmt(Math.round(bruto))}</b> · <b>${fmt(Math.round(bruto/dias))}</b> por día <span>(${dias} días)</span></div><div>💰 ganancia del ${q} <b style="color:var(--green)">${fmt(Math.round(gan))}</b> · <b style="color:var(--green)">${fmt(Math.round(gan/dias))}</b> por día</div></div>`;
+// HASTA AYER (09/11/2026, él: "quiero que en ventas del mes y ganancia de mes mire hasta ayer, o sea hasta el día cerrado"): el día de hoy
+// todavía no terminó y bajaba el promedio por día (el 09/11 a la mañana: $10.843 en el día). El total y el "por día" cuentan sólo días
+// cerrados; el cuadrito de hoy sigue en el calendario con lo suyo.
+function _hcalTotHTML(q,bruto,gan,dias,hastaAyer){
+  if(!(dias>0))return `<div class="hcal-tot"><div style="color:var(--muted)">🧾 todavía no hay días cerrados en este ${q}</div></div>`;
+  return `<div class="hcal-tot"><div>🧾 ventas del ${q} <b>${fmt(Math.round(bruto))}</b> · <b>${fmt(Math.round(bruto/dias))}</b> por día <span>(${dias} días${hastaAyer?', hasta ayer':''})</span></div><div>💰 ganancia del ${q} <b style="color:var(--green)">${fmt(Math.round(gan))}</b> · <b style="color:var(--green)">${fmt(Math.round(gan/dias))}</b> por día</div></div>`;
 }
 function _anioMeses(Y){
   const hoy=new Date(),t0=_vpPrimerDiaTs(),out=[];
@@ -10505,9 +10510,12 @@ function _homeAnioHTML(hf,chip){
   }
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
   // 22/10/2026, él: "agregar ganancia total y por día en el año, y en el mes también con los días".
-  const _gT=A.reduce((a,m)=>a+m.gan,0),_dT=A.reduce((a,m)=>a+m.dias,0);
-  const _bT=A.reduce((a,m)=>a+(m.bruto||0),0);
-  const tot=_dT?_hcalTotHTML('año',_bT,_gT,_dT):'';
+  let _gT=A.reduce((a,m)=>a+m.gan,0),_dT=A.reduce((a,m)=>a+m.dias,0);
+  let _bT=A.reduce((a,m)=>a+(m.bruto||0),0);
+  // hasta ayer (09/11/2026): si el año es el de hoy, el día de hoy sale del total y del "por día"
+  const _hoyA=Y===new Date().getFullYear()&&A.some(m=>m.curso);
+  if(_hoyA){try{const th=_homeDiaTot(dateToKey(new Date()));_gT-=th.gan||0;_bT-=th.bruto||0;_dT=Math.max(0,_dT-1);}catch(e){}}
+  const tot=A.some(m=>m.dias)?_hcalTotHTML('año',_bT,_gT,_dT,_hoyA):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días; el mes en curso, con lo ganado repartido en todos sus días: arranca bajo y sube con cada venta). Abajo, lo que dejó en total y 🧾 las ventas brutas (lo que pagaron los compradores). Tocá uno y abre ese mes.</div></div>`;
 }
@@ -10547,8 +10555,8 @@ function _homeGustoHTML(esc,dia,hf){
     const n=_gNivDia(t.gan),em=R.mejor&&k===R.mejor.k&&R.mejor.g>0?'🏆':enRacha.has(k)?'🔥':'';
     const _an=t.ventas?_hcalAnim(t.gan,d):{c:'',st:''};cells+=`<button class="hcal-d${k===hoyK?' hoy':''}${_an.c}" style="--dc:${t.ventas?n[2]:'var(--border2)'}${_an.st}" onclick="event.stopPropagation();homeCalIr('${k}')" title="${dm(new Date(Y,Mo,d))} · ${t.ventas} venta${t.ventas===1?'':'s'} · ventas brutas ${fmt(Math.round(t.bruto||0))} · ganancia ${fmt(t.gan)}${k===hoyK?' (va en curso)':''}">${d}<b>${t.ventas?_kTxt(t.gan):'—'}</b>${t.ventas?_brCel(t.bruto):''}${em?`<em>${em}</em>`:''}</button>`;}
   const ley=VIVA_DIA_NIV.map((x,i)=>`<span><i style="--dc:${x[2]}"></i>${i===0?'menos de '+_kTxt(VIVA_DIA_NIV[1][1]):_kTxt(x[1])}</span>`).join('');
-  const _ks=Object.keys(R.tot),_gM=_ks.reduce((a,k)=>a+(R.tot[k].gan||0),0),_bM=_ks.reduce((a,k)=>a+(R.tot[k].bruto||0),0);
-  const tot=_ks.length?_hcalTotHTML('mes',_bM,_gM,_ks.length):'';
+  const _ks=Object.keys(R.tot).filter(k=>k!==hoyK),_gM=_ks.reduce((a,k)=>a+(R.tot[k].gan||0),0),_bM=_ks.reduce((a,k)=>a+(R.tot[k].bruto||0),0);
+  const tot=Object.keys(R.tot).length?_hcalTotHTML('mes',_bM,_gM,_ks.length,!!R.tot[hoyK]):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
     <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día); abajo, 🧾 sus ventas brutas. Tocá uno y abre Ventas en ese día.</div></div>`;
 }

@@ -78,6 +78,8 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 📅 Ventas y ganancia del mes/año hasta ayer (09/11/2026, etapa 7; él: "que mire hasta ayer, o sea hasta el día cerrado")
+- Inicio · Mes y Año: el renglón 🧾/💰 de arriba del calendario suma sólo días cerrados (`_hcalTotHTML(…,hastaAyer)`); el cuadrito de hoy sigue. Chequear: a la mañana el "por día" no baja.
 ### 🪙 Binance en el Arqueo (09/11/2026, etapa 2; él: "tipo mercado pago con cada cuenta. hoy tenemos una sola cuenta de binance de tito")
 - Efectivo & Digital: "🪙 Binance" (total calculado, `finanzas/binance`) + casilla por cuenta (`bn_tito`), en dólares; entra al patrimonio y a la plata del cierre (web y `cierrevs`). Robot: `binance:<cuenta>=<usd>;go` (no imprime el saldo). Chequear: el total del Arqueo sube US$ 312 al cargarlo.
 ### 💵 Intereses · Papá sale solo (08/11/2026, etapa 2; él: "se le paga el 1% de lo que tiene a principio de mes")
