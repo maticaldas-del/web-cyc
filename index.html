@@ -1522,6 +1522,12 @@ setTimeout(function _ldVigia(){try{
         </div>
         <div class="fin-field"><div class="fin-left"><span class="fin-ts" id="ts_mp_liq"></span><span class="fin-label">A liquidar en ML</span><span id="db_mp_liq"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_mp_liq" placeholder="US$ 0" onchange="saveFin('mp_liq',this.value)"></div>
         <div id="vsr_linea" style="display:none;font-size:.68rem;margin:-2px 0 8px;line-height:1.4"></div>
+        <!-- 🪙 BINANCE (09/11/2026): como MercadoPago, total calculado + una casilla por cuenta, en dólares (USDT). -->
+        <div class="fin-field"><div class="fin-left"><span class="fin-label" style="font-weight:700;color:var(--text)">🪙 Binance</span><span id="db_binance"></span></div><input class="fin-input money" type="text" id="f_binance" placeholder="US$ 0" readonly title="Se calcula solo: es la suma de las cuentas de Binance" style="opacity:.75;cursor:default"></div>
+        <div class="arq-mp-ctas" style="margin:0 0 10px 10px;padding:2px 0 2px 12px;border-left:2px solid var(--border2)">
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin:2px 0 4px">por cuenta (en dólares)</div>
+          <div class="fin-field"><div class="fin-left"><span class="fin-label">Tito</span><span id="db_bn_tito"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_bn_tito" placeholder="US$ 0" onchange="saveFin('bn_tito',this.value)"></div>
+        </div>
       </div>
       <div class="arqueo-section positivo arq-plegada" id="arq-sec-local" style="display:none">
         <h3>🏢 Stock Local</h3>
@@ -2610,6 +2616,10 @@ const FIN_FIELDS=[
   {k:'mp_ayelen',   label:'MP Ayelen',         pos:true, detalle:true},
   {k:'mp_matias',   label:'MP Matias',         pos:true, detalle:true},
   {k:'mp_liq',      label:'A liquidar ML',     pos:true},
+  // 🪙 BINANCE (09/11/2026, él: "ahora vamos a usar binance. que esté en el arqueo tipo mercado pago con cada cuenta. hoy tenemos una sola
+  // cuenta de binance, de Tito"): en DÓLARES (USDT). `binance` = la suma de las cuentas (calculado, entra al patrimonio); `bn_<cuenta>` es el detalle.
+  {k:'binance',     label:'Binance',           pos:true},
+  {k:'bn_tito',     label:'Binance Tito',      pos:true, detalle:true},
   {k:'of_viejo',    label:'Oficina Local',       pos:true},
   {k:'of_mia',      label:'Oficina ML',      pos:true},
   {k:'tarjeta',     label:'Tarjeta',           pos:false},
@@ -3533,7 +3543,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.159';
+const APP_VERSION='28.160';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3546,6 +3556,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.160',f:'09/11',h:'00:40',c:[{n:2,t:'🪙 Arqueo → Efectivo & Digital: Binance, como MercadoPago (total que se suma solo + una casilla por cuenta, en dólares; hoy sólo la de Tito). Entra al patrimonio y al cobro.'}]},
   {v:'28.159',f:'08/11',h:'23:55',c:[{n:2,t:'💵 Gastos → Intereses · Papá: el monto sale solo = el 1% de lo que Tito tiene en CYC al empezar el mes ("Dólares Tito" del cierre del mes anterior, al dólar de ese cierre). La casilla viene llena: sólo tocás 💾 Cargar.'}]},
   {v:'28.158',f:'08/11',h:'23:30',c:[{n:2,t:'📈 Línea de tiempo: en lo que vende menos de 1 por semana, el 🔴 "no vende" sale recién a las 3 ventas esperadas (10 días como mínimo), no a los 10 días (8a del 08/11); el cartel de revisiones cierra las 18 Reglas del cerebro del 04/11.'}]},
   {v:'28.157',f:'08/11',h:'22:20',c:[{n:2,t:'▶️ Pedidos: dentro del 🧠 hay "Siguiente ›" (y "‹") para leer los "Hola Tito!" de corrido, uno atrás del otro, sin cerrar la ventana.'}]},
@@ -7547,6 +7558,7 @@ function renderRetirosPorMes(){
 // comparten UNA sola: se leen juntos, de la misma pantalla, en el mismo momento.
 // Las cuatro cuentas van al mismo grupo que "mp": tocar cualquiera actualiza el "cargado hace…".
 const MP_CUENTAS=['mp_adriana','mp_luciana','mp_ayelen','mp_matias'];
+const BN_CUENTAS=['bn_tito'];   // 🪙 Binance por cuenta (09/11/2026); para sumar otra: agregarla acá, en FIN_FIELDS y en el Arqueo
 // De qué cuenta es cada casilla. El robot guarda el punto de partida con el nombre de la cuenta
 // (Adriana, Luciana, Ayelen, Matias), que es como se llaman en ML, y la casilla se llama mp_<algo>.
 // Vive acá y no repetido en cada lugar: si los dos nombres se separan, el robot escribiría el
@@ -7653,6 +7665,8 @@ async function saveFin(key,val){
   // Es un campo calculado: el input está bloqueado justamente para que nadie lo pise a mano y
   // deje el total peleado con el detalle.
   let totMP=null,_anclaP=null;
+  if(BN_CUENTAS.includes(key)){const totBN=BN_CUENTAS.reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);state.finanzas.binance=totBN;
+    try{await fbSet('finanzas/binance',totBN);await fbSet('finanzas/_seen/binance',totBN);}catch(e){toast('⚠️ No se guardó el total de Binance: '+((e&&e.message)||'error'),'err',6000);}}
   if(MP_CUENTAS.includes(key)){
     totMP=MP_CUENTAS.reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
     state.finanzas.mp_disp=totMP;_finPending.mp_disp=totMP;
@@ -11594,7 +11608,7 @@ function calcArqueo(){
   const _snA=_arqViewYM&&state.snapshots&&state.snapshots[_arqViewYM];
   const arcaDeuda=_arqViewYM?((_snA&&Number(_snA.arcaARS)>0&&Number(_snA.tipoCambio)>0)?Number(_snA.arcaARS)/Number(_snA.tipoCambio):0):arcaDeudaUSD();
   deudas+=arcaDeuda;
-  const efect=['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0)+vsr;
+  const efect=['efectivo','mp_disp','mp_liq','binance'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0)+vsr;
   const deben=['deben_cyc'].reduce((s,k)=>s+(parseFloat(state.finanzas[k])||0),0);
   const deuda=['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(state.finanzas[k])||0)),0)+pvDeuda+arcaDeuda;
   return{stockVal,stockML,stockLocal,stockCamino,activos,deudas,corregir,efect,deben,deuda,vsr,pvDeuda,arcaDeuda,total:stockVal+activos-deudas+corregir};
@@ -12041,7 +12055,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
   _arqDetPinta();
   // Contra LO MISMO (etapa 2, 20/10/2026): el efectivo de hoy lleva lo vendido sin reporte y la deuda lleva
   // ARCA y el Paulvic; el cierre anterior los tiene guardados aparte (los viejos, sólo ARCA).
-  const prevEfect=prev?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0)+(Number(prev.vsrUSD)||0):null;
+  const prevEfect=prev?['efectivo','mp_disp','mp_liq','binance'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0)+(Number(prev.vsrUSD)||0):null;
   const prevDeben=prev?['deben_cyc'].reduce((s,k)=>s+(parseFloat(prev.finanzas?.[k])||0),0):null;
   const prevDeuda=prev?['tarjeta','deuda_cyc','dolares_mati','dolares_tito'].reduce((s,k)=>s+(Math.abs(parseFloat(prev.finanzas?.[k])||0)),0)+(Number(prev.pvUSD)||0)+((Number(prev.arcaARS)>0&&Number(prev.tipoCambio)>0)?Number(prev.arcaARS)/Number(prev.tipoCambio):0):null;
   const dbkEf=document.getElementById('dbk_efectivo');if(dbkEf)dbkEf.innerHTML=prevEfect!==null?deltaBadge(c.efect,prevEfect):'';
@@ -28278,7 +28292,7 @@ function renderResumen_page(){
   const prevSnap=getLatestSnapshot();
   setComp('res-patrimonio-comp',c.total,prevSnap?.total,'cierre anterior',fmtUS);
   setComp('res-stock-comp',_stTot(c,state.finanzas),prevSnap?_stTot(prevSnap,prevSnap.finanzas):null,'cierre anterior',fmtUS);
-  setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0)+(Number(prevSnap.vsrUSD)||0):null,'cierre anterior',fmtUS);
+  setComp('res-efect-comp',c.efect,prevSnap?['efectivo','mp_disp','mp_liq','binance'].reduce((s,k)=>s+(parseFloat(prevSnap.finanzas?.[k])||0),0)+(Number(prevSnap.vsrUSD)||0):null,'cierre anterior',fmtUS);
 
   _initScopeDefaults('res');
 

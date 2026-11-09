@@ -78,6 +78,8 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🪙 Binance en el Arqueo (09/11/2026, etapa 2; él: "tipo mercado pago con cada cuenta. hoy tenemos una sola cuenta de binance de tito")
+- Efectivo & Digital: "🪙 Binance" (total calculado, `finanzas/binance`) + casilla por cuenta (`bn_tito`), en dólares; entra al patrimonio y a la plata del cierre (web y `cierrevs`). Robot: `binance:<cuenta>=<usd>;go` (no imprime el saldo). Chequear: el total del Arqueo sube US$ 312 al cargarlo.
 ### 💵 Intereses · Papá sale solo (08/11/2026, etapa 2; él: "se le paga el 1% de lo que tiene a principio de mes")
 - Gastos del mes: la casilla de "Intereses · Papá" viene llena con el 1% de "Dólares Tito" del cierre del mes anterior × el dólar de ese cierre (`_interesPapa`); sin cierre, lo de hoy al dólar de hoy. Chequear: noviembre usa el cierre de octubre.
 ### ✅ Respuestas de la noche del 08/11 (1b 2b 3b 4a 5a 6a 7 8a 9b 10a + fotos en Inventario)

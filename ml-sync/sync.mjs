@@ -140,7 +140,7 @@ if (process.env.BILLING_PROBE) {
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
 const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
-const CONSULTA_NIEGA = new Set(['gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
+const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
 let CONSULTA_SOLO_LEE = false;
@@ -40068,6 +40068,25 @@ async function main() {
     // `cyc/cobro_corr/<mes>` ({ars, nota}) en el 💸 cobro de ese cierre ("− lo viejo cargado tarde"), pero no había cómo cargarlo. Pesos que NO
     // son crecimiento de ese mes (mercadería vieja que se contó tarde, algo contado dos veces). `=0` lo saca. Sin `;go` sólo muestra. Si el retiro
     // del mes siguiente ya empezó, queda congelado (9a) y la corrección va al retiro del otro mes.
+    // BILLING_PROBE=binance:<cuenta>=<dólares>[;go] · 🪙 EL SALDO DE BINANCE DE UNA CUENTA (09/11/2026, él: "ahora vamos a usar binance… tipo mercado
+    // pago con cada cuenta. hoy tenemos una sola cuenta de binance de tito"). En DÓLARES (USDT), como el Arqueo: escribe `cyc/finanzas/bn_<cuenta>` y el
+    // total `cyc/finanzas/binance` (la suma de las cuentas), con la fecha en `_ts.binance`. El saldo no se imprime (registro público): sólo si quedó.
+    if (/^binance:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const rawB = String(process.env.BILLING_PROBE).slice('binance:'.length); const GOb = /;go$/i.test(rawB);
+      const mB = rawB.replace(/;go$/i, '').match(/^([a-z]+)=([\d.,]+)$/i);
+      if (!mB) { console.log('Uso: binance:<cuenta>=<dólares>[;go]'); return; }
+      const cta = mB[1].toLowerCase(); const usd = parseFloat(mB[2].replace(/\./g, '').replace(',', '.'));
+      if (!(usd >= 0) || !['tito'].includes(cta)) { console.log('✗ cuenta desconocida (hoy sólo "tito") o monto inválido'); return; }
+      const fin = (await db.get('cyc/finanzas')) || {}; const cuentas = ['tito'];
+      const tot = cuentas.reduce((t, c) => t + (c === cta ? usd : (Number(fin['bn_' + c]) || 0)), 0);
+      console.log(`🪙 Binance ${cta}: US$ ••• → total US$ ••• ${GOb ? '(GUARDO)' : '(prueba: agregá ;go)'}`);
+      if (!GOb) return;
+      await db.patch('cyc/finanzas', { ['bn_' + cta]: usd, binance: tot });
+      await db.patch('cyc/finanzas/_ts', { binance: Date.now() });
+      const r = (await db.get('cyc/finanzas')) || {};
+      console.log(Number(r['bn_' + cta]) === usd && Number(r.binance) === tot ? '✓ releído de la base' : '✗ no quedó como pedí');
+      return;
+    }
     // BILLING_PROBE=finsuma:<campo>=<+pesos|-pesos>|<nota>[;go] · SUMAR O RESTAR PESOS A UNA DEUDA DE CYC CON LOS SOCIOS (01/11/2026, él: "cobré mis
     // 1.6m, sacar los 1m que debía y poner los 600.000 en dólares mati"). Sólo `dolares_mati`, `dolares_tito`, `deuda_cyc` (lo que CYC les debe; en el
     // Arqueo están en DÓLARES): los pesos se pasan al dólar de hoy (`finanzas/tipo_cambio`). + = CYC les debe más. El total no se imprime (registro
@@ -42735,7 +42754,7 @@ async function main() {
         const d = (a, b) => u(b - a);
         // Revisión Plata 27/10/2026: las partes tienen que sumar lo que creció. Lo vendido sin reporte (`vsrUSD`) es plata, la
         // deuda de proveedores (`pvUSD`) es deuda, y la oficina de Mati (`of_mia`) ya está en el stock cuando se cuenta por unidades (`stockLocal`), como en Comparar.
-        const efA = F(A, ['efectivo', 'mp_disp', 'mp_liq']) + (Number(A.vsrUSD) || 0), efB = F(B, ['efectivo', 'mp_disp', 'mp_liq']) + (Number(B.vsrUSD) || 0);
+        const efA = F(A, ['efectivo', 'mp_disp', 'mp_liq', 'binance']) + (Number(A.vsrUSD) || 0), efB = F(B, ['efectivo', 'mp_disp', 'mp_liq', 'binance']) + (Number(B.vsrUSD) || 0);
         const deA = FA(A, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']) + (Number(A.pvUSD) || 0), deB = FA(B, ['tarjeta', 'deuda_cyc', 'dolares_mati', 'dolares_tito']) + (Number(B.pvUSD) || 0);
         const ofDe = (S) => F(S, Number(S.stockLocal) > 0 ? ['of_viejo', 'vendedores'] : ['of_mia', 'of_viejo', 'vendedores']);
         const arA = (Number(A.arcaARS) || 0) / (tc0 || tc || 1), arB = (Number(B.arcaARS) || 0) / (tc || 1);
