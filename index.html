@@ -3548,7 +3548,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.163';
+const APP_VERSION='28.164';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3561,6 +3561,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.164',f:'09/11',h:'19:30',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" de arriba cuenta sólo lo que todavía no entró a Full (lo que ML ya dio de alta en una caja sale de la cuenta).'}]},
   {v:'28.163',f:'09/11',h:'18:35',c:[{n:2,t:'📷 Envíos a Full: cada renglón de la caja en camino muestra la foto del producto (la de ese color y esa cuenta, como en Inventario). Tocándola se ve grande.'}]},
   {v:'28.162',f:'09/11',h:'04:47',c:[{n:2,t:'⏳ Si tocás guardar mientras la app se actualiza al abrir, ahora dice "No se guardó" y no borra lo escrito (antes decía guardado).'},{n:1,t:'🇵🇾 Ya lo pedí y Llenar esperan a que bajen los productos de Paraguay.'},{n:1,t:'📥 Para el robot: un comando que se negó dice ⚠️ se negó.'}]},
   {v:'28.161',f:'09/11',h:'10:05',c:[{n:2,t:'📅 Inicio · Mes y Año: "ventas del mes" y "ganancia del mes" (y el por día) cuentan hasta ayer, sólo días cerrados; el cuadrito de hoy sigue con lo suyo.'}]},
@@ -11427,15 +11428,18 @@ function renderCajasEnCamino(){
   const todos=q?todos0.filter(e=>normTxt([e.fecha,e.cuenta,e.correo,e.sucursal,e.obs,
       cajasDe(e).map(c=>c.track||'').join(' ')].join(' ')).includes(q)):todos0;
   let cam=0,tarde=0,uCam=0,lleg=0,ganCam=0;
-  todos0.forEach(e=>cajasDe(e).forEach(c=>{
+  todos0.forEach(e=>cajasDe(e).forEach((c,ci)=>{
     if(c.recibida){lleg++;return;}
-    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);ganCam+=cajaGanEsperada(c.items).gan;
+    cam++;uCam+=(c.items||[]).reduce((a,x)=>a+(x.u||0),0);
+    // 💵 09/11/2026 (él: "al venderse que sea sólo lo que todavía no llegó a Full"): de cada renglón se resta lo que ML ya dio de alta
+    // (`cajaEntradoDe`, lo mismo que la barrita "📥 entrando a Full"); eso ya está en Full y se cuenta allá.
+    ganCam+=cajaGanEsperada((c.items||[]).map(x=>{let ent=0;try{ent=cajaEntradoDe(e.id,ci,c,x)||0;}catch(_){ent=0;}return {...x,u:Math.max(0,(Number(x.u)||0)-ent)};})).gan;
     if(envDias(e)>=ENV_ROJO_DIAS)tarde++;
   }));
   const cnt=document.getElementById('ofi-camino-count');
   if(cnt)cnt.innerHTML=`<div class="pcount"${cam?' style="border-color:rgba(245,158,11,.35)"':''}><strong${cam?' style="color:var(--amber)"':''}>${cam}</strong>cajas en camino</div>`
     +(uCam?`<div class="pcount"><strong>${uCam}</strong>unidades</div>`:'')
-    +(ganCam>0?`<div class="pcount" title="Lo que deja vender todo lo que está en camino a Full (ganancia por unidad de hoy)"><strong style="color:var(--green)">${fmt(Math.round(ganCam))}</strong>al venderse</div>`:'')
+    +(ganCam>0?`<div class="pcount" title="Lo que deja vender lo que todavía no entró a Full (sin lo que ML ya dio de alta; ganancia por unidad de hoy)"><strong style="color:var(--green)">${fmt(Math.round(ganCam))}</strong>al venderse</div>`:'')
     +(tarde?`<div class="pcount" style="border-color:rgba(239,68,68,.4)"><strong style="color:var(--red)">${tarde}</strong>hace +${ENV_ROJO_DIAS} días</div>`:'')
     +`<div class="pcount"><strong>${lleg}</strong>ya llegaron</div>`;
   const chip=document.getElementById('tab-ofi-camino-n');
@@ -11452,7 +11456,7 @@ function renderCajasEnCamino(){
         <strong style="font-family:'DM Mono',monospace;font-size:.76rem">${e.fecha||''}</strong>
         <span class="pi-qty">${cajasDe(e).length} caja(s)</span>
         <span style="color:var(--muted);font-size:.66rem">${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
-        ${cajaGanHTML(cajasDe(e).flatMap(c=>c.items||[]))}
+        ${cajaGanHTML(cajasDe(e).flatMap((c,ci)=>c.recibida?[]:(c.items||[]).map(x=>({...x,u:cajaPendU(e.id,ci,c,x)}))))}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${cajasDe(e).some(c=>!c.recibida)?`<button class="btn" style="padding:5px 10px;font-size:.66rem;${e.pausado?'':'background:transparent;border:1px solid var(--border2);color:var(--text)'}" onclick="setEnvioPausa('${e.id}',${e.pausado?'false':'true'})" title="${e.pausado?'Vuelve a salir: cuenta desde hoy y sale el próximo día hábil a las 12':'No la mandamos todavía: deja de contar los días de viaje hasta que la reanudes'}">${e.pausado?'▶️ Reanudar envío':'⏸️ Pausar envío'}</button>`:''}
