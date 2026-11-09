@@ -33,20 +33,24 @@ corre() {
 cortado() { if [ "$CANCELADO" = 1 ]; then echo "✋ Cancelaron la corrida: el ciclo no arranca nada más (vuelta $vuelta)."; exit 130; fi; }
 fin=$(( $(date +%s) + 340*60 ))
 vuelta=0
+malas=0
 while [ "$(date +%s)" -lt "$fin" ]; do
   cortado
   vuelta=$((vuelta+1))
   hora=$(TZ=America/Argentina/Buenos_Aires date '+%H:%M:%S')
   if [ $(( (vuelta - 1) % 30 )) -eq 0 ]; then
     echo "───── vuelta $vuelta · $hora · ventas + PRECIOS ─────"
-    corre node ml-sync/sync.mjs || { cortado; echo "⚠️ esta vuelta falló, sigo con la próxima"; }
+    if corre node ml-sync/sync.mjs; then malas=0; else cortado; malas=$((malas+1)); echo "⚠️ esta vuelta falló ($malas seguidas), sigo con la próxima"; fi
   else
     echo "───── vuelta $vuelta · $hora · solo ventas ─────"
     # A4 (21/10/2026): PESADA_SI_TOCA=1 → si la última vuelta pesada (mlapi/vueltapesada) fue hace 60 min o más, ésta va completa.
     # Y la pesada de arriba se hace liviana si hubo una hace menos de 45 min: un comando a mano reinicia el ciclo y ya no
     # repite la vuelta pesada cada vez.
-    corre env SKIP_PRICES=1 PESADA_SI_TOCA=1 node ml-sync/sync.mjs || { cortado; echo "⚠️ esta vuelta falló, sigo con la próxima"; }
+    if corre env SKIP_PRICES=1 PESADA_SI_TOCA=1 node ml-sync/sync.mjs; then malas=0; else cortado; malas=$((malas+1)); echo "⚠️ esta vuelta falló ($malas seguidas), sigo con la próxima"; fi
   fi
+  # Revisión etapa 4 (09/11/2026): 5 vueltas seguidas que fallan = algo roto (no una falla suelta): el ciclo termina en ROJO (antes quedaba
+  # verde horas sin leer ventas ni avisar nada) y el cron lo vuelve a arrancar.
+  if [ "${malas:-0}" -ge 5 ]; then echo "❌ 5 vueltas seguidas fallaron: corto el ciclo en rojo para que se vea"; exit 1; fi
   # 📥 PARA EL ROBOT (03/11/2026, ideas 13 y 15): lo que dejó el panel en `cyc/pararobot` (el chat de Chrome o la RUTINA del buzón) y la
   # vuelta de recién pasó a /tmp/cyc-cola/<id>.cmd se corre acá, uno por uno, como un comando de GitHub. El resultado (código y las últimas
   # líneas) lo sube la vuelta siguiente al panel. El texto va en un archivo y entra como variable: nunca se ejecuta en bash.
