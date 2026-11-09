@@ -165,9 +165,9 @@ FIJO={
   ('p178287291398902','','Matias'):(0,'Las 2 de la oficina son blancas/celestes (él 25/10, con foto) y la publicación es la NEGRA. Van al local: en ML no llega al 35%'),
   ('p1792881587218','','Luciana'):(0,'Él 25/10: Alfaparf al local, no da 35% en ML (el catálogo que vende tiene Full a $7.990 y el kit cuesta $7.895)'),
   ('p1793754280062','','Ayelen'):(0,'Él 04/11: pasó a Luciana (la de Ayelen se cerró)'),
-  ('p1794063798829','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Labial IDI 19 Sandy a $13.990); si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
-  ('p1794063805405','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Maybelline Witty a $47.990); si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
-  ('p1794063807731','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Mary Bosques Rubios Totales a $62.990); si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
+  ('p1794063798829','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Labial IDI 19 Sandy a $13.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
+  ('p1794063805405','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Maybelline Witty a $47.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
+  ('p1794063807731','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Mary Bosques Rubios Totales a $62.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p17904445725742','','Adriana'):(1,'Él eligió mandarlas igual (20b del 08/11): la Lattafa Sutoor de la oficina va a Full aunque hoy no dé 35%'),
   ('p1779912655550','Velve Petals','Adriana'):(2,'Él eligió mandarlas igual (20b del 08/11): las 2 VS Velvet Petals splash de la oficina van a Full aunque hoy no den 35%'),   # el color en la ficha se llama "Velve Petals" (así, sin la t)
 }
