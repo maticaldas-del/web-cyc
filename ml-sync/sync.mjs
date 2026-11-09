@@ -57812,6 +57812,11 @@ async function main() {
         if (!itemsFin.length) console.log(`  ⚠️ No había ningún candidato con unidades cargadas en el panel ni detalle guardado, así que el detalle por producto queda vacío.`);
         if (usdPanel) console.log(`  ⚠️ El panel tenía anotado US$ ${usdPanel.toFixed(2)} y vos mandás US$ ${usd.toFixed(2)}: el recargo se mide contra lo que MANDASTE. Los dos quedan guardados.`);
         if (!GO) { await aplicarCostosPedido(db, id, rec, false); console.log(`\nNo se guardó nada (falta |go).`); return; }
+        // Revisión etapa 4 (09/11/2026): lo que la web pudo escribir mientras corría (la 📷 del ticket, el ✅ llegó bien, el reclamo) no se pisa
+        // con lo leído al principio: se relee y esos campos quedan como están ahora.
+        { let ahoraP = null; try { ahoraP = await db.get('cyc/compraspy/' + id); } catch { ahoraP = null; }
+          if (ahoraP) for (const k of ['ticketFoto', 'llegoOk', 'reclamo', 'pagado', 'fechaLlego']) if (ahoraP[k] != null && rec[k] == null) rec[k] = ahoraP[k];
+          if (ahoraP && Number(ahoraP.ticketFoto) > Number(rec.ticketFoto || 0)) rec.ticketFoto = ahoraP.ticketFoto; }
         await db.set('cyc/compraspy/' + id, rec);
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(rel && rel.usdCrudo === usd ? `\n✓ Guardado y releído: cyc/compraspy/${id}` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);

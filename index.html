@@ -2795,9 +2795,13 @@ function _copiaCartel(ts,suave){try{let b=document.getElementById('cyc-copia-car
 // retiro, pedidos automáticos…) con datos viejos podría pisar lo nuevo. Toda escritura se frena hasta que llegó todo de la base; si la
 // hizo una persona, avisa "no se guardó, probá en unos segundos".
 window._deCopia=()=>_cycDeCopia.size>0;
+// Revisión etapa 4 (09/11/2026): lo que hizo una PERSONA en los últimos 3 s (tocó o escribió) y se frena por la copia ahora FALLA (no
+// "resuelve" en silencio): antes la pantalla decía "✓ Guardada" / "Mensaje dejado" y borraba lo escrito, y no se guardaba nada (un 💵 Pagó
+// tocado al abrir se perdía). Lo que la app calcula sola al abrir sigue frenándose sin error.
+window._cycUltToque=0;['pointerdown','keydown','touchstart'].forEach(ev=>{try{document.addEventListener(ev,()=>{window._cycUltToque=Date.now();},{capture:true,passive:true});}catch(_){}});
 (function _copiaFrenoEscritura(){try{const R=firebase&&firebase.database&&firebase.database.Reference&&firebase.database.Reference.prototype;if(!R||R._cycFreno)return;R._cycFreno=true;
   let _ultAviso=0;const aviso=()=>{if(Date.now()-_ultAviso<4000)return;_ultAviso=Date.now();try{toast('⏳ Todavía se está actualizando: no se guardó. Probá de nuevo en unos segundos.','err',4000);}catch(_){}};
-  for(const m of ['set','update','remove','transaction','setWithPriority']){const o=R[m];if(typeof o!=='function')continue;R[m]=function(){if(window._deCopia()&&!/\/cyc\/diag\//.test(String(this))){aviso();return Promise.resolve();}return o.apply(this,arguments);};}
+  for(const m of ['set','update','remove','transaction','setWithPriority']){const o=R[m];if(typeof o!=='function')continue;R[m]=function(){if(window._deCopia()&&!/\/cyc\/diag\//.test(String(this))){aviso();if(Date.now()-(window._cycUltToque||0)<3000)return Promise.reject(Object.assign(new Error('⏳ todavía se está actualizando'),{code:'cyc/copia'}));return Promise.resolve();}return o.apply(this,arguments);};}
   const op=R.push;if(typeof op==='function')R.push=function(v){if(window._deCopia()&&arguments.length&&v!==undefined){aviso();return op.call(this);}return op.apply(this,arguments);};
 }catch(_){}})();
 function _copiaCartelSacar(){try{const b=document.getElementById('cyc-copia-cartel');if(b)b.remove();}catch(_){}}
@@ -2817,6 +2821,7 @@ let _cycSinDatos=false; // Etapa 5: Firebase canceló la lectura de cyc/ (ver el
 // que nadie atrapó sale como aviso rojo.
 window.addEventListener('unhandledrejection',ev=>{
   const r=ev&&ev.reason;const m=(r&&(r.message||r.code))||String(r||'error');
+  if(r&&r.code==='cyc/copia'){try{ev.preventDefault();}catch(_){}return;}   // ya avisó el freno de la copia (revisión etapa 4, 09/11)
   // 18/10/2026: en el iPhone, al volver a la app, el guardado de la SESIÓN (IndexedDB del navegador) tira
   // 'Attempt to get records from database without an in-progress transaction'. No es la base de CYC ni
   // ningún dato: Firebase reabre solo esa conexión. Se ignora para que no salga un 'No se guardó' falso.
@@ -3077,14 +3082,14 @@ function startApp(){
     b.textContent='⚠️ Se cortó la lectura de la base ('+((err&&(err.code||err.message))||'error')+'). Lo que ves puede estar VIEJO y lo que cargues puede no guardarse. Tocá acá para volver a entrar.';
     const l=document.getElementById('loading');if(l)l.style.display='none';
   };
-  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(_cycDeCopia.delete(k)){if(!_cycDeCopia.size){_copiaCartelSacar();window._diag.completoMs=Date.now()-_diagT0;window._diag.faltan=null;_diagMandar();}else if(window._copiaTsVisto&&document.getElementById('cyc-copia-cartel')&&!window._sinSesion)_copiaCartel(window._copiaTsVisto,true);}_cycSched();},_cycErr);
+  const _cycOir=k=>db.ref('cyc/'+k).on('value',sn=>{_cycD[k]=sn.val();_cycFalta.delete(k);if(window._lazyDeCopia)window._lazyDeCopia.delete(k);if(_cycDeCopia.delete(k)){if(!_cycDeCopia.size){_copiaCartelSacar();window._diag.completoMs=Date.now()-_diagT0;window._diag.faltan=null;_diagMandar();}else if(window._copiaTsVisto&&document.getElementById('cyc-copia-cartel')&&!window._sinSesion)_copiaCartel(window._copiaTsVisto,true);}_cycSched();},_cycErr);
   _alEntrar(()=>CYC_KEYS.forEach(_cycOir));
   // 📴 a los 12 s (o enseguida si arrancó sin sesión), lo que falta sale de la copia del teléfono.
   const _cycDeLaCopia=async()=>{if(!_cycFalta.size)return;const c=await _copiaLeer();if(!c||!c.d||!_cycFalta.size)return;
     for(const k of [..._cycFalta]){_cycD[k]=(k in c.d)?c.d[k]:null;_cycDeCopia.add(k);_cycFalta.delete(k);}
     // lo de Pedidos que se baja aparte (candidatos de Paraguay) también sale de la copia, sin esperar; si después entra a Pedidos con
     // internet, lo de la base lo reemplaza.
-    for(const k of Object.keys(CYC_LAZY))if(!(k in _cycD)&&(k in c.d))_cycD[k]=c.d[k];
+    for(const k of Object.keys(CYC_LAZY))if(!(k in _cycD)&&(k in c.d)){_cycD[k]=c.d[k];(window._lazyDeCopia=window._lazyDeCopia||new Set()).add(k);}   // revisión etapa 4 (09/11): se anota que es de la copia
     if(c.d.__claudeexp&&!window._cerReal&&window._cerAplicar)window._cerAplicar(c.d.__claudeexp);
     if(c.d.__oficycdesde&&!window._ofdReal)state.oficycdesde=c.d.__oficycdesde;
     window._copiaTot=_cycDeCopia.size;_copiaCartel(c.ts,!window._sinSesion);window._copiaTsVisto=c.ts;_cycSched();
@@ -19062,7 +19067,7 @@ function pedLlenarTodoPlan(g){
   const vivos=candList().filter(candEnArmado).filter(c=>pyMomEs(g,c.nombre));
   return{prob,fueraP,usdP:Math.round(usdP*100)/100,crA,crN,tope,N:pedLlenarPlan(vivos,tope,pedMaxU(),pedMinVent(),'combo')};
 }
-async function pedLlenarTodo(g){return conCandado('pedLlenarTodo:'+(g||''),()=>_pedLlenarTodo(g));}
+async function pedLlenarTodo(g){if(_candDeCopia())return;return conCandado('pedLlenarTodo:'+(g||''),()=>_pedLlenarTodo(g));}
 async function _pedLlenarTodo(g){
   g=g||null;
   const L=pedLlenarTodoPlan(g),{suma,total}=L.N,topeT=pedTopeUSD();
@@ -20256,7 +20261,11 @@ async function pyArmadoVaciarProv(g){
 }
 // Etapa 4 (20/10/2026): candado por botón (doble toque = dos reposiciones y el pedido de nuevos sumado dos veces).
 async function pyMomentoYaLoPedi(g){return conCandado('pyMomento:'+(g||''),()=>_pyMomentoYaLoPedi(g));}
+// Revisión etapa 4 (09/11/2026): los productos de Paraguay (3,8 MB) se bajan recién al entrar a Pedidos; mientras se ven los de la copia
+// del teléfono, "Ya lo pedí" y 🪄 Llenar esperan (con lo viejo se pedía mal y se borraban las unidades nuevas de otro teléfono).
+function _candDeCopia(){if(window._lazyDeCopia&&window._lazyDeCopia.has('candidatos_py')){try{toast('⏳ Todavía se están bajando los productos de Paraguay: probá en unos segundos','err',4000);}catch(_){}return true;}return false;}
 async function _pyMomentoYaLoPedi(g){
+  if(_candDeCopia())return;
   g=g||null;
   const A=pyArmadoFilas().filter(f=>pyMomEs(g,f.nom));
   const N=pedNuevos(candList().filter(candEnArmado).filter(c=>candEnPedido(c)!=='viajando').filter(c=>pyMomEs(g,c.nombre)));
