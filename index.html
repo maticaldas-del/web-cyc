@@ -3113,7 +3113,7 @@ function startApp(){
   _alEntrar(()=>{[['extracto_mp','_exMpV'],['rendimientos_mp','_rMpV']].forEach(([k,w])=>{try{db.ref('cyc/'+k).on('value',sn=>{window[w]=sn.val()||{};state[k]=window[w];},()=>{window[w]=window[w]||{};});}catch(_){}});});
   // 📷 08/11/2026: `cyc/mlfotos` (la foto de cada variante de ML, para Inventario) se lee APARTE como `oficycdesde`: si no se pudiera
   // leer, el panel abre igual (sin fotos de variante cae a la de la publicación). Al llegar se redibujan las dos listas de Inventario.
-  _alEntrar(()=>{try{db.ref('cyc/mlfotos').on('value',sn=>{state.mlfotos=sn.val()||{};try{renderOfiContar();}catch(_){}try{if(document.getElementById('prod-inventario')?.open)renderInv();}catch(_){}},()=>{if(!state.mlfotos)state.mlfotos={};});}catch(_){state.mlfotos={};}});
+  _alEntrar(()=>{try{db.ref('cyc/mlfotos').on('value',sn=>{state.mlfotos=sn.val()||{};try{renderOfiContar();}catch(_){}try{if(document.getElementById('prod-inventario')?.open)renderInv();}catch(_){}try{renderCajasEnCamino();}catch(_){}},()=>{if(!state.mlfotos)state.mlfotos={};});}catch(_){state.mlfotos={};}});
   const _cycLazyOn=new Set();
   window._cycCargarDe=page=>{for(const [k,pg] of Object.entries(CYC_LAZY))if(pg===page&&!_cycLazyOn.has(k)){_cycLazyOn.add(k);_alEntrar(()=>_cycOir(k));}};
 }
@@ -3548,7 +3548,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.162';
+const APP_VERSION='28.163';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3561,6 +3561,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.163',f:'09/11',h:'18:35',c:[{n:2,t:'📷 Envíos a Full: cada renglón de la caja en camino muestra la foto del producto (la de ese color y esa cuenta, como en Inventario). Tocándola se ve grande.'}]},
   {v:'28.162',f:'09/11',h:'04:47',c:[{n:2,t:'⏳ Si tocás guardar mientras la app se actualiza al abrir, ahora dice "No se guardó" y no borra lo escrito (antes decía guardado).'},{n:1,t:'🇵🇾 Ya lo pedí y Llenar esperan a que bajen los productos de Paraguay.'},{n:1,t:'📥 Para el robot: un comando que se negó dice ⚠️ se negó.'}]},
   {v:'28.161',f:'09/11',h:'10:05',c:[{n:2,t:'📅 Inicio · Mes y Año: "ventas del mes" y "ganancia del mes" (y el por día) cuentan hasta ayer, sólo días cerrados; el cuadrito de hoy sigue con lo suyo.'}]},
   {v:'28.160',f:'09/11',h:'00:40',c:[{n:2,t:'🪙 Arqueo → Efectivo & Digital: Binance, como MercadoPago (total que se suma solo + una casilla por cuenta, en dólares; hoy sólo la de Tito). Entra al patrimonio y al cobro.'}]},
@@ -11490,6 +11491,7 @@ function renderCajasEnCamino(){
         const cod=(()=>{try{return etiquetaFullDe(x.prodId,e.cuenta,x.variante||'');}catch(_){return null;}})();
         return `<div style="display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 9px">
           <strong style="font-size:.95rem;min-width:34px;text-align:right;color:var(--text)">${x.u}</strong>
+          ${(()=>{/* 📷 09/11/2026, él: "que aparezcan las fotos acá también, así me doy cuenta más fácil cuál es" — la misma foto de Inventario (color y cuenta de la caja) */try{const pr=(state.products||[]).find(q=>q.id===x.prodId);return pr?fotoChipHTML(pr,38,x.variante||'',e.cuenta):'';}catch(_){return '';}})()}
           <span style="font-family:'DM Mono',monospace;font-size:.74rem;min-width:84px;color:${cod?'var(--blue,#38bdf8)':'var(--muted)'}">${cod?String(cod).replace(/[^A-Za-z0-9]/g,''):'sin código'}</span>
           <span style="font-size:.7rem;color:var(--text);flex:1;min-width:0;overflow-wrap:anywhere">${x.nombre||x.prodId}${x.variante?' · <strong>'+x.variante+'</strong>':''}</span>
         </div>`;}).join('')}</div>`
