@@ -569,3 +569,4 @@ Ninguna toca precios. **Lo urgente ya está arreglado:** desde el 08/11 los scri
 5. **ml-chequeo y ml-bajopiso no corren desde septiembre** (y el chequeo de la mañana sigue diciendo 7 de septiembre): (a) sugerida: sacarlos · (b) dejarlos.
 6. **Contar la oficina desde dos lados a la vez puede perder una suma** (había 4, el robot suma 3 y la web 2 → queda 7 en vez de 9): (a) sugerida: que la base haga la suma sola · (b) dejarlo (pasa poco).
 7. **Días de la línea de tiempo guardados con datos incompletos** (sin el precio que vio el comprador): (a) sugerida: rehacerlos · (b) dejarlos.
+8. **🏬 La Tienda quedó en ~1.100 productos con la regla nueva "precio de Nissei de 2 días"** (09/11; antes 8.567; hoy sigue al aire la lista de ayer porque el freno la paró): (a) sugerida: para la Tienda vale el precio mirado hace 7 días o menos (tiene el 25% de colchón; ABEL sigue con 2 días) · (b) que la Tienda baje a ~1.100 y crezca a medida que el chat de Chrome mira Nissei.
