@@ -9643,7 +9643,7 @@ function renderParaRobotCard(){
   const el=document.getElementById('ofi-pararobot-card');if(!el)return;_paraRobotOir();
   const _ta=document.getElementById('pararobot-txt'),_v=_ta?_ta.value:'',_foc=_ta&&document.activeElement===_ta,_ab=el.querySelector('details')?.open;
   const L=state.pararobot==null?null:Object.entries(state.pararobot||{}).map(([k,x])=>({k,...(x||{})})).sort((a,b)=>Number(b.k)-Number(a.k)).slice(0,8);
-  const ic={nuevo:'⏳ en cola',tomado:'⚙️ corriendo',hecho:'✅ hecho','falló':'❌ falló',rechazado:'🚫 rechazado'};
+  const ic={nuevo:'⏳ en cola',tomado:'⚙️ corriendo',hecho:'✅ hecho','falló':'❌ falló',rechazado:'🚫 rechazado',senego:'⚠️ se negó (mirá el resultado)'};
   const pend=L?L.filter(x=>x.estado==='nuevo'||x.estado==='tomado').length:0;
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${pend||_ab||_v?' open':''}>
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📥 Para el robot${pend?` <span style="color:var(--amber);font-weight:400">· ${pend} en curso</span>`:''}</summary>

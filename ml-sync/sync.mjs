@@ -136,7 +136,7 @@ if (/^tienda(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
 // con 0, y un comando que dice "No escribo nada" o "DATOS INCOMPLETOS" sale con 0. Al terminar se deja un renglón que se ve en el registro.
 if (process.env.BILLING_PROBE) {
   let _seNego = 0; const _ol2 = console.log.bind(console);
-  console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/no escribo nada|DATOS INCOMPLETOS|^❌ Usá/i.test(t)) _seNego++; } catch { /* */ } _ol2(...a); };
+  console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
 const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
@@ -12748,7 +12748,7 @@ async function alinearGemelas(db, links, tokensRun, DRY, products, solo, forzar)
   const aPropG = hacerClasicaAProposito(db);   // 21a del 03/11
   // 6a de la revisión de Datos (01/11, él el 03/11): si la Clásica está con MI descuento vigente (`cyc/promoclaude`, sin vencer), la gemela sigue
   // el precio que ve el comprador, no la lista ("bajan todas juntas", 3a del 30/10). Sin poder leerlo, sigue la lista (como antes).
-  let pcG = {}; try { pcG = (await db.get('cyc/promoclaude')) || {}; } catch { pcG = {}; }
+  let pcG = {}; try { pcG = (await db.get('cyc/promoclaude')) || {}; } catch { console.log('💳 Gemelas: no pude leer los descuentos (cyc/promoclaude): no toco nada'); return out; }   // revisión etapa 4 (09/11): sin esto seguían el precio de lista
   const vistaCla = (m, C) => { const x = pcG[m]; const L = Math.round(Number(C && C.price) || 0); if (!x || !(Number(x.precio) > 0) || !(Number(x.precio) < L * 0.995)) return C; const h = x.hasta ? Date.parse(x.hasta) : NaN; if (isFinite(h) && h < Date.now()) return C; return { ...C, price: Math.round(Number(x.precio)) }; };
   if (!(tc > 0) || !(monoPct > 0)) { console.log('💳 Gemelas: sin dólar o monotributo: no toco nada'); return out; }
   let cuoPeor = 0; for (const c of Object.values(cuotasM)) { const v = parseFloat(c && c.pct); if (isFinite(v) && v > cuoPeor) cuoPeor = v; } if (!(cuoPeor > 0)) cuoPeor = 21.6;
@@ -12891,7 +12891,7 @@ async function alinearGemelasEnvio(db, links, tokensRun, DRY, products, solo, fo
   const aPropG = hacerClasicaAProposito(db);   // 21a del 03/11
   // 6a de la revisión de Datos (01/11, él el 03/11): si la Clásica está con MI descuento vigente (`cyc/promoclaude`, sin vencer), la gemela sigue
   // el precio que ve el comprador, no la lista ("bajan todas juntas", 3a del 30/10). Sin poder leerlo, sigue la lista (como antes).
-  let pcG = {}; try { pcG = (await db.get('cyc/promoclaude')) || {}; } catch { pcG = {}; }
+  let pcG = {}; try { pcG = (await db.get('cyc/promoclaude')) || {}; } catch { console.log('📦 Gemelas de envío: no pude leer los descuentos (cyc/promoclaude): no toco nada'); return out; }   // revisión etapa 4 (09/11): sin esto seguían el precio de lista
   const vistaCla = (m, C) => { const x = pcG[m]; const L = Math.round(Number(C && C.price) || 0); if (!x || !(Number(x.precio) > 0) || !(Number(x.precio) < L * 0.995)) return C; const h = x.hasta ? Date.parse(x.hasta) : NaN; if (isFinite(h) && h < Date.now()) return C; return { ...C, price: Math.round(Number(x.precio)) }; };
   let gemBar = null; try { gemBar = (await db.get('cyc/gemelabarrera')) || {}; } catch { gemBar = null; console.log('📦 Gemelas de envío: no pude leer cyc/gemelabarrera: esta vuelta no pauso ni activo ninguna por la barrera'); }
   if (!(tc > 0) || !(monoPct > 0)) { console.log('📦 Gemelas de envío: sin dólar o monotributo: no toco nada'); return out; }
@@ -15302,7 +15302,7 @@ async function colaParaRobot(db, labels) {
     const id = f.slice(0, -3); let rc = '1', out = '';
     try { rc = fs.readFileSync(`${COLA_DIR}/${f}`, 'utf8').trim(); out = fs.readFileSync(`${COLA_DIR}/${id}.out`, 'utf8'); } catch { /* sin salida */ }
     out = _tapaCodigo(String(out)).replace(/(^|\n)(\s*mp:)[^\n]*/gi, '$1$2 (oculto)').split('\n').slice(-400).join('\n').slice(-40000);   // las de leer (faltaventas, listarevisar…) traen listas largas
-    try { await db.patch('cyc/pararobot/' + id, { estado: rc === '0' ? 'hecho' : 'falló', fin: Date.now(), res: out }); R.subidos++; } catch { continue; }
+    try { await db.patch('cyc/pararobot/' + id, { estado: rc === '0' ? (/SE NEGÓ/.test(String(out || '')) ? 'senego' : 'hecho') : 'falló', fin: Date.now(), res: out }   /* revisión etapa 4 (09/11): un comando que se negó no sale ✅ */); R.subidos++; } catch { continue; }
     for (const ext of ['.rc', '.out', '.log']) { try { fs.unlinkSync(`${COLA_DIR}/${id}${ext}`); } catch { /* */ } }
   }
   let cola = {}; try { cola = (await db.get('cyc/pararobot')) || {}; } catch { return R; }
@@ -15362,11 +15362,13 @@ async function vigilarBarrera(db, labels, tokensRun, DRY, forzar = false) {
   for (const [m, e] of Object.entries(links)) { if (!e || e.gemelaDe || e.status !== 'active' || !e.cuenta) continue; const p = Number(e.price || e.precio) || 0; if (p > 0 && !(p >= UMBRAL_ENVIO_GRATIS * 0.75 && p <= UMBRAL_ENVIO_GRATIS * 1.4)) continue; /* sin precio anotado se lee igual */ (porCta[e.cuenta] = porCta[e.cuenta] || []).push(m); }
   let maxSin = 0, minCon = 0, nSin = 0, nCon = 0;
   for (const l of labels) { const tk = tokensRun && tokensRun[l]; const ms = porCta[l] || []; if (!tk || !ms.length) continue;
-    for (let i = 0; i < ms.length; i += 20) { let arr = null; try { arr = await mlGet('/items?ids=' + ms.slice(i, i + 20).join(',') + '&attributes=id,price,status,listing_type_id,shipping', tk); } catch { continue; }
+    for (let i = 0; i < ms.length; i += 20) { let arr = null; try { arr = await mlGet('/items?ids=' + ms.slice(i, i + 20).join(',') + '&attributes=id,price,status,listing_type_id,shipping', tk); } catch { R.fallas = (R.fallas || 0) + 1; continue; }
       for (const x of (arr || [])) { const b = x && x.body; if (!b || b.status !== 'active' || b.listing_type_id !== 'gold_special' || !b.shipping) continue; const p = Number(b.price) || 0; if (!(p >= UMBRAL_ENVIO_GRATIS * 0.75 && p <= UMBRAL_ENVIO_GRATIS * 1.4)) continue; R.miradas++;
         if (b.shipping.free_shipping) { if (p < UMBRAL_ENVIO_GRATIS) { nCon++; if (!minCon || p < minCon) minCon = p; } }
         else if (p >= UMBRAL_ENVIO_GRATIS) { nSin++; if (p > maxSin) maxSin = p; } } } }
   R.maxSin = maxSin; R.minCon = minCon;
+  // Revisión etapa 4 (09/11/2026): si ML no contestó alguna tanda, no se escribe ni se avisa (daba un "✅ volvió" falso y después otra vez 🚧).
+  if (R.fallas) { R.salteo = `ML no contestó ${R.fallas} tanda(s): no decido nada`; return R; }
   // Abajo, con envío gratis, puede ser a propósito (una gemela vieja mal marcada): hacen falta 2 para decir que bajó.
   R.movida = nSin >= 1 ? `subió: ${nSin} publicación(es) arriba de $${UMBRAL_ENVIO_GRATIS.toLocaleString('es-AR')} sin envío gratis (la más cara a $${maxSin.toLocaleString('es-AR')})` : nCon >= 2 ? `bajó: ${nCon} publicación(es) abajo de $${UMBRAL_ENVIO_GRATIS.toLocaleString('es-AR')} con envío gratis obligatorio (la más barata a $${minCon.toLocaleString('es-AR')})` : '';
   if (DRY) return R;
@@ -23403,7 +23405,7 @@ async function main() {
           const limiteSin = Date.now() - 45 * 864e5;
           const _vpDia = {};
           const _cancelada = async (oid, fv) => {
-            const dk = String(fv).slice(0, 10).replace(/-/g, '_'); if (!dk) return false;
+            const dk = (() => { try { return dayKeyFromISO(fv); } catch { return ''; } })() || String(fv).slice(0, 10).replace(/-/g, '_'); if (!dk) return false;   // revisión etapa 4 (09/11): el día de ACÁ (con -04:00 de ML, de 23 a 24 caía en el día anterior)
             if (!(dk in _vpDia)) { try { _vpDia[dk] = (await db.get('cyc/ventaprod/' + dk)) || {}; } catch { _vpDia[dk] = null; } }
             const vd = _vpDia[dk]; if (!vd) return false;
             const ents = Object.entries(vd).filter(([k]) => k.startsWith('v' + oid + '_'));
@@ -25252,7 +25254,7 @@ async function main() {
         // objetivo: sacar stock de productos que no dan o hay sobrestock"). La franja "Remate" de la línea se alimentaba de las marcas del
         // robot viejo (liquidando automático y su escalera, apagados desde el 09/10): ahora `rem` también es 📦 sobra / 📉 liquidando /
         // 🧨 remate y `esc` la 🪜 escalera de bajas, según la estrategia que tenía la publicación al terminar ese día.
-        let estDia = {}; try { estDia = (await db.get('cyc/estrategia')) || {}; } catch { estDia = {}; }
+        let estDia = {}, estDiaMal = false; try { estDia = (await db.get('cyc/estrategia')) || {}; } catch { estDia = {}; estDiaMal = true; console.log('⚠️ línea de ayer: no leí cyc/estrategia: "rem" queda sin poner (lo completa la próxima)'); }   // revisión etapa 4 (09/11): antes quedaba rem:0 para siempre
         const finAyer = Date.parse(String(ayerK).replace(/_/g, '-') + 'T23:59:59-03:00');
         const tagAyer = (m) => { const h = estDia[m] || {}; let best = 0, t = ''; for (const [k, x] of Object.entries(h)) { const ts = Number(k); if (ts > 0 && ts <= finAyer && ts > best && x && x.t) { best = ts; t = x.t; } } return t; };
         // 21/10/2026 · etapa 1: `cyc/netopub` no guarda `margen` (guarda neto, precio, envío, cuotas): `mg` salía vacío siempre. Se
@@ -25268,7 +25270,7 @@ async function main() {
         // desde el 24/10 todo lo que queda abajo del 35% en el peor caso cuenta como sacar stock (él).
         const mgPDe = (np, e) => { const mg = mgDe(np, e); if (mg == undefined) return undefined; const P = Number(np.precio), env = Number(np.envio) || 0, pr = prodsL[e.prodId]; const cu = costoPesos(pr, 1, tcMg).costo; const m = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + monoMg) / 100;
           const v = (Number(np.neto) - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + env) * 100; return isFinite(v) ? Math.round(v * 10) / 10 : undefined; };
-        let phAll = {}, pcAll = {}; try { phAll = (await db.get('cyc/promohist')) || {}; pcAll = (await db.get('cyc/promoclaude')) || {}; } catch { phAll = null; }   // 1a del 03/11 (precio visto)
+        let phAll = {}, pcAll = {}; try { phAll = (await db.get('cyc/promohist')) || {}; pcAll = (await db.get('cyc/promoclaude')) || {}; } catch { phAll = null; console.log('⚠️ línea de ayer: no leí los descuentos (promohist/promoclaude): el precio visto (pV) de ayer queda sin poner'); }   // 1a del 03/11 (precio visto)
         const filas = {}; let leidas = 0, sinLeer = 0, visUna = 0, visErr = '';
         const desdeY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z')).toISOString(), hastaY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z') + DMS - 1000).toISOString();
         for (const [cta, mlas] of Object.entries(mlasCta)) {
@@ -25323,7 +25325,7 @@ async function main() {
               caja: cajaOk ? caja : undefined, ptw: cajaOk && Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : undefined,
               vis: vis[mla] != null ? vis[mla] : undefined,
               u: vpD.u, tot: Math.round(vpD.tot), neto: Math.round(vpD.neto), uR: vpD.uR,
-              rem: nosubir[mla] || TAG_SACA_STOCK.has(tagAyer(mla)) ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : undefined,
+              rem: nosubir[mla] ? 1 : estDiaMal ? undefined : TAG_SACA_STOCK.has(tagAyer(mla)) ? 1 : 0, esc: escalera[mla] && escalera[mla].paso != null ? escalera[mla].paso : undefined,
               mg: mgDe(np, e), mgP: mgPDe(np, e),
               vend: b && b.sold_quantity != null ? b.sold_quantity : undefined,
             };
@@ -56435,7 +56437,7 @@ async function main() {
       for (const x of sin) { const z = _taparBz(_tapaMP(x.t)); console.log(`  [${x.k}] ${f(x.ts)} · ${z.t.slice(0, 600)}${z.nota}`); }
       // 🤖 Lo que el robot ya cargó solo de las RUTINA y lo que dejó para Claude (idea 13 del 03/11), y la cola del panel (idea 15).
       try { const RA = (await db.get('mlapi/rutinaauto')) || {}; for (const [t, r] of Object.entries(RA).sort((a, b) => Number(b[0]) - Number(a[0])).slice(0, 3)) console.log(`  🤖 RUTINA [${t}]: a la cola ${(r.cmds || []).join(', ') || 'nada'}${(r.raros || []).length ? ' · PARA VOS: ' + r.raros.join(' | ') : ''}`);
-        const PR = (await db.get('cyc/pararobot')) || {}; const pend = Object.entries(PR).filter(([, x]) => x && (x.estado === 'nuevo' || x.estado === 'tomado' || x.estado === 'falló' || x.estado === 'rechazado') && Date.now() - (Number(x.ts) || 0) < 3 * 864e5);
+        const PR = (await db.get('cyc/pararobot')) || {}; const pend = Object.entries(PR).filter(([, x]) => x && (x.estado === 'nuevo' || x.estado === 'tomado' || x.estado === 'falló' || x.estado === 'rechazado' || x.estado === 'senego') && Date.now() - (Number(x.ts) || 0) < 3 * 864e5);
         if (pend.length) console.log(`  📥 Para el robot: ${pend.map(([k, x]) => `${x.estado} ${String(x.t || '').split(/[:;]/)[0]} (${f(Number(k))})`).join(' · ')}`); } catch { /* */ }
       if (leid.length) { console.log('\n  (últimos leídos)'); for (const x of leid) { const z = _taparBz(_tapaMP(x.t)); console.log(`  ✓ [${x.k}] ${f(x.ts)} · ${z.t.slice(0, 200)}${z.nota}`); } }
       return;
