@@ -2863,7 +2863,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -3548,7 +3548,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.165';
+const APP_VERSION='28.166';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3561,6 +3561,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.166',f:'10/11',h:'13:20',c:[{n:2,t:'📌 Mensaje para Claude: arriba aparecen los pedidos de Claude al chat de Chrome (lo que Claude no puede ver en ML: cajas, reclamos, envíos), con un botón ✅ Hecho.'}]},
   {v:'28.165',f:'10/11',h:'11:00',c:[{n:2,t:'📋 Mensaje para Claude: arriba de "Última vez" está la lista HOY TOCA de la run del chat de Chrome, con ✅ lo que ya hizo hoy y ❌ lo que falta (en rojo hasta que esté todo).'}]},
   {v:'28.164',f:'09/11',h:'19:30',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" de arriba cuenta sólo lo que todavía no entró a Full (lo que ML ya dio de alta en una caja sale de la cuenta).'}]},
   {v:'28.163',f:'09/11',h:'18:35',c:[{n:2,t:'📷 Envíos a Full: cada renglón de la caja en camino muestra la foto del producto (la de ese color y esa cuenta, como en Inventario). Tocándola se ve grande.'}]},
@@ -9614,6 +9615,11 @@ function renderBuzonCard(){
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${_ab||_v?' open':''}>
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📬 Mensaje para Claude${sin.length?` <span style="color:var(--amber);font-weight:400">· ${sin.length} sin leer</span>`:''}</summary>
     <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
+    ${(()=>{   // 📌 PEDIDOS DE CLAUDE AL CHAT DE CHROME (10/11/2026, él: "todas esas cosas que vos no ves, que te las responda el chat local"):
+      // lo que Claude no puede mirar en ML. El chat los hace PRIMERO en la run, contesta en el buzón con "RESPUESTA <id>: …" y toca ✅ Hecho.
+      const pend=Object.entries(state.parachat||{}).filter(([,x])=>x&&x.t&&!x.hecho).sort((a,b)=>Number(a[0])-Number(b[0]));
+      if(!pend.length)return '';
+      return `<div style="font-size:.72rem;margin:6px 0;padding:8px 10px;border-radius:8px;border:1px solid rgba(56,189,248,.5);background:rgba(56,189,248,.06);line-height:1.5">📌 <b>Claude te pide (${pend.length}) — hacelo PRIMERO y contestá en el buzón con "RESPUESTA &lt;número&gt;: …"</b>${pend.map(([id,x])=>`<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px"><b>${id}</b> · ${_esc(x.t)} <button class="btn" style="padding:3px 8px;font-size:.62rem;margin-left:6px" onclick="fbSet('parachat/${id}/hecho',Date.now()).then(()=>toast('✅ Marcado hecho'))">✅ Hecho</button></div>`).join('')}</div>`;})()}
     ${(()=>{   // 🤖 CUÁNDO SE HIZO CADA TAREA DEL CHAT DE CHROME (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo"): el chat
       // mira esta línea al arrancar y hace lo que toca. Sale de TODOS los mensajes del buzón (leídos o no) que empiezan con el nombre de la tarea.
       // 03/11/2026: + CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB; cada mensaje cuenta para la tarea de nombre MÁS LARGO que coincide
