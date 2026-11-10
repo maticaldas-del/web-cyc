@@ -3548,7 +3548,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.164';
+const APP_VERSION='28.165';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3561,6 +3561,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.165',f:'10/11',h:'11:00',c:[{n:2,t:'📋 Mensaje para Claude: arriba de "Última vez" está la lista HOY TOCA de la run del chat de Chrome, con ✅ lo que ya hizo hoy y ❌ lo que falta (en rojo hasta que esté todo).'}]},
   {v:'28.164',f:'09/11',h:'19:30',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" de arriba cuenta sólo lo que todavía no entró a Full (lo que ML ya dio de alta en una caja sale de la cuenta).'}]},
   {v:'28.163',f:'09/11',h:'18:35',c:[{n:2,t:'📷 Envíos a Full: cada renglón de la caja en camino muestra la foto del producto (la de ese color y esa cuenta, como en Inventario). Tocándola se ve grande.'}]},
   {v:'28.162',f:'09/11',h:'04:47',c:[{n:2,t:'⏳ Si tocás guardar mientras la app se actualiza al abrir, ahora dice "No se guardó" y no borra lo escrito (antes decía guardado).'},{n:1,t:'🇵🇾 Ya lo pedí y Llenar esperan a que bajen los productos de Paraguay.'},{n:1,t:'📥 Para el robot: un comando que se negó dice ⚠️ se negó.'}]},
@@ -9620,7 +9621,17 @@ function renderBuzonCard(){
       const T=['RUTINA','MIRAR TODO','COMPETENCIA','CAJAS','CAJAS LLEGADAS','GUAY','LISTAS','ONCE','IMEGA','MAYORISTAS WEB','MÁS VENDIDOS','TIENDA'],ult={};
       Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T.filter(t=>m.startsWith(t)).sort((a,b)=>b.length-a.length)[0];if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
       const dd=ts=>Math.floor((Date.now()-ts)/864e5);
-      return `<div style="font-size:.66rem;margin:6px 0;line-height:1.6">🤖 <b>Última vez del chat de Chrome:</b> ${T.map(k=>`${k} ${ult[k]?(dd(ult[k])===0?'<b style="color:var(--green)">hoy</b>':`hace ${dd(ult[k])} día${dd(ult[k])===1?'':'s'}`):'<span style="color:var(--amber)">nunca</span>'}`).join(' · ')}</div>`;})()}
+      // 📋 HOY TOCA (10/11/2026, él: "la rutina del chat local hacía 5 días no hacía Nissei. tiene errores y se saltea cosas… es muy importante que
+      // se haga la rutina completa siempre que se la pida"): la lista de lo que le toca HOY a la run, con ✅ lo que ya dejó su mensaje hoy (día de
+      // acá, no 24 h) y ❌ lo que falta. La run no termina hasta que todo esté ✅ (CHAT_LOCAL). EXTRACTO y PERFUMES también cuentan.
+      const T2=['EXTRACTO','PERFUMES'];Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T2.find(t=>m.startsWith(t));if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
+      const dia=ts=>{const d=new Date(ts);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();},hoyD=dia(Date.now());
+      const domingo=(()=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();})();
+      const toca=[['RUTINA',1],['MIRAR TODO',1],['CAJAS LLEGADAS',1],['EXTRACTO',1],['PERFUMES',1],['GUAY',1],['MÁS VENDIDOS',1],['COMPETENCIA',1],['LISTAS',7],['MAYORISTAS WEB',7],['ONCE','dom'],['IMEGA',14]]
+        .filter(([k,c])=>c===1||!ult[k]||(c==='dom'?ult[k]<domingo:dd(ult[k])>=c)||dia(ult[k])===hoyD);
+      const okT=k=>ult[k]&&dia(ult[k])===hoyD,faltan=toca.filter(([k])=>!okT(k));
+      const hoyHTML=`<div style="font-size:.7rem;margin:6px 0;padding:6px 8px;border-radius:8px;line-height:1.7;border:1px solid ${faltan.length?'rgba(239,68,68,.45)':'rgba(34,197,94,.45)'}">📋 <b>HOY TOCA</b> <span style="color:var(--muted)">(la run no termina hasta que todo esté ✅; si se corta, dejá "FALTA: …" y seguí en la próxima)</span><br>${toca.map(([k])=>okT(k)?`✅ ${k}`:`<b style="color:var(--red)">❌ ${k}</b>${ult[k]?` <span style="color:var(--muted)">(hace ${dd(ult[k])} d)</span>`:''}`).join(' · ')}${faltan.length?`<br><b style="color:var(--red)">Faltan ${faltan.length}</b>`:'<br><b style="color:var(--green)">Todo hecho ✅</b>'}</div>`;
+      return hoyHTML+`<div style="font-size:.66rem;margin:6px 0;line-height:1.6">🤖 <b>Última vez del chat de Chrome:</b> ${T.map(k=>`${k} ${ult[k]?(dd(ult[k])===0?'<b style="color:var(--green)">hoy</b>':`hace ${dd(ult[k])} día${dd(ult[k])===1?'':'s'}`):'<span style="color:var(--amber)">nunca</span>'}`).join(' · ')}</div>`;})()}
     ${sin.map(x=>`<div style="font-size:.7rem;padding:4px 0;border-top:1px solid var(--border)"><span style="color:var(--muted)">${new Date(x.ts).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span> · ${_esc(x.t)}</div>`).join('')}
     <textarea id="buzon-txt" rows="2" maxlength="2000" placeholder="Escribí acá…" style="width:100%;box-sizing:border-box;margin-top:6px;font-size:.74rem"></textarea>
     <button type="button" class="btn btn-sm" style="margin-top:6px" onclick="buzonEnviar()">📬 Dejar mensaje</button>

@@ -35,6 +35,12 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
 No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
+**⚠️ LA RUN SE HACE COMPLETA, SIEMPRE (10/11/2026, Matías: "la rutina hacía 5 días no hacía Nissei… se saltea cosas… es muy importante que se haga la rutina completa siempre que se la pida").**
+- En Mi oficina → 📬 Mensaje para Claude está el cuadro **📋 HOY TOCA**: cada tarea con ✅ (ya dejaste su mensaje hoy) o ❌ (falta). **La run NO termina hasta que esté todo ✅.**
+- **"No me alcanzó el tiempo" NO existe.** No se saltea ninguna tarea para hacer otra. Si te cortan (se terminó el chat, se cayó la página, Matías te frena), dejá en el buzón un mensaje "FALTA: <tareas>" y en la próxima vez que te prendan arrancás por esas, antes que nada.
+- GUAY y PERFUMES son de TODOS LOS DÍAS: GUAY sigue desde la página donde quedó (no hace falta terminar el catálogo en un día, pero sí avanzar y dejar "GUAY: listo hasta la página N"); PERFUMES es la categoría entera, sin cortar.
+- Al final de la run, un último mensaje "RUN <fecha>: hice … · falta …" (falta = nada si está todo ✅). Claude lo revisa a las 12:30 y te lo devuelve si falta algo.
+- Si un comando falla o algo da raro, no lo repitas a ciegas (el 09/11 un `pycat` salió 13 veces seguidas): mirá si ya quedó (✅ en "📥 Para el robot" o en GitHub) y anotalo en el mensaje de esa tarea.
 1. Abrí el panel → Mi oficina → 🤖 Textos para el chat de Chrome y copiá de nuevo "🧠 Todo (para un chat nuevo)". Si algo cambió, manda lo nuevo.
 2. En Mi oficina → Contar lo que hay → abajo de todo, "🤖 Chat de Chrome y Claude" (abrilo) → 📬 Mensaje para Claude está la línea "🤖 Última vez del chat de Chrome" (cuántos días hace que se hizo cada tarea).
    Con eso decidís qué toca, en este orden de importancia:
