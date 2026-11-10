@@ -56459,6 +56459,9 @@ async function main() {
             .replace(/(c[oó]d(?:igo|\.)?)((?:\s+(?:de|del|la|el|es|para|retirar|recibir|devoluci[oó]n|retiro|seguridad|entrega|autorizaci[oó]n)\b)*\s*[:#=]?\s*)([^\s,;·]*\d[^\s,;·]*)/gi,
               (m0, w, sp, val) => (/^MLA\d+$/i.test(val) ? m0 : tap(w + sp + '[tapado]' + (val.match(/[.):\]]+$/) || [''])[0])))
             .replace(/(?:\+?54[\s-]*)?(?:9[\s-]*)?(?:\(?0?\d{2,4}\)?[\s-]*)?(?:15[\s-]*)?\b\d{3,4}[\s-]\d{4}\b/g, () => tap('[teléfono tapado]'))
+            // 10/11/2026: "Códigos de hoy: Adriana 7C5D3AD9 · …" (el código de autorización del día de cada cuenta) salía entero en el registro
+            // público: en un renglón que habla de códigos se tapa toda tira de 6+ letras y números mezclados.
+            .replace(/[A-Z0-9]{6,}/g, (w0) => (/c[oó]digo/i.test(ln) && /\d/.test(w0) && /[A-Z]/.test(w0) && !/^MLA\d+$/.test(w0) ? tap('[tapado]') : w0))
             .replace(/(MLA)?(\d{7,})/gi, (m0, mla, d) => (mla || (d.length === 7 && d[0] === '7') || (fijo && d.length < 10) ? m0 : tap('[número tapado]')));
         }).join('\n');
         return { t, n, nota: n ? `  (🔒 tapé ${n} dato${n === 1 ? '' : 's'} para el registro público: si hacía falta, que lo diga por el chat)` : '' };
