@@ -608,3 +608,8 @@ Además, para propuesta futura: Revisiones de Ajustes en una pantalla (hoy 2.900
 - ⏳ 3 · Pendrive 128 GB: faltaban los días en stock → se le vuelve a pasar con todo.
 - ✅ 4a · aviso de venta en el teléfono: sólo producto (con color), % y ganancia.
 - ✅ Tienda 7 días (Choques 8 del 09/11) = resuelta con la 2b.
+
+## Respuestas del 10/11 (pedido de Paraguay rehecho)
+- 1b: Lattafa Atlas Glacial y Canyon (2+2) entran ya, con el precio de hoy de Nissei (US$ 12).
+- 2a: 212 Heroes 90 ml no va (otra ficha Concentree con 19 vendedores a $150.447).
+- 3b: Perfumería no sale todavía: mañana se vuelve a armar con la vuelta de Nissei de mañana.

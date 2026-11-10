@@ -27455,21 +27455,25 @@ async function main() {
         if (it.cat) { try { ofs = ((await mlGet(`/products/${it.cat}/items`, tok)).results) || []; } catch { ofs = []; } }
         ofs = ofertasParaMedir(ofs).ofs; const pi = precioAIgualar(ofs);
         if (pi && pi.ref) catx = pi.ref.category_id;
-        const ml = async (p) => (p > 0 && catx ? cuentaCandidatoMejor(Math.min(p, TECHO_DURO), catx, puesto, tc, monoP, feeAt, 0, it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null);
-        const rT = pi ? await ml(pi.baratoTodos) : null, rF = pi && pi.baratoFull ? await ml(pi.baratoFull) : null;
+        // 10/11/2026: las CUOTAS sin interés del que hay que igualar se cuentan, igual que la compra (Montblanc daba 53% sin cuotas y 28,7% con las 6 del ganador).
+        const _cuo = (o) => { const n = parseInt(cuotasDeOferta(o)) || 0; if (n < 3) return 0; const T = { 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 }; for (const k of [3, 6, 9, 12]) if (n <= k) return T[k]; return T[12]; };
+        const refF = pi ? ofs.filter(esOfertaFull).sort((x, y) => (Number(x.price) || 0) - (Number(y.price) || 0))[0] : null;
+        const ml = async (p, o) => (p > 0 && catx ? cuentaCandidatoMejor(Math.min(p, TECHO_DURO), catx, puesto, tc, monoP, feeAt, _cuo(o), it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null);
+        const rT = pi ? await ml(pi.baratoTodos, pi.ref) : null, rF = pi && pi.baratoFull ? await ml(pi.baratoFull, refF) : null;
+        const cuoT = pi ? (parseInt(cuotasDeOferta(pi.ref)) || 0) : 0;
         const fmt = (r) => (r ? `${Math.round(r.margen)}%` : '—');
         const nF = pi ? pi.conFull : 0, nV = ofs.length;
         const mT = rT ? rT.margen : null;
         const ver = !pi ? '❓ SIN PRECIO EN ML (no se puede medir)' : mT >= CAND_VARA_COMPRA ? (nV < 2 ? '🟡 da, pero 1 SOLO vendedor' : '✅ da') : (rF && rF.margen >= CAND_VARA_COMPRA ? '🟡 contra el más barato no da, contra Full sí' : '❌ NO DA');
         if (it.u) { if (/✅/.test(ver)) totOk += it.u * it.usd; else totMal += it.u * it.usd; }
         console.log(`\n${ver} · [${it.tipo}${it.star ? ' ⭐' + it.star.toFixed(1) : ''}] ${it.u ? it.u + ' u. · ' : ''}US$ ${it.usd} (puesto ${money(Math.round(puesto * tc))}) · ${String(it.nom).slice(0, 70)} [${it.id}]`);
-        console.log(`    ML HOY ${it.cat || 'sin catálogo'}: ${nV} vend. (${nF} Full) · más barato ${pi ? money(pi.baratoTodos) + ' → ' + fmt(rT) : '—'} · más barato con Full ${pi && pi.baratoFull ? money(pi.baratoFull) + ' → ' + fmt(rF) : '—'} · más caro ${pi ? money(pi.max) : '—'}${it.guard != null ? ' · % guardado ' + Math.round(Number(it.guard)) + '%' : ''}${it.vtas != null ? ' · vendidas ' + it.vtas : ''}`);
+        console.log(`    ML HOY ${it.cat || 'sin catálogo'}: ${nV} vend. (${nF} Full) · más barato ${pi ? money(pi.baratoTodos) + (cuoT >= 3 ? ` (da ${cuoT} cuotas, las pagamos)` : '') + ' → ' + fmt(rT) : '—'} · más barato con Full ${pi && pi.baratoFull ? money(pi.baratoFull) + ' → ' + fmt(rF) : '—'} · más caro ${pi ? money(pi.max) : '—'}${it.guard != null ? ' · % guardado ' + Math.round(Number(it.guard)) + '%' : ''}${it.vtas != null ? ' · vendidas ' + it.vtas : ''}`);
         // otros catálogos con el mismo nombre (puede haber una ficha más barata)
         const q = String(it.tit || it.nom).replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 8).join(' ');
         try { const d = await mlGet(`/products/search?site_id=MLA&status=active&q=${encodeURIComponent(q)}&limit=6`, tok);
           for (const r of (d.results || [])) { if (r.id === it.cat) continue; let o2 = []; try { o2 = ofertasParaMedir(((await mlGet(`/products/${r.id}/items`, tok)).results) || []).ofs; } catch { o2 = []; }
             const p2 = precioAIgualar(o2); if (!p2) continue;
-            const r2 = await (async () => (p2.ref && p2.ref.category_id ? cuentaCandidatoMejor(Math.min(p2.baratoTodos, TECHO_DURO), p2.ref.category_id, puesto, tc, monoP, feeAt, 0, it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null))();
+            const r2 = await (async () => (p2.ref && p2.ref.category_id ? cuentaCandidatoMejor(Math.min(p2.baratoTodos, TECHO_DURO), p2.ref.category_id, puesto, tc, monoP, feeAt, _cuo(p2.ref), it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null))();
             console.log(`    otra ficha ${r.id}: ${o2.length} vend. (${p2.conFull} Full) · ${money(p2.baratoTodos)}${r2 ? ' → ' + Math.round(r2.margen) + '%' : ''}${p2.baratoFull ? ' · con Full ' + money(p2.baratoFull) : ''} · ${String(r.name || '').slice(0, 70)}`); }
         } catch { /* sin búsqueda */ }
       }
