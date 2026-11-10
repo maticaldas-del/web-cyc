@@ -44062,7 +44062,13 @@ async function main() {
             + `\n${sA < 0 ? 'Le debemos ' + money(-sA) : '<b>Queda debiendo: ' + money(sA) + '</b>'}`
             // 10/11/2026 (él: "german pagó x cuota, queda tantas, tanto total… así todo queda con registro"): si va en cuotas, cuántas quedan.
             + (() => { const nC = Number(dA.n) || 1, cuo = nC > 1 ? (Number(dA.monto) || 0) / nC : 0; if (!(cuo > 0) || !(sA > 0)) return '';
-                const q = sA / cuo; return ` · quedan ${Math.abs(q - Math.round(q)) < 0.05 ? Math.round(q) : q.toFixed(1).replace('.', ',')} cuota${Math.round(q) === 1 ? '' : 's'} de ${money(Math.round(cuo))}`; })();
+                const q = sA / cuo; return ` · quedan ${Math.abs(q - Math.round(q)) < 0.05 ? Math.round(q) : q.toFixed(1).replace('.', ',')} cuota${Math.round(q) === 1 ? '' : 's'} de ${money(Math.round(cuo))}`; })()
+            // 10/11/2026 (él: "falta el total de perfumería. MP y perfumería y el total… para la próx mandá todo"): si es de la perfumería, las dos deudas y el total.
+            + await (async () => { if (!/perfumer/.test(_n(dA.nom || ''))) return '';
+                const ds = Object.values((await db.get('cyc/debencuotas')) || {}).filter((x) => x && /perfumer/.test(_n(x.nom || '')));
+                const sMP = ds.filter((x) => !/mercader/.test(_n(x.nom))).reduce((t, x) => t + Math.max(0, saldo(x)), 0);
+                const sMe = ds.filter((x) => /mercader/.test(_n(x.nom))).reduce((t, x) => t + Math.max(0, saldo(x)), 0);
+                return `\n\n🛍️ Perfumería: MercadoPago ${money(Math.round(sMP))} · Mercadería ${money(Math.round(sMe))}\n<b>Total que debe la perfumería: ${money(Math.round(sMP + sMe))}</b>`; })();
           const ok = await sendTelegram(txt, 'resumen');
           console.log(ok ? '  ✓ movimiento mandado al Telegram de los socios' : '  ⚠️ el movimiento NO salió por Telegram');
         } catch (e) { console.log('  ⚠️ el movimiento NO salió por Telegram: ' + String(e.message || e).slice(0, 90)); }
