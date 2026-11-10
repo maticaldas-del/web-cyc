@@ -15341,6 +15341,32 @@ async function colaParaRobot(db, labels) {
       R.rutina = `RUTINA ${dia}: ${cmds.length} a la cola${raros.length ? ' · para Claude: ' + raros.join(' | ') : ''}`;
     }
   } catch (e) { R.rutina = 'no pude mirar la RUTINA del buzón: ' + String(e.message || e).slice(0, 80); }
+  // 📦 LO QUE LLEGA, A TELEGRAM EN EL MOMENTO (10/11/2026, él: "hoy llegó una compra y yo no sabía… la idea es todo lo que llega me avise
+  // antes, así ya me preparo. además hay retiro o cosas que llegan y avisan ese día y van con código, quiero que me pase el código"). El pedido
+  // de Paraguay #1012 estaba en la agencia de Via Cargo desde el 07/11 y el chat lo dejó en el buzón a las 13:24, pero nadie se lo pasó.
+  // Ahora: un mensaje del buzón (de los últimos 2 días) que es VIA CARGO con "llegó/destino/retirar", o un MIRAR TODO con renglones de lo que
+  // llega (HOY LLEGA / ⏰ / retiro / compra / código) va UNA vez al canal privado de Mati con esos renglones, códigos incluidos (Telegram es
+  // privado; al registro público no se imprime nada: `mlapi/llegaaviso/<ts>` guarda sólo que se mandó).
+  try {
+    const buzL = (await db.get('cyc/buzon')) || {}; const yaL = (await db.get('mlapi/llegaaviso')) || {};
+    for (const [ts, m] of Object.entries(buzL)) {
+      const txt = String((m && m.t) || ''); const tsM = Number(m && m.ts) || Number(ts) || 0;
+      if (yaL[ts] || !txt || Date.now() - tsM > 2 * 864e5) continue;
+      let rengs = [];
+      if (/^\s*VIA\s*CARGO/i.test(txt)) { if (/lleg[oó]|destino|retirar|para retirar|entregad/i.test(txt)) rengs = [txt.slice(0, 700)]; }
+      else if (/^\s*(MIRAR TODO|HOY LLEGA)/i.test(txt)) {
+        const L = txt.split('\n').map((l) => l.trim()).filter(Boolean);
+        // ¿llega algo? un "HOY LLEGA · <cuenta>: <algo que no es nada>", un retiro/compra/devolución a casa en camino, o "llegan hoy N" con N > 0
+        const llega = (l) => (/^HOY LLEGA/i.test(l) && !/:\s*nada\b/i.test(l)) || /llegan hoy\s*[1-9]|retiros en camino\s*[1-9]/i.test(l)
+          || (/⏰/.test(l) && /lleg|retiro|compra|devoluci|agencia|domicilio/i.test(l));
+        if (L.some(llega)) rengs = L.filter((l) => llega(l) || /^HOY LLEGA/i.test(l) || /c[oó]digo/i.test(l)).slice(0, 25);
+      }
+      if (!rengs.length) { await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: false }); continue; }
+      const dia = new Date(tsM - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
+      const ok = await sendAlerta(`📦 <b>LLEGA / PARA RETIRAR</b> (lo vio el chat de Chrome ${dia})\n` + rengs.map((l) => '· ' + l.replace(/</g, '&lt;')).join('\n'), { directo: true });
+      await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: ok !== false });
+    }
+  } catch (e) { /* se mira en la vuelta siguiente */ }
   // 🔒 LISTAS CERRADAS del Archivo para Claude (1a del 08/11) → a la cola, una vez cada una (`listapriv:<id>;go`)
   try { const inP = (await db.get('mlapi/privado_in')) || {};
     for (const [k, e] of Object.entries(inP)) { if (!e || e.tipo !== 'lista' || e.encola || e.intentos) continue;

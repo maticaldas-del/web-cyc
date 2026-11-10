@@ -119,6 +119,12 @@ En cada cuenta: https://vendedores.mercadolibre.com.ar/fulfillment/withdrawals (
   (sin copiar nombre, DNI ni dirección) y anotá a dónde va y desde qué fecha. Si va al Centro de almacenamiento de Full, a él no le llega: sólo
   contala. Si va a su domicilio, ⏰ con la fecha. Si lleva más de 30 días "en camino", anotala como trabada, no como que llega. Si no dice a
   dónde va, decilo, no adivines.
+- COMPRAS (10/11, él: "hoy llegó una compra y yo no sabía… todo lo que llega me avise antes"): en cada cuenta https://myaccount.mercadolibre.com.ar/my_purchases/list
+  → las que NO dicen "Entregado": qué es (el nombre del producto, sin datos del vendedor), cuándo llega según ML y si pide código o PIN para
+  recibirla (anotalo). Si llega hoy o mañana, ⏰.
+- Lo de Paraguay por Via Cargo va en su propia tarea (VIA CARGO), pero si alguno ya está en la agencia para retirar, repetilo acá con ⏰.
+- Todo lo que llega o se retira hoy le sale SOLO por Telegram a Matías apenas dejás el mensaje (el robot lee las líneas "HOY LLEGA",
+  las ⏰ de llegadas/retiros/compras y las que dicen "código"). Por eso escribí el código en la MISMA línea de lo que llega.
 Escribilo como el primer bloque, antes de todo lo demás, una línea por cuenta. Ejemplo:
   `HOY LLEGA · Adriana: nada · código XXXXXXXX`
 Si no llega nada en ninguna cuenta, decilo igual. Nunca confirmes ni aceptes nada: sólo mirás y anotás.
