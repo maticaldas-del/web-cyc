@@ -27160,6 +27160,20 @@ async function main() {
     // LO CARGADO EN LOS PEDIDOS DEL MOMENTO DE LAS LISTAS (`cyc/listas_pedido` = nuevos, `cyc/listas_pedido_prob` = probados con su código),
     // aunque esté medido hace poco. Lo corre ml-daily cada mañana. Imprime cuántos siguen dando y cuáles dejaron de dar el 35% (la web
     // los muestra con el % nuevo). Sin `:go` mide sin escribir.
+    // BILLING_PROBE=listaconfmedir:<prov>[:go] (10/11/2026, él con Iscos: "fijate si hay algo que valga la pena") → vuelve a medir HOY contra ML
+    // los confirmados de esa lista (25%+ medido, 2+ vendedores, ✅ de fotos, vigentes) e imprime el % nuevo, sin precios (lista privada).
+    if (/^listaconfmedir:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const GOc = /:go$/i.test(String(process.env.BILLING_PROBE)); const k = String(process.env.BILLING_PROBE).split(':')[1];
+      const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {}; const L0 = (await db.get('mlapi/listas/' + k)) || {};
+      const cods = new Set(Object.entries(L0).filter(([, e]) => e && e.m != null && Number(e.m) >= 25 && !(e.sacado || e.noWeb || e.noFull) && listaFilaVigente(e, pv.fecha) && !listaNoEsVale(e) && e.mi && Number(e.mv) >= CAND_MIN_VENDEDORES && listaOkVale(e)).map(([c]) => c));
+      const antes = Object.fromEntries([...cods].map((c) => [c, L0[c].m]));
+      console.log(`=== ${pv.nombre || k}: ${cods.size} confirmados, medidos HOY ${GOc ? '' : '(PRUEBA: no guardo)'} ===`);
+      await correrPyCatMedir(db, products, labels, accounts, 500, GOc, null, { lista: k, nombre: pv.nombre || k, rec: pv.rec, soloCods: cods });
+      if (GOc) { const L1 = (await db.get('mlapi/listas/' + k)) || {};
+        for (const c of [...cods].sort((a, z) => Number((L1[z] || {}).m) - Number((L1[a] || {}).m))) { const e = L1[c] || {};
+          console.log(`  ${Number(e.m) >= 35 ? '✅' : '❌'} ${e.m != null ? Math.round(Number(e.m)) + '%' : 'sin medir'} (antes ${Math.round(Number(antes[c]))}%) · ${e.mv ?? '?'} vend. · ${String(e.n || c).slice(0, 60)} → ${e.mi || ''}`); } }
+      return;
+    }
     if (/^listapedmedir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const GOm = /:go$/i.test(String(process.env.BILLING_PROBE));
       const LP = (await db.get('cyc/listas_pedido')) || {}, LPP = (await db.get('cyc/listas_pedido_prob')) || {};
