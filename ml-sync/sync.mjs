@@ -27324,6 +27324,17 @@ async function main() {
     // guardada (`cyc/mlconfig/nisseiVuelta`): las fichas de Paraguay que no se vieron desde que arrancó quedan como "Nissei no lo tiene".
     // BILLING_PROBE=gemelade:<MLA>[,<MLA>…] (04/11/2026, sólo lee) → de cada publicación: si es Clásica o gemela (Premium / envío gratis) y
     // de quién, y sus gemelas, con precio y estado guardados. Para no analizar una gemela como si fuera la publicación que vende.
+    // BILLING_PROBE=cajasmes (10/11/2026, él: "¿cuántas cajas mandamos por mes?"; SÓLO LEE) → cajas a Full por mes y por cuenta, con unidades.
+    if (/^cajasmes$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const E = (await db.get('cyc/envios_full')) || {}; const M = {};
+      for (const e of Object.values(E)) { if (!e || !e.fecha) continue; const ym = String(e.fecha).slice(0, 7); const cs = Array.isArray(e.cajasDet) && e.cajasDet.length ? e.cajasDet : [{ items: [] }];
+        const m = (M[ym] = M[ym] || { env: 0, cajas: 0, u: 0, cta: {} }); m.env++; m.cajas += cs.length;
+        const u = cs.reduce((t, c) => t + (c.items || []).reduce((a, x) => a + (Number(x && x.u) || 0), 0), 0); m.u += u;
+        const k = e.cuenta || '?'; m.cta[k] = (m.cta[k] || 0) + cs.length; }
+      console.log('=== 📦 CAJAS A FULL POR MES ===');
+      for (const ym of Object.keys(M).sort()) { const m = M[ym]; console.log(`  ${ym} · ${m.cajas} caja(s) en ${m.env} envío(s) · ${m.u} u. · ${Object.entries(m.cta).map(([c, n]) => c + ' ' + n).join(' · ')}`); }
+      return;
+    }
     // BILLING_PROBE=pyarmar:<id de ficha o palabras>=<u>[;…][;go] (10/11/2026, él: "quiero que me armes siempre el pedido para paraguay… siempre
     // los probados primero") → pone las unidades de un ✅ PROBADO en el pedido del momento (`cyc/py_armado/<ficha>`, lo mismo que la casilla de la
     // web); `=0` lo saca. La palabra tiene que agarrar UNA sola ficha. Sin `;go` sólo muestra.
