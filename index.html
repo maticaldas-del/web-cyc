@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.171';
+const APP_VERSION='28.172';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.172',f:'10/11',h:'17:22',c:[{n:2,t:'🇵🇾 Pedido del momento: pasa sólo lo mirado en Nissei hace menos de 24 h (antes 2 días). El 💵 al venderse suma aparte la ganancia de la 🏬 Tienda (25%).'}]},
   {v:'28.171',f:'10/11',h:'15:42',c:[{n:1,t:'🚚 Para mirar en Via Cargo: cada guía dice el número del pedido, cuándo se hizo el pedido y cuándo se cargó la guía.'}]},
   {v:'28.170',f:'10/11',h:'14:20',c:[{n:1,t:'🚚 Pedidos → Paraguay: cada pedido hecho muestra su guía de Via Cargo (o "falta la guía" si ya tiene ticket y todavía no se cargó).'}]},
   {v:'28.169',f:'10/11',h:'13:50',c:[{n:2,t:'🚚 Mensaje para Claude: las guías de Via Cargo de los pedidos de Paraguay en camino, para que el chat de Chrome mire todos los días por dónde vienen y cuándo llegan.'}]},
@@ -18558,7 +18559,7 @@ function candPrecioViejo(c){
 // mas dias en paraguay. porque pudo modificarse el precio o el stock y que no deje perdirlo"). Nuevos: la fecha más nueva entre `visto`
 // y `ts` (las renuevan la carga del catálogo, `candprecio` y la rutina del chat). Probados: `nisseiTs` de la ficha (`pyprecio`, pycat).
 // Frena la casilla, los dos botones de llenar, el mensaje para el proveedor y "Ya lo pedí". El robot (`pedir`) tiene la misma regla.
-const PY_VIEJO_DIAS=2;   // 2 = 2 días o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él, segunda vez: "que pasen solo los que tienen menos de 2 días de haberse mirado"; antes 4). 01/11/2026 (él): "todos los productos que tienen más de 3 días sin mirarlos en nissei que no entren" (antes 7 y entraban en rojo)
+const PY_VIEJO_DIAS=1;   // 10/11/2026 (él): "no puede haber productos que se miraron hace más de 24hr" → 1 = 24 h o más no pasa. Antes 2:   // 2 = 2 días o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él, segunda vez: "que pasen solo los que tienen menos de 2 días de haberse mirado"; antes 4). 01/11/2026 (él): "todos los productos que tienen más de 3 días sin mirarlos en nissei que no entren" (antes 7 y entraban en rojo)
 function _pyViejoDe(t){t=Number(t)||0;const d=t?Math.floor((Date.now()-t)/864e5):null;
   return d==null||d>=PY_VIEJO_DIAS?{d,txt:`se miró en ${pyProvNom()} ${d==null?'sin fecha':'hace '+d+' días'}: el precio o el stock pueden haber cambiado`}:null;}
 // "↩︎ Devolver" renueva `ts`/`visto` SIN mirar el precio: ahí vale la fecha de antes (`renovDe`) hasta que alguien lo mire de verdad.
@@ -20244,7 +20245,8 @@ function pedidoMomentoHTML(g){
       <span style="font-size:1.05rem;font-weight:800;color:${pasa>0?'var(--amber)':'var(--text)'};white-space:nowrap">${u2(crudo).replace('.',',')}</span>
       <span style="font-size:.66rem;color:var(--muted);white-space:nowrap">${A.length+N.filas.length+Pp.length} prod. · ${uds} u.</span>
       ${_estT>0?`<span style="font-size:.8rem;font-weight:700;color:var(--green);white-space:nowrap" title="La suma del ⭐ gana × vende de cada producto cargado: más alto, mejor pedido.">⭐ ${_estT.toFixed(1).replace('.',',')}</span>`:''}
-      ${_ganT>0?`<span style="font-size:.8rem;font-weight:700;color:var(--green);white-space:nowrap" title="Lo que dejaría vender todo lo cargado: unidades × ganancia por unidad (nuevos: la medida en ML · probados: la de su publicación de hoy). Sin lo de uso personal.">💵 ${fmt(Math.round(_ganT))} <span style="font-weight:400;font-size:.66rem;color:var(--muted)">al venderse</span></span>`:''}
+      ${_ganT>0?`<span style="font-size:.8rem;font-weight:700;color:var(--green);white-space:nowrap" title="Lo que dejaría vender todo lo cargado: unidades × ganancia por unidad (nuevos: la medida en ML · probados: la de su publicación de hoy). Sin lo de uso personal.">💵 ${fmt(Math.round(_ganT))} <span style="font-weight:400;font-size:.66rem;color:var(--muted)">al venderse</span></span>`:''}${(()=>{const gTi=crP>0&&tc?crP*RECARGO_PY*0.25*tc:0;   // 10/11/2026 (él): "la ganancia de la tienda no está puesta ahí": lo de la Tienda se vende con 25% (costo puesto × 0,25)
+        return gTi>0?`<span style="font-size:.74rem;font-weight:700;color:#a78bfa;white-space:nowrap" title="Lo de la Tienda se vende con 25% de ganancia: US$ ${(crP*RECARGO_PY).toFixed(2)} puesto × 25%">🏬 + ${fmt(Math.round(gTi))} <span style="font-weight:400;font-size:.66rem;color:var(--muted)">Tienda (25%)</span></span>`:'';})()}
       <span style="margin-left:auto;font-size:.6rem;color:var(--muted)">▾</span>
     </summary>
     <div style="padding:0 13px 12px">

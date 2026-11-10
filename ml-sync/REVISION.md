@@ -4956,3 +4956,7 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **🛍️ Aviso de movimiento de la perfumería con los totales** (etapa 9 Local, 10/11/2026, él: *"falta el total de perfumería. MP y perfumería y el total"*): `avisoMov` en `debenmov` suma al final MercadoPago, Mercadería y el total que debe la perfumería (sólo si la deuda es de la perfumería). Chequear en el próximo movimiento que los tres números cierren con Ver deudas.
 
 - **🚚 Via Cargo con la fecha del pedido** (etapa 3 Mercadería, 10/11/2026, él: *"que también aparezca cuándo se hizo el pedido"*): en 📬 Mensaje para Claude → "Para mirar en Via Cargo" cada guía dice #número, "pedido el dd/mm" y "guía cargada el dd/mm" (`guiaTs`). Chequear que el #1012 diga pedido el 02/11.
+
+- **⛔ Paraguay: 24 h en vez de 2 días** (etapa 3 Mercadería, 10/11/2026, él: *"no puede haber productos que se miraron hace más de 24hr"*): `PY_VIEJO_DIAS`=1 en `index.html` y `sync.mjs` (pedir, pyllenar, pyrevisar). Chequear que lo mirado ayer a la mañana salga en rojo hoy a la tarde.
+- **🏬 Ganancia de la Tienda en el pedido del momento** (etapa 3, 10/11): al lado del 💵 al venderse, "🏬 + $X Tienda (25%)" = US$ Tienda × recargo × 0,25 × dólar.
+- **Secador/planchita en Resto también en el robot** (etapa 4 Choques, 10/11): `pyllenar`, `pyrevisar` y el resumen de `pedir` contaban los aparatos para el pelo como Perfumería (la web, desde el 04/11, en Resto: `PY_BELLEZA_APARATO`). Ahora los tres usan la misma excepción. Chequear que el total del robot por grupo cierre con la web.

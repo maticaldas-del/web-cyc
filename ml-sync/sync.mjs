@@ -12400,7 +12400,7 @@ async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
   else console.log('🚫 ninguna ficha de Paraguay quedó sin ver en la vuelta completa');
   return nuevos.length;
 }
-const PY_VIEJO_DIAS = 2; // 2 o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él). Antes: mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
+const PY_VIEJO_DIAS = 1; // 10/11/2026 (él): "no puede haber productos que se miraron hace más de 24 h" → pasa sólo lo mirado hace menos de 24 h. Antes 2; // 2 o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él). Antes: mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
 // La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
 // Por qué un candidato NO se puede pedir ('' = se puede). La usan `pedir` y `pyllenar` (04/11/2026: la misma cuenta en los dos).
 function candPorQueNoBot(c, viajaF, _tcP, mNoML) {
@@ -26077,7 +26077,7 @@ async function main() {
       const crudo = final.reduce((s, x) => s + (parseFloat(x.c.usd) || 0) * x.u, 0);
       console.log(`\n🧾 EL PEDIDO QUEDA EN: ${final.length} producto(s) · ${final.reduce((s, x) => s + x.u, 0)} u. · US$ ${crudo.toFixed(2)} crudos · US$ ${(crudo * RECARGO_PAR).toFixed(2)} puestos · ${money(Math.round(crudo * RECARGO_PAR * tcp))}`);
       // 27/10/2026 (él: "por cada pedido"): perfumería/belleza y el resto son dos pedidos de Nissei, cada uno con SU tope (como la web).
-      { const _esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+      { const _esB = (n) => PY_PERF_RE.test(String(n || '')) || (!PY_BELLEZA_APARATO.test(String(n || '')) && PY_BELLEZA_RE.test(String(n || '')));
         const _cB = final.filter((x) => _esB(x.c.nombre)).reduce((s2, x) => s2 + (parseFloat(x.c.usd) || 0) * x.u, 0), _cR = crudo - _cB;
         console.log(`   🌸 perfumería y belleza US$ ${_cB.toFixed(2)} · 📦 resto US$ ${_cR.toFixed(2)} (tope de cada uno: US$ ${_topeP})`);
         for (const [nomG, v] of [['perfumería', _cB], ['resto', _cR]]) if (v > _topeP) console.log(`   ⚠️ el pedido de ${nomG} pasa su tope de US$ ${_topeP} crudos por US$ ${(v - _topeP).toFixed(2)} (sólo nuevos: lo de probados cargado también cuenta en el tope del panel)`); }
@@ -27424,7 +27424,7 @@ async function main() {
     if (/^pyrevisar:/.test(String(process.env.BILLING_PROBE || ''))) {
       const [, grp = 'resto', masS = '0'] = String(process.env.BILLING_PROBE).split(':'); const mas = parseInt(masS) || 0;
       try { await cargarParamCompra(db); } catch { /* los de siempre */ }
-      const esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+      const esB = (n) => PY_PERF_RE.test(String(n || '')) || (!PY_BELLEZA_APARATO.test(String(n || '')) && PY_BELLEZA_RE.test(String(n || '')));
       const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
       const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0; if (!(tc > 0)) { console.log('sin dólar cargado: no mido'); return; }
       const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
@@ -27486,7 +27486,7 @@ async function main() {
     // Imprime el `pedir:` listo para cargarlo. No elige lo dudoso: eso lo miro yo antes de cargar.
     if (/^pyllenar:/.test(String(process.env.BILLING_PROBE || ''))) {
       const [, grp = 'resto', topeS = '600'] = String(process.env.BILLING_PROBE).split(':'); const tope = parseFloat(topeS) || 600;
-      const esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+      const esB = (n) => PY_PERF_RE.test(String(n || '')) || (!PY_BELLEZA_APARATO.test(String(n || '')) && PY_BELLEZA_RE.test(String(n || '')));
       const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
       const cands = (await db.get('cyc/candidatos_py')) || {}; const ahora = Date.now();
       const vivos = Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && enG(c.nombre) && !(PY_ELEGANCIA_OFF && (provPyDeBot(c) === 'elegancia' || /^EL_/i.test(String(c.cod || '')))));   // 05/11/2026: Elegancia está apagada (26/10): sus candidatos no se miran más y salían como "mirado hace 12 días"
