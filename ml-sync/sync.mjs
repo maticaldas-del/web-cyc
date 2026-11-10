@@ -14112,6 +14112,11 @@ function tiendaMismoProducto(nNissei, nML, blando = false) {
   const modelo = tB.filter((w) => (!_TM_DESCR.has(w) && !_TM_COLOR.has(w) && !_TM_GENERO.has(w) && !/^[a-z]{1,2}$/.test(w) && !marcasA.includes(w)
     && !_TM_TIPO.some(([, re]) => re.test(w)) && !_TM_UNIDAD.has(w) && !/^\d+$/.test(w)) || /[a-z]\d|\d[a-z]/.test(w) || (/^\d+$/.test(w) && !_TM_UNIDAD.has(tB[tB.indexOf(w) + 1] || '')));
   if (!modelo.length) return 'ML dice muy poco (sin modelo)';
+  // 6b) Control diario 10/11/2026 (Impresora Térmica Zkteco ZKP8016 de Nissei contra "impresora termica Térmica Portátil - Negro" de ML,
+  //    otra impresora y a 4 veces su precio): si el proveedor trae un CÓDIGO de modelo (letras y números, ej. ZKP8016) y en el nombre
+  //    de ML no hay ningún número, ML es genérico ("impresora térmica" pasaba como modelo porque la marca no estaba en la lista).
+  { const esCodigo = (w) => /^[a-z0-9]{4,}$/.test(w) && /[a-z]/.test(w) && /\d/.test(w) && !/^red\dg$/.test(w) && !/^usbc/.test(w) && !/^\d{3,4}p$/.test(w) && !/^\d+k$/.test(w);
+    if (tA.some(esCodigo) && !tB.some((w) => /\d/.test(w))) return 'ML no dice el modelo del proveedor'; }
   // `blando` (control del 01/11: Mouse Pad Pulsar → "Polispuma", Crema Elizavecca → "Monoi", Teclado FGG → "Womier", Superlight 2SE → 2):
   // la marca y el modelo del proveedor (las palabras que no describen ni son tipo) tienen que estar TODAS en ML.
   if (blando) for (const w of tA) { if (_TM_DESCR.has(w) || _TM_COLOR.has(w) || /^(speaker|caixa|som|fone|ouvido|relogio|microfone|teclado|mouse)$/.test(w) || _TM_GENERO.has(w) || _TM_UNIDAD.has(w) || _TM_TIPO.some(([, re]) => re.test(w)) || /^[a-z]{1,3}$/.test(w) || /^\d+(\.\d+)?$/.test(w)) continue; if (!tiene(SB, w)) return 'ML no dice "' + w + '"'; }
