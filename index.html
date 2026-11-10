@@ -3548,7 +3548,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.165';
+const APP_VERSION='28.166';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3561,7 +3561,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.165',f:'10/11',h:'11:00',c:[{n:2,t:'📋 Mensaje para Claude: arriba de "Última vez" está la lista HOY TOCA de la run del chat de Chrome, con ✅ lo que ya hizo hoy y ❌ lo que falta (en rojo hasta que esté todo).'}]},
+  {v:'28.166',f:'10/11',h:'05:00',c:[{n:3,t:'💵 Ver deudas volvía vacía desde el 08/11 a la noche y "Lo que nos deben" del Arqueo quedaba con el número viejo: una cuenta usaba un dato antes de tenerlo. Arreglado: vuelven a salir todas las deudas y el total se recalcula.'}]},
+  {v:'28.165',f:'09/11',h:'21:33',c:[{n:2,t:'📋 Mensaje para Claude: arriba de "Última vez" está la lista HOY TOCA de la run del chat de Chrome, con ✅ lo que ya hizo hoy y ❌ lo que falta (en rojo hasta que esté todo).'}]},
   {v:'28.164',f:'09/11',h:'19:30',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" de arriba cuenta sólo lo que todavía no entró a Full (lo que ML ya dio de alta en una caja sale de la cuenta).'}]},
   {v:'28.163',f:'09/11',h:'18:35',c:[{n:2,t:'📷 Envíos a Full: cada renglón de la caja en camino muestra la foto del producto (la de ese color y esa cuenta, como en Inventario). Tocándola se ve grande.'}]},
   {v:'28.162',f:'09/11',h:'04:47',c:[{n:2,t:'⏳ Si tocás guardar mientras la app se actualiza al abrir, ahora dice "No se guardó" y no borra lo escrito (antes decía guardado).'},{n:1,t:'🇵🇾 Ya lo pedí y Llenar esperan a que bajen los productos de Paraguay.'},{n:1,t:'📥 Para el robot: un comando que se negó dice ⚠️ se negó.'}]},
@@ -7936,6 +7937,8 @@ function renderCuotas(){
   const fila=d=>{const fin=d.fin,resta=d.resta,cq=d.n>1,ab=window._cuotaAbierta===d.id;
     const v=cuotaVence(d),atr=v&&v<hoy,fr=cuotaFrecTxt(d.frec,d.cadaDias),costo=Number(d.costo)>0?Number(d.costo):null,gan=costo!=null?d.monto-costo:null;
     const fechas=cuotaPagosFechas(d);
+    // 10/11/2026 (revisión de Diseño): `gm` va ANTES de lin2, que lo usa; declarado después daba error con toda deuda con costo y Ver deudas salía vacío.
+    const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0),_gmP=gm.filter(_ganConCosto),gmG=_gmP.reduce((t,x)=>t+Number(x.gan),0),gmV=_gmP.reduce((t,x)=>t+Number(x.m),0);
     const lin1=fin?(cuotaFija(d)?'✅ al día · 📌 siempre a la vista':'✅ pagada'):cq?`${_pesos(d.cuota)} × ${d.n} · ${fr} · pagó <b style="color:var(--text)">${d.pagEf!=null?d.pagEf:d.pagadas} de ${d.n}</b> · total ${_pesos(d.monto)}`:(cuotaFija(d)?'📌 cuenta corriente':`sin cuotas · total ${_pesos(d.monto)}`);
     const lin2=[
       d.sinGan?'sin ganancia':costo!=null?`${gm.length?'deuda inicial: ':''}costo ${_pesos(costo)} · ganancia <b style="color:${colPctLocal(gan,costo)}">${_pesos(gan)}</b>${costo>0?` (${Math.round(gan/costo*100)}% sobre el costo)`:''}`:'',
@@ -7943,7 +7946,6 @@ function renderCuotas(){
     const nMov=Object.keys(d.movs||{}).length;
     // MÁS RESUMIDO (28/10/2026, él: "dejar lo importante, % de ganancia y pesos cuánto falta, nombre de la persona, el detalle adentro. sacar
     // pagó y editar"): afuera sólo nombre · % de ganancia · falta; lo demás (qué se llevó, cuotas, costo, fechas, botones) va en el desplegable.
-    const gm=Object.values(d.movs||{}).filter(x=>x&&x.gan!=null&&Number(x.m)>0),_gmP=gm.filter(_ganConCosto),gmG=_gmP.reduce((t,x)=>t+Number(x.gan),0),gmV=_gmP.reduce((t,x)=>t+Number(x.m),0);
     // 29/10/2026 (él con Mercadería Perfumería: "¿por qué dice 20%? tiene que ser lo que nos deben y la ganancia de eso"): el % va sobre el COSTO
     // (como en toda la app: el 25% que se le gana a la perfumería se ve 25%, no 20%) y, en una deuda de mercadería dejada (renglones con
     // ganancia), afuera se ve la ganancia en pesos de lo que tiene costo cargado, no un % que deja afuera la deuda vieja sin costo.
