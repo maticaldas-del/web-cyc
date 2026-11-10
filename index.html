@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.170';
+const APP_VERSION='28.171';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.171',f:'10/11',h:'15:42',c:[{n:1,t:'🚚 Para mirar en Via Cargo: cada guía dice el número del pedido, cuándo se hizo el pedido y cuándo se cargó la guía.'}]},
   {v:'28.170',f:'10/11',h:'14:20',c:[{n:1,t:'🚚 Pedidos → Paraguay: cada pedido hecho muestra su guía de Via Cargo (o "falta la guía" si ya tiene ticket y todavía no se cargó).'}]},
   {v:'28.169',f:'10/11',h:'13:50',c:[{n:2,t:'🚚 Mensaje para Claude: las guías de Via Cargo de los pedidos de Paraguay en camino, para que el chat de Chrome mire todos los días por dónde vienen y cuándo llegan.'}]},
   {v:'28.168',f:'10/11',h:'13:20',c:[{n:2,t:'📌 Mensaje para Claude: arriba aparecen los pedidos de Claude al chat de Chrome (lo que Claude no puede ver en ML: cajas, reclamos, envíos), con un botón ✅ Hecho.'}]},
@@ -9628,7 +9629,7 @@ function renderBuzonCard(){
       // las guías de los pedidos de Paraguay que todavía no llegaron. El chat las mira todos los días y deja "VIA CARGO <fecha>: …".
       const G=Object.entries(state.compraspy||{}).filter(([,c])=>c&&c.guia&&c.estado!=='llego');
       if(!G.length)return '';
-      return `<div style="font-size:.72rem;margin:6px 0;padding:8px 10px;border-radius:8px;border:1px solid rgba(245,158,11,.5);background:rgba(245,158,11,.06);line-height:1.6">🚚 <b>Para mirar en Via Cargo</b> <span style="color:var(--muted)">(seguimiento de envíos en viacargo.com.ar · dejá "VIA CARGO &lt;fecha&gt;: pedido · dónde está · cuándo llega")</span>${G.map(([id,c])=>`<div>· <b>${_esc(id)}</b> (${_esc(c.fecha||'')}) · guía <b style="font-family:'DM Mono',monospace">${_esc(c.guia)}</b></div>`).join('')}</div>`;})()}
+      return `<div style="font-size:.72rem;margin:6px 0;padding:8px 10px;border-radius:8px;border:1px solid rgba(245,158,11,.5);background:rgba(245,158,11,.06);line-height:1.6">🚚 <b>Para mirar en Via Cargo</b> <span style="color:var(--muted)">(seguimiento de envíos en viacargo.com.ar · dejá "VIA CARGO &lt;fecha&gt;: pedido · dónde está · cuándo llega")</span>${G.map(([id,c])=>{const _d=f=>{const m=String(f||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:String(f||'?');};const _g=Number(c.guiaTs)>0?new Date(Number(c.guiaTs)).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}):'';return `<div>· ${Number(c.num)>0?'<b>#'+c.num+'</b> · ':''}<b>pedido el ${_esc(_d(c.fecha))}</b>${_g?' · guía cargada el '+_g:''} · guía <b style="font-family:'DM Mono',monospace">${_esc(c.guia)}</b></div>`;}).join('')}</div>`;})()}
     ${(()=>{   // 📌 PEDIDOS DE CLAUDE AL CHAT DE CHROME (10/11/2026, él: "todas esas cosas que vos no ves, que te las responda el chat local"):
       // lo que Claude no puede mirar en ML. El chat los hace PRIMERO en la run, contesta en el buzón con "RESPUESTA <id>: …" y toca ✅ Hecho.
       const pend=Object.entries(state.parachat||{}).filter(([,x])=>x&&x.t&&!x.hecho).sort((a,b)=>Number(a[0])-Number(b[0]));
