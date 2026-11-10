@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.169';
+const APP_VERSION='28.170';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.170',f:'10/11',h:'14:20',c:[{n:1,t:'🚚 Pedidos → Paraguay: cada pedido hecho muestra su guía de Via Cargo (o "falta la guía" si ya tiene ticket y todavía no se cargó).'}]},
   {v:'28.169',f:'10/11',h:'13:50',c:[{n:2,t:'🚚 Mensaje para Claude: las guías de Via Cargo de los pedidos de Paraguay en camino, para que el chat de Chrome mire todos los días por dónde vienen y cuándo llegan.'}]},
   {v:'28.168',f:'10/11',h:'13:20',c:[{n:2,t:'📌 Mensaje para Claude: arriba aparecen los pedidos de Claude al chat de Chrome (lo que Claude no puede ver en ML: cajas, reclamos, envíos), con un botón ✅ Hecho.'}]},
   {v:'28.167',f:'10/11',h:'05:40',c:[{n:1,t:'📱 En el teléfono el logo ya no tapa el título de Ventas, Pedidos, Arqueo, Gastos y Resumen (desde el 08/11 se comía 13-37 px): se esconde como en Inicio. Revisión de Diseño: 15 cosas para elegir en la lista de las 12:30.'}]},
@@ -19777,7 +19778,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const usd=(Math.round(pyBaseUSD(c)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
-      <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>
+      <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>${c.guia?`<div style="font-size:.64rem;margin-top:2px;white-space:nowrap" title="Guía de Via Cargo: el chat de Chrome la sigue todos los días">🚚 Via Cargo <b style="font-family:'DM Mono',monospace">${_esc(c.guia)}</b></div>`:(enCamino&&c.ticket?`<div style="font-size:.62rem;margin-top:2px;color:var(--amber)">🚚 falta la guía de Via Cargo</div>`:'')}
       ${/* 21/10/2026, él: "quiero que en la tarjeta de pedidos marque si están todos los gastos cargados o faltan" */''}
       <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>${(()=>{const BP=pyBinancePesos(c);return BP?`<div style="font-size:.7rem;font-weight:800;margin-top:3px;color:var(--text)" title="Mercadería + cambista y envío de los dólares: US$ ${BP.usd.toFixed(2).replace('.',',')} × dólar del panel de hoy ${BP.tc.toLocaleString('es-AR')} × ${BP.mult.toFixed(3).replace('.',',')} (lo que costó de más cada dólar por Binance en los últimos ${BP.n} pedidos: compra, transferencia y cambista). El que retira y el correo van por Mercado Pago: no entran.">💵 Tener en Binance: $${BP.pesos.toLocaleString('es-AR')}</div>`:'';})()}${c.llegoOk?`<div style="font-size:.64rem;font-weight:800;margin-top:2px;color:var(--green)" title="Me pasaste las fotos de lo que llegó (${new Date(Number(c.llegoOk.ts)).toLocaleDateString('es-AR')}): está todo bien.${c.llegoOk.nota?' '+String(c.llegoOk.nota).replace(/"/g,'&quot;'):''}">✅ llegó todo bien (fotos)</div>`:''}
     </div>
