@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['parachat', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -56443,6 +56443,24 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=parachat[:<texto>][;go] · parachat:hecho=<id>;go (10/11/2026, él: "todas esas cosas que vos no ves, que te las responda el
+    // chat local. por ejemplo la caja de velvet petals… la lupa no la encontré, preguntale también") → 📌 PEDIDOS DE CLAUDE AL CHAT DE CHROME:
+    // lo que yo no puedo mirar ni tocar en ML (cajas, reclamos, envíos). Queda en `cyc/parachat/<id>` = {t, ts, hecho}; la web lo muestra arriba
+    // del 📬 buzón con un botón ✅ Hecho y el chat lo hace PRIMERO en la run y contesta en el buzón con "RESPUESTA <id>: …". Sin nada lista.
+    // El texto no se imprime entero (registro público): sólo el comienzo.
+    if (/^parachat(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^parachat:?/, ''); const GOp = /(^|;)go$/.test(raw) && !DRY; const body = raw.replace(/;?go$/, '').trim();
+      const P = (await db.get('cyc/parachat')) || {};
+      const mh = body.match(/^hecho=(\d+)$/);
+      if (mh) { if (!P[mh[1]]) { console.log('❌ no existe ese pedido'); return; } if (GOp) { await db.patch('cyc/parachat/' + mh[1], { hecho: Date.now() }); console.log('✓ marcado hecho'); } else console.log('PRUEBA'); return; }
+      if (!body) { const L = Object.entries(P).sort((a, b) => Number(a[0]) - Number(b[0])); console.log(`=== 📌 PEDIDOS AL CHAT DE CHROME · ${L.filter(([, x]) => x && !x.hecho).length} sin hacer ===`); for (const [id, x] of L.slice(-20)) console.log(`  ${x.hecho ? '✅' : '⏳'} ${id} · ${String(x.t || '').slice(0, 80)}`); return; }
+      const id = String(Date.now());
+      console.log(`📌 pedido nuevo ${id}: ${body.slice(0, 80)}… ${GOp ? '(GUARDO)' : '(prueba: agregá ;go)'}`);
+      if (!GOp) return;
+      await db.set('cyc/parachat/' + id, { t: body.slice(0, 1500), ts: Number(id) });
+      const r = await db.get('cyc/parachat/' + id); console.log(r && r.t ? '✓ guardado y releído' : '✗ no quedó');
+      return;
+    }
     // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] · buzon:ver=<ts>[,<ts>] (entero) → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome
     // que arma las cajas (o él) desde Mi oficina → "Mensaje para Claude" (`cyc/buzon/<ts>` = {t, ts, leido}). Sin nada: lista los sin leer
     // (y los 5 últimos leídos). `leido=<ts>,…;go` los marca leídos. Va por ml-consulta (`CONSULTA_ESCRIBE`).

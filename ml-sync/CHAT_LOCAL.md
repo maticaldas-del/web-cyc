@@ -35,6 +35,7 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
 No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
+**📌 PEDIDOS DE CLAUDE, LO PRIMERO DE TODO (10/11/2026, Matías: "todas esas cosas que vos no ves, que te las responda el chat local").** En Mi oficina → 📬 Mensaje para Claude, arriba de todo, puede haber un cuadro azul "📌 Claude te pide": son cosas que Claude no puede ver ni tocar en ML (una caja, un reclamo, un envío, una pregunta). Hacelos ANTES que la RUTINA, contestá cada uno en el buzón con un mensaje que empiece "RESPUESTA <número>: …" (qué viste, qué hiciste, qué no pudiste) y tocá ✅ Hecho. Si algo pide tocar ML y no estás seguro, no lo toques: contá lo que ves. Cuentan en el "RUN <fecha>" final.
 **⚠️ LA RUN SE HACE COMPLETA, SIEMPRE (10/11/2026, Matías: "la rutina hacía 5 días no hacía Nissei… se saltea cosas… es muy importante que se haga la rutina completa siempre que se la pida").**
 - En Mi oficina → 📬 Mensaje para Claude está el cuadro **📋 HOY TOCA**: cada tarea con ✅ (ya dejaste su mensaje hoy) o ❌ (falta). **La run NO termina hasta que esté todo ✅.**
 - **"No me alcanzó el tiempo" NO existe.** No se saltea ninguna tarea para hacer otra. Si te cortan (se terminó el chat, se cayó la página, Matías te frena), dejá en el buzón un mensaje "FALTA: <tareas>" y en la próxima vez que te prendan arrancás por esas, antes que nada.
