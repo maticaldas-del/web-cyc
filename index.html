@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.168';
+const APP_VERSION='28.169';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.169',f:'10/11',h:'13:50',c:[{n:2,t:'🚚 Mensaje para Claude: las guías de Via Cargo de los pedidos de Paraguay en camino, para que el chat de Chrome mire todos los días por dónde vienen y cuándo llegan.'}]},
   {v:'28.168',f:'10/11',h:'13:20',c:[{n:2,t:'📌 Mensaje para Claude: arriba aparecen los pedidos de Claude al chat de Chrome (lo que Claude no puede ver en ML: cajas, reclamos, envíos), con un botón ✅ Hecho.'}]},
   {v:'28.167',f:'10/11',h:'05:40',c:[{n:1,t:'📱 En el teléfono el logo ya no tapa el título de Ventas, Pedidos, Arqueo, Gastos y Resumen (desde el 08/11 se comía 13-37 px): se esconde como en Inicio. Revisión de Diseño: 15 cosas para elegir en la lista de las 12:30.'}]},
   {v:'28.166',f:'10/11',h:'05:00',c:[{n:3,t:'💵 Ver deudas volvía vacía desde el 08/11 a la noche y "Lo que nos deben" del Arqueo quedaba con el número viejo: una cuenta usaba un dato antes de tenerlo. Arreglado: vuelven a salir todas las deudas y el total se recalcula.'}]},
@@ -9622,6 +9623,11 @@ function renderBuzonCard(){
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px"${_ab||_v?' open':''}>
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">📬 Mensaje para Claude${sin.length?` <span style="color:var(--amber);font-weight:400">· ${sin.length} sin leer</span>`:''}</summary>
     <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Lo que no se puede arreglar desde el panel (un producto que no aparece, un código que no coincide, algo raro en una caja). Claude lo lee en la próxima vuelta.</div>
+    ${(()=>{   // 🚚 VIA CARGO (10/11/2026, él: "que el chat local también entre a Via Cargo y mire por dónde vienen los envíos y cuándo van a llegar"):
+      // las guías de los pedidos de Paraguay que todavía no llegaron. El chat las mira todos los días y deja "VIA CARGO <fecha>: …".
+      const G=Object.entries(state.compraspy||{}).filter(([,c])=>c&&c.guia&&c.estado!=='llego');
+      if(!G.length)return '';
+      return `<div style="font-size:.72rem;margin:6px 0;padding:8px 10px;border-radius:8px;border:1px solid rgba(245,158,11,.5);background:rgba(245,158,11,.06);line-height:1.6">🚚 <b>Para mirar en Via Cargo</b> <span style="color:var(--muted)">(seguimiento de envíos en viacargo.com.ar · dejá "VIA CARGO &lt;fecha&gt;: pedido · dónde está · cuándo llega")</span>${G.map(([id,c])=>`<div>· <b>${_esc(id)}</b> (${_esc(c.fecha||'')}) · guía <b style="font-family:'DM Mono',monospace">${_esc(c.guia)}</b></div>`).join('')}</div>`;})()}
     ${(()=>{   // 📌 PEDIDOS DE CLAUDE AL CHAT DE CHROME (10/11/2026, él: "todas esas cosas que vos no ves, que te las responda el chat local"):
       // lo que Claude no puede mirar en ML. El chat los hace PRIMERO en la run, contesta en el buzón con "RESPUESTA <id>: …" y toca ✅ Hecho.
       const pend=Object.entries(state.parachat||{}).filter(([,x])=>x&&x.t&&!x.hecho).sort((a,b)=>Number(a[0])-Number(b[0]));
@@ -9637,10 +9643,11 @@ function renderBuzonCard(){
       // 📋 HOY TOCA (10/11/2026, él: "la rutina del chat local hacía 5 días no hacía Nissei. tiene errores y se saltea cosas… es muy importante que
       // se haga la rutina completa siempre que se la pida"): la lista de lo que le toca HOY a la run, con ✅ lo que ya dejó su mensaje hoy (día de
       // acá, no 24 h) y ❌ lo que falta. La run no termina hasta que todo esté ✅ (CHAT_LOCAL). EXTRACTO y PERFUMES también cuentan.
-      const T2=['EXTRACTO','PERFUMES'];Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T2.find(t=>m.startsWith(t));if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
+      const T2=['EXTRACTO','PERFUMES','VIA CARGO'];Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T2.find(t=>m.startsWith(t));if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
       const dia=ts=>{const d=new Date(ts);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();},hoyD=dia(Date.now());
       const domingo=(()=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();})();
-      const toca=[['RUTINA',1],['MIRAR TODO',1],['CAJAS LLEGADAS',1],['EXTRACTO',1],['PERFUMES',1],['GUAY',1],['MÁS VENDIDOS',1],['COMPETENCIA',1],['LISTAS',7],['MAYORISTAS WEB',7],['ONCE','dom'],['IMEGA',14]]
+      const _hayGuia=Object.values(state.compraspy||{}).some(c=>c&&c.guia&&c.estado!=='llego');
+      const toca=[...(_hayGuia?[['VIA CARGO',1]]:[]),['RUTINA',1],['MIRAR TODO',1],['CAJAS LLEGADAS',1],['EXTRACTO',1],['PERFUMES',1],['GUAY',1],['MÁS VENDIDOS',1],['COMPETENCIA',1],['LISTAS',7],['MAYORISTAS WEB',7],['ONCE','dom'],['IMEGA',14]]
         .filter(([k,c])=>c===1||!ult[k]||(c==='dom'?ult[k]<domingo:dd(ult[k])>=c)||dia(ult[k])===hoyD);
       const okT=k=>ult[k]&&dia(ult[k])===hoyD,faltan=toca.filter(([k])=>!okT(k));
       const hoyHTML=`<div style="font-size:.7rem;margin:6px 0;padding:6px 8px;border-radius:8px;line-height:1.7;border:1px solid ${faltan.length?'rgba(239,68,68,.45)':'rgba(34,197,94,.45)'}">📋 <b>HOY TOCA</b> <span style="color:var(--muted)">(la run no termina hasta que todo esté ✅; si se corta, dejá "FALTA: …" y seguí en la próxima)</span><br>${toca.map(([k])=>okT(k)?`✅ ${k}`:`<b style="color:var(--red)">❌ ${k}</b>${ult[k]?` <span style="color:var(--muted)">(hace ${dd(ult[k])} d)</span>`:''}`).join(' · ')}${faltan.length?`<br><b style="color:var(--red)">Faltan ${faltan.length}</b>`:'<br><b style="color:var(--green)">Todo hecho ✅</b>'}</div>`;

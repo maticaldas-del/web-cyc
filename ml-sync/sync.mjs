@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['parachat', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['pyguia', 'parachat', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -56445,6 +56445,25 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=pyguia[:<id del pedido o fecha AAAA-MM-DD>=<código de Via Cargo>][;go] · pyguia:<id>=-;go (10/11/2026, él: "quiero que el chat
+    // local también entre a Via Cargo y mire por dónde vienen los envíos y cuándo van a llegar, con el código que te paso cuando se carga el
+    // paquete") → guarda la guía de Via Cargo del pedido de Paraguay en `cyc/compraspy/<id>/guia`; la web la muestra en 📬 Mensaje para Claude
+    // ("🚚 Para mirar en Via Cargo") y el chat de Chrome la sigue todos los días (CHAT_LOCAL, tarea VIA CARGO). El código no se imprime entero.
+    if (/^pyguia(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^pyguia:?/, ''); const GOg = /(^|;)go$/.test(raw) && !DRY; const body = raw.replace(/;?go$/, '').trim();
+      const CP = (await db.get('cyc/compraspy')) || {};
+      const tapa = (c) => String(c).length > 4 ? '…' + String(c).slice(-4) : '••••';
+      if (!body) { console.log('=== 🚚 GUÍAS DE VIA CARGO ==='); for (const [id, c] of Object.entries(CP)) if (c && c.guia) console.log(`  ${id} · ${c.estado || '?'} · guía ${tapa(c.guia)}`); return; }
+      const m = body.match(/^([^=]+)=(.+)$/); if (!m) { console.log('Uso: pyguia:<id del pedido o AAAA-MM-DD>=<código>;go'); return; }
+      const q = m[1].trim(), cod = m[2].trim();
+      let ids = Object.keys(CP).filter((id) => id === q); if (!ids.length) ids = Object.keys(CP).filter((id) => CP[id] && (String(CP[id].fecha || '').slice(0, 10) === q || id.includes(q.replace(/-/g, ''))) && CP[id].estado !== 'llego');
+      if (ids.length !== 1) { console.log(`❌ "${q}" agarra ${ids.length} pedido(s): ${ids.slice(0, 6).join(', ')}. Decime el id exacto.`); return; }
+      const id = ids[0]; console.log(`🚚 ${id} (${CP[id].estado || '?'}) · guía ${cod === '-' ? 'se borra' : tapa(cod)} ${GOg ? '(GUARDO)' : '(prueba: agregá ;go)'}`);
+      if (!GOg) return;
+      await db.patch('cyc/compraspy/' + id, { guia: cod === '-' ? null : cod.slice(0, 40), guiaTs: cod === '-' ? null : Date.now() });
+      const r = await db.get('cyc/compraspy/' + id + '/guia'); console.log(cod === '-' ? (!r ? '✓ borrada' : '✗') : (r === cod.slice(0, 40) ? '✓ guardado y releído' : '✗ no quedó'));
+      return;
+    }
     // BILLING_PROBE=parachat[:<texto>][;go] · parachat:hecho=<id>;go (10/11/2026, él: "todas esas cosas que vos no ves, que te las responda el
     // chat local. por ejemplo la caja de velvet petals… la lupa no la encontré, preguntale también") → 📌 PEDIDOS DE CLAUDE AL CHAT DE CHROME:
     // lo que yo no puedo mirar ni tocar en ML (cajas, reclamos, envíos). Queda en `cyc/parachat/<id>` = {t, ts, hecho}; la web lo muestra arriba
