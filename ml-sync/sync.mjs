@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['pyguia', 'parachat', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['pyguia', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -27160,6 +27160,27 @@ async function main() {
     // LO CARGADO EN LOS PEDIDOS DEL MOMENTO DE LAS LISTAS (`cyc/listas_pedido` = nuevos, `cyc/listas_pedido_prob` = probados con su código),
     // aunque esté medido hace poco. Lo corre ml-daily cada mañana. Imprime cuántos siguen dando y cuáles dejaron de dar el 35% (la web
     // los muestra con el % nuevo). Sin `:go` mide sin escribir.
+    // BILLING_PROBE=listapedir:<prov>;<palabras del nombre>=<u>;…[;go] (10/11/2026, él con Iscos: "es por pedido, mi viejo no ve precios") → carga
+    // unidades en el pedido del momento de una lista (`cyc/listas_pedido/<prov>/<código>`, lo mismo que la casilla de la web). Cada renglón tiene que
+    // agarrar UN solo producto de la lista, medido con 35%+ y confirmado por fotos; si no, no escribe nada. No imprime precios (lista privada).
+    if (/^listapedir:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('listapedir:'.length); const GOp = /;go$/i.test(raw);
+      const partes = raw.replace(/;go$/i, '').split(';').map((x) => x.trim()).filter(Boolean); const k = partes.shift();
+      const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k]; if (!pv) { console.log('No existe la lista ' + k); return; }
+      const L = (await db.get('mlapi/listas/' + k)) || {}; const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const cambios = {}; const malos = [];
+      for (const pz of partes) { const m = pz.match(/^(.+?)=(\d+)$/); if (!m) { malos.push(`"${pz}" no entiendo`); continue; }
+        const q = nrm(m[1]); const hits = Object.entries(L).filter(([, e]) => e && e.n && nrm(e.n).includes(q));
+        if (hits.length !== 1) { malos.push(`"${m[1]}" agarra ${hits.length}${hits.length ? ': ' + hits.slice(0, 4).map(([, e]) => e.n).join(' | ') : ''}`); continue; }
+        const [cod, e] = hits[0]; const u = parseInt(m[2], 10);
+        if (u > 0 && !(Number(e.m) >= CAND_VARA_COMPRA && listaOkVale(e) && listaFilaVigente(e, pv.fecha) && !(e.sacado || e.noWeb || e.noFull))) { malos.push(`"${e.n}" no da ${CAND_VARA_COMPRA}% o no está confirmado (${e.m != null ? Math.round(e.m) + '%' : 'sin medir'})`); continue; }
+        cambios[cod] = u > 0 ? u : null; console.log(`  ${u > 0 ? '+' + u + ' u.' : 'saco'} · ${Math.round(Number(e.m))}% · ${String(e.n).slice(0, 70)}`); }
+      if (malos.length) { console.log('NO escribo nada, hay que resolver esto:\n  ' + malos.join('\n  ')); return; }
+      if (!GOp) { console.log('PRUEBA: no guardé. Para guardar agregá ;go'); return; }
+      await db.patch('cyc/listas_pedido/' + k, cambios); const R = (await db.get('cyc/listas_pedido/' + k)) || {};
+      const ok = Object.entries(cambios).filter(([c, u]) => (u == null ? !R[c] : Number(R[c]) === u)).length;
+      console.log(`✓ guardado · releído ${ok} de ${Object.keys(cambios).length}`); return;
+    }
     // BILLING_PROBE=listaconfmedir:<prov>[:go] (10/11/2026, él con Iscos: "fijate si hay algo que valga la pena") → vuelve a medir HOY contra ML
     // los confirmados de esa lista (25%+ medido, 2+ vendedores, ✅ de fotos, vigentes) e imprime el % nuevo, sin precios (lista privada).
     if (/^listaconfmedir:/.test(String(process.env.BILLING_PROBE || ''))) {
