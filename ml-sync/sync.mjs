@@ -14422,7 +14422,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), pi.ref.category_id, puesto, tc, monoP, feeAt, cuoPct, cn);
       if (!r) { res.err++; continue; }
       upd.m = Math.round(r.margen * 10) / 10; upd.cv = CAND_CALC_VER; res.medidos++;
-      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? money(Number(e.p)) : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 sólo lo venden de afuera: medido contra ellos +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.pp ? ' · 🏷️ el más barato está en promo −' + upd.pp + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
+      console.log(`  · ${String(upd.m.toFixed(1)).padStart(6)}% · ${e.n.slice(0, 55)} · ${esLista ? 'costo •••' : 'US$ ' + e.u} → ${upd.mi} "${upd.mt.slice(0, 50)}" a ${money(upd.mp)}${upd.afu ? ' · 🌎 sólo lo venden de afuera: medido contra ellos +' + Math.round(RECARGO_INTER * 100) + '%' : ''}${upd.pp ? ' · 🏷️ el más barato está en promo −' + upd.pp + '%' : ''}${upd.rp ? ' · ⚠️ ' + upd.rp.slice(0, 60) : ''}`);
       const piso = candPisoDe({ nombre: e.n, mlTit: upd.mt });
       const loc = RE_CAND_PERF.test(`${e.n} ${upd.mt}`) ? perfLocalPct(puesto * tc, upd.mp) : null;
       // 📋 Listas son SÓLO para ML (18/10/2026, regla suya): ahí el % del local no hace pasar nada.
