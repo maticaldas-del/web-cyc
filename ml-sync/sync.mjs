@@ -11413,8 +11413,10 @@ async function avisarVentasNuevas(db, lista) {
   const planos = [];   // el mismo renglón sin HTML, para el aviso del teléfono
   const renglones = conGan.sort((a, b) => (a.v.ts || 0) - (b.v.ts || 0)).map((x) => {
     const v = x.v, r = ganDe(v, x.dayKey);
-    planos.push(`${v.cuenta || '?'} · ${String(v.prod || '?').slice(0, 40)}${v.variante ? ` (${String(v.variante).slice(0, 20)})` : ''}${(v.qty || 1) > 1 ? ' x' + v.qty : ''} · ${money(Number(v.total) || 0)}`
-      + (r ? ` · ${v.netoEstimado ? '≈' : ''}gana ${money(r.g)} ${_nivelPct(r.pct, cfgNv)}${r.pct == null ? '' : ' ' + Math.round(r.pct) + '%'}` : ' · sin costo'));
+    // 10/11/2026 (él eligió 4a: "quiero que diga nombre del producto, % de ganancia y $ de ganancia. Nada más"): renglón 1 el producto (con el
+    // color), renglón 2 "% · gana $"; sin cuenta, unidades, total, rombito ni el resumen del día.
+    planos.push(`${String(v.prod || '?').slice(0, 60)}${v.variante ? ` (${String(v.variante).slice(0, 24)})` : ''}\n`
+      + (r ? `${r.pct == null ? '' : Math.round(r.pct) + '% · '}${v.netoEstimado ? '≈ ' : ''}gana ${money(r.g)}` : 'sin costo cargado'));
     const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const nom = esc(String(v.prod || '?').slice(0, 40) + (v.variante ? ` (${String(v.variante).slice(0, 20)})` : ''));
     const hora = new Date((Number(v.ts) || ahora) - 3 * 36e5).toISOString().slice(11, 16);
@@ -11437,7 +11439,7 @@ async function avisarVentasNuevas(db, lista) {
   try {
     pushOk = await enviarPush(db, {
       title: conGan.length === 1 ? '🔔 Venta nueva' : `🔔 ${conGan.length} ventas nuevas`,
-      body: planos.join('\n') + `\n📊 Hoy: ${n} ventas · ganancia ${money(gan)}`,
+      body: planos.join('\n'),
       tag: 'venta-' + kid(conGan[conGan.length - 1].v.id), url: './#aviso',
       // 06/11/2026 (él: "que suene una vez por 10.000, dos por 20.000, 3 por 30.000. así sucesivamente"): cuántas veces suena = la ganancia
       // nueva de este aviso (las compras que avisa, sumadas) ÷ $10.000, redondeado para abajo; mínimo 1, tope 10. Lo hace el teléfono (sw.js).

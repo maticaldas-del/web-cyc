@@ -601,3 +601,10 @@ Ninguna toca precios. **Lo urgente ya está arreglado:** desde el 08/11 los scri
 14. **🧠 de un producto con colores:** un bloque por color con su nota, su barrita, su último cambio y su 📋 (hoy "Por qué cambió" no dice de qué color y los 6 📋 quedan sueltos al final). (a) sugerida: sí · (b) no.
 15. **🇵🇾/🇦🇷 de la ficha** cambia Paraguay↔Bs As con un toque sin preguntar, a 6 px del 📈. (a) sugerida: llevarlo adentro de la ficha y que pregunte (como el 🗑️ del 08/11) · (b) dejarlo.
 Además, para propuesta futura: Revisiones de Ajustes en una pantalla (hoy 2.900 px) · carteles de "sin datos" que empujan en vez de tapar · Arqueo con ‹ mes › juntos y en la PC el ticket al lado de ¿Cierra el mes?.
+
+### 09-10/11 · Respuestas del 10/11 (él: "1b 2b 3 falta info 4a")
+- ✅ 1b · la transferencia de $85.000 desde Ayelen del 08/11 = personal (nombre anotado cerrado, no se vuelve a preguntar).
+- ✅ 2b · la Tienda sigue con precios de Nissei de 2 días o menos (el chat local da la vuelta completa todos los días).
+- ⏳ 3 · Pendrive 128 GB: faltaban los días en stock → se le vuelve a pasar con todo.
+- ✅ 4a · aviso de venta en el teléfono: sólo producto (con color), % y ganancia.
+- ✅ Tienda 7 días (Choques 8 del 09/11) = resuelta con la 2b.
