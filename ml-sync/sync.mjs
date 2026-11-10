@@ -27645,7 +27645,9 @@ async function main() {
           for (const e of v) { if (!(e.m != null && Number(e.m) >= 25)) continue;
             if (e.sacado || e.noWeb || e.noFull) { q.sacado++; continue; } if (!listaFilaVigente(e, pv.fecha)) { q.listaVieja++; continue; } if (listaNoEsVale(e)) { q.noEs++; continue; } if (!e.mi) { q.sinMi++; continue; }
             if (!listaCostoVigente(e)) { q.viejo++; continue; } if (!(Number(e.mv) >= CAND_MIN_VENDEDORES)) { q.unVend++; continue; }
-            if (listaOkVale(e)) q.ok++; else q.sinOk++; }
+            if (listaOkVale(e)) { q.ok++; if (String(process.env.BILLING_PROBE).split(':')[2] === 'ok') (q.lOk = q.lOk || []).push(e); } else q.sinOk++; }
+          // `listaestado:<prov>:ok` (10/11/2026, él con Iscos: "fijate si hay algo que valga la pena"): los confirmados con nombre, % y vendedores, SIN precios (lista privada).
+          for (const e of (q.lOk || []).sort((a, z) => Number(z.m) - Number(a.m))) console.log(`   ✅ ${Math.round(Number(e.m))}% · ${e.mv} vend. · ${String(e.n).slice(0, 70)} → ${e.mi}${e.mt ? ' · ' + String(e.mt).slice(0, 60) : ''}${e.mts || e.ts ? ' · medido ' + new Date(Number(e.mts || e.ts)).toISOString().slice(0, 10) : ''}`);
           console.log(`   de los ${c.d25} de 25%+: ${q.ok} confirmados (2+ vendedores y ✅) · ${q.sinOk} sin ✅ · ${q.unVend} con 1 solo vendedor · ${q.noEs} otro producto · ${q.viejo} medidos con un costo viejo · ${q.sinMi} sin catálogo · ${q.sacado} sacados o fuera de la web${q.listaVieja ? ` · ${q.listaVieja} de una lista anterior (la del ${pv.fecha} no los trae)` : ''}`); }
         // `listaestado:<prov>:sc:<n>` / `:sv:<n>`: una muestra pareja de N nombres de ese grupo con lo más parecido que trajo ML.
         { const pp = String(process.env.BILLING_PROBE).split(':'); const g = pp[2], nM = parseInt(pp[3], 10) || 150;
