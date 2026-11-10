@@ -27324,6 +27324,29 @@ async function main() {
     // guardada (`cyc/mlconfig/nisseiVuelta`): las fichas de Paraguay que no se vieron desde que arrancó quedan como "Nissei no lo tiene".
     // BILLING_PROBE=gemelade:<MLA>[,<MLA>…] (04/11/2026, sólo lee) → de cada publicación: si es Clásica o gemela (Premium / envío gratis) y
     // de quién, y sus gemelas, con precio y estado guardados. Para no analizar una gemela como si fuera la publicación que vende.
+    // BILLING_PROBE=pyarmar:<id de ficha o palabras>=<u>[;…][;go] (10/11/2026, él: "quiero que me armes siempre el pedido para paraguay… siempre
+    // los probados primero") → pone las unidades de un ✅ PROBADO en el pedido del momento (`cyc/py_armado/<ficha>`, lo mismo que la casilla de la
+    // web); `=0` lo saca. La palabra tiene que agarrar UNA sola ficha. Sin `;go` sólo muestra.
+    if (/^pyarmar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('pyarmar:'.length); const GOa = /(^|;)go$/.test(raw) && !DRY;
+      const pares = raw.replace(/;?go$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const prods = Object.entries((await db.get('cyc/products')) || {}).map(([k, p]) => ({ k, ...(p || {}) })).filter((p) => p.name);
+      const nrm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const upd = {}; let mal = 0;
+      for (const x of pares) {
+        const m = x.match(/^(.+?)=(\d+)$/); if (!m) { console.log(`❌ "${x}": va <ficha>=<u>`); mal++; continue; }
+        const q = m[1].trim(); let hit = prods.filter((p) => p.k === q || p.id === q);
+        if (!hit.length) { const ws = nrm(q).split(' ').filter(Boolean); hit = prods.filter((p) => ws.every((w) => (' ' + nrm(p.name) + ' ').includes(w))); }
+        if (hit.length !== 1) { console.log(`❌ "${q}" agarra ${hit.length} fichas${hit.length ? ': ' + hit.slice(0, 5).map((p) => p.name).join(' | ') : ''}`); mal++; continue; }
+        const u = parseInt(m[2], 10); upd[hit[0].k] = u > 0 ? { u, ts: Date.now() } : null;
+        console.log(`  ${hit[0].name} → ${u > 0 ? u + ' u.' : 'sale del pedido'}`);
+      }
+      if (mal) { console.log('No escribo nada.'); return; }
+      if (!GOa) { console.log('PRUEBA: agregá ;go'); return; }
+      await db.patch('cyc/py_armado', upd); const r = (await db.get('cyc/py_armado')) || {};
+      console.log(Object.entries(upd).every(([k, v]) => (v ? r[k] && r[k].u === v.u : !r[k])) ? '✓ guardado y releído' : '✗ no quedó');
+      return;
+    }
     // BILLING_PROBE=pyarmado (04/11/2026, sólo lee) → los ✅ probados cargados en el pedido del momento (`cyc/py_armado`): unidades, código y
     // precio de Nissei y hace cuántos días se miró (pasa sólo lo de menos de 2 días), y si Nissei no lo tiene.
     if (/^pyarmado$/.test(String(process.env.BILLING_PROBE || ''))) {
