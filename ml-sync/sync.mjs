@@ -27416,6 +27416,66 @@ async function main() {
       for (const [cta, ms] of Object.entries(rm)) for (const [m, x] of Object.entries(ms || {}).sort()) if (m === '_cab') console.log(`  ${cta} · columnas del archivo: ${(x || []).join(' | ')}`); else console.log(`  ${cta} · ${m.replace('_', '-')} · ${x.filas} movimientos · rendimientos en ${x.nRend} renglón(es) · saldo ${x.encadena === true ? 'encadena ✓' : x.encadena === false ? 'NO encadena' : 'sin columna'} · guardado ${new Date(x.ts).toISOString().slice(0, 16)}${x.tipos ? ' · tipos: ' + Object.entries(x.tipos).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => k + ' ' + v.n).join(', ') : ' · (sin tipos: hay que volver a pegarlo)'}`);
       return;
     }
+    // BILLING_PROBE=pyrevisar:<resto|perf>[:<cuántos candidatos más>] (10/11/2026, él: "esto es gravísimo… tenés que mirar producto por
+    // producto… comparando vs ML"; SÓLO LEE). Para CADA renglón del pedido del momento (probados `py_armado` y nuevos con `pedirU`) y para
+    // los N candidatos de ⭐ más alta que todavía no están, pregunta a ML EN EL MOMENTO las ofertas de su catálogo y mide el % del peor caso
+    // contra el MÁS BARATO de todos y contra el más barato CON FULL (la misma cuenta que la compra, `cuentaCandidatoMejor`). Además busca
+    // por nombre OTROS catálogos con vendedores (el mismo producto puede estar en dos fichas, una más barata). Nunca usa el % guardado.
+    if (/^pyrevisar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const [, grp = 'resto', masS = '0'] = String(process.env.BILLING_PROBE).split(':'); const mas = parseInt(masS) || 0;
+      try { await cargarParamCompra(db); } catch { /* los de siempre */ }
+      const esB = (n) => PY_PERF_RE.test(String(n || '')) || PY_BELLEZA_RE.test(String(n || ''));
+      const enG = (n) => (grp === 'perf' ? esB(n) : !esB(n));
+      const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0; if (!(tc > 0)) { console.log('sin dólar cargado: no mido'); return; }
+      const monoP = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;
+      const label = labels.find((l) => accounts[l]?.refresh_token); if (!label) { console.log('Sin token.'); return; }
+      let tok; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[label].refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tok = tR.access_token; } catch { console.log('No pude renovar el token.'); return; }
+      const feeC = {}; const feeAt = async (price, lt, cat) => { const k = lt + '|' + cat + '|' + Math.round(price); if (feeC[k] !== undefined) return feeC[k]; let out = null;
+        try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(price)}&listing_type_id=${lt}&category_id=${cat}`, tok); const o = Array.isArray(d) ? d[0] : d; if (typeof o?.sale_fee_amount === 'number') out = o.sale_fee_amount; } catch { out = null; }
+        feeC[k] = out; return out; };
+      const cands = (await db.get('cyc/candidatos_py')) || {}, arm = (await db.get('cyc/py_armado')) || {}, per = (await db.get('cyc/py_personal')) || {};
+      const prods = (await db.get('cyc/products')) || {}, links = (await db.get('cyc/mllinks')) || {};
+      const catDe = (s) => { const m = String(s || '').match(/MLA-?\d{6,}/i); return m ? m[0].replace('-', '').toUpperCase() : ''; };
+      const items = [];
+      for (const [k, v] of Object.entries(arm)) { const p = prods[k]; if (!p || !enG(p.name)) continue; const u = parseInt((v || {}).u) || 0; if (!u) continue;
+        const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
+        items.push({ tipo: 'probado', id: k, nom: p.name, u, usd: parseFloat(p.nisseiUSD) || 0, cat, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); }
+      for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre || c.pedidoEn || c.prodId || c.no || !enG(c.nombre)) continue; const u = Number(c.pedirU) || 0; if (!u) continue;
+        items.push({ tipo: 'nuevo', id, nom: c.nombre, u, usd: parseFloat(c.usd) || 0, cat: candCatDe(c) || catDe(c.mlCat), tit: c.mlTit || '', guard: c.margen, vend: c.mlVendedores, vtas: candVentasDe(c) }); }
+      if (mas > 0) { const ahora = Date.now(); const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
+        const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
+        Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && !(Number(c.pedirU) > 0) && enG(c.nombre) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5 && !(PY_ELEGANCIA_OFF && /^EL_/i.test(String(c.cod || ''))))
+          .sort((a, b) => star(b[1]) - star(a[1])).slice(0, mas)
+          .forEach(([id, c]) => items.push({ tipo: 'extra', id, nom: c.nombre, u: 0, usd: parseFloat(c.usd) || 0, cat: candCatDe(c) || catDe(c.mlCat), tit: c.mlTit || '', guard: c.margen, vend: c.mlVendedores, vtas: candVentasDe(c), star: star(c) })); }
+      const tienda = Object.values(per).filter((v) => v && enG(v.nom)).reduce((t, v) => t + (parseInt(v.u) || 0) * (parseFloat(v.usd) || 0), 0);
+      console.log(`=== 🔎 PEDIDO ${grp.toUpperCase()} MEDIDO HOY CONTRA ML · dólar ${money(tc)} · recargo ${Math.round((RECARGO_PAR - 1) * 1000) / 10}% · Tienda US$ ${tienda.toFixed(2)} (no se mide: lo pidió él) ===`);
+      let totOk = 0, totMal = 0;
+      for (const it of items) {
+        const puesto = it.usd * RECARGO_PAR; let ofs = []; let catx = null;
+        if (it.cat) { try { ofs = ((await mlGet(`/products/${it.cat}/items`, tok)).results) || []; } catch { ofs = []; } }
+        ofs = ofertasParaMedir(ofs).ofs; const pi = precioAIgualar(ofs);
+        if (pi && pi.ref) catx = pi.ref.category_id;
+        const ml = async (p) => (p > 0 && catx ? cuentaCandidatoMejor(Math.min(p, TECHO_DURO), catx, puesto, tc, monoP, feeAt, 0, it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null);
+        const rT = pi ? await ml(pi.baratoTodos) : null, rF = pi && pi.baratoFull ? await ml(pi.baratoFull) : null;
+        const fmt = (r) => (r ? `${Math.round(r.margen)}%` : '—');
+        const nF = pi ? pi.conFull : 0, nV = ofs.length;
+        const mT = rT ? rT.margen : null;
+        const ver = !pi ? '❓ SIN PRECIO EN ML (no se puede medir)' : mT >= CAND_VARA_COMPRA ? (nV < 2 ? '🟡 da, pero 1 SOLO vendedor' : '✅ da') : (rF && rF.margen >= CAND_VARA_COMPRA ? '🟡 contra el más barato no da, contra Full sí' : '❌ NO DA');
+        if (it.u) { if (/✅/.test(ver)) totOk += it.u * it.usd; else totMal += it.u * it.usd; }
+        console.log(`\n${ver} · [${it.tipo}${it.star ? ' ⭐' + it.star.toFixed(1) : ''}] ${it.u ? it.u + ' u. · ' : ''}US$ ${it.usd} (puesto ${money(Math.round(puesto * tc))}) · ${String(it.nom).slice(0, 70)} [${it.id}]`);
+        console.log(`    ML HOY ${it.cat || 'sin catálogo'}: ${nV} vend. (${nF} Full) · más barato ${pi ? money(pi.baratoTodos) + ' → ' + fmt(rT) : '—'} · más barato con Full ${pi && pi.baratoFull ? money(pi.baratoFull) + ' → ' + fmt(rF) : '—'} · más caro ${pi ? money(pi.max) : '—'}${it.guard != null ? ' · % guardado ' + Math.round(Number(it.guard)) + '%' : ''}${it.vtas != null ? ' · vendidas ' + it.vtas : ''}`);
+        // otros catálogos con el mismo nombre (puede haber una ficha más barata)
+        const q = String(it.tit || it.nom).replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 8).join(' ');
+        try { const d = await mlGet(`/products/search?site_id=MLA&status=active&q=${encodeURIComponent(q)}&limit=6`, tok);
+          for (const r of (d.results || [])) { if (r.id === it.cat) continue; let o2 = []; try { o2 = ofertasParaMedir(((await mlGet(`/products/${r.id}/items`, tok)).results) || []).ofs; } catch { o2 = []; }
+            const p2 = precioAIgualar(o2); if (!p2) continue;
+            const r2 = await (async () => (p2.ref && p2.ref.category_id ? cuentaCandidatoMejor(Math.min(p2.baratoTodos, TECHO_DURO), p2.ref.category_id, puesto, tc, monoP, feeAt, 0, it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null))();
+            console.log(`    otra ficha ${r.id}: ${o2.length} vend. (${p2.conFull} Full) · ${money(p2.baratoTodos)}${r2 ? ' → ' + Math.round(r2.margen) + '%' : ''}${p2.baratoFull ? ' · con Full ' + money(p2.baratoFull) : ''} · ${String(r.name || '').slice(0, 70)}`); }
+        } catch { /* sin búsqueda */ }
+      }
+      console.log(`\n=== cargado que da: US$ ${totOk.toFixed(2)} · cargado con duda o que no da: US$ ${totMal.toFixed(2)} · Tienda US$ ${tienda.toFixed(2)} ===`);
+      return;
+    }
     // BILLING_PROBE=pyllenar:<resto|perf>[:<tope US$>] (04/11/2026, él: "llenalo hasta 600 dólares"; SÓLO LEE) → lo mismo que el botón
     // 🪄 de la web para los NUEVOS: de ⭐ "gana mucho y sale mucho" para abajo (% × log10(🚀+1) ÷ 10, mínimo 7), 35%+, 2+ vendedores
     // (o 1 con 100+ vendidas), mirado en Nissei hace menos de 2 días, hasta US$ 20 por producto (máx 4 u.), hasta llenar el tope.
