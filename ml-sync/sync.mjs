@@ -27439,9 +27439,9 @@ async function main() {
       const items = [];
       for (const [k, v] of Object.entries(arm)) { const p = prods[k]; if (!p || !enG(p.name)) continue; const u = parseInt((v || {}).u) || 0; if (!u) continue;
         const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
-        items.push({ tipo: 'probado', id: k, nom: p.name, u, usd: parseFloat(p.nisseiUSD) || 0, cat, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); }
+        items.push({ tipo: 'probado', visto: Number(p.nisseiTs) || 0, id: k, nom: p.name, u, usd: parseFloat(p.nisseiUSD) || 0, cat, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); }
       for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre || c.pedidoEn || c.prodId || c.no || !enG(c.nombre)) continue; const u = Number(c.pedirU) || 0; if (!u) continue;
-        items.push({ tipo: 'nuevo', id, nom: c.nombre, u, usd: parseFloat(c.usd) || 0, cat: candCatDe(c) || catDe(c.mlCat), tit: c.mlTit || '', guard: c.margen, vend: c.mlVendedores, vtas: candVentasDe(c) }); }
+        items.push({ tipo: 'nuevo', visto: candVistoTsBot(c), id, nom: c.nombre, u, usd: parseFloat(c.usd) || 0, cat: candCatDe(c) || catDe(c.mlCat), tit: c.mlTit || '', guard: c.margen, vend: c.mlVendedores, vtas: candVentasDe(c) }); }
       if (mas > 0) { const ahora = Date.now(); const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
         const star = (c) => (Number(c.margen) || 0) * Math.log10(sal(c) + 1) / 10;
         Object.entries(cands).filter(([, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && !(Number(c.pedirU) > 0) && enG(c.nombre) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5 && !(PY_ELEGANCIA_OFF && /^EL_/i.test(String(c.cod || ''))))
@@ -27466,7 +27466,8 @@ async function main() {
         const mT = rT ? rT.margen : null;
         const ver = !pi ? '❓ SIN PRECIO EN ML (no se puede medir)' : mT >= CAND_VARA_COMPRA ? (nV < 2 ? '🟡 da, pero 1 SOLO vendedor' : '✅ da') : (rF && rF.margen >= CAND_VARA_COMPRA ? '🟡 contra el más barato no da, contra Full sí' : '❌ NO DA');
         if (it.u) { if (/✅/.test(ver)) totOk += it.u * it.usd; else totMal += it.u * it.usd; }
-        console.log(`\n${ver} · [${it.tipo}${it.star ? ' ⭐' + it.star.toFixed(1) : ''}] ${it.u ? it.u + ' u. · ' : ''}US$ ${it.usd} (puesto ${money(Math.round(puesto * tc))}) · ${String(it.nom).slice(0, 70)} [${it.id}]`);
+        const _hV = it.visto ? (Date.now() - it.visto) / 3600e3 : null;
+        console.log(`\n${_hV == null || _hV >= PY_VIEJO_DIAS * 24 ? '⛔ MIRADO EN NISSEI ' + (_hV == null ? 'SIN FECHA' : 'HACE ' + Math.round(_hV) + ' H') + ' (no pasa) · ' : ''}${ver} · [${it.tipo}${it.star ? ' ⭐' + it.star.toFixed(1) : ''}] ${it.u ? it.u + ' u. · ' : ''}US$ ${it.usd} (puesto ${money(Math.round(puesto * tc))}) · ${String(it.nom).slice(0, 70)} [${it.id}]`);
         console.log(`    ML HOY ${it.cat || 'sin catálogo'}: ${nV} vend. (${nF} Full) · más barato ${pi ? money(pi.baratoTodos) + (cuoT >= 3 ? ` (da ${cuoT} cuotas, las pagamos)` : '') + ' → ' + fmt(rT) : '—'} · más barato con Full ${pi && pi.baratoFull ? money(pi.baratoFull) + ' → ' + fmt(rF) : '—'} · más caro ${pi ? money(pi.max) : '—'}${it.guard != null ? ' · % guardado ' + Math.round(Number(it.guard)) + '%' : ''}${it.vtas != null ? ' · vendidas ' + it.vtas : ''}`);
         // otros catálogos con el mismo nombre (puede haber una ficha más barata)
         const q = String(it.tit || it.nom).replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean).slice(0, 8).join(' ');
