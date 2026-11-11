@@ -14151,6 +14151,9 @@ function tiendaPerfumeSeguro(nn, n) {
   if (tiendaPerfumeDistinto(nn, n)) return false;
   // 05/11/2026 (control diario): "2 Un. Perfume River Of Love" de ML contra UN River Of Love de Nissei. Otra cantidad de unidades = otro producto.
   if ((unidadesPackTit(n) || 1) !== (unidadesPackTit(nn) || 1)) return false;
+  // 11/11/2026 (control diario): al revés también. Nissei "Kit Mauboussin In Red Travel Edition 100ML + 20ML" se mostraba con el nombre y la foto
+  // del perfume suelto de ML. Si lo del proveedor es kit/set/estuche/travel o trae "+", lo de ML también tiene que serlo.
+  if (/\b(kit|set|coffret|estojo|estuche|travel)\b|\+/i.test(nn) && !/\b(kit|set|coffret|estojo|estuche|travel|combo|cofre)\b|\+/i.test(n)) return false;
   // 01/11/2026: lo de ML que no es UN perfume original (set/kit/piezas/combo, "esotérico"/"inspirado"/"alternativa" = imitación, decant, tester,
   // miniatura) no sirve, salvo que lo del proveedor también sea un kit/set.
   if (/\b(set|kit|pzas|piezas|estuche|combo|cofre|coffret|decant|tester|miniatura|mini)\b|\+|esoter|inspirad|similar|alternativ|replica|r[eé]plica|arabe inspir/i.test(n) && !/\b(kit|set|coffret|estojo|mini)\b|\+/i.test(nn)) return false;
