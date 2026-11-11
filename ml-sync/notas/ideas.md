@@ -111,3 +111,13 @@ Cada renglón: fecha · idea · plata estimada · estado (hecha / propuesta / de
 - 09/11 (ayudante): el Sony XM-N502 trae un precio de reposición roto (US$ 7.270): revisar el costo de reponer de esa ficha.
 - 10/11 (revisor de la completa): `techo95` cuenta como "con visitas" los días que no tienen el dato de visitas (`sinVisitasDia` sólo da verdadero con un 0 sabido) y estima las visitas totales con 2 o 3 días con dato: así `techo95;go` puede anotar 🏔️ en lanzamientos que nadie ve (Emeet, Sony ZX310AP), contra la regla 18a del 03/11. Revisar antes de confiar en el 🏔️ de un lanzamiento.
 - 10/11: salir de un descuento y volver a entrar en la misma corrida puede dar 400 "No candidates found" en ML (pasó el 07/11 con el VS Midnight Bloom): los salir van al principio y los entrar al final, y se reintenta si falla.
+
+## 11/11 · de la completa
+- **Hermanas que ML iguala solas:** el registro de cambios se lee por publicación. La vuelta del punto medio, la prueba del mes y vendiocaro ven media cadena (Mazo Azul, Pizarra Negra, Mazo Rojo). Hay que unir el registro de las hermanas con el mismo stock.
+- **El detector `errores` saca descuentos renovados por F14:** cuenta como ventas a precio de lista las que salieron con descuento (Protector talón, 08/11). `vueltaDeSuba` también mide la ganancia a precio de lista en los días con descuento.
+- **`vueltaDeSuba` cuenta horas sin stock** (Cinta 7,5 m) y no ve un escalón que vendió el mismo día en que se subió (Pizarra 8.690).
+- **`vendiocaro` no toma el precio que no rindió como techo** (6a del 08/11). `puntoSinTecho` sí lo toma.
+- **La caja leída de noche** dio "ML pide" igual a nuestro propio precio en varias (P47, los dos Mazos), y `ventana15` usa ese número.
+- **`decide_pedidos.py` ponía "Hola Tito! Hola Tito!"** cuando el juicio ya traía el saludo. Arreglado en `juicioQ`.
+- **El Triples Negro** sale con el ritmo de antes "por escasez" cuando la última suba fue de prueba. Lo corregí a mano: 0.
+- **40 publicaciones salen "sin leer"** en planilla, casi todas Paulvic de Adriana. ML no contestó esta noche.
