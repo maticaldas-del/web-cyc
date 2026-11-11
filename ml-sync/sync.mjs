@@ -5921,6 +5921,9 @@ function cajaEnCaminoDe(envios, e, ahora = Date.now()) {
   for (const env of Object.values(envios || {})) {
     if (!env || String(env.cuenta || '').toLowerCase() !== cta) continue;
     const sal = envSalidaTs(env.fecha, env.reanudado || env.ts, env.pausado); if (!(sal > 0)) continue;
+    // Revisión etapa 5 (11/11): una caja que salió hace 8+ días y nunca se marcó recibida no "llega en 0 días" (frenaba toda suba de 🔥):
+    // misma regla que `escasez` (sólo las de menos de 8 días dan plazo).
+    if (ahora - sal >= ESC_CAJA_VIAJE_DIAS * 864e5) continue;
     for (const c of (Array.isArray(env.cajasDet) ? env.cajasDet : [])) {
       if (!c || c.recibida) continue; let u = 0;
       for (const it of (c.items || [])) { if (!it || it.prodId !== e.prodId || !(Number(it.u) > 0)) continue; if (vv && it.variante && sid(String(it.variante).toLowerCase()) !== vv) continue; u += Number(it.u); }
@@ -6004,7 +6007,8 @@ function ritmoAPrecioLin(lin, precio, t0, t1, sinBF = false) {   // sinBF: 12a d
 // (antes de alinearse vende al precio viejo) y no una compra vieja pagada después de la suba. Antes 1 venta real + 3 viejas = "confirmada".
 async function ventasGrupoEntre(db, mla, links, prods, t0, t1, viejo = 0, sinBF = false) {   // sinBF: 12a del 08/11
   const grupo = [mla, ...hermanasStockDe(links, prods, mla), ...Object.keys(links).filter((g) => (links[g] || {}).gemelaDe === mla)]; let uds = 0;
-  for (let t = t0 - 864e5, i = 0; i < 40 && t <= t1 + 864e5; t += 864e5, i++) { let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
+  // Revisión etapa 5 (11/11): hasta 120 días (antes 40): lo lento (8a) se juzga a los ~42+ días y las ventas de los últimos días quedaban afuera ("vendió 0" → volvía).
+  for (let t = t0 - 864e5, i = 0; i < 120 && t <= t1 + 864e5; t += 864e5, i++) { let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
     for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= t0 && ts < t1 && !(sinBF && enBlackFriday(ts)) && (!(viejo > 0) || ventaCuentaDesde(v, mla, t0, ts, viejo))) uds += Number(v.qty) || 1; } }
   return uds;
 }
@@ -53163,7 +53167,8 @@ async function main() {
           }
           // 12a del 08/11/2026 (él: "a"): en el Black Friday (25-30/11) no ARRANCA ninguna prueba 📈 (ni !vendio, ni la del mes, ni la del
           // lento): las ventas del evento no miden el precio. 🔥/⏳, volver a un precio y subir al 35% siguen.
-          if (d.accion === 'sube' && (tg === 'techo' || tg === 'nuevo' || fz.mensual) && enBlackFriday(Date.now()) && !exc('chico')) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO Black Friday: del 25 al 30/11 no se arranca ninguna prueba de precio (las ventas del evento no miden el precio; 12a del 08/11). Se retoma el 01/12.'; continue; }
+          // Revisión etapa 5 (11/11): la suba que sólo lleva al 35% del peor caso no se frenaba (pese a lo que dice este comentario): ahora pasa.
+          if (d.accion === 'sube' && (tg === 'techo' || tg === 'nuevo' || fz.mensual) && enBlackFriday(Date.now()) && !exc('chico') && !(d.mgP0 != null && Number(d.mgP0) < PISO_DURO && d.mgPA != null && Number(d.mgPA) <= PISO_DURO + 2)) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO Black Friday: del 25 al 30/11 no se arranca ninguna prueba de precio (las ventas del evento no miden el precio; 12a del 08/11). Se retoma el 01/12.'; continue; }
           // 11a del 08/11/2026 (él: "a"): si la gemela de ENVÍO GRATIS vendió arriba de $33.000, la Clásica se prueba AL PRECIO DE LA GEMELA
           // (el mismo que vio el comprador), no +50% de ese precio: esa suba puede ser menos de +50% (lo verifica `!vendio`, con la venta).
           const envGem = fz.vendio && fz.cruza && p0 < UMBRAL_ENVIO_GRATIS && a >= UMBRAL_ENVIO_GRATIS && Date.now() >= DET_REGLA_DESDE.reglas0811;
@@ -53263,7 +53268,7 @@ async function main() {
             else if (tg === 'techo' || tg === 'nuevo') {
               if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } }
               if (globalThis._ccCache4a === null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO punto medio: no pude leer mis cambios de precio (cyc/claudecambios) para ver si la suba anterior se confirmó. Se vuelve a mirar en la próxima vuelta.'; continue; }
-              const uC = Object.values(globalThis._ccCache4a).filter((r) => r && String(r.mla) === String(d.mla) && Number(r.ts) > Date.now() - 30 * 864e5 && r.por !== 'errores').sort((x, y) => Number(y.ts) - Number(x.ts))[0];
+              const uC = Object.values(globalThis._ccCache4a).filter((r) => r && String(r.mla) === String(d.mla) && Number(r.ts) > Date.now() - 60 * 864e5 && r.por !== 'errores').sort((x, y) => Number(y.ts) - Number(x.ts))[0];   // 60 días (antes 30): lo lento se juzga a los ~42 (8a), etapa 5 11/11
               if (uC && Number(uC.a) > Number(uC.de) * 1.02) {
                 if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
                 if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }

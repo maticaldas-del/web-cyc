@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.173';
+const APP_VERSION='28.174';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.174',f:'11/11',h:'05:10',c:[{n:1,t:'🧾 Revisión de Datos terminada: 4 decisiones para vos en la lista de las 12:30 (Black Friday, escasez en el evento, descuentos en lo 🔒/🥊 y fechas especiales).'}]},
   {v:'28.173',f:'11/11',h:'04:40',c:[{n:2,t:'📈 Revisión de Datos: las rayas de un producto ya no pierden las ventas de una gemela o publicación cerrada (salía un 🔴 falso), un día con venta nunca cuenta como "sin visitas", y Métricas → Cambios de precio cuenta también mis descuentos.'}]},
   {v:'28.172',f:'10/11',h:'17:22',c:[{n:2,t:'🇵🇾 Pedido del momento: pasa sólo lo mirado en Nissei hace menos de 24 h (antes 2 días). El 💵 al venderse suma aparte la ganancia de la 🏬 Tienda (25%).'}]},
   {v:'28.171',f:'10/11',h:'15:42',c:[{n:1,t:'🚚 Para mirar en Via Cargo: cada guía dice el número del pedido, cuándo se hizo el pedido y cuándo se cargó la guía.'}]},
@@ -5948,6 +5949,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:5,t:'11/11 · 4 decisiones de Datos y cerebro',que:'ventas del Black Friday que confirman subas · escasez en el Black Friday · salir de un descuento en lo 🔒/🥊 · fecha especial con escalera de subas',pedi:'resolvamos'},
   {etapa:7,t:'10/11 · 15 cosas de Diseño para elegir',que:'lo chico de una vez · Comparar meses al revés · "a esta hora" · el 🧠 de Tito · Para comprar hoy · Contar en dos pisos · tablas en tarjetas · Ver deudas en dos pisos · Gastos para tocar · tope de H · Mezcla y escalera · Ventas · línea y puertas · 🧠 por color · 🇵🇾/🇦🇷 con pregunta',pedi:'resolvamos'},
   {etapa:4,t:'09/11 · 7 decisiones de Choques y fallas mudas',que:'noche con lecturas fallidas · comandos que se cortan · cada cuánto el ciclo · proteger la rama · ml-chequeo viejo · sumas de la oficina · rehacer días de la línea',pedi:'resolvamos'},
   {etapa:3,t:'08/11 · 14 decisiones de la Mercadería',que:'listas en el registro · vuelta 98% · Llenar con nuevos · perfumería sin color · FIJO vence · FIJO y cupo · Tenders solos · venta más cara · HOY primero · el más bajo con 0 · Nivea · Navidad en el código · juicios viejos · listas sin ✅',pedi:'resolvamos'},
@@ -5995,7 +5997,8 @@ const REV_HIST={
   5:[{f:'2026-10-12',t:'Primera vuelta de las líneas de tiempo: que cada día cuente bien y coincida con Ventas y el Arqueo.'},
      {f:'2026-10-13',t:'Revisión del cerebro: cada parte entera contra el total; se midieron los precios redondos y la regla se sacó.'},
      {f:'2026-10-21',t:'4 revisores en máximo (ficha, línea de tiempo, robot de datos, web): 44 arreglos (v25.62: ficha y techo95 sin borrar historia, remate con historia, canceladas tarde, línea por color y sin stock inventado). 2 decisiones suyas.'},
-     {f:'2026-11-01',t:'4 revisores en máximo (línea de tiempo, ficha y techo95, historia de decisiones, cerebro contra código): 7 arreglos (🔥 por la gemela con !cruza, remates por la gemela, el 🔴 de 30 días ya no se saltea lo vendido en fechas especiales, +50% en bajasviejas, VENTAS.md al día); 16 decisiones para él.'}],
+     {f:'2026-11-01',t:'4 revisores en máximo (línea de tiempo, ficha y techo95, historia de decisiones, cerebro contra código): 7 arreglos (🔥 por la gemela con !cruza, remates por la gemela, el 🔴 de 30 días ya no se saltea lo vendido en fechas especiales, +50% en bajasviejas, VENTAS.md al día); 16 decisiones para él.'},
+     {f:'2026-11-11',t:'4 revisores en máximo (línea de tiempo, ficha/techo/rayas, historia de decisiones, cerebro contra código): ~14 arreglos (ventas que llegan tarde, descuentos medidos, punto medio sin stock, cupón contado dos veces, precio de ayer, gemela cerrada, caja vieja en la escasez); 4 decisiones para él.'}],
   6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
      {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'},
      {f:'2026-10-21',t:'4 revisores en máximo (datos de ML sin usar, plata, trabajo a mano, gusto): 24 ideas para elegir (el cupo de Ayelen repartido por plata, publicar lo nuevo desde el chat, la venta que dice qué significa, Pedidos con lo que cambió).'},
