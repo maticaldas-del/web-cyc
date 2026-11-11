@@ -606,6 +606,7 @@ def perf_suelto(p,pid):
 # cantidad tal cual aunque la mercadería ya hubiera llegado (Cortapelos 2 en 1 y 1 en 1 con 10 y 15 en la oficina, Lupa 75mm
 # con 10 en Full). Ahora pide lo que falta para TENER N (Full + oficina + camino); si ya está, avisa que se cumplió.
 def juicioQ(nJ,tiene,mo,quien=''):
+    if mo.startswith('Hola Tito! '): mo=mo[len('Hola Tito! '):]   # 11/11/2026: el juicio ya traía el saludo y salía "Hola Tito! Hola Tito!"
     q=max(0,nJ-int(round(tiene or 0)))
     if nJ>0 and q==0:
         avisos.append(f"✅ juicio cumplido{(' · '+quien) if quien else ''}: pedía tener {nJ} y ya hay {round(tiene)}. Sacarlo de juicios.txt o renovarlo")

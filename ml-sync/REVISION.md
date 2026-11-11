@@ -135,6 +135,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 - **Qué es:** `#vp-day-list` tiene 8px de aire en el teléfono y en la PC ancha (antes 0: la tarjeta que tiembla se cortaba contra el borde de la lista, que tiene scroll y recorta), y `vivaTiembla` ya no gira (sólo se corre unos px; el giro hacía asomar las esquinas).
 - **Qué chequear:** dibujar Ventas a 390 px con una venta que tiembla: bordes y esquinas enteros.
 
+### 👋 "Hola Tito! Hola Tito!" en los pedidos (11/11/2026, etapa 3)
+- **Qué es:** `decide_pedidos.py` / `juicioQ` le sacaba el saludo sólo al juicio de un producto con colores; un juicio de producto suelto que ya traía "Hola Tito!" salía con el saludo dos veces (F9, Crema Nivea, dos noches seguidas).
+- **Dónde vive:** `ml-sync/notas/decide_pedidos.py`, `juicioQ` (le saca el "Hola Tito! " del principio antes de armar el motivo).
+- **Qué chequear:** `grep -c "Hola Tito! Hola" ml-sync/notas/pedidos.txt` da 0 después de la completa.
+
 ### 🏬 Pedidos de Bs As para 60 días (03/11/2026, etapa 3; él: *"Paulvic hay siempre. Nissei también y Bs As la mitad de las veces"*, eligió 60)
 - **Qué es:** `Tde` en `ml-sync/notas/decide_pedidos.py`: todo lo de Bs As con ritmo pide para 60 días (antes 30, o 45 si se cortaba). Paraguay 30, Paulvic 45. Las cajas a Full siguen en 37 días: lo demás espera en la oficina (no paga stock antiguo).
 - **1a del 03/11:** en `ritmo()` (rama NOR), con el precio cambiado hace 2-6 días con stock, manda el más bajo entre el ritmo normal y el del precio nuevo (17 renglones el 03/11; Bs As $3,29M → $3,28M).
