@@ -995,6 +995,8 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
   `errores`). Qué chequear: `errores` muestra al Separador en 📉 y el Rebarbador MLA2039134465 (mismo caso); F4/F7 no toman la baja deshecha
   como la última suba ni como cambio vigente.
 
+- **11/11 · Publicar sin costo** (él: *"siempre publicá aunque no tengas costo… ponelo caro cosa que nadie compre… tampoco precios boludos"*). Qué es: `publicar:<ficha>|cuenta=|precio=|catalogo=|sincosto|go` salta el % (la ficha no tiene costo) y exige precio entre 1,2× y 2× el más caro del catálogo; `catbuscar:<texto>` lista catálogos de ML con vendedores, rango de precios y foto. Dónde: `sync.mjs` (`publicar`, `catbuscar`). Qué chequear: que con costo cargado `sincosto` se niegue; que al pasar el costo la vuelta lo ponga al 35% y no quede caro para siempre; que la activación al llegar a Full no lo venda barato.
+
 ## 2 · PLATA (martes)
 ### ✅ Plata y Local · decisiones del 08/11
 (Revisión de la Plata del 05/11 y del Local del 06/11; él eligió Plata 3a 7a 8a 9a 10a 12a 13a 14a 15a · Local 2a 5a 6a 8a. Local 3, 4b y 16 quedan como están, sin código.)
