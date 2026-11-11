@@ -130,8 +130,8 @@ def _p35(t):
 LIQ_PRUEBA=2
 def bajo35(ph,full,cam,casa,p35):
     if ph is None or ph>=35: return None
-    if full+cam>0: return (0,f"💸 hoy se vende a {ph}% (menos de 35%): no va más a Full hasta vender lo que hay ahí ({full+cam}); después se sube al 35% y se prueba 2 meses (él, 11/11)")
-    q=min(LIQ_PRUEBA,casa); return (q,f"💸 prueba: {q} a Full para venderlas al precio del 35%{(' ($'+format(p35,',').replace(',','.')+')') if p35 else ''} durante 2 meses; si venden ahí, se manda a ese ritmo (él, 11/11)")
+    if full+cam>0: return (0,f"💸 hoy se vende a {ph}% (menos de 35%): no va más a Full hasta vender lo que hay ahí ({full+cam}), después se sube al 35% y se prueba 2 meses (él, 11/11)")
+    q=min(LIQ_PRUEBA,casa); return (q,f"💸 prueba: {q} a Full para venderlas al precio del 35%{(' ($'+format(p35,',').replace(',','.')+')') if p35 else ''} durante 2 meses, si venden ahí, se manda a ese ritmo (él, 11/11)")
 for l in L:
     m=re.match(r'════ (BSAS|PY|PAULVIC) · (\d+) ════',l)
     if m: esper+=int(m.group(2)); grupos.add(m.group(1)); cur=None; continue
