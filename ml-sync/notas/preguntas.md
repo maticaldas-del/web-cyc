@@ -92,3 +92,5 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 - **(08/11) ¿Lo que me mandó es una orden clara?** Un número o texto suelto sin decir qué es, se le pregunta qué es antes de escribir algo en ML con eso.
 
 - **(10/11) ¿Medí el precio de ML de HOY, renglón por renglón, contra el más barato y el más barato con Full, y miré si hay otra ficha del mismo producto más barata?** Nunca el % guardado. Para un pedido: `pyrevisar` antes de decir que está listo.
+
+- **(11/11) ¿Lo que voy a mandar a Full hoy se vende a 35% o más?** Si se está liquidando abajo del 35%, no se manda nada hasta vaciar Full; después prueba al 35% por 2 meses.
