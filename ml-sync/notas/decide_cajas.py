@@ -119,6 +119,19 @@ def _num_o_none(t,nom):
     s=_campo(t,nom); return None if s is None else _ctas_num(s)
 def _lst_o_none(t,nom):
     s=_campo(t,nom); return None if s is None else [AB[x] for x in s.split() if x in AB]
+# 💸 LO QUE HOY SE VENDE ABAJO DEL 35% NO VA A FULL (11/11/2026, él con el Pendrive 128: "eso está mal. Ya que se vende a menos de 35%. La
+# idea es sacar de encima el stock extra de ML, para no pagar tanto, pero después subirlos al 35% y mantener ahí para ver si vende al 35%
+# durante dos meses. Si se vende ahí sí mando a ese ritmo del 35%"). `PH` = el % del peor caso al precio de HOY (pedidostodo). Con stock en Full
+# o en camino: 0 (primero se vende lo de Full). Con Full en 0: una prueba chica (2) para venderla al precio del 35% (`p35`) durante 2 meses.
+def _ph(t):
+    m_=re.search(r' · PH (-?\d+)',t or ''); return int(m_.group(1)) if m_ else None
+def _p35(t):
+    m_=re.search(r' · M35 no:[^:\s]*:[^:\s]*:(\d+)',t or ''); return int(m_.group(1)) if m_ else None
+LIQ_PRUEBA=2
+def bajo35(ph,full,cam,casa,p35):
+    if ph is None or ph>=35: return None
+    if full+cam>0: return (0,f"💸 hoy se vende a {ph}% (menos de 35%): no va más a Full hasta vender lo que hay ahí ({full+cam}); después se sube al 35% y se prueba 2 meses (él, 11/11)")
+    q=min(LIQ_PRUEBA,casa); return (q,f"💸 prueba: {q} a Full para venderlas al precio del 35%{(' ($'+format(p35,',').replace(',','.')+')') if p35 else ''} durante 2 meses; si venden ahí, se manda a ese ritmo (él, 11/11)")
 for l in L:
     m=re.match(r'════ (BSAS|PY|PAULVIC) · (\d+) ════',l)
     if m: esper+=int(m.group(2)); grupos.add(m.group(1)); cur=None; continue
@@ -132,12 +145,12 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
                  fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11),
-                 soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None));P.append(cur);continue
+                 soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
     if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8)),hoy=hoy_de(l),
-                                          fullC=_num_o_none(l,'fullcta'),camC=_num_o_none(l,'camcta'),pubV=_lst_o_none(l,'pubV'),dec=_num_o_none(l,'cajadec')))
+                                          fullC=_num_o_none(l,'fullcta'),camC=_num_o_none(l,'camcta'),pubV=_lst_o_none(l,'pubV'),dec=_num_o_none(l,'cajadec'),ph=_ph(l),p35=_p35(l)))
 print(f"leí {len(P)} de {esper} productos"+(' ✓' if len(P)==esper else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 # NO SE ESCRIBE NADA A MEDIAS (etapa 5, 20/10/2026): renglones que no entendí, grupos que no cierran, falta un grupo o la
 # línea final "CUENTA: … ✓" (el log se cortó o el comando se cayó) → no se arma cajas.txt.
@@ -296,6 +309,9 @@ for p in P:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola=f"En {c} no hay publicación de este color ({x['v']}): sin publicación de ese color no va (lo de la oficina espera){perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             fd=x['fullC'].get(c,0);cd=x['camC'].get(c,0);otras=max(0,(x['full']+x['cam'])-(fd+cd));sinPubOtras=(c not in p['pub']) and otras>0
+            _b35=bajo35(x.get('ph'),x['full'],x['cam'],x['casa'],x.get('p35'))
+            if _b35:
+                out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=_b35[0],cola=_b35[1]+perf_txt(x.get('perfR',0))+AUTO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras)
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
@@ -308,6 +324,9 @@ for p in P:
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=min(fq,p['casa']),cola=fm+perf_txt(p.get('perfR',0))+FIJO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],fijo=True,dec=p['dec'].get(cta)))
     else:
         fd=p['fullC'].get(cta,0);cd=p['camC'].get(cta,0);otras=max(0,(p['full']+p['cam'])-(fd+cd));sinPubOtras=(cta not in p['pub']) and otras>0
+        _b35=bajo35(p.get('ph'),p['full'],p['cam'],p['casa'],p.get('p35'))
+        if _b35:
+            out.append(dict(cab=f"caja:{p['id']}@{cta}",q=_b35[0],cola=_b35[1]+perf_txt(p.get('perfR',0))+AUTO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],dec=p['dec'].get(cta))); continue
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras)
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,

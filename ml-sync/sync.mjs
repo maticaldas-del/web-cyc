@@ -52170,11 +52170,15 @@ async function main() {
             for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
               if (diaConStock(x) && Number(x.pLista || x.p) >= X * 0.97) { D.add(k); u += Number(x.u) || 0; } } } return `${u}/${D.size}`; };
           const r = (x) => x == null ? '?' : Math.round(x);
-          if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}`;
-          if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}`;
+          // 11/11/2026 (él con el Pendrive 128: "se vende a menos de 35%… la idea es sacar de encima el stock extra de ML… después subirlos al 35% y
+          // mantener ahí dos meses. Si se vende ahí sí mando a ese ritmo"): el % de HOY al precio de la publicación, para que decide_cajas.py no mande a Full
+          // lo que hoy se vende abajo del 35%.
+          const _P0h = Number(b.price) || 0; const _mhH = _P0h > 0 ? await mg(_P0h) : null; const PHt = _mhH != null ? ` · PH ${Math.round(_mhH)}` : '';
+          if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}${PHt}`;
+          if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}${PHt}`;
           // Revisión etapa 4, 30/10/2026: si ML no dio la comisión a uno de esos precios, no se sabe si llega: no sale M35 (Pedidos usa el precio de
           // hoy) en vez de "M35 no", que lo mandaba a compra de prueba.
-          if ((pc > 0 && mc == null) || (pv > 0 && mv == null)) return '';
+          if ((pc > 0 && mc == null) || (pv > 0 && mv == null)) return PHt;
           // 29/10/2026 (él: "descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en
           // stock en full"): el precio que deja 35% (`p35`, entre el de hoy y la venta más cara, verificado con la comisión de ML) y cuántos días
           // estuvo a ese precio o más caro con stock y cuánto vendió ahí (365 días). decide_pedidos.py descarta sólo con 30+ días sin vender.
@@ -52183,8 +52187,8 @@ async function main() {
           if (pts.length >= 2) { const [p1, y1] = pts[0], [p2, y2] = pts[pts.length - 1]; if (y2 > y1) p35 = p1 + (MIN35 - y1) * (p2 - p1) / (y2 - y1); }
           else if (pts.length === 1 && pts[0][1] > -50) p35 = pts[0][0] * (1 + (MIN35 - pts[0][1]) / 100);
           if (p35 > 0) { p35 = Math.ceil(p35 / 100) * 100 - 10; for (let i = 0; i < 6; i++) { const y = await mg(p35); if (y == null || y >= MIN35) break; p35 = Math.ceil(p35 * 1.04 / 100) * 100 - 10; } }
-          if (mc == null && mv == null && !(p35 > 0)) return '';
-          return ` · M35 no:${r(mc)}:${r(mv)}${p35 > 0 ? ':' + Math.round(p35) + ':' + (await rit(p35)) : ''}`;
+          if (mc == null && mv == null && !(p35 > 0)) return PHt;
+          return ` · M35 no:${r(mc)}:${r(mv)}${p35 > 0 ? ':' + Math.round(p35) + ':' + (await rit(p35)) : ''}${PHt}`;
         };
         for (const p of todos) {
           const cs = clas(p.id); if (!cs.length) continue;
