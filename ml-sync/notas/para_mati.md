@@ -633,3 +633,6 @@ Ya arreglado (v28.173-28.174, ninguna regla cambió): las ventas que llegan tard
 9. **Recordatorios** (ya estaban): Pendrive 64gb (5 del 04/11) y Paulvic Blue Men (1 del 04/11).
 
 Para que sepas, sin decidir: el Protector talón vuelve hoy a 5.290. El 08/11 el detector le sacó por error el descuento renovado y quedó 3 días a 6.490. La caja del Espejo 7" no puede salir porque el cupo de Full de Ayelen está en 0.
+10. **Mazo Azul** (MLA1495684891 y MLA1812799239, mismas 56 en Full): la prueba de 17.490 del 01/11 lleva 10 días con visitas sin vender. A 6.490 vendía 6 en 7 días (su precio de más plata). El robot no deja volver de una (dice que ningún precio de antes vendía) ni bajar en escalera (sin línea de techo). (a) sugerida: autorizar volver a 6.490. (b) autorizar la escalera como descuento (14.890, después ~12.690…). Techo95: 17.490 sin certeza, 10 días sin vender.
+
+Hechos de la completa del 11/11: Cuba Platinum a 49.990 con descuento · VS Pure Seduction 58.490 (liquidación) · Halloween Kiss 105.390 (liquidación) · Toallas Calipso 4.690 · Cortapelo a pila 12.590 (90 días, lo que elegiste) · Panel solar 8.790 al costo · Protector talón vuelve a 5.290. El termómetro MLA1472539211 no pudo pasar a 💰 (el robot pide 🔴): queda volviendo.
