@@ -15377,9 +15377,12 @@ async function colaParaRobot(db, labels) {
       else if (/^\s*(MIRAR TODO|HOY LLEGA)/i.test(txt)) {
         const L = txt.split('\n').map((l) => l.trim()).filter(Boolean);
         // ¿llega algo? un "HOY LLEGA · <cuenta>: <algo que no es nada>", un retiro/compra/devolución a casa en camino, o "llegan hoy N" con N > 0
-        const llega = (l) => (/^HOY LLEGA/i.test(l) && !/:\s*nada\b/i.test(l)) || /llegan hoy\s*[1-9]|retiros en camino\s*[1-9]/i.test(l)
-          || (/⏰/.test(l) && /lleg|retiro|compra|devoluci|agencia|domicilio/i.test(l));
-        if (L.some(llega)) rengs = L.filter((l) => llega(l) || /^HOY LLEGA/i.test(l) || /c[oó]digo/i.test(l)).slice(0, 25);
+        // 11/11/2026 (él: "quiero que me mande sólo lo que llega, no 'nada'"): un renglón de cuenta va sólo si llega algo (compra, retiro,
+        // devolución a casa, "llega el/entre…"); "nada" o un estado viejo ("ya llegó", "quedó viejo") no va. El código de la cuenta viene en el mismo renglón.
+        const viejo = (l) => /ya lleg[oó]|qued[oó] viejo|estado viejo/i.test(l);
+        const llega = (l) => !viejo(l) && ((/^HOY LLEGA/i.test(l) && (!/:\s*nada\b/i.test(l) || /compra|retiro|devoluci|llega (el|entre|ma[ñn]ana|hoy)/i.test(l)))
+          || /llegan hoy\s*[1-9]|retiros en camino\s*[1-9]/i.test(l) || (/⏰/.test(l) && /lleg|retiro|compra|devoluci|agencia|domicilio/i.test(l)));
+        rengs = L.filter(llega).slice(0, 25);
       }
       if (!rengs.length) { await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: false }); continue; }
       const dia = new Date(tsM - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
