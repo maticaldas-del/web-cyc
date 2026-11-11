@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.172';
+const APP_VERSION='28.173';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.173',f:'11/11',h:'04:40',c:[{n:2,t:'📈 Revisión de Datos: las rayas de un producto ya no pierden las ventas de una gemela o publicación cerrada (salía un 🔴 falso), un día con venta nunca cuenta como "sin visitas", y Métricas → Cambios de precio cuenta también mis descuentos.'}]},
   {v:'28.172',f:'10/11',h:'17:22',c:[{n:2,t:'🇵🇾 Pedido del momento: pasa sólo lo mirado en Nissei hace menos de 24 h (antes 2 días). El 💵 al venderse suma aparte la ganancia de la 🏬 Tienda (25%).'}]},
   {v:'28.171',f:'10/11',h:'15:42',c:[{n:1,t:'🚚 Para mirar en Via Cargo: cada guía dice el número del pedido, cuándo se hizo el pedido y cuándo se cargó la guía.'}]},
   {v:'28.170',f:'10/11',h:'14:20',c:[{n:1,t:'🚚 Pedidos → Paraguay: cada pedido hecho muestra su guía de Via Cargo (o "falta la guía" si ya tiene ticket y todavía no se cargó).'}]},
@@ -13337,8 +13338,9 @@ function _lineaColorDe(l){if(!l)return '';const v=String(l.variant||'').trim();i
 // las otras de la misma clave, con el stock tomado UNA vez (el mayor de los que lo informan, nunca sumado).
 function _claveStockPub(l){if(!l||!l.prodId)return null;const p=(state.products||[]).find(pp=>pp.id===l.prodId);const vs=p&&Array.isArray(p.variantes)?p.variantes:[];
   const v=_lineaColorDe(l);if(vs.length&&!v)return null;return l.prodId+'__'+sid(String(l.cuenta||'').toLowerCase())+(v?'__v__'+sid(String(v).toLowerCase()):'');}
-function _hermanasStock(mla){const L=state.mllinks||{};const e=L[mla];const k=_claveStockPub(e);if(!k)return [];
-  return Object.keys(L).filter(m=>{const x=L[m];return m!==mla&&x&&!x.ignored&&!x.hidden&&!x.noVendemosMas&&!['closed','inactive'].includes(String(x.status||''))&&x.prodId===e.prodId&&_claveStockPub(x)===k;});}
+// Revisión etapa 5 (11/11/2026): `conCerradas` = para juntar la línea de las rayas también las cerradas/inactivas (no las ignoradas), como el robot.
+function _hermanasStock(mla,conCerradas){const L=state.mllinks||{};const e=L[mla];const k=_claveStockPub(e);if(!k)return [];
+  return Object.keys(L).filter(m=>{const x=L[m];return m!==mla&&x&&!x.ignored&&(conCerradas||(!x.hidden&&!x.noVendemosMas&&!['closed','inactive'].includes(String(x.status||''))))&&x.prodId===e.prodId&&_claveStockPub(x)===k;});}
 function _lineaJuntaStock(dP,otras){const out={};for(const [k,x] of Object.entries(dP||{})){if(!/^\d{4}_\d{2}_\d{2}$/.test(k)||!x||typeof x!=='object'){out[k]=x;continue;}const o={...x};
   o.uOwn=x.u;o.totOwn=x.tot;   // revisión etapa 1 (24/10): lo de ESTA publicación sola, como `juntarLineaStock` del robot (decide el precio del día)
   for(const d2 of (otras||[])){const y=d2&&d2[k];if(!y||typeof y!=='object')continue;for(const c of ['u','uR','neto','tot'])if(y[c]!=null)o[c]=(Number(o[c])||0)+(Number(y[c])||0);
@@ -13717,7 +13719,7 @@ function lineaPintar(prodId){
     return act.length>=1?act.sort((a,b)=>a.p-b.p||String(a.m).localeCompare(String(b.m)))[0].m:null;})();
   // 5.2a (21/10/2026): la publicación de las rayas se mide JUNTO con las que comparten su stock (gemela Premium, repetidas): sus ventas
   // y su plata suman, y el stock (la plata parada, 1.6a) va una sola vez. La misma cuenta que `techo95` y la ficha del robot.
-  const _grupoRaya=_mlaRaya?[_mlaRaya].concat(_hermanasStock(_mlaRaya).filter(m=>C.porMla[m]&&typeof C.porMla[m]==='object')):[];
+  const _grupoRaya=_mlaRaya?[_mlaRaya].concat(_hermanasStock(_mlaRaya,true).filter(m=>C.porMla[m]&&typeof C.porMla[m]==='object')):[];
   const _rayasDias=_mlaRaya?_lineaJunta({[_mlaRaya]:_grupoRaya.length>1?_lineaJuntaStock(porMlaF[_mlaRaya],_grupoRaya.slice(1).map(m=>C.porMla[m])):porMlaF[_mlaRaya]},state.mllinks||{},_lineaVar||''):dias;
   const _gdFuera={};   // revisión etapa 1 (24/10): las rayas miran toda la línea; los días fuera de lo que se ve se calculan acá (gd sólo tiene los visibles)
   const _ganRaya=k=>{let g=gd[k];if(!g){if(!(k in _gdFuera))_gdFuera[k]=_gdPanel(k)||_gdViejo(k)||null;g=_gdFuera[k];}if(!g)return 0;if(_mlaRaya)return _grupoRaya.reduce((a,m)=>a+(Number((g.porMla||{})[m])||0),0);return g.ganHoy!=null?g.ganHoy:(g.gan||0);};
@@ -13755,7 +13757,7 @@ function lineaPintar(prodId){
     const L=Object.values(G).map(g=>({...g,r:g.u/g.dias,rN:g.dF>0?g.u/g.dF:g.u/g.dias,pd:g.gan/g.dias,gu:g.u?g.gan/g.u:null}));
     // 🔴 POR 30 DÍAS SIN VENDER (24/10/2026, él: "a los 30 días de no vender sí o sí se marca como techo"): el precio más bajo que, con sus
     // días y los de todos los más caros (activa, 1+ u. en Full), lleva 30+ días sin una venta. Misma cuenta que `rayasPrecioLinea`.
-    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];/* revisión etapa 5 (01/11): un día de fecha especial con venta SÍ cuenta (cortaba la racha: vendió y decía "30 días sin vender"); sin venta sigue afuera, igual que `rayasPrecioLinea` */if(!d||k<_kDesdeR||(_fueraR.has(k)&&!((d.u||0)-(d.uR||0)>0)))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;/* 18a del 03/11 (él: contar sólo días con visitas): un día con 0 visitas no cuenta para los 10 días sin vender; sin el dato sí, igual que `sinVisitasDia` del robot */if(d.vis!=null&&Number(d.vis)===0)return;const pl=_plR[k]||0;if(!(pl>0))return;
+    const _t30=(()=>{const G1={};ksR.forEach(k=>{const d=_rayasDias[k];/* revisión etapa 5 (01/11): un día de fecha especial con venta SÍ cuenta (cortaba la racha: vendió y decía "30 días sin vender"); sin venta sigue afuera, igual que `rayasPrecioLinea` */if(!d||k<_kDesdeR||(_fueraR.has(k)&&!((d.u||0)-(d.uR||0)>0)))return;if(d.est!=null&&d.est!=='active')return;if(!((Number(d.st)||0)>=1||(d.u||0)>0))return;/* 18a del 03/11 (él: contar sólo días con visitas): un día con 0 visitas no cuenta para los 10 días sin vender; sin el dato sí, igual que `sinVisitasDia` del robot */if(d.vis!=null&&Number(d.vis)===0&&!((d.u||0)>0))return;/* etapa 5 (11/11): con venta nunca es "sin visitas" */const pl=_plR[k]||0;if(!(pl>0))return;
         const b=Math.round(pl/10)*10;const g=(G1[b]=G1[b]||{p:b,dias:0,u:0});g.dias++;g.u+=Math.max(0,(d.u||0)-(d.uR||0));});
       /* 8a del 08/11 (él: "a"): lo lento (menos de 1 por semana a los precios que vendieron) hace 🔴 con los días de 3 ventas esperadas a ese ritmo, no con 10 (igual que `diasSinVentaTecho` del robot) */
       const _dSV=(()=>{if(Date.now()<Date.parse('2026-11-09T03:00:00Z'))return TECHO_DIAS_SIN_VENTA_W;let u=0,dd=0;Object.values(G1).forEach(g=>{if(g.u>0){u+=g.u;dd+=g.dias;}});const r=dd>0?u/dd:0;return r>0&&r*7<1?Math.min(RAYAS_DIAS,Math.max(TECHO_DIAS_SIN_VENTA_W,Math.ceil(3/r))):TECHO_DIAS_SIN_VENTA_W;})();
@@ -26234,7 +26236,7 @@ function renderMetAuto(){
   const buscando=!!metAutoNorm(metAutoQ).trim();
   if(buscando)delMes=delMes.filter(metAutoMatch);
   const deshechos=delMes.filter(x=>x.motivo==='deshace'&&x.estado==='medido').length;
-  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver','claude'].includes(x.motivo)):x.motivo===metAutoMot);
+  const lista=delMes.filter(x=>metAutoMot==='todas'?true:metAutoMot==='cuentan'?!!x.enTotal||(x.estado!=='medido'&&['subir','bajar','remate','escalera','prueba','rescatep','volver','claude','descuento'].includes(x.motivo)):x.motivo===metAutoMot);
   // El total grande: SÓLO lo medido que cuenta (decisiones del robot mirando el mercado), del mes elegido.
   const med=delMes.filter(x=>(x.estado==='medido'||x.estado==='encurso')&&x.enTotal);
   const tot=med.reduce((a,x)=>a+n(x.total),0),pre=med.reduce((a,x)=>a+n(x.precio),0),vol=med.reduce((a,x)=>a+n(x.volumen),0);

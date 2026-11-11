@@ -4656,9 +4656,11 @@ function claveStockPub(e, p) {
   return e.prodId + '__' + sid(String(e.cuenta || '').toLowerCase()) + (eVar ? '__v__' + sid(String(eVar).toLowerCase()) : '');
 }
 // Las otras publicaciones vivas (no cerradas, no ocultas, no "no la vendemos más") con la misma clave de stock que `mla`.
-function hermanasStockDe(links, prodById, mla) {
+// Revisión etapa 5 (11/11/2026): `conCerradas` = para JUNTAR LA LÍNEA (rayas, techo95, ficha) también las cerradas o inactivas (no las
+// ignoradas): si se cerraba la Premium que vendía, la Clásica quedaba sola y salía un 🔴 falso. Misma regla en index.html (`_hermanasStock`).
+function hermanasStockDe(links, prodById, mla, conCerradas = false) {
   const e = (links || {})[mla]; const k = claveStockPub(e, e && (prodById || {})[e.prodId]); if (!k) return [];
-  const viva = (x) => x && !x.ignored && !x.hidden && !x.noVendemosMas && !['closed', 'inactive'].includes(String(x.status || ''));
+  const viva = (x) => x && !x.ignored && (conCerradas || (!x.hidden && !x.noVendemosMas && !['closed', 'inactive'].includes(String(x.status || ''))));
   return Object.keys(links).filter((m) => m !== mla && viva(links[m]) && links[m].prodId === e.prodId && claveStockPub(links[m], (prodById || {})[links[m].prodId]) === k);
 }
 // La línea de `dPropia` con las ventas de las hermanas sumadas día por día. Manda lo de la propia: el precio, el estado (si estaba
@@ -4685,7 +4687,7 @@ function juntarLineaStock(dPropia, otras) {
 // Lee las líneas de las hermanas de stock y devuelve la junta. `lineaDe(mla)` puede ser async (null = no se pudo leer: esa no se
 // suma y se dice en `sinLeer`, para no medir a medias en silencio). Sin hermanas devuelve la propia tal cual.
 async function lineaJuntaStock(links, prodById, mla, dPropia, lineaDe) {
-  const hs = hermanasStockDe(links, prodById, mla); if (!hs.length) return { d: dPropia, con: [], sinLeer: [] };
+  const hs = hermanasStockDe(links, prodById, mla, true); if (!hs.length) return { d: dPropia, con: [], sinLeer: [] };
   const otras = [], con = [], sinLeer = [];
   for (const m of hs) { let d2 = null; try { d2 = await lineaDe(m); } catch { d2 = null; } if (d2 == null) { sinLeer.push(m); continue; } otras.push(d2); con.push(m); }
   return { d: con.length ? juntarLineaStock(dPropia, otras) : dPropia, con, sinLeer };
@@ -4876,10 +4878,14 @@ function umbralTecho(dias) { const d = Number(dias) || 0; return d <= 30 ? 0.95 
 // 18a del 03/11/2026 (él: "a" = contar sólo días con visitas): los 10 días sin vender NO cuentan un día con 0 visitas (nadie la vio: bajar no
 // lo arregla, es un 🆕 que ML no muestra). Un día sin el dato de visitas sí cuenta (no se sabe; el dato llega a la noche). Misma regla en la
 // web (`_rayas`), en las rayas del robot (🔴 por 10 días), en `precioMasCaroVendido`, en la vuelta del punto medio y en el lanzamiento de techo95.
-function sinVisitasDia(x) { return !!(x && typeof x === 'object' && x.vis != null && Number(x.vis) === 0); }
+// Revisión etapa 5 (11/11/2026): un día CON VENTA nunca es "sin visitas" (la línea junta deja 0 visitas si vendió la gemela y la Clásica no tuvo):
+// si no, la venta desaparecía de los 30 días sin vender y del 🔴. Misma regla en index.html (`_t30`).
+function sinVisitasDia(x) { return !!(x && typeof x === 'object' && x.vis != null && Number(x.vis) === 0 && !(Number(x.u) > 0)); }
 // Horas entre t0 y t1 sin contar los días enteros con 0 visitas de la línea (`lin` = la línea, junta si es de stock compartido).
 function horasConVisitas(lin, t0, t1) { const horas = (t1 - t0) / 36e5; if (!lin || typeof lin !== 'object') return horas; const k0 = dayKeyFromISO(t0), k1 = dayKeyFromISO(t1); let ceros = 0;
-  for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k <= k0 || k >= k1) continue; if (sinVisitasDia(x)) ceros++; }
+  // Revisión etapa 5 (11/11/2026): tampoco cuentan los días enteros SIN STOCK o pausada (`diaConStock`): una suba que vendió y después
+  // quedó 6 días sin stock salía "vendió 2 en 210 h, se esperaban ~8,8 → vuelve" (lo mismo que no vender con stock), y F14 se abría.
+  for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k <= k0 || k >= k1) continue; if (sinVisitasDia(x) || (x && typeof x === 'object' && !diaConStock(x))) ceros++; }
   return Math.max(0, horas - ceros * 24); }
 const LIQ_PISO_JOVEN = 30;   // 3a del 03/11/2026: piso de la liquidación de 30 días antes de los 90 días en Full
 const TECHO_DIAS_SIN_VENTA = 10;   // 02/11/2026 (él, 1 del punto medio: "no quiero esperar más de 10 días sin vender para bajar"; antes 30)
@@ -6079,8 +6085,9 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   const t0 = ch[i].ts, horas = Math.max(0, (ahora - t0) / 36e5 - horasBF(t0, ahora));
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `dejó ${money(ch[i].de)} hace ${Math.round(horas)} h: se juzga con 24 h como mínimo (él, 02/11)` };
   const uds = await ventasGrupoEntre(db, mla, links, prods, t0, ahora, ch[i].de, true); if (uds == null) return null;
-  const Rt0 = rit(i), Rt = rMal != null ? { ...Rt0, r: rMal } : Rt0, esp = Rt.r * horas / 24;
   const horasV = Math.max(0, horasConVisitas(lin, t0, ahora) - horasBF(t0, ahora));   // 18a del 03/11: los días con 0 visitas no cuentan para los 10 días sin vender
+  // Revisión etapa 5 (11/11): lo esperado se cuenta sobre las horas que se podía vender (sin días sin stock, pausada ni con 0 visitas).
+  const Rt0 = rit(i), Rt = rMal != null ? { ...Rt0, r: rMal } : Rt0, esp = Rt.r * horasV / 24;
   // 8a del 08/11/2026 (él: "a"): LO LENTO (menos de 1 por semana al precio de antes) se juzga por 3 VENTAS ESPERADAS con 10 días como mínimo,
   // no a los 10 días: a 1 cada 14 días la mitad de las pruebas salía 🔴 sólo por azar. `diasJ` = los días que hacen falta para juzgar.
   const lentoV = Rt.r > 0 && Rt.r * 7 < TECHO_RITMO_MIN_SEMANA && ahora >= DET_REGLA_DESDE.reglas0811;
@@ -6091,7 +6098,7 @@ async function vueltaDeSuba(db, mla, links, prods, camb, p0, ahora = Date.now(),
   // Lo facturado por día al precio de hoy contra lo esperado al de antes; como al bajar la ganancia por unidad cae más que el precio, se pide
   // que el de antes facture 1,5 veces lo de hoy (si no, se queda arriba).
   // lo facturado HOY = las ventas al precio de hoy (desde la última suba), no las de los escalones del medio (Cartas Casino: daba $98.000/día)
-  const uds0 = await ventasGrupoEntre(db, mla, links, prods, ch[0].ts, ahora, ch[0].de, true); const h0 = Math.max(1, (ahora - ch[0].ts) / 36e5 - horasBF(ch[0].ts, ahora));
+  const uds0 = await ventasGrupoEntre(db, mla, links, prods, ch[0].ts, ahora, ch[0].de, true); const h0 = Math.max(1, horasConVisitas(lin, ch[0].ts, ahora) - horasBF(ch[0].ts, ahora));
   const facHoy = uds0 == null ? 0 : uds0 / (h0 / 24) * ch[0].a, facAntes = Rt.r * ch[i].de;
   // 02/11/2026 (él, después: "si vende más lo suficiente bajalo… o sino dejalo a este precio si venden bien y se le gana más y cuando
   // estemos por llegar a pagar stock, lo pagamos, retiramos o antes lo vendemos más barato"): el stock que dura 120+ días NO hace volver;
@@ -6634,7 +6641,7 @@ async function detectarErrores(db, o = {}) {
   const notaCer = async (mla, simple, extra) => {
     const e = links[mla] || {}; const ts = Date.now();
     try { await db.set('mlapi/claudeexp/' + mla, { ts, simple: String(simple).slice(0, 2500), nom: String(e.title || '').slice(0, 60), cuenta: e.cuenta || '', ...(extra || {}) });
-      try { await db.set('mlapi/fichanotas/' + mla + '/' + ts, { t: String(simple).slice(0, 1200), tipo: (extra && extra.tipo) || 'nota' }); } catch { /* la historia de la ficha queda sin ésta */ } }
+      try { await db.set('mlapi/fichanotas/' + mla + '/' + ts, { t: String(simple).slice(0, 1200), tipo: (extra && extra.tipo) || 'nota', ...((extra && extra.det) ? { det: true } : {}) }); } catch { /* la historia de la ficha queda sin ésta */ } }
     catch { console.log(`   ⚠️ no quedó la nota del 🧠 de ${mla}`); }
   };
   for (const x of aDeshacer) {
@@ -6649,7 +6656,7 @@ async function detectarErrores(db, o = {}) {
       for (const l of rS.log) console.log('   ' + l);
       if (!rS.ok) { no(rS.log.join(' · ')); continue; }
       res.hechos.push({ x, txt: `salí del descuento de ${$(x.a)} (vuelve ${$(x.de)})`, reglas });
-      await notaCer(x.mla, `El detector sacó el descuento a ${$(x.a)}: rompía ${reglas}. Vuelve el precio de lista ${$(x.de)}.`, { tipo: 'promo' });
+      await notaCer(x.mla, `El detector sacó el descuento a ${$(x.a)}: rompía ${reglas}. Vuelve el precio de lista ${$(x.de)}.`, { tipo: 'promo', det: true });
       console.log(`✓ ${x.mla} · ${x.nom}: ${res.hechos[res.hechos.length - 1].txt}`);
       continue;
     }
@@ -6679,7 +6686,7 @@ async function detectarErrores(db, o = {}) {
       const okE = await guardarEstrategia(db, x.mla, tgAntes, mE.replace(/;/g, ','), ts + 1);
       if (!okE) console.log(`   ⚠️ ${x.mla}: no quedó la estrategia de antes (${ESTRATEGIAS[tgAntes]})`);
     }
-    await notaCer(x.mla, `${soloTerm ? 'Redondeé' : 'Volví'} de ${$(actual)} a ${$(quedoA)}: ${soloTerm ? 'el precio no terminaba en 90' : 'la baja del ' + fecha(x.ts) + ' rompía ' + reglas}. Lo hizo el detector de errores.`, { tipo: 'precio', de: actual, a: quedoA });
+    await notaCer(x.mla, `${soloTerm ? 'Redondeé' : 'Volví'} de ${$(actual)} a ${$(quedoA)}: ${soloTerm ? 'el precio no terminaba en 90' : 'la baja del ' + fecha(x.ts) + ' rompía ' + reglas}. Lo hizo el detector de errores.`, { tipo: 'precio', de: actual, a: quedoA, det: true });
     res.hechos.push({ x, txt: `${$(actual)} → ${$(quedoA)}${quedo != null ? (Math.abs(quedo - quedoA) <= 10 ? ' (releído ✓)' : ` (⚠️ ML dice ${$(quedo)})`) : ' (⚠️ sin releer)'}`, reglas });
     console.log(`✓ ${x.mla} · ${x.nom}: ${res.hechos[res.hechos.length - 1].txt}`);
   }
@@ -11070,6 +11077,10 @@ function totalANuestroPrecio(v, pvAll, dk) {
   const tot = Number(v && v.total) || 0; if (!pvAll || !(tot > 0)) return tot;
   const oid = String((v && (v.saleId || v.orderId)) || '').replace(/^s/, ''); if (!oid) return tot;
   const r = (pvAll[String(dk).slice(0, 10)] || {})[oid]; if (!r || !(Number(r.t) > 0)) return tot;
+  // Revisión etapa 5 (11/11/2026): con un CUPÓN solo, lo cobrado (`v.total` = precio unitario × cantidad) ya es nuestro precio de lista: el cupón
+  // va aparte. Sumarlo lo contaba dos veces (Sábanas Beige: 3 a $18.990 con $7.000 de ML salían $21.323 c/u, y `vendiocaro`/`pedidostodo` lo
+  // tomaban como precio vendido). Misma regla que `diasTachado`.
+  const tps = String(r.tipo || '').split(',').map((x) => x.trim()).filter(Boolean); if (tps.length && !tps.some((t) => t !== 'coupon')) return tot;
   let ml = 0; if (r.mla && v.mla && r.mla[v.mla]) ml = Math.max(0, (Number(r.mla[v.mla].t) || 0) - (Number(r.mla[v.mla].s) || 0)); else if (!r.mla || Object.keys(r.mla).length <= 1) ml = Number(r.ml) || 0;
   return tot + ml;
 }
@@ -11480,9 +11491,11 @@ async function timbreVentas(db, opts = {}) {
   let H = 0, mem = {};
   try { H = Number(await db.get('mlapi/ventasvistas/hasta')) || 0; mem = (await db.get('mlapi/timbre')) || {}; } catch { console.log('🔔 timbre: no pude leer hasta dónde se revisó: esta vuelta no toco'); return null; }
   const ahora = Date.now(), desde = Math.max(H, ahora - 3 * 864e5);
-  const dias = []; for (let t = desde; t <= ahora + 864e5; t += 864e5) { const k = dayKeyFromISO(t); if (!dias.includes(k) && k <= dayKeyFromISO(ahora)) dias.push(k); }
+  // Revisión etapa 5 (11/11): se mira por `vistoTs` (cuándo llegó la venta, ver la escritura de ventas) y 3 días más para atrás, para que una
+  // compra que llega tarde (pagada tarde, cuenta que no se leyó) también toque el timbre.
+  const dias = []; for (let t = desde - 3 * 864e5; t <= ahora + 864e5; t += 864e5) { const k = dayKeyFromISO(t); if (!dias.includes(k) && k <= dayKeyFromISO(ahora)) dias.push(k); }
   const vp = {}; for (const k of dias) { try { vp[k] = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { console.log('🔔 timbre: no pude leer las ventas de ' + k + ': esta vuelta no toco'); return null; } }
-  const tsDe = (v) => Number(v.ts) || Date.parse(v.ts || '') || 0;
+  const tsDe = (v) => Number(v.vistoTs) || Number(v.ts) || Date.parse(v.ts || '') || 0;
   const grupos = {};
   for (const [dk, dia] of Object.entries(vp)) for (const [id, v] of Object.entries(dia || {})) {
     if (!v || v.cancelada) continue; const ts = tsDe(v); if (!(ts > desde)) continue;
@@ -25325,6 +25338,13 @@ async function main() {
         // desde el 24/10 todo lo que queda abajo del 35% en el peor caso cuenta como sacar stock (él).
         const mgPDe = (np, e) => { const mg = mgDe(np, e); if (mg == undefined) return undefined; const P = Number(np.precio), env = Number(np.envio) || 0, pr = prodsL[e.prodId]; const cu = costoPesos(pr, 1, tcMg).costo; const m = ((ML_EXTRA_PCT[String(e.cuenta || '').toLowerCase()] || 4) + monoMg) / 100;
           const v = (Number(np.neto) - cu - P * m - P * PEOR_RET_PCT) / (cu + P * m + env) * 100; return isFinite(v) ? Math.round(v * 10) / 10 : undefined; };
+        // Revisión etapa 5 (11/11/2026): el precio de AYER es el de ANTES del primer cambio mío de hoy. La línea se escribe a las 03:00 (completa) y
+        // otra vez a las 06-07 (ml-daily), después de que la completa cambió precios: la fila de ayer quedaba con el precio nuevo (el día de antes
+        // de una suba salía "a $15.000 sin vender" y el punto medio no encontraba el precio que vendía). `de` del primer cambio después de las 23:59.
+        const deAntesHoy = {}; try { const ccL = (await db.get('cyc/claudecambios')) || {};
+          for (const x of Object.values(ccL)) { const t = Number(x && x.ts) || 0, m = String((x && x.mla) || '').toUpperCase(); if (!m || !(t > finAyer) || !(Number(x.de) > 0)) continue;
+            if (!deAntesHoy[m] || t < deAntesHoy[m].t) deAntesHoy[m] = { t, de: Math.round(Number(x.de)) }; } }
+        catch { console.log('⚠️ línea de ayer: no leí mis cambios de hoy: el precio de ayer es el que se lee ahora (puede ser el de después de un cambio de hoy)'); }
         let phAll = {}, pcAll = {}; try { phAll = (await db.get('cyc/promohist')) || {}; pcAll = (await db.get('cyc/promoclaude')) || {}; } catch { phAll = null; console.log('⚠️ línea de ayer: no leí los descuentos (promohist/promoclaude): el precio visto (pV) de ayer queda sin poner'); }   // 1a del 03/11 (precio visto)
         const filas = {}; let leidas = 0, sinLeer = 0, visUna = 0, visErr = '';
         const desdeY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z')).toISOString(), hastaY = new Date(Date.parse(ayerK.replace(/_/g, '-') + 'T03:00:00Z') + DMS - 1000).toISOString();
@@ -25364,7 +25384,9 @@ async function main() {
             const todosAdentro = vars.length > 1 || (e.invVar && Object.keys(e.invVar).length > 1);
             const usaP = todosAdentro && !(links[mla] || {}).variant;   // el color sacado del título no manda si están todos adentro
             const stI = kV && !usaP ? (inv[kV] != null ? inv[kV] : null) : (kP && (!e._conColor || todosAdentro) && inv[kP] != null ? inv[kP] : null);
-            const precio = b ? (vars.length ? Math.min(...vars.map((v) => Number(v.price) || Infinity)) : Number(b.price)) : null;
+            const precioLeido = b ? (vars.length ? Math.min(...vars.map((v) => Number(v.price) || Infinity)) : Number(b.price)) : null;
+            const _cHoy = !vars.length && deAntesHoy[String(mla).toUpperCase()];   // con variantes `de` es de una sola: queda lo leído
+            const precio = _cHoy ? _cHoy.de : precioLeido;
             const vpD = (ventasPanel[mla] || {})[ayerK] || { u: 0, tot: 0, neto: 0, uR: 0 };
             const caja = { winning: 'g', sharing: 'c', losing: 'p', nocat: 'n', sincaja: 's', listed: 'n', not_listed: 'n' }[e.caja] || (e.caja ? String(e.caja).slice(0, 8) : undefined);
             const np = netopub[mla] || {};
@@ -25374,7 +25396,7 @@ async function main() {
             const cajaOk = !!(b && b.status === 'active' && Number(e.cajaTs) > 0 && T0 - Number(e.cajaTs) < 26 * 3600e3);
             const row = {
               st: stI != null ? Math.max(0, parseInt(stI) || 0) + (vendHoy[kV && !usaP ? kV : kP] || 0) : undefined, stF: stI != null ? 'inv' : undefined,
-              p: precio > 0 && isFinite(precio) ? Math.round(precio) : undefined, pF: precio > 0 && isFinite(precio) ? 'ml' : undefined,
+              p: precio > 0 && isFinite(precio) ? Math.round(precio) : undefined, pF: precio > 0 && isFinite(precio) ? 'ml' : undefined, pAntes: _cHoy ? 1 : null,
               pV: precio > 0 && isFinite(precio) && phAll && precioVistoDiaBot(phAll[mla], pcAll[mla], ayerK, Math.round(precio)) < Math.round(precio) ? precioVistoDiaBot(phAll[mla], pcAll[mla], ayerK, Math.round(precio)) : undefined,   // 1a del 03/11: el que vio el comprador
               est: b ? b.status : undefined, sub: b && Array.isArray(b.sub_status) && b.sub_status.length ? b.sub_status.join(',') : undefined,
               caja: cajaOk ? caja : undefined, ptw: cajaOk && Number(e.cajaPtw) > 0 ? Math.round(Number(e.cajaPtw)) : undefined,
@@ -25384,7 +25406,7 @@ async function main() {
               mg: mgDe(np, e), mgP: mgPDe(np, e),
               vend: b && b.sold_quantity != null ? b.sold_quantity : undefined,
             };
-            row.inc = ['st', 'p', 'est', 'vis'].some((c) => row[c] === undefined) ? 1 : undefined;
+            row.inc = ['st', 'p', 'est', 'vis'].some((c) => row[c] === undefined) ? 1 : null;   // null = la 2ª corrida de la noche lo borra si ya está completa (etapa 5, 11/11)
             filas[mla] = { [ayerK]: row };
           }
         }
@@ -41707,7 +41729,8 @@ async function main() {
       // automáticamente se tiene que tener en cuenta". Se sumó `volver` (el robot deshace un cambio
       // suyo que perdía, o vuelve de pasar a un sin Full): es una decisión del robot y su efecto se mide
       // igual. La ÚNICA excepción sigue siendo el rescate DESPUÉS de una venta baja (regla suya de hoy).
-      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep', 'volver', 'claude']);
+      // Revisión etapa 5 (11/11): mis descuentos (10a del 03/11) también se miden y cuentan (antes quedaban "a mano", sin plata medida).
+      const SUP_CUENTA = new Set(['subir', 'bajar', 'remate', 'escalera', 'prueba', 'rescatep', 'volver', 'claude', 'descuento']);
       function motivoDeAuto(a) {
         const por = a && a.por;
         if (por === 'margen' || por === 'venta' || por === 'costo' || por === 'correccion') return 'rescate';   // corregir una suba propia de más no es mérito del robot
@@ -41944,7 +41967,7 @@ async function main() {
       // La ventana es la misma de antes y de después: hasta 30 días, cortada donde el MISMO producto
       // tuvo otro cambio (si no, dos cambios se llevarían la misma venta dos veces). Con menos de 7
       // días de después no se mide: queda "en curso".
-      const ROBOT = new Set(['robot al vender', 'robot de noche', 'robot por costo']);
+      const ROBOT = new Set(['robot al vender', 'robot de noche', 'robot por costo', 'descuento mío']);
       const atrib = [];
       let enCurso = 0, sinCosto = 0, sinPrecio = 0, manuales = 0;
       const porMlaEv = {};
@@ -52284,11 +52307,12 @@ async function main() {
       // las claves de stock: con colores, cada color; sin colores, el total de la cuenta
       const claves = Object.entries(invR).filter(([k, v]) => (parseInt(v) || 0) > 0 && k.includes('__'));
       const conColor = new Set(claves.filter(([k]) => k.includes('__v__')).map(([k]) => k.slice(0, k.indexOf('__v__'))));
+      // Revisión etapa 5 (11/11): la nota que deja el detector al deshacer (`det`) tampoco cuenta como revisión a fondo.
       // Revisión etapa 1 (24/10): una nota de FALLO (no se pudo aplicar lo decidido) no es una revisión a fondo: vale la última nota que
       // no sea fallo (de la historia de la ficha, `mlapi/fichanotas/<MLA>`, que se lee sólo para las que hoy tienen un fallo arriba).
       const _revTs = new Map();
       const tsRev = async (m) => { if (_revTs.has(m)) return _revTs.get(m); const x = cxR[m] || {}; let t = Number(x.ts) || 0;
-        if (t && x.tipo === 'fallo') { t = 0; try { const hF = (await db.get('mlapi/fichanotas/' + m)) || {}; t = Math.max(0, ...Object.keys(hF).filter((kF) => (hF[kF] || {}).tipo !== 'fallo').map(Number).filter((n) => n > 0)); } catch { t = 0; } }
+        if (t && (x.tipo === 'fallo' || x.det)) { t = 0; try { const hF = (await db.get('mlapi/fichanotas/' + m)) || {}; t = Math.max(0, ...Object.keys(hF).filter((kF) => (hF[kF] || {}).tipo !== 'fallo' && !(hF[kF] || {}).det).map(Number).filter((n) => n > 0)); } catch { t = 0; } }
         _revTs.set(m, t); return t; };
       const filas = [], sinNombre = []; let mirados = 0, sinActiva = 0;
       for (const [k, v] of claves) {
@@ -52659,7 +52683,7 @@ async function main() {
         const pr0 = Math.round(Number(r.lanza ? r.P0 : (r.pH || r.P0)) || 0); if (!(pr0 > 0)) return false;
         const probado = Math.max(pr0, prev && Date.now() - (Number(prev.ts) || 0) < TECHO_REABRE_DIAS * 864e5 ? Number(prev.probado) || 0 : 0);
         const f = await fotoMercadoTecho(r.mla, probado, e, await tokDeT(e.cuenta), sidsT);
-        const reg = { ts: Date.now(), probado, volvio: Math.round(Number(r.P0) || 0) || null, motivo: `🏔️ techo95 ${(Number(r.seg) * 100).toFixed(0)}% seguro`, cat: !!f.cat, barato: f.barato ?? null, abajo: f.abajo ?? null, ajenos: f.ajenos ?? null, caja: f.caja || null, fotoTs: Date.now(), t95: true, ...(f.err ? { fotoErr: f.err } : {}) };
+        const reg = { ts: Date.now(), probado, volvio: Math.round(Number(r.P0) || 0) || null, motivo: `🏔️ techo95 ${(Number(r.seg ?? 1) * 100).toFixed(0)}% seguro`, cat: !!f.cat, barato: f.barato ?? null, abajo: f.abajo ?? null, ajenos: f.ajenos ?? null, caja: f.caja || null, fotoTs: Date.now(), t95: true, ...(f.err ? { fotoErr: f.err } : {}) };
         try { await db.set('cyc/techofreno/' + r.mla, reg); const rr = await db.get('cyc/techofreno/' + r.mla); const ok = !!(rr && rr.t95 && rr.probado === probado); tfT[r.mla] = reg; console.log(`   ${ok ? '📸 foto del mercado guardada' : '⚠️ la foto no quedó'} · ${r.mla} · techo ${money(probado)}${f.cat ? ` · más barato ajeno ${f.barato ? money(f.barato) : '—'} (${f.abajo ?? '?'} abajo) · caja ${f.caja || '?'}` : ' · no es de catálogo: vence a los 30 días'}${f.err ? ' · ⚠️ ' + f.err + ' (vence por tiempo)' : ''}`); return ok; }
         catch { console.log(`   ⚠️ ${r.mla}: no pude guardar la foto del mercado en cyc/techofreno`); return false; }
       };
@@ -52695,7 +52719,7 @@ async function main() {
           const tsHasta = r.ok && r.hasta ? Date.parse(r.hasta.replace(/_/g, '-') + 'T23:00:00-03:00') : Date.now();
           const ts = !r.ok ? Date.now() : especial ? Math.min(tsHasta, ultTs - 1000) : Math.min(Date.now(), Math.max(tsHasta, ultTs + 1000));
           const hall = r.ok && r.hasta ? ` · hallado el ${fK(r.hasta)}` : '';
-          const m0 = r.ok ? `Techo encontrado, ${(r.seg * 100).toFixed(0)}% seguro (se decidió con ${Math.round((r.umb || 0.95) * 100)}%): ${r.txt}` : `Volver a buscar techo (no llega a la seguridad que pide): ${r.falta}${r.txt ? '. ' + r.txt : ''}`;
+          const m0 = r.ok ? `Techo encontrado, ${((r.seg ?? 1) * 100).toFixed(0)}% seguro (se decidió con ${Math.round((r.umb || 0.95) * 100)}%): ${r.txt}` : `Volver a buscar techo (no llega a la seguridad que pide): ${r.falta}${r.txt ? '. ' + r.txt : ''}`;
           const m = m0.slice(0, 400 - hall.length) + hall;
           // 9a de la revisión de Datos (01/11, él el 03/11): lo que vende menos de 1 por semana y hoy está en 💰 #punto no vuelve a 📈 cuando no
           // llega al 95% (su regla 4a: a eso no se le busca techo subiendo); quedaba yendo y viniendo en la planilla. Sin poder medir el ritmo, como antes.
@@ -54641,13 +54665,15 @@ async function main() {
       if (prev >= ts) { console.log(`= ya estaba anotado hasta ${new Date(prev - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')}: no retrocedo`); return; }
       // Las ventas del tramo: sólo los días que caen entre la marca anterior y la nueva (hora de acá).
       const desdeV = prev || (ts - 24 * 36e5); const dks = new Set();
-      for (let t = desdeV - 864e5; t <= ts + 864e5; t += 864e5) dks.add(new Date(t - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'));
+      for (let t = desdeV - 4 * 864e5; t <= ts + 864e5; t += 864e5) dks.add(new Date(t - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'));
       const ventasT = []; let diasNoLei = 0;
       for (const dk of dks) { let dia = null; try { dia = await db.get(`cyc/ventaprod/${dk}`); } catch { diasNoLei++; continue; }
-        for (const [id, v] of Object.entries(dia || {})) { if (!v || v.cancelada) continue; const tv = Number(v.ts) || Date.parse(v.ts || '') || 0; if (tv > desdeV && tv <= ts) ventasT.push({ dk, id, v, tv }); } }
+        for (const [id, v] of Object.entries(dia || {})) { if (!v || v.cancelada) continue; const tv = Number(v.ts) || Date.parse(v.ts || '') || 0, tvL = Number(v.vistoTs) || tv; if (tvL > desdeV && tvL <= ts) ventasT.push({ dk, id, v, tv }); } }   // etapa 5 (11/11): el tramo va por cuándo llegó (`vistoTs`)
       if (diasNoLei) { console.log(`⚠️ no pude leer ${diasNoLei} día(s) de ventas: no anoto nada (quedarían ventas sin su análisis)`); return; }
       let ccV = {}; try { ccV = (await db.get('cyc/claudecambios')) || {}; } catch { console.log('⚠️ no pude leer mis cambios de precio: no anoto (no sabría si hubo cambio)'); return; }
-      let lkV = {}; try { lkV = (await db.get('cyc/mllinks')) || {}; } catch { lkV = {}; }   // 11a del 03/11: la venta por una gemela mira su Clásica
+      // Revisión etapa 5 (11/11): si no se pueden leer los vínculos (o la estrategia, abajo) no se anota: si no, una venta por la gemela o con
+      // estrategia nueva quedaba "no hizo falta cambiar nada" y la marca avanzaba igual.
+      let lkV = {}; try { lkV = (await db.get('cyc/mllinks')) || {}; } catch { console.log('⚠️ no pude leer los vínculos de las publicaciones: no anoto (no sabría cuál es la Clásica de una gemela)'); return; }   // 11a del 03/11: la venta por una gemela mira su Clásica
       const estH = {}; const ahoraV = Date.now(); const filasA = {}; let nCambio = 0, nOk = 0;
       const fP = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-AR');
       for (const { dk, id, v, tv } of ventasT) {
@@ -54657,11 +54683,13 @@ async function main() {
         const claV = mlaV && lkV[mlaV] && lkV[mlaV].gemelaDe ? String(lkV[mlaV].gemelaDe).toUpperCase() : '';
         const mla = claV || mlaV;
         if (mla) {
-          if (!(mla in estH)) { try { estH[mla] = (await db.get(`cyc/estrategia/${mla}`)) || {}; } catch { estH[mla] = null; } }
+          if (!(mla in estH)) { try { estH[mla] = (await db.get(`cyc/estrategia/${mla}`)) || {}; } catch { console.log(`⚠️ no pude leer la estrategia de ${mla}: no anoto nada (quedaría "sin cambio" sin saberlo)`); return; } }
           const H = estH[mla];
           if (H) for (const [k, x] of Object.entries(H)) { const n = Number(k); if (!x || !x.t || !(n > 0)) continue;
             if (n > tv && n <= ahoraV + 60e3) { if (!est || n > est.k) est = { ...x, k: n }; } else if (n <= tv) { if (!estAntes || n > estAntes.k) estAntes = { ...x, k: n }; } }
-          for (const x of Object.values(ccV)) { if (!x || String(x.mla || '').toUpperCase() !== mla) continue; const n = Number(x.ts) || 0; if (n > tv && n <= ahoraV + 60e3 && (!cc || n > cc.ts)) cc = { ...x, ts: n }; }
+          // Revisión etapa 5 (11/11): lo que hace solo la vuelta de la caja (`ganarcaja`) o lo que deshace el detector (`errores`) no es una decisión
+          // tomada al mirar esta venta: no la marca "con cambio" ni le sube el esfuerzo (11a).
+          for (const x of Object.values(ccV)) { if (!x || String(x.mla || '').toUpperCase() !== mla || x.por === 'ganarcaja' || x.por === 'errores') continue; const n = Number(x.ts) || 0; if (n > tv && n <= ahoraV + 60e3 && (!cc || n > cc.ts)) cc = { ...x, ts: n }; }
         }
         const cambio = !!(est || cc); const nota = mla ? (notasV[mla] || (mlaV ? notasV[mlaV] : '')) : '';
         const t = est ? est.t : (estAntes ? estAntes.t : '');
@@ -54712,7 +54740,7 @@ async function main() {
         // Revisión 9: las canceladas por CUÁNDO se cancelaron (`canceladaTs`), no por el día de la venta.
         if (v.cancelada) { if ((Number(v.canceladaTs) || ts) >= desde) canc.push(v); continue; }
         if (ts < desdeRef) continue;
-        if (ts >= desde) {
+        if ((_desdeVistas ? (Number(v.vistoTs) || ts) : ts) >= desde) {   // etapa 5 (11/11): con `nuevas`, por cuándo llegó la venta (`vistoTs`)
           const k = String(v.cuenta || '') + '|' + String(v.numVenta || v.saleId || id);
           (grupos[k] = grupos[k] || []).push({ v, dk, id, ts });
         }
@@ -54831,7 +54859,7 @@ async function main() {
           const nomV = String((Object.values(grupos).flat().find(({ v }) => v.mla === mla) || {}).v?.prod || '').slice(0, 40);
           (bien ? buenas : malas).push(`${mla} · ${nomV}${clasDe[mla] ? ' (gemela de ' + clasDe[mla] + ')' : ''} · ${ult || 'sin estrategia'}${dias != null ? ` (hace ${dias} d)` : ''}${conTecho ? ` · techo probado $${Math.round(Number(tfM.probado)).toLocaleString('es-AR')}` : ''}`);
         }
-        { const tsMax = Object.values(grupos).flat().reduce((a, { ts }) => Math.max(a, ts || 0), 0);
+        { const tsMax = Object.values(grupos).flat().reduce((a, { ts, v }) => Math.max(a, Number(v && v.vistoTs) || ts || 0), 0);
           if (_desdeVistas != null) console.log(`\n📌 ventas nuevas desde ${new Date(_desdeVistas - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ')} · ${Object.keys(grupos).length} compras · al terminar la vuelta: ${tsMax ? `ventasvistas:${tsMax};go` : '(no hay ventas nuevas: no hace falta anotar nada)'}`); }
         console.log(`\n🧭 ESTRATEGIA DE LO QUE VENDIÓ (${mlas.length} publicaciones): ${buenas.length} con estrategia y techo · ${malas.length} PARA DECIDIR EN ESTA VUELTA`);
         for (const l of malas) console.log('   ⚠️ ' + l);
@@ -54859,7 +54887,7 @@ async function main() {
         if (normales.length) console.log(`   ✓ normales: ${normales.join(', ')}`);
       } catch (eE) { console.log('⚠️ no pude leer las estrategias de lo vendido: ' + eE.message + ' · mirar a mano');
         // 24/10/2026: si esto se cae, la vuelta igual necesita el número para cerrar las ventas (antes se perdía el 📌)
-        try { const tsMax = Object.values(grupos).flat().reduce((a, { ts }) => Math.max(a, ts || 0), 0); if (_desdeVistas != null && tsMax) console.log(`\n📌 ventas nuevas · ${Object.keys(grupos).length} compras · al terminar la vuelta: ventasvistas:${tsMax};go`); } catch { /* sin grupos no hay ventas */ } }
+        try { const tsMax = Object.values(grupos).flat().reduce((a, { ts, v }) => Math.max(a, Number(v && v.vistoTs) || ts || 0), 0); if (_desdeVistas != null && tsMax) console.log(`\n📌 ventas nuevas · ${Object.keys(grupos).length} compras · al terminar la vuelta: ventasvistas:${tsMax};go`); } catch { /* sin grupos no hay ventas */ } }
       return;
     }
 
@@ -60847,7 +60875,14 @@ async function main() {
         }
         else if (_aMano) console.log(`  ✋ venta ${id} (${obj.prod}): la tocó él a mano, no la reescribo`);
         else if (_yaCancel) { /* ya marcada cancelada/reclamo: la clasificación de abajo la mantiene, no se reescribe */ }
-        else await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
+        else {
+          // Revisión etapa 5 (11/11/2026): `vistoTs` = cuándo la vio el robot por PRIMERA vez (queda fija en cada reescritura). Una compra pagada
+          // tarde o de una cuenta que no se pudo leer entraba con la hora de la orden, ya pasada la marca de "analizadas hasta": no la veía
+          // `ventasraras:nuevas`, ni el timbre, ni `ventasvistas`. Las que ya estaban escritas toman la hora de la orden (no vuelven a salir).
+          const _vPrev = (_vHoyOk && _vHoy) || _prevV;
+          obj.vistoTs = Number(_vPrev && _vPrev.vistoTs) > 0 ? Number(_vPrev.vistoTs) : (_vPrev ? obj.ts : Math.max(Date.now(), Number(obj.ts) || 0));
+          await db.set(`cyc/ventaprod/${dayKey}/${id}`, obj);
+        }
         if (!DRY && !_yaCancel && !_aMano) _avisoVentas.push({ dayKey, v: obj });
         cargadas++;
         // dejar registrada la carga por si esta misma venta se cancela después
