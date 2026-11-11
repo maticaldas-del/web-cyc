@@ -33298,7 +33298,7 @@ async function main() {
         // Para un perfume se busca limpio: "perfume <marca y línea> <edp/edt…> <ml>ml" (sin "Feminino", guiones ni palabras de relleno).
         const qPerf = () => { const t = String(e.n || '').toLowerCase(); const c = /\bextrait\b/.test(t) ? 'extrait' : /\b(edp|eau de parfum)\b/.test(t) ? 'edp' : /\b(edt|eau de toilette)\b/.test(t) ? 'edt' : /\bparfum\b/.test(t) ? 'parfum' : ''; const m = t.match(/(\d{2,3})\s*ml\b/); return ['perfume', ...perfPalabras(e.n), c, m ? m[1] + 'ml' : ''].filter(Boolean).join(' ').slice(0, 80); };
         const q = esPerf ? qPerf() : traducirPyNombre(e.n).replace(/[^\p{L}\p{N} .]/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
-        const bus = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
+        const bus = await mlGetT(`/products/search?site_id=MLA&q=${encodeURIComponent(q)}&limit=10`);
         let res = ((bus && bus.results) || []).filter((x) => x && x.id && (!x.status || x.status === 'active'));
         // 01/11/2026 (él, con el A57: "están en ML"): con el nombre entero ("Samsung Galaxy A57 SM A576B 5G Dual 256 GB Awesome Grey") ML trae
         // A54/A56/Fold y ningún A57; con "Samsung Galaxy A57" trae los A57. Si la primera búsqueda no trae ninguno que pase el match, una segunda
@@ -33308,7 +33308,7 @@ async function main() {
           const im = tk.findIndex((w) => new RegExp('^(' + _TM_MARCAS.source.replace(/^\\b\(|\)\\b$/g, '') + ')$', 'i').test(w.toLowerCase()));
           const q2 = (im >= 0 ? tk.slice(im, im + 3) : tk.slice(0, 3)).join(' ');
           if (q2 && q2.toLowerCase() !== q.toLowerCase() && q2.split(' ').length >= 2) {
-            try { const b2 = await mlGetT(`/products/search?status=active&site_id=MLA&q=${encodeURIComponent(q2)}&limit=20`); const vistos = new Set(res.map((x) => x.id));
+            try { const b2 = await mlGetT(`/products/search?site_id=MLA&q=${encodeURIComponent(q2)}&limit=20`); const vistos = new Set(res.map((x) => x.id));
               res = res.concat(((b2 && b2.results) || []).filter((x) => x && x.id && !vistos.has(x.id) && (!x.status || x.status === 'active'))); nv.busqueda2 = (nv.busqueda2 || 0) + 1; } catch { /* queda la primera */ }
           }
         }
@@ -33874,6 +33874,25 @@ async function main() {
       for (const z of L3.slice(0, 40)) console.log(`   ${z.u} u. · a nuestro precio ${avg(z.pS).toFixed(0)}% · al del que ganaba ${avg(z.pW).toFixed(0)}% · ${z.n}`);
       return;
     }
+    // BILLING_PROBE=catbuscar:<texto> → SOLO LEE (11/11/2026, él: "siempre publicá aunque no tengas costo"): busca el texto en los CATÁLOGOS de
+    // ML y lista cada uno con cuántos vendedores tiene, el precio más barato y el más caro, y su primera foto, para elegir el catálogo
+    // (después `fotocat` para mirar las fotos enteras antes de publicar).
+    if (/^catbuscar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).slice('catbuscar:'.length).trim();
+      let tk = null;
+      for (const label of labels) { const acc = accounts[label]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + label, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tk = t.access_token; break; } catch { /* la que sigue */ } }
+      if (!tk || !q) { console.log(!q ? 'Usá: catbuscar:<texto>' : '❌ sin token'); return; }
+      let res = []; try { res = ((await mlGet('/products/search?site_id=MLA&q=' + encodeURIComponent(q.slice(0, 80)) + '&limit=10', tk)) || {}).results || []; } catch (e) { console.log('❌ ML no contestó la búsqueda: ' + String(e.message || e).slice(0, 80)); return; }
+      console.log(`=== CATÁLOGOS DE ML PARA "${q}" · ${res.length} ===`);
+      for (const r of res) {
+        let it = []; try { it = ((await mlGet('/products/' + r.id + '/items', tk)) || {}).results || []; } catch { it = []; }
+        const pr = it.map((o) => Number(o && o.price) || 0).filter((x) => x > 0).sort((a, b) => a - b);
+        const f = ((r.pictures || [])[0] || {}); const u = String(f.secure_url || f.url || '').replace(/^http:\/\//, 'https://');
+        console.log(`■ ${r.id} · ${String(r.name || '').slice(0, 90)} · ${it.length} vend.${pr.length ? ` · ${money(pr[0])} a ${money(pr[pr.length - 1])}` : ''}${/mlstatic\.com\//.test(u) ? `\n   FOTO ${u}` : ''}`);
+      }
+      return;
+    }
     // BILLING_PROBE=fotocat:<catálogo MLA>[;…] → SOLO LEE (25/10/2026, él: "¿tenés foto de la Calipso que está en ML? pasámela y veo").
     // Nombre y fotos (direcciones de mlstatic) del catálogo de ML, para mirar si es el mismo producto antes de publicar en él.
     if (/^fotocat:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -34058,10 +34077,14 @@ async function main() {
       const _raw = String(process.env.BILLING_PROBE).replace(/^publicar:?/, '');
       const partes = _raw.split('|').map((x) => x.trim()).filter(Boolean);
       const GO = partes.includes('go'), PISO_A_MANO = partes.includes('!piso');
+      // 11/11/2026 (él): "siempre publicá aunque no tengas costo. yo después te paso. en ML ponelo caro cosa que nadie compre. tampoco precios
+      // boludos porque ML los da de baja". `|sincosto` (sólo si la ficha no tiene costo): no mide el %; el precio tiene que quedar entre 1,2 y 2
+      // veces el MÁS CARO del catálogo (más caro que todos, para que no se venda, pero creíble). Al pasar el costo se decide el precio de verdad.
+      const SIN_COSTO = partes.includes('sincosto');
       const kv = {}; for (const x of partes) { const m = x.match(/^([a-z]+)=(.*)$/i); if (m) kv[m[1].toLowerCase()] = m[2].trim(); }
       // Revisión etapa 1 (24/10): `|!cruza` + `|motivo=EXCEPCIÓN: …` para publicar de $33.000 para arriba cuando a $32.990 deja más o igual.
       const CRUZA_A_MANO = partes.includes('!cruza') && /excepci[oó]n/i.test(String(kv.motivo || ''));
-      const busca = partes.find((x) => !/^[a-z]+=/i.test(x) && x !== 'go' && x !== '!piso' && x !== '!cruza') || '';
+      const busca = partes.find((x) => !/^[a-z]+=/i.test(x) && x !== 'go' && x !== '!piso' && x !== '!cruza' && x !== 'sincosto') || '';
       const uso = 'Usá: publicar:<ficha (=nombre exacto o id)>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|!cruza|motivo=EXCEPCIÓN: …][|go]';
       if (!busca || !kv.cuenta || !kv.precio) { console.log(uso); return; }
       const nrmP = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
@@ -34157,7 +34180,16 @@ async function main() {
       else if (!(monoP > 0)) frenos.push('no leí el monotributo: no mido el margen');
       else {
         const costoUSD = costoPesos(P, 1, tcP).costo / tcP;
-        if (!(costoUSD > 0)) frenos.push('la ficha no tiene costo');
+        if (!(costoUSD > 0) && SIN_COSTO) {
+          const prs = ofs.map((o) => Number(o && o.price) || 0).filter((x) => x > 0);
+          if (!prs.length) frenos.push('sincosto: el catálogo no tiene vendedores, no sé qué precio es "caro pero creíble": pasame el costo');
+          else { const mx = Math.max(...prs), lo = Math.round(mx * 1.2), hi = Math.round(mx * 2);
+            console.log(`   SIN COSTO (él, 11/11): el más caro del catálogo está a ${money(mx)} → el precio va entre ${money(lo)} y ${money(hi)} (sugerido ${money(Math.ceil(mx * 1.4 / 1000) * 1000 - 10)})`);
+            if (precio < lo) frenos.push(`sincosto: ${money(precio)} es menos de 1,2 veces el más caro (${money(mx)}): se podría vender sin saber si gana`);
+            if (precio > hi) frenos.push(`sincosto: ${money(precio)} pasa 2 veces el más caro (${money(mx)}): ML da de baja los precios absurdos`); }
+          avisos.push('publicada SIN COSTO a un precio para que no se venda: cuando él pase el costo, decidir el precio (35% peor caso)');
+        } else if (SIN_COSTO) frenos.push('sincosto: la ficha YA tiene costo, publicá normal (35% en el peor caso)');
+        else if (!(costoUSD > 0)) frenos.push('la ficha no tiene costo (si él dijo publicar igual: |sincosto, 11/11)');
         else if (categoria) {
           const feeAtP = async (pr, lt, cx) => { try { const d = await mlGet(`/sites/MLA/listing_prices?price=${Math.round(pr)}&listing_type_id=${lt}&category_id=${cx}`, tokP); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' ? o.sale_fee_amount : null; } catch { return null; } };
           cuenta = await cuentaCandidato(precio, 'gold_special', categoria, costoUSD, tcP, monoP, feeAtP, 0, label);
