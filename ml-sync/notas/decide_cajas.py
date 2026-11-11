@@ -185,6 +185,7 @@ FIJO={
   ('p1794063805405','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Maybelline Witty a $47.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p1794063807731','','Luciana'):(1,'Él 08/11: va UNA de prueba a Full al precio del 35% (Mary Bosques Rubios Totales a $62.990), si en 30 días no vende, el resto y ésa van a la perfumería (lo de Nippon coincide con lo que vende la perfumería)'),
   ('p17904445725742','','Adriana'):(0,'Él 09/11: no va a Full (nunca vendió; 1 quieta en Full a 62.990). La de la oficina fue a la perfumería al costo'),
+  ('p1779912656290','','Matias'):(0,'Él 11/11: el Pendrive 128 hoy se vende abajo del 35% (descuento por stock antiguo): no va a Full hasta vender lo de ahí; después se sube al 35% y se prueba 2 meses'),
   ('p1779912655550','Velve Petals','Adriana'):(0,'Él 09/11 (1a): no van a Full; nunca vendió arriba del 35% (vendía a 44-45 mil, ~5%) y quedan en la oficina para la perfumería'),   # el color en la ficha se llama "Velve Petals" (así, sin la t)
 }
 FIJO={k:(q,str(m).replace(';',',')) for k,(q,m) in FIJO.items()}   # revisión etapa 4 (09/11): un ";" en el motivo frenaba el script entero (03:00 sin cajas)
