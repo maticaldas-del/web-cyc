@@ -20448,6 +20448,49 @@ async function main() {
       console.log(String(rel.fecha) === dia ? `✓ Releído: sale el ${dia}` : '✗ No quedó la fecha');
       return;
     }
+    // BILLING_PROBE=enviovacio:<últimos dígitos del envío>[:go] (12/11/2026, él: "el envío de Matías que termina en 641 nunca se mandó y está
+    // completamente desarmado… sólo está pago el envío… y el nuevo tampoco lo mandé… el próximo envío de Matías que sea al 641") → UN ENVÍO
+    // QUE NO SALIÓ Y SE DESARMÓ: sus cajas no recibidas (y sin nada entrado a Full) vuelven a la Oficina ML como YA ETIQUETADAS (`!ok`: es la
+    // misma mercadería volviendo, como el "deshacer" de la web) y el envío queda en el panel VACÍO y marcado `vacioPago` (pagado en ML, para
+    // reusarlo en la próxima caja de esa cuenta: no cuenta como en camino ni ocupa cupo). Sin `:go` sólo muestra.
+    if (/^enviovacio:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('enviovacio:'.length);
+      const GO = /:go$/i.test(_r) && !DRY; const fin = _r.replace(/:go$/i, '').replace(/\D/g, '');
+      if (fin.length < 3) { console.log('Usá: enviovacio:<últimos 3+ dígitos del envío>[:go]'); return; }
+      const envs = (await db.get('cyc/envios_full')) || {};
+      const hits = Object.entries(envs).filter(([id, e]) => e && (String(id).endsWith(fin) || (Array.isArray(e.cajasDet) && e.cajasDet.some((c) => c && String(c.track || c.seg || '').endsWith(fin)))));
+      if (hits.length !== 1) { console.log(`"…${fin}" agarra ${hits.length} envío(s). Tiene que ser uno solo.`); return; }
+      const [id, e] = hits[0];
+      const prods = (await db.get('cyc/products')) || {};
+      const nom = (pid) => String(((Object.values(prods).find((x) => x && x.id === pid)) || prods[pid] || {}).name || pid);
+      const cajas = Array.isArray(e.cajasDet) ? e.cajasDet : Object.values(e.cajasDet || {});
+      const ent = (await db.get('cyc/cajasentrado')) || {};
+      console.log(`=== ENVÍO …${String(id).slice(-4)} · ${e.cuenta || '?'} · fecha ${e.fecha || '?'} · ${cajas.length} caja(s) ${GO ? '(APLICO)' : '(PRUEBA: agregá :go)'} ===`);
+      const vuelven = []; let bloq = 0;
+      cajas.forEach((c, i) => {
+        if (!c) return;
+        const entrado = ent[id] ? JSON.stringify(ent[id]).length > 4 : false;
+        if (c.recibida || entrado) { bloq++; console.log(`  caja ${i + 1}: ${c.recibida ? 'YA LLEGÓ' : 'ya entró algo a Full'} → no se toca`); return; }
+        for (const x of (c.items || [])) if (x && x.prodId && x.u > 0) { vuelven.push(x); console.log(`  vuelve a la oficina: ${nom(x.prodId)}${x.variante ? ' @' + x.variante : ''} · ${x.u} u.`); }
+      });
+      if (bloq) { console.log('❌ Hay cajas llegadas o con algo entrado: no lo vacío.'); return; }
+      if (!GO) return;
+      const inv = (await db.get('cyc/inventory')) || {}; const malV = [];
+      for (const x of vuelven) {
+        const P = Object.values(prods).find((q) => q && q.id === x.prodId) || prods[x.prodId];
+        if (!P) { malV.push(x.prodId); continue; }
+        const r = await ofiSumarBot(db, P, x.variante || '', x.u, inv);
+        if (!r) { malV.push(nom(x.prodId)); continue; }
+        // ya venía etiquetado (estaba en una caja): lo que `ofiSumarBot` sumó a "sin etiqueta" se vuelve a sacar
+        if (r.se) { const sk = sinEtiqPath(P.id, r.se.cta, r.color || ''); await db.set(sk, r.se.antes || null); }
+        console.log(`   ✓ ${P.name}${r.color ? ' @' + r.color : ''}: oficina ${r.antes} → ${r.ahora}`);
+      }
+      if (malV.length) console.log(`⚠️ no pude devolver: ${malV.join(', ')} (sumarlos a mano con ofi:…!ok)`);
+      await db.patch('cyc/envios_full/' + id, { cajasDet: null, cajas: 0, seguimientos: null, vacioPago: Date.now(), vacioMotivo: 'no salió: se desarmó, el envío quedó pagado en ML para reusar' });
+      const rel = (await db.get('cyc/envios_full/' + id)) || {};
+      console.log(rel.vacioPago && !rel.cajasDet ? `✓ envío vacío y marcado para reusar · ${vuelven.reduce((a, x) => a + x.u, 0)} u. de vuelta en la oficina` : '✗ no quedó');
+      return;
+    }
     // BILLING_PROBE=envioreanudar:<últimos dígitos del envío o del seguimiento>[:go] (07/11/2026, él con la caja …5641 de Matías que figuraba
     // ⏸️ en pausa: "esa caja ya salió y ya llegó"). Lo mismo que el botón ▶️ Reanudar de la web, pero sin pisar la fecha: la caja ya salió,
     // así que `reanudado` = cuando se puso en pausa (no hoy) y la fecha queda. Después la marca sola la vuelta de la hora cuando ML la da de
