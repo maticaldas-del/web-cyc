@@ -502,6 +502,12 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Al terminar:** con 30+ días de stock, la bajada arranca sin esperar el 95% de F4 (10a del 08/11). No volver a ciegas. Si deja igual o más plata por día que el normal, se queda; si no, se busca el medio arrancando
   por el tramo de la escalera que mejor anduvo, con certeza, en escalera. Lo encontrado a `notas/techo.md`.
 
+## 7b · 🧲 FÁCIL O DIFÍCIL DE CONSEGUIR (12/11/2026, él eligió la a)
+- **Lo difícil de conseguir: con las reglas de precio de siempre** (él: *"los de ganancia extrema son los que ya usamos, o sea tampoco aumentar"*): no cambia nada, se cuida el stock como hasta hoy.
+- **Lo fácil de conseguir: a buscar volumen**: el precio que más plata por día deja aunque sea más bajo (dentro del 35%), porque cada unidad vendida se vuelve a comprar. Ahí sí pesa vender más rápido; la escasez casi no aplica (se repone).
+- **H se llena con productos nuevos**, no bajando lo difícil.
+- Cómo se sabe (`conseguirDe`, `conseguir[:palabra]`, `CONS` en `pedidostodo`): Paraguay = cuántas vueltas completas de Nissei lo tuvo (de las últimas 30, con 5+: 90%+ 🟢, 60%+ 🟡, menos 🔴) · Paulvic 🟢 siempre · listas 🟢 · Bs As = cuántas veces lo trajo Tito cuando se le pidió (lo que no se pide no cuenta; 10+ días pidiendo sin que entre = 🔴). ⚪ sin datos = como hasta hoy.
+
 ## 8 · SIN REPOSICIÓN (⏳) Y NO SE CONSIGUE
 - **Qué es:** Nissei no lo tiene · el precio de Paraguay no da 35% · Bs As "no se consigue" (Pedidos lo pide hace 10+ d sin que
   entre nada) · "no lo consigo" marcado (`cyc/noconsigo`) · Paulvic que no vino · De la Patagonia y lo marcado "no se consigue más".
