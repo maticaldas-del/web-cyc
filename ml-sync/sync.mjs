@@ -52395,7 +52395,16 @@ async function main() {
           // 11/11/2026 (él con el Pendrive 128: "se vende a menos de 35%… la idea es sacar de encima el stock extra de ML… después subirlos al 35% y
           // mantener ahí dos meses. Si se vende ahí sí mando a ese ritmo"): el % de HOY al precio de la publicación, para que decide_cajas.py no mande a Full
           // lo que hoy se vende abajo del 35%.
-          const _P0h = Number(b.price) || 0; const _mhH = _P0h > 0 ? await mg(_P0h) : null; const PHt = _mhH != null ? ` · PH ${Math.round(_mhH)}` : '';
+          // 12/11/2026 (él con el F9: "los F9 venden por debajo del 35%, ¿por qué mandaríamos?"): el PH miraba sólo la publicación MÁS CARA
+          // (la de otra cuenta, a $10.290 → 70%) y las últimas 7 ventas habían salido a $8.590 (abajo del 35%, que es $9.220). Ahora es el PEOR
+          // de dos: el precio más barato de las publicaciones activas y la ÚLTIMA venta de 30 días. Recién cuando vende al 35% o más vuelve a ir
+          // a Full a su ritmo; antes, prueba chica (decide_cajas.py, `bajo35`).
+          const _actP = bs.filter((x) => x.status === 'active').map((x) => Number(x.price) || 0).filter((x) => x > 0);
+          const _P0h = _actP.length ? Math.min(..._actP) : (Number(b.price) || 0);
+          const _vu = (VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && v.ts >= Date.now() - 30 * 864e5 && !(L[v.mla] && L[v.mla].gemelaDe)).sort((x, y) => y.ts - x.ts)[0];
+          const _mhA = _P0h > 0 ? await mg(_P0h) : null, _mhV = _vu ? await mg(_vu.pu) : null;
+          const _mhH = [_mhA, _mhV].filter((x) => x != null).reduce((m, x) => m == null ? x : Math.min(m, x), null);
+          const PHt = _mhH != null ? ` · PH ${Math.round(_mhH)}` : '';
           if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}${PHt}`;
           if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}${PHt}`;
           // Revisión etapa 4, 30/10/2026: si ML no dio la comisión a uno de esos precios, no se sabe si llega: no sale M35 (Pedidos usa el precio de

@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1261";
+const CACHE = "cyc-v1262";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {

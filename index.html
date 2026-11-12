@@ -3552,7 +3552,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.178';
+const APP_VERSION='28.179';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3565,6 +3565,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.179',f:'12/11',h:'18:40',c:[{n:3,t:'📦 Armar caja: el envío ($17.500) ahora se cuenta ENTERO contra lo que lleva la caja. Si lo que deja todo lo que va, menos el envío, no llega al 35%, la caja sale en rojo "No conviene" y espera a juntar más (antes una caja de 1 unidad que usaba todo el cupo salía MANDALA YA).'}]},
   {v:'28.178',f:'12/11',h:'14:10',c:[{n:1,t:'⚖️ Facturas → tope de H: la barra de cada cuenta va hasta el tope de la K, con una raya blanca por cada categoría (A a K) y dice en qué categoría está hoy y en cuál cae al 31/12.'}]},
   {v:'28.177',f:'12/11',h:'13:40',c:[{n:2,t:'📌 Mensaje para Claude: ahora sí se ven los "Claude te pide" para el chat de Chrome (se guardaban pero el panel no los mostraba desde el 10/11).'}]},
   {v:'28.176',f:'12/11',h:'10:20',c:[{n:2,t:'🚚 Pedidos → Paraguay: cada pedido en camino dice lo que vio el chat de Chrome en Via Cargo (viajando, LLEGÓ y falta retirar, o retirado) y cuándo lo vio.'}]},
@@ -8825,7 +8826,7 @@ function renderOfiCaja(){
       const vr=_ver[l];
       const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
-      const tit=vr?(`${vr.txt} · ${vr.k==='pasa'?`no entra en el cupo de Full de ${l}: ${vr.det}`:vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
+      const tit=vr?(`${vr.txt} · ${vr.k==='pasa'?`no entra en el cupo de Full de ${l}: ${vr.det}`:vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':vr.noConviene?'se manda cuando lleve más (35% o más contando el envío entero)':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
       const gC=_ganCta[l]||0;
       return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
         +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
@@ -10982,6 +10983,7 @@ function cajaVeredicto(cv){
   // hay que sacar lo que sobra (o usar "Cargar lo que entra en el cupo"); no es verde.
   if(cv.sePasa){const s=cv.sePasa;return{k:'pasa',col:'var(--amber)',txt:'Se pasa del cupo',
     det:[s.peq?`sobran ${s.peq} chicos/medianos (quedan ${s.estPeq})`:'',s.gra?`sobran ${s.gra} grandes (quedan ${s.estGra})`:''].filter(Boolean).join(' · ')+(s.viejo?` · el cupo es de hace ${s.dias} días: miralo de nuevo`:'')};}
+  if(cv.pctCaja!=null&&cv.pctCaja<35)return{k:'rojo',col:'var(--red)',txt:`No conviene: con el envío entero (${fmt(costoCaja())}) la caja deja ${Math.round(cv.pctCaja)}%`,noConviene:true};
   if(cv.llena||cv.perdida>=cv.extra)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
   if(cv.perdida>=cv.extra*0.5)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
   return{k:'rojo',col:'var(--red)',txt:'Podés esperar y juntar más'};
@@ -11000,7 +11002,7 @@ function renderNcOfi(filas){
   }catch(e){}
 }
 function convieneCaja(filas,cuenta){
-  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0,perdida=0;
+  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0,perdida=0,gCaja=0,cCaja=0;
   const detalle=[],cortan=[],items={};
   const puestos=cajaDe(cuenta);
   const hayPuesto=Object.values(puestos).some(n=>n>0);
@@ -11024,6 +11026,7 @@ function convieneCaja(filas,cuenta){
       uTot+=u;
       const gu=Math.max(0,g);
       gTotal+=gu*u;
+      {const _m=margenMLDe(f.p);if(_m&&_m.costoBase>0){gCaja+=g*u;cCaja+=_m.costoBase*u;}}
       const vD=Math.max(0,s.vDia||0);
       const porDia=gu*vD;
       if(s.enCero){gCero+=porDia;nCero++;uCero+=u;detalle.push({p:f.p,variante:f.variante,porDia,mandar:u,gan:gu*u});}
@@ -11063,7 +11066,12 @@ function convieneCaja(filas,cuenta){
       else topeCupo=!cr.viejo&&((cr.estPeq>0&&cd.peq>0&&cd.peq>=cr.estPeq)||(cr.estGra>0&&cd.gra>0&&cd.gra>=cr.estGra));}}catch(_){}
   const extra=topeCupo?0:_cc*(1-lleno);
   const diasPago=gCero>0?_cc/gCero:null;
-  return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,
+  // EL ENVÍO ENTERO VA CONTRA LO QUE LLEVA LA CAJA (12/11/2026, él: "mandar una sola unidad cuesta 17.500 si le ganamos 23.000 le queda
+  // de ganancia real 5.500, eso aún es el 35%? … mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos"). La ganancia de cada unidad
+  // (neto de ML − costo) no tiene el envío adentro; la caja lo paga ENTERO aunque vaya con una sola cosa. `pctCaja` = lo que deja la
+  // caja después de pagar el envío ÷ (lo que costó la mercadería + el envío). Abajo del 35% la caja no sale (ni aunque use todo el cupo).
+  const pctCaja=cCaja>0?(gCaja-_cc)/(cCaja+_cc)*100:null;
+  return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,pctCaja,gCaja,cCaja,
     perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9||topeCupo,topeCupo,sePasa,costo:_cc,espera:D,
     sinMedida:oc.sinDim,
     vecesElEnvio:_cc>0?gTotal/_cc:0};
