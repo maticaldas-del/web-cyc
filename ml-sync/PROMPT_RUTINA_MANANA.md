@@ -58,6 +58,11 @@ Mercado Libre → Full (o "Gestión de stock Full") en cada cuenta:
 - Unidades con problema adentro de Full ("no aptas", "dañadas", "retirar", "en revisión"): producto + cuántas + qué pide ML.
 - Avisos de stock antiguo o de cobro por almacenamiento que vence pronto: producto + cuántas + desde qué fecha cobra.
 - Retiros de Full: se miran en la parte 16.
+- ESTADO DE TU STOCK (11/11, él: "agregar al chat local mirar productos para descarte que marca ML"): Full → Gestionar: Stock total →
+  "Estado de tu stock". Abrí la tarjeta "Para evitar descarte" (roja) de cada cuenta y copiá CADA producto: nombre, cuántas unidades, desde
+  qué fecha lo descarta ML o qué pide (retirar, bajar precio). Es ⏰ siempre (si no se hace nada ML las tira). De "Para impulsar ventas"
+  (amarilla) anotá sólo cuántas unidades y los 5 productos con más unidades. Un renglón por cuenta: "DESCARTE · <cuenta>: <producto> ×<u> hasta <fecha> · …"
+  (si no hay nada: "DESCARTE · <cuenta>: 0").
 
 == 7 · MERCADO PAGO (sin copiar movimientos: traen nombres) ==
 En cada cuenta de Mercado Pago, sólo si aparece un cartel o una sección de: dinero retenido, contracargo, disputa, cuenta
