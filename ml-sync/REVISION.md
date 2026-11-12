@@ -1001,6 +1001,8 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 
 - **12/11 · Tope de H con todas las categorías** (él: *"mostrame en esa barra todas las categorías… líneas blancas"*). Qué es: en la tarjeta ⚖️ la barra va hasta el tope de K, con raya blanca por categoría (H más gruesa), letras abajo y "hoy en X · al 31/12 cae en Y". Dónde: `index.html` (`renderHomeParejo`). Qué chequear: a 360 px las letras A-D quedan apretadas (A-E juntas en ~30% de la barra); que el color siga marcando pasarse de H.
 
+- **12/11 · 🧲 Fácil o difícil de conseguir** (él eligió la a). Qué es: `cyc/conseguir/py/<prod>/<día>` una marca por vuelta completa de Nissei (en `marcarAgotadosVuelta`) · `cyc/conseguir/bsas/<prod>` {trajo, no} por cada pedido de Pedidos (en el `desde` de `decido`) · `conseguirDe` lo clasifica · `conseguir[:palabra]` · `CONS` en `pedidostodo`. Dónde: `sync.mjs`, CEREBRO §7b. Qué chequear: que en ~5 días haya vueltas suficientes; que lo de Bs As no pedido quede ⚪; que un "no" seguido de "trajo" en el mismo pedido no confunda.
+
 ## 2 · PLATA (martes)
 ### ✅ Plata y Local · decisiones del 08/11
 (Revisión de la Plata del 05/11 y del Local del 06/11; él eligió Plata 3a 7a 8a 9a 10a 12a 13a 14a 15a · Local 2a 5a 6a 8a. Local 3, 4b y 16 quedan como están, sin código.)

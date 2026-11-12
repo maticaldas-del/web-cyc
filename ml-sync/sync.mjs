@@ -12402,6 +12402,36 @@ const CAND_MIN_VENTAS = 100;
 // ficha de Paraguay (Nissei), con código o sin él (04/11), que no se vio desde que arrancó la vuelta queda marcada `cyc/py_sinstock/<id>` (auto:'vuelta'):
 // la misma marca de "Nissei no lo tiene" que usan escasez (⏳ sin reposición: se estira el stock), Pedidos y la web. Se cae sola en
 // cuanto el chat lo vuelve a ver con precio (pycat / pyprecio). Devuelve cuántas marcó.
+// 🧲 QUÉ TAN FÁCIL ES CONSEGUIR CADA PRODUCTO (12/11/2026, él eligió la a: "lo difícil de conseguir a ganancia extrema, lo que se consigue
+// siempre a buscar volumen, H se llena con productos nuevos… agregar un historial nuevo de qué tan fácil de conseguir es el producto. lo de
+// Paraguay es fácil porque lo ve todos los días el chat local: si hay siempre o casi siempre es fácil. Paulvic es extremadamente fácil, hay
+// siempre, y Bs As depende del producto: lo que mi viejo no trae es porque no lo está consiguiendo. pero si no se le pide no trae y no tiene
+// que salir como que no consigue, porque quizás hay pero no trae porque tenemos"). Historial en `cyc/conseguir`:
+//   · Paraguay: `py/<prod>/<AAAA_MM_DD>` = 1/0, una marca por vuelta completa de Nissei (se lo vio o no). Con 5+ vueltas: 90%+ fácil, 60%+ medio.
+//   · Bs As: `bsas/<prod>` = {pide, trajo, no}: cada vez que Pedidos le pide comprar (`desde`) es un pedido; si entra algo a la oficina es "trajo",
+//     si pasan 10 días pidiendo sin que entre nada es "no" (una vez por pedido). Si no se le pide, no cuenta. Con 2+ pedidos cerrados: 80%+ fácil.
+//   · Paulvic: siempre fácil (salvo el aroma que "no viene más"). Listas: las de PDF/WhatsApp siempre tienen; las de web, si salió en la última carga.
+// Qué cambia: 🟢 fácil = buscar volumen (el precio que más plata por día deja, aunque sea más bajo) · 🔴 difícil o 🟡 medio = cuidar el stock con
+// las reglas de precio de siempre (él: "los de ganancia extrema son los que ya usamos, tampoco aumentar"). Sin datos = como hasta hoy.
+const CONS_TXT = { facil: '🟢 fácil de conseguir', medio: '🟡 a veces se consigue', dificil: '🔴 difícil de conseguir', nd: '⚪ sin datos todavía' };
+function conseguirDe(p, C, extra = {}) {
+  if (!p || !p.id) return { nivel: 'nd', txt: CONS_TXT.nd };
+  const nm = `${p.name || ''} ${p.proveedor || ''} ${p.listaProv || ''}`;
+  if (/paulvic|persea/i.test(nm)) return { nivel: 'facil', txt: CONS_TXT.facil + ' (Paulvic: hay siempre)' };
+  if (p.origen === 'py') {
+    const h = Object.entries(((C || {}).py || {})[p.id] || {}).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 30);
+    if (h.length < 5) return { nivel: 'nd', txt: `${CONS_TXT.nd} (Nissei: ${h.length} de 5 vueltas mínimas)` };
+    const si = h.filter(([, v]) => Number(v) === 1).length, pc = Math.round(si / h.length * 100);
+    const nivel = pc >= 90 ? 'facil' : pc >= 60 ? 'medio' : 'dificil';
+    return { nivel, pct: pc, txt: `${CONS_TXT[nivel]} (Nissei lo tuvo en ${si} de las últimas ${h.length} vueltas)` };
+  }
+  if (p.listaProv) return { nivel: 'facil', txt: CONS_TXT.facil + ` (lista de ${p.listaProv})` };
+  const b = ((C || {}).bsas || {})[p.id] || {}; const tr = Number(b.trajo) || 0, no = Number(b.no) || 0;
+  if (extra.pidiendoSinEntrar10) return { nivel: 'dificil', txt: CONS_TXT.dificil + ' (Bs As: hace 10+ días que se pide y no entra)' };
+  if (tr + no < 2) return { nivel: 'nd', txt: `${CONS_TXT.nd} (Bs As: ${tr + no} pedido(s) cerrados, hacen falta 2)` };
+  const pc = Math.round(tr / (tr + no) * 100); const nivel = pc >= 80 ? 'facil' : pc >= 50 ? 'medio' : 'dificil';
+  return { nivel, pct: pc, txt: `${CONS_TXT[nivel]} (Bs As: lo trajo ${tr} de ${tr + no} veces que se pidió)` };
+}
 async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
   const prods = (await db.get('cyc/products')) || {}; const sinSt = (await db.get('cyc/py_sinstock')) || {}; const nuevos = [];
   // También lo que está en un pedido de Paraguay aunque la ficha no diga origen Paraguay (04/11, el Cuba Gold: ficha de otro origen
@@ -12413,6 +12443,11 @@ async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
     if ((Number(p.nisseiTs) || 0) >= desde || vistoCod.has(String(p.codPy)) || sinSt[p.id]) continue;
     if (GO) await db.set('cyc/py_sinstock/' + p.id, { ts: ahora, auto: 'vuelta' }); nuevos.push(p.name);
   }
+  // 🧲 historial de "qué tan fácil se consigue": una marca por ficha de Paraguay en esta vuelta completa (1 = Nissei la tenía, 0 = no).
+  if (GO) { try { const dk = new Date(ahora - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const nuevosS = new Set(nuevos); const upd = {};
+    for (const p of Object.values(prods)) { if (!p || !p.id || p.origen !== 'py' || p.soloLocal || p.sololocal || /elegancia/i.test(String(p.provPy || ''))) continue;
+      upd[p.id + '/' + dk] = (nuevosS.has(p.name) || (sinSt[p.id] && !((Number(p.nisseiTs) || 0) >= desde || vistoCod.has(String(p.codPy))))) ? 0 : 1; }
+    if (Object.keys(upd).length) await db.patch('cyc/conseguir/py', upd); } catch (eC) { console.log('⚠️ no pude anotar el historial de conseguir: ' + String(eC.message || eC).slice(0, 60)); } }
   if (nuevos.length) console.log(`🚫 ${nuevos.length} ficha(s) de Paraguay no aparecieron en la vuelta completa: quedan como "Nissei no lo tiene" (se cae sola al volver a verlas): ${nuevos.slice(0, 12).map((n) => String(n).slice(0, 35)).join(' · ')}${nuevos.length > 12 ? ' · …' : ''}`);
   else console.log('🚫 ninguna ficha de Paraguay quedó sin ver en la vuelta completa');
   return nuevos.length;
@@ -20450,6 +20485,16 @@ async function main() {
       if (cajas) await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
       const rel = (await db.get('cyc/envios_full/' + id)) || {};
       console.log(String(rel.fecha) === dia ? `✓ Releído: sale el ${dia}` : '✗ No quedó la fecha');
+      return;
+    }
+    // BILLING_PROBE=conseguir[:<palabra>] → 🧲 QUÉ TAN FÁCIL SE CONSIGUE CADA PRODUCTO (12/11/2026, ver `conseguirDe`). SOLO LEE.
+    if (/^conseguir(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const q = String(process.env.BILLING_PROBE).replace(/^conseguir:?/, '').trim().toLowerCase();
+      const P = Object.values((await db.get('cyc/products')) || {}).filter((p) => p && p.id && p.name && !p.soloLocal && !p.sololocal && (!q || String(p.name).toLowerCase().includes(q)));
+      const C = (await db.get('cyc/conseguir')) || {}; const cnt = {};
+      const L = P.map((p) => ({ p, r: conseguirDe(p, C) })); for (const x of L) cnt[x.r.nivel] = (cnt[x.r.nivel] || 0) + 1;
+      console.log(`=== 🧲 QUÉ TAN FÁCIL SE CONSIGUE · ${L.length} fichas · 🟢 ${cnt.facil || 0} · 🟡 ${cnt.medio || 0} · 🔴 ${cnt.dificil || 0} · ⚪ ${cnt.nd || 0} ===`);
+      for (const x of L.sort((a, b) => a.r.nivel.localeCompare(b.r.nivel)).slice(0, q ? 60 : 40)) console.log(`  ${String(x.p.name).slice(0, 50).padEnd(50)} ${x.r.txt}`);
       return;
     }
     // BILLING_PROBE=enviovacio:<últimos dígitos del envío>[:go] (12/11/2026, él: "el envío de Matías que termina en 641 nunca se mandó y está
@@ -51836,6 +51881,7 @@ async function main() {
     // cuenta, oficina, en camino a Full, viajando de Paraguay y del Paulvic, neto y costo. No decide nada: los números para decidir.
     if (/^pedidostodo$/.test(String(process.env.BILLING_PROBE || ''))) {
       try { globalThis._pvAllPT = (await db.get('cyc/promoventa')) || {}; } catch { globalThis._pvAllPT = null; }   // 7a del 03/11
+      let _CONS = {}; try { _CONS = (await db.get('cyc/conseguir')) || {}; } catch { _CONS = {}; }   // 🧲 12/11: qué tan fácil se consigue (CONS en cada renglón)
       // `cyc/compraslista` al final (20/10/2026, decisión 1a): lo ya probado pedido a una lista viaja como Paraguay (`LIviaja`).
       // `cyc/claudedecide/caja` al final (revisión etapa 3, 29/10/2026): lo que dice HOY cada decisión de caja (la web le resta lo que se
       // despacha) sale en `cajadec [..]` y `decide_cajas.py` no vuelve a pedir lo que ya salió.
@@ -52100,7 +52146,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' + (porCajaBot(p) > 0 ? ' porcaja ' + porCajaBot(p) : '') : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''} · CONS ${conseguirDe(p, _CONS).nivel}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -53210,8 +53256,16 @@ async function main() {
           try {
             const bo = (await db.get(d0.base)) || null; if (!bo) continue;   // `=auto` borró la decisión entera: no hay nada que marcar
             const tot = _totPed(bo);
-            if (tot > 0) { const des = d0.tot0 > 0 && d0.desde > 0 ? d0.desde : Date.now(); if (Number(bo.desde) !== des) await db.set(d0.base + '/desde', des); }
-            else if (bo.desde != null) await db.set(d0.base + '/desde', null);
+            // 🧲 historial de Bs As (12/11/2026): un pedido que se cierra con mercadería entrada = "trajo"; 10+ días pidiendo sin entrar = "no".
+            const _pidB = d0.base.split('/').pop(); const _pB = (await db.get('cyc/products/' + _pidB)) || null;
+            const _esBsAs = _pB && _pB.origen !== 'py' && !_pB.listaProv && !/paulvic|persea/i.test(`${_pB.name || ''} ${_pB.proveedor || ''}`);
+            const _ent = _esBsAs ? Number(await db.get('cyc/ofientro/' + _pidB)) || 0 : 0;
+            if (_esBsAs && d0.desde > 0) {
+              if (_ent > d0.desde && !bo.consTrajo) { const c = (await db.get('cyc/conseguir/bsas/' + _pidB)) || {}; await db.set('cyc/conseguir/bsas/' + _pidB, { ...c, trajo: (Number(c.trajo) || 0) + 1, ts: Date.now() }); await db.set(d0.base + '/consTrajo', 1); }
+              else if (!(_ent > d0.desde) && Date.now() - d0.desde > 10 * 864e5 && !bo.consNo) { const c = (await db.get('cyc/conseguir/bsas/' + _pidB)) || {}; await db.set('cyc/conseguir/bsas/' + _pidB, { ...c, no: (Number(c.no) || 0) + 1, ts: Date.now() }); await db.set(d0.base + '/consNo', 1); }
+            }
+            if (tot > 0) { const des = d0.tot0 > 0 && d0.desde > 0 ? d0.desde : Date.now(); if (Number(bo.desde) !== des) { await db.set(d0.base + '/desde', des); await db.set(d0.base + '/consTrajo', null); await db.set(d0.base + '/consNo', null); } }
+            else if (bo.desde != null) { await db.set(d0.base + '/desde', null); await db.set(d0.base + '/consTrajo', null); await db.set(d0.base + '/consNo', null); }
           } catch { /* sin la marca, la web lo da por repuesto */ }
         }
       }
