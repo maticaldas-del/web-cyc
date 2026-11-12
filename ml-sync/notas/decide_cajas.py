@@ -141,9 +141,10 @@ for l in L:
     if m:
         ct=re.search(r' · ctas \[([^\]]*)\]',m.group(11))
         nc=re.search(r' · neto \$(\d+) costo \$(\d+)',m.group(11))
-        gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
+        gan=(int(nc.group(1))-int(nc.group(2))) if nc and int(nc.group(1))>0 else None
+        cuc=int(nc.group(2)) if nc and int(nc.group(1))>0 else None   # lo que deja por unidad (sin neto medido: no se sabe)
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
-                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
+                 ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,cu=cuc,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
                  fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11),
                  soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
@@ -460,6 +461,7 @@ for cta in set(o['cta'] for o in out):
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
+_outD=list(out)
 out=[f"{o['cab']}=u|{o['q']}|{o['cola']}" for o in out]
 bad=[x for x in out if ';' in x]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
@@ -481,3 +483,17 @@ if grandesSalen: print('📦 GRANDES QUE SALEN EN SU PROPIA CAJA (aparte de la d
 if soloPerfFuera: print('🛍️ PEDIDO SÓLO PARA LA PERFUMERÍA (papelera / sólo local, no van a Full) ·',len(soloPerfFuera),*soloPerfFuera,sep='\n  ')
 if sin: print('SIN CUENTA:',*sin,sep='\n  ')
 if amano: print('DECIDIR A MANO (más de una cuenta):',*amano,sep='\n  ')
+# EL ENVÍO ENTERO CONTRA LO QUE LLEVA LA CAJA (12/11/2026, él: "mandar una sola unidad cuesta 17.500; si le ganamos 23.000 le queda de
+# ganancia real 5.500, ¿eso aún es el 35%? … mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos"). Por cuenta: (lo que deja todo lo que
+# va − el envío) ÷ (lo que costó + el envío). Abajo del 35% esa caja no sale: espera a juntar más (la web la pone en rojo, "No conviene").
+COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); si cambia, cambiarlo acá también
+_CU={p['id']:p.get('cu') for p in P}
+_porC={}
+for o in _outD:
+    if not (o.get('q') or 0)>0: continue
+    pid=re.match(r'caja:(p\w+)@',o['cab']).group(1); g=o.get('gan'); cu=_CU.get(pid)
+    if g is None or not cu: continue
+    a_=_porC.setdefault(o['cta'],[0,0,0]); a_[0]+=g*o['q']; a_[1]+=cu*o['q']; a_[2]+=o['q']
+for c,(g,cu,u) in _porC.items():
+    pc=(g-COSTO_CAJA)/(cu+COSTO_CAJA)*100
+    print(f"{'🟥 NO CONVIENE' if pc<35 else '🟩'} caja de {c}: {u} u. dejan ${g:,.0f} − envío ${COSTO_CAJA:,} = {pc:.0f}% sobre lo que costó + el envío".replace(',','.')+(' → que espere a juntar más' if pc<35 else ''))
