@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.175';
+const APP_VERSION='28.176';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3563,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.176',f:'12/11',h:'10:20',c:[{n:2,t:'🚚 Pedidos → Paraguay: cada pedido en camino dice lo que vio el chat de Chrome en Via Cargo (viajando, LLEGÓ y falta retirar, o retirado) y cuándo lo vio.'}]},
   {v:'28.175',f:'12/11',h:'05:40',c:[{n:1,t:'💡 Revisión de Ideas: 21 ideas para elegir en la lista de las 12:30 (Navidad en las cajas, stock antiguo de 180 días, comisión real de ML, cuotas con interés bajo, el pedido de Paraguay en un paso, preguntas desde el panel…).'}]},
   {v:'28.174',f:'11/11',h:'05:10',c:[{n:1,t:'🧾 Revisión de Datos terminada: 4 decisiones para vos en la lista de las 12:30 (Black Friday, escasez en el evento, descuentos en lo 🔒/🥊 y fechas especiales).'}]},
   {v:'28.173',f:'11/11',h:'04:40',c:[{n:2,t:'📈 Revisión de Datos: las rayas de un producto ya no pierden las ventas de una gemela o publicación cerrada (salía un 🔴 falso), un día con venta nunca cuenta como "sin visitas", y Métricas → Cambios de precio cuenta también mis descuentos.'}]},
@@ -19788,7 +19789,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const usd=(Math.round(pyBaseUSD(c)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
-      <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>${c.guia?`<div style="font-size:.64rem;margin-top:2px;white-space:nowrap" title="Guía de Via Cargo: el chat de Chrome la sigue todos los días">🚚 Via Cargo <b style="font-family:'DM Mono',monospace">${_esc(c.guia)}</b></div>`:(enCamino&&c.ticket?`<div style="font-size:.62rem;margin-top:2px;color:var(--amber)">🚚 falta la guía de Via Cargo</div>`:'')}
+      <div style="font-size:.66rem;font-weight:700;color:${col};margin-top:2px;white-space:nowrap">${est}</div>${c.guia?`<div style="font-size:.64rem;margin-top:2px;white-space:nowrap" title="Guía de Via Cargo: el chat de Chrome la sigue todos los días">🚚 Via Cargo <b style="font-family:'DM Mono',monospace">${_esc(c.guia)}</b></div>`:(enCamino&&c.ticket?`<div style="font-size:.62rem;margin-top:2px;color:var(--amber)">🚚 falta la guía de Via Cargo</div>`:'')}${/* 12/11/2026, él: "acá que diga si llegaron al Via Cargo. el chat local cargaría la info": lo que vio el chat de Chrome en Via Cargo (robot → c.via) */''}${enCamino&&c.guia&&c.via&&c.via.t?(()=>{const v=c.via,vd=new Date(Number(v.ts)||0).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'});const cab=v.retirado?'✅ retirado de Via Cargo':v.llego?'📍 LLEGÓ a Via Cargo · falta retirar':'🚚 viajando';const cl=v.llego?'var(--green)':'#38bdf8';return `<div style="font-size:.64rem;margin-top:2px;max-width:340px;line-height:1.35"><b style="color:${cl}">${cab}</b> <span style="color:var(--muted)">· ${_esc(String(v.t).slice(0,130))}${String(v.t).length>130?'…':''} · visto ${vd}</span></div>`;})():''}
       ${/* 21/10/2026, él: "quiero que en la tarjeta de pedidos marque si están todos los gastos cargados o faltan" */''}
       <div style="font-size:.64rem;font-weight:700;margin-top:3px;color:${R.r?'var(--green)':'var(--amber)'}" title="${R.r?'Están cargados todos los gastos del pedido: el recargo es el real.':'Falta cargar: '+R.falta.join(', ').replace(/"/g,'&quot;')+'. Pasámelos y los cargo.'}">${R.r?'✅ gastos completos':'⚠️ faltan gastos: '+escHtml(R.falta.join(', '))}</div>${(()=>{const BP=pyBinancePesos(c);return BP?`<div style="font-size:.7rem;font-weight:800;margin-top:3px;color:var(--text)" title="Mercadería + cambista y envío de los dólares: US$ ${BP.usd.toFixed(2).replace('.',',')} × dólar del panel de hoy ${BP.tc.toLocaleString('es-AR')} × ${BP.mult.toFixed(3).replace('.',',')} (lo que costó de más cada dólar por Binance en los últimos ${BP.n} pedidos: compra, transferencia y cambista). El que retira y el correo van por Mercado Pago: no entran.">💵 Tener en Binance: $${BP.pesos.toLocaleString('es-AR')}</div>`:'';})()}${c.llegoOk?`<div style="font-size:.64rem;font-weight:800;margin-top:2px;color:var(--green)" title="Me pasaste las fotos de lo que llegó (${new Date(Number(c.llegoOk.ts)).toLocaleDateString('es-AR')}): está todo bien.${c.llegoOk.nota?' '+String(c.llegoOk.nota).replace(/"/g,'&quot;'):''}">✅ llegó todo bien (fotos)</div>`:''}
     </div>

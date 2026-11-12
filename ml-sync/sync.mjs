@@ -15390,6 +15390,32 @@ async function colaParaRobot(db, labels) {
       await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: ok !== false });
     }
   } catch (e) { /* se mira en la vuelta siguiente */ }
+  // 🚚 DÓNDE ESTÁ CADA PEDIDO EN VIA CARGO, EN LA TARJETA DEL PEDIDO (12/11/2026, él: "acá que diga si llegaron al Via Cargo. el chat local
+  // cargaría la info ya que él mira por internet directo"). Del último mensaje "VIA CARGO …" del buzón (14 días), el renglón que nombra la guía
+  // o el id de cada pedido EN CAMINO con guía va a `cyc/compraspy/<id>/via` = {t (corto, sin la guía), ts (cuándo lo vio el chat), llego, retirado}.
+  // Se escribe sólo si cambió. El texto no se imprime (registro público).
+  try {
+    const buzV = (await db.get('cyc/buzon')) || {}; const CPv = (await db.get('cyc/compraspy')) || {};
+    const msgs = Object.entries(buzV).map(([k, m]) => ({ ts: Number((m && m.ts) || k) || 0, t: String((m && m.t) || '') }))
+      .filter((m) => /^\s*VIA\s*CARGO/i.test(m.t) && Date.now() - m.ts < 14 * 864e5).sort((a, b) => b.ts - a.ts);
+    for (const [id, c] of Object.entries(CPv)) {
+      if (!c || !c.guia || c.estado === 'llego') continue;
+      const g = String(c.guia);
+      let hit = null;
+      for (const m of msgs) {
+        const parts = m.t.replace(/^\s*VIA\s*CARGO[^:]*:\s*/i, '').split(/\n|\s\|\s/).map((x) => x.trim()).filter(Boolean);
+        const r = parts.find((x) => x.includes(g) || x.includes(id)) || (parts.length === 1 && msgs.length && m.t.includes(g) ? parts[0] : null);
+        if (r) { hit = { ts: m.ts, r }; break; }
+      }
+      if (!hit) continue;
+      const corto = hit.r.split(g).join('').split(id).join('').replace(/\(?\s*🔒[^)]*\)?/g, '').replace(/gu[ií]a\s*[·:]?\s*·?/gi, '').replace(/^[\s·⏰⚠️:-]+/u, '').replace(/\s*·\s*·\s*/g, ' · ').trim().slice(0, 220);
+      const retirado = /entregad|retirad[oa]\b|ya se retir/i.test(hit.r) && !/no se retir|sin retirar|todav[ií]a no/i.test(hit.r);
+      const llego = retirado || /lleg[oó]|recibido en destino|para retirar|en la agencia/i.test(hit.r);
+      const nuevo = { t: corto, ts: hit.ts, llego, retirado };
+      const ya = c.via || {};
+      if (ya.ts !== nuevo.ts || ya.t !== nuevo.t) await db.patch('cyc/compraspy/' + id, { via: nuevo });
+    }
+  } catch (e) { /* se mira en la vuelta siguiente */ }
   // 🔒 LISTAS CERRADAS del Archivo para Claude (1a del 08/11) → a la cola, una vez cada una (`listapriv:<id>;go`)
   try { const inP = (await db.get('mlapi/privado_in')) || {};
     for (const [k, e] of Object.entries(inP)) { if (!e || e.tipo !== 'lista' || e.encola || e.intentos) continue;

@@ -2144,6 +2144,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Dónde vive:** `ml-sync/notas/decide_cajas.py` (`BAJA_ML`) y `decide_pedidos.py` (mismo par, en el renglón de "no viene más").
 - **Qué chequear:** que la completa ya no tenga que corregirlos a mano · si otro aroma pasa a dado de baja, agregarlo a los DOS.
 
+- **12/11 · Via Cargo en la tarjeta del pedido** (él: *"acá que diga si llegaron al Via Cargo"*). Qué es: el ciclo de 2 min toma el último "VIA CARGO …" del buzón (14 días) y guarda en `cyc/compraspy/<id>/via` {t, ts, llego, retirado} el renglón que nombra la guía o el id; la tarjeta en camino muestra 🚚 viajando / 📍 LLEGÓ · falta retirar / ✅ retirado + cuándo lo vio. Dónde: `sync.mjs` (bloque 🚚 en `colaParaRobot`), `index.html` (tarjeta de Pedidos Paraguay). Qué chequear: que un mensaje con dos pedidos no le ponga a uno el estado del otro; que "todavía no se retiró" no se lea como retirado.
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 ### 🔍 Revisión etapa 4 del 09/11/2026 (4 revisores en máximo: web contra robot · fallas mudas del robot · choques de las tareas · lo pendiente)
 - **Arreglado (urgente):** (1) `decide_pedidos.py` y `decide_cajas.py` cambian el ";" de los motivos de juicios/FIJO por "," (desde el 08/11 se frenaban: sin pedidos ni cajas) · (2) M35: token, tanda de publicaciones o `techofull`/monotributo que no se leen → `⚠️ NO LEÍ` (los scripts se frenan; antes compraban de más al precio de hoy: +1.041 u. con el log del 08/11 si fallaba `techofull`) · los dos scripts también se frenan con `DATOS INCOMPLETOS` · `netopub` con NO LEÍ.
