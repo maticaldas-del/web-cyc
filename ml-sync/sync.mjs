@@ -52408,7 +52408,17 @@ async function main() {
           const _vu = (VN[p.id] || []).filter((v) => (!va || v.va === va) && v.pu > 0 && v.ts >= Date.now() - 30 * 864e5 && !(L[v.mla] && L[v.mla].gemelaDe)).sort((x, y) => y.ts - x.ts)[0];
           const _mhA = _P0h > 0 ? await mg(_P0h) : null, _mhV = _vu ? await mg(_vu.pu) : null;
           const _mhH = [_mhA, _mhV].filter((x) => x != null).reduce((m, x) => m == null ? x : Math.min(m, x), null);
-          const PHt = _mhH != null ? ` · PH ${Math.round(_mhH)}` : '';
+          // 12/11/2026 (él: "al armar la caja tenés que mirar cuántas unidades cargaste y mirar en cada producto el costo que le queda y si da el
+          // 35%"): `PC gan:div:ship` = lo que deja la unidad en el PEOR caso al precio del PH (gan), el divisor del % (div) y el envío+embalaje
+          // que ya trae el costo de la ficha (ship, en pesos). decide_cajas.py saca el ship y pone el envío REAL de la caja: (gan+ship−e)/(div−ship+e).
+          let PCt = '';
+          try { const prW = (_mhV != null && (_mhA == null || _mhV < _mhA)) ? _vu.pu : _P0h;
+            if (prW > 0) { const com = await fee(b, prW); if (com != null) {
+              const env = prW < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+              const mlx = prW * mm, gN = prW - com - env - costo - mlx - prW * PEOR_RET_PCT, dN = costo + mlx + env;
+              const shP = (Number(costoPesos(p, 1, tc).shipUSD) || 0) * (tc > 0 ? tc : 0);
+              PCt = ` · PC ${Math.round(gN)}:${Math.round(dN)}:${Math.round(shP)}`; } } } catch (_) { PCt = ''; }
+          const PHt = (_mhH != null ? ` · PH ${Math.round(_mhH)}` : '') + PCt;
           if (mc != null && mc >= MIN35) return ` · M35 comp:${Math.round(pc)}:${r(mc)}:${await rit(pc)}${PHt}`;
           if (mv != null && mv >= MIN35) return ` · M35 v365:${Math.round(pv)}:${r(mv)}:${await rit(pv)}${PHt}`;
           // Revisión etapa 4, 30/10/2026: si ML no dio la comisión a uno de esos precios, no se sabe si llega: no sale M35 (Pedidos usa el precio de

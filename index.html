@@ -3552,7 +3552,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.179';
+const APP_VERSION='28.180';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3565,6 +3565,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.180',f:'12/11',h:'20:10',c:[{n:2,t:'📦 Armar caja: el % de la caja con el envío entero ya no cuenta el envío dos veces (el costo de cada producto traía su parte de una caja llena).'}]},
   {v:'28.179',f:'12/11',h:'18:40',c:[{n:3,t:'📦 Armar caja: el envío ($17.500) ahora se cuenta ENTERO contra lo que lleva la caja. Si lo que deja todo lo que va, menos el envío, no llega al 35%, la caja sale en rojo "No conviene" y espera a juntar más (antes una caja de 1 unidad que usaba todo el cupo salía MANDALA YA).'}]},
   {v:'28.178',f:'12/11',h:'14:10',c:[{n:1,t:'⚖️ Facturas → tope de H: la barra de cada cuenta va hasta el tope de la K, con una raya blanca por cada categoría (A a K) y dice en qué categoría está hoy y en cuál cae al 31/12.'}]},
   {v:'28.177',f:'12/11',h:'13:40',c:[{n:2,t:'📌 Mensaje para Claude: ahora sí se ven los "Claude te pide" para el chat de Chrome (se guardaban pero el panel no los mostraba desde el 10/11).'}]},
@@ -11026,7 +11027,7 @@ function convieneCaja(filas,cuenta){
       uTot+=u;
       const gu=Math.max(0,g);
       gTotal+=gu*u;
-      {const _m=margenMLDe(f.p);if(_m&&_m.costoBase>0){gCaja+=g*u;cCaja+=_m.costoBase*u;}}
+      {const _m=margenMLDe(f.p);if(_m&&_m.costoBase>0){const _sh=(parseFloat(f.p.shipUSD)||0)*curTC();gCaja+=(g+_sh)*u;cCaja+=(_m.costoBase-_sh)*u;}}   // sin el envío+embalaje de la ficha: el de la caja va entero abajo (revisión 12/11: se contaba dos veces)
       const vD=Math.max(0,s.vDia||0);
       const porDia=gu*vD;
       if(s.enCero){gCero+=porDia;nCero++;uCero+=u;detalle.push({p:f.p,variante:f.variante,porDia,mandar:u,gan:gu*u});}
@@ -11068,7 +11069,7 @@ function convieneCaja(filas,cuenta){
   const diasPago=gCero>0?_cc/gCero:null;
   // EL ENVÍO ENTERO VA CONTRA LO QUE LLEVA LA CAJA (12/11/2026, él: "mandar una sola unidad cuesta 17.500 si le ganamos 23.000 le queda
   // de ganancia real 5.500, eso aún es el 35%? … mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos"). La ganancia de cada unidad
-  // (neto de ML − costo) no tiene el envío adentro; la caja lo paga ENTERO aunque vaya con una sola cosa. `pctCaja` = lo que deja la
+  // (neto de ML − costo) trae adentro el envío+embalaje de la ficha (una caja llena de ese producto); acá se saca y se pone el de ESTA caja entero. `pctCaja` = lo que deja la
   // caja después de pagar el envío ÷ (lo que costó la mercadería + el envío). Abajo del 35% la caja no sale (ni aunque use todo el cupo).
   const pctCaja=cCaja>0?(gCaja-_cc)/(cCaja+_cc)*100:null;
   return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,pctCaja,gCaja,cCaja,

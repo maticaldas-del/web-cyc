@@ -125,6 +125,8 @@ def _lst_o_none(t,nom):
 # o en camino: 0 (primero se vende lo de Full). Con Full en 0: una prueba chica (2) para venderla al precio del 35% (`p35`) durante 2 meses.
 def _ph(t):
     m_=re.search(r' · PH (-?\d+)',t or ''); return int(m_.group(1)) if m_ else None
+def _pcx(t):
+    m_=re.search(r' · PC (-?\d+):(\d+):(\d+)',t or ''); return tuple(map(int,m_.groups())) if m_ else None
 def _p35(t):
     m_=re.search(r' · M35 no:[^:\s]*:[^:\s]*:(\d+)',t or ''); return int(m_.group(1)) if m_ else None
 LIQ_PRUEBA=2
@@ -146,12 +148,12 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,cu=cuc,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
                  fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11),
-                 soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
+                 soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),pcx=_pcx(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
     if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8)),hoy=hoy_de(l),
-                                          fullC=_num_o_none(l,'fullcta'),camC=_num_o_none(l,'camcta'),pubV=_lst_o_none(l,'pubV'),dec=_num_o_none(l,'cajadec'),ph=_ph(l),p35=_p35(l)))
+                                          fullC=_num_o_none(l,'fullcta'),camC=_num_o_none(l,'camcta'),pubV=_lst_o_none(l,'pubV'),dec=_num_o_none(l,'cajadec'),ph=_ph(l),pcx=_pcx(l),p35=_p35(l)))
 print(f"leí {len(P)} de {esper} productos"+(' ✓' if len(P)==esper else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 # NO SE ESCRIBE NADA A MEDIAS (etapa 5, 20/10/2026): renglones que no entendí, grupos que no cierran, falta un grupo o la
 # línea final "CUENTA: … ✓" (el log se cortó o el comando se cayó) → no se arma cajas.txt.
@@ -458,25 +460,42 @@ for cta in set(o['cta'] for o in out):
         sinMed=sum(1 for o in G if not _pc(o))
         for o in G:
             o['cola']=f"📦 grande: espera a juntar una caja llena (hay para {round(lugar*100)}% de una caja{', '+str(sinMed)+' sin medidas' if sinMed else ''} y ninguno se corta en {CAJA_CORTE_DIAS} días), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (espera a juntar una caja llena de grandes)");o['q']=0
-# EL ENVÍO ENTERO CONTRA LO QUE LLEVA LA CAJA (12/11/2026, él: "mandar una sola unidad cuesta 17.500; si le ganamos 23.000 le queda de
-# ganancia real 5.500, ¿eso aún es el 35%? … mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos"). Por cuenta: (lo que deja todo lo que
-# va − el envío) ÷ (lo que costó + el envío). Abajo del 35% esa caja no sale: espera a juntar más (la web la pone en rojo, "No conviene").
+# EL ENVÍO DE LA CAJA, PRODUCTO POR PRODUCTO (12/11/2026, él: "mandar una sola unidad cuesta 17.500; si le ganamos 23.000 le queda de
+# ganancia real 5.500, ¿eso aún es el 35%?" y después: "la caja tiene 10 productos, 9 dan arriba del 35% y uno abajo: que saque ese que no
+# da y listo… al armar la caja tenés que mirar cuántas unidades cargaste y mirar en cada producto el costo que le queda y si da el 35%").
+# Cada unidad paga COSTO_CAJA ÷ las unidades que lleva ESA caja (en vez del envío+embalaje de la ficha, que supone una caja llena de ese solo
+# producto). Con `PC gan:div:ship` de pedidostodo (el peor caso al precio del PH): % = (gan + ship − e) ÷ (div − ship + e). El que no llega
+# al 35% sale de la caja (queda en la oficina) y se vuelve a contar con las unidades que quedan, hasta que todos den. Lo FIJO de él no sale.
 COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); si cambia, cambiarlo acá también
-_CU={p['id']:p.get('cu') for p in P}
-_porC={}
-for o in out:
-    if not (o.get('q') or 0)>0: continue
-    pid=re.match(r'caja:(p\w+)@',o['cab']).group(1); g=o.get('gan'); cu=_CU.get(pid)
-    if g is None or not cu: continue
-    a_=_porC.setdefault(o['cta'],[0,0,0]); a_[0]+=g*o['q']; a_[1]+=cu*o['q']; a_[2]+=o['q']
+_PCX={}
+for p in P:
+    _PCX[(p['id'],'')]=p.get('pcx')
+    for x in p.get('vars') or []: _PCX[(p['id'],x.get('v',''))]=x.get('pcx')
+def _cabk(cab):
+    m_=re.match(r'caja:(p\w+)@[^#]+(?:#(.*))?$',cab); return (m_.group(1),m_.group(2) or '')
 cajaPct=[]
-for c,(g,cu,u) in _porC.items():
-    pc=(g-COSTO_CAJA)/(cu+COSTO_CAJA)*100
-    if pc<35:
-        for o in out:
-            if o['cta']==c and (o.get('q') or 0)>0 and not o.get('fijo'):
-                o['cola']=f"🟥 la caja de {c} no conviene todavía: {u} u. dejan {pc:.0f}% pagando el envío entero (${COSTO_CAJA:,}), espera a juntar más (él, 12/11) · ".replace(f"{COSTO_CAJA:,}",f"{COSTO_CAJA:,}".replace(',','.'))+o['cola']; o['q']=0
-    cajaPct.append(f"{'🟥 NO CONVIENE' if pc<35 else '🟩'} caja de {c}: {u} u. dejan ${g:,.0f} − envío ${COSTO_CAJA:,} = {pc:.0f}% sobre lo que costó + el envío".replace(',','.')+(' → que espere a juntar más (lo puse en 0)' if pc<35 else ''))
+for c in sorted(set(o['cta'] for o in out)):
+    sacados=[]
+    while True:
+        V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]
+        U=sum(o['q'] for o in V)
+        if not U: break
+        e=COSTO_CAJA/U; malos=[]
+        for o in V:
+            pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
+            if not pc: o['_pct']=None; continue
+            g,d,sh=pc; o['_pct']=(g+sh-e)/max(1,(d-sh+e))*100
+            if o['_pct']<35 and not o.get('fijo'): malos.append(o)
+        if not malos: break
+        for o in malos:
+            sacados.append(f"{o['nom']} ({o['q']} u. → {o['_pct']:.0f}%)")
+            o['cola']=f"🟥 no va en esta caja: con su parte del envío (${COSTO_CAJA:,} ÷ {U} u. = ${e:,.0f} c/u) deja {o['_pct']:.0f}% en el peor caso, abajo del 35% (él, 12/11) · ".replace(f"{COSTO_CAJA:,}",f"{COSTO_CAJA:,}".replace(',','.')).replace(f"{e:,.0f}",f"{e:,.0f}".replace(',','.'))+o['cola']; o['q']=0
+    V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]; U=sum(o['q'] for o in V)
+    if U or sacados:
+        pcts=[o.get('_pct') for o in V if o.get('_pct') is not None]
+        cajaPct.append(f"📦 caja de {c}: {U} u. · envío ${COSTO_CAJA/U if U else 0:,.0f} por unidad".replace(',','.')+(f" · el que menos deja: {min(pcts):.0f}%" if pcts else '')+
+                       (f" · sin dato de % (van igual): {sum(1 for o in V if o.get('_pct') is None)}" if any(o.get('_pct') is None for o in V) else '')+
+                       (f"\n    🟥 SALIERON por no llegar al 35% con el envío: "+' · '.join(sacados) if sacados else ''))
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
