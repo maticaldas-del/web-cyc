@@ -2148,6 +2148,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 - **12/11 · `enviovacio:<dígitos>[:go]`** (él: el envío …5641 de Matías nunca salió, se desarmó y sólo quedó pago). Qué es: las cajas no llegadas del envío vuelven a la Oficina ML como ya etiquetadas y el envío queda vacío con `vacioPago` (no cuenta en camino ni cupo) para reusarlo en ML. Dónde: `sync.mjs`. Qué chequear: que no toque cajas llegadas o con algo entrado; que la oficina sume por color; que el sin etiqueta no suba.
 
+- **12/11 · Error: `cyc/parachat` y `recon_vivo` estaban en CYC_KEYS pero nunca se pasaban a `state`** (él: el chat de Chrome no veía "📌 Claude te pide"). Arreglado en `_cycAplicar`. Qué chequear: toda clave nueva de CYC_KEYS tiene su `state.x=d.x` (script: buscar `d.<clave>` por cada clave; hoy 0 faltan).
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 ### 🔍 Revisión etapa 4 del 09/11/2026 (4 revisores en máximo: web contra robot · fallas mudas del robot · choques de las tareas · lo pendiente)
 - **Arreglado (urgente):** (1) `decide_pedidos.py` y `decide_cajas.py` cambian el ";" de los motivos de juicios/FIJO por "," (desde el 08/11 se frenaban: sin pedidos ni cajas) · (2) M35: token, tanda de publicaciones o `techofull`/monotributo que no se leen → `⚠️ NO LEÍ` (los scripts se frenan; antes compraban de más al precio de hoy: +1.041 u. con el log del 08/11 si fallaba `techofull`) · los dos scripts también se frenan con `DATOS INCOMPLETOS` · `netopub` con NO LEÍ.
