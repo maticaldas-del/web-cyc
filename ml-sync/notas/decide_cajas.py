@@ -458,10 +458,28 @@ for cta in set(o['cta'] for o in out):
         sinMed=sum(1 for o in G if not _pc(o))
         for o in G:
             o['cola']=f"📦 grande: espera a juntar una caja llena (hay para {round(lugar*100)}% de una caja{', '+str(sinMed)+' sin medidas' if sinMed else ''} y ninguno se corta en {CAJA_CORTE_DIAS} días), quedan {o['q']} para esa caja · "+o['cola'];recortes.append(f"{o['nom']} → {cta}: {o['q']} → 0 (espera a juntar una caja llena de grandes)");o['q']=0
+# EL ENVÍO ENTERO CONTRA LO QUE LLEVA LA CAJA (12/11/2026, él: "mandar una sola unidad cuesta 17.500; si le ganamos 23.000 le queda de
+# ganancia real 5.500, ¿eso aún es el 35%? … mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos"). Por cuenta: (lo que deja todo lo que
+# va − el envío) ÷ (lo que costó + el envío). Abajo del 35% esa caja no sale: espera a juntar más (la web la pone en rojo, "No conviene").
+COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); si cambia, cambiarlo acá también
+_CU={p['id']:p.get('cu') for p in P}
+_porC={}
+for o in out:
+    if not (o.get('q') or 0)>0: continue
+    pid=re.match(r'caja:(p\w+)@',o['cab']).group(1); g=o.get('gan'); cu=_CU.get(pid)
+    if g is None or not cu: continue
+    a_=_porC.setdefault(o['cta'],[0,0,0]); a_[0]+=g*o['q']; a_[1]+=cu*o['q']; a_[2]+=o['q']
+cajaPct=[]
+for c,(g,cu,u) in _porC.items():
+    pc=(g-COSTO_CAJA)/(cu+COSTO_CAJA)*100
+    if pc<35:
+        for o in out:
+            if o['cta']==c and (o.get('q') or 0)>0 and not o.get('fijo'):
+                o['cola']=f"🟥 la caja de {c} no conviene todavía: {u} u. dejan {pc:.0f}% pagando el envío entero (${COSTO_CAJA:,}), espera a juntar más (él, 12/11) · ".replace(f"{COSTO_CAJA:,}",f"{COSTO_CAJA:,}".replace(',','.'))+o['cola']; o['q']=0
+    cajaPct.append(f"{'🟥 NO CONVIENE' if pc<35 else '🟩'} caja de {c}: {u} u. dejan ${g:,.0f} − envío ${COSTO_CAJA:,} = {pc:.0f}% sobre lo que costó + el envío".replace(',','.')+(' → que espere a juntar más (lo puse en 0)' if pc<35 else ''))
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
-_outD=list(out)
 out=[f"{o['cab']}=u|{o['q']}|{o['cola']}" for o in out]
 bad=[x for x in out if ';' in x]
 if bad: print('⚠️ renglones con ";" (decido los cortaría):',*bad[:5],sep='\n  '); sys.exit(1)
@@ -483,17 +501,4 @@ if grandesSalen: print('📦 GRANDES QUE SALEN EN SU PROPIA CAJA (aparte de la d
 if soloPerfFuera: print('🛍️ PEDIDO SÓLO PARA LA PERFUMERÍA (papelera / sólo local, no van a Full) ·',len(soloPerfFuera),*soloPerfFuera,sep='\n  ')
 if sin: print('SIN CUENTA:',*sin,sep='\n  ')
 if amano: print('DECIDIR A MANO (más de una cuenta):',*amano,sep='\n  ')
-# EL ENVÍO ENTERO CONTRA LO QUE LLEVA LA CAJA (12/11/2026, él: "mandar una sola unidad cuesta 17.500; si le ganamos 23.000 le queda de
-# ganancia real 5.500, ¿eso aún es el 35%? … mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos"). Por cuenta: (lo que deja todo lo que
-# va − el envío) ÷ (lo que costó + el envío). Abajo del 35% esa caja no sale: espera a juntar más (la web la pone en rojo, "No conviene").
-COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); si cambia, cambiarlo acá también
-_CU={p['id']:p.get('cu') for p in P}
-_porC={}
-for o in _outD:
-    if not (o.get('q') or 0)>0: continue
-    pid=re.match(r'caja:(p\w+)@',o['cab']).group(1); g=o.get('gan'); cu=_CU.get(pid)
-    if g is None or not cu: continue
-    a_=_porC.setdefault(o['cta'],[0,0,0]); a_[0]+=g*o['q']; a_[1]+=cu*o['q']; a_[2]+=o['q']
-for c,(g,cu,u) in _porC.items():
-    pc=(g-COSTO_CAJA)/(cu+COSTO_CAJA)*100
-    print(f"{'🟥 NO CONVIENE' if pc<35 else '🟩'} caja de {c}: {u} u. dejan ${g:,.0f} − envío ${COSTO_CAJA:,} = {pc:.0f}% sobre lo que costó + el envío".replace(',','.')+(' → que espere a juntar más' if pc<35 else ''))
+for x in cajaPct: print(x)
