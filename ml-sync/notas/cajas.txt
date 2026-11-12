@@ -102,3 +102,4 @@ caja:p1779912655490@Adriana#Scarf=u|0|al precio de hoy vende 1 en 27 días con s
 caja:p1779912655490@Adriana#Teikirisi=u|0|pocas ventas (0 en 25 d con stock, 1 en 60 d): sin ritmo, sólo el mínimo si está en cero · hay 0 en Full y 3 en camino · para 37 dias (30 + 7 de viaje) hacen falta 0 · en la oficina 1 · (cuenta automática)
 caja:p1779912655490@Adriana#Transparent Mujer=u|0|al precio de hoy vende 0 en 30 días con stock (desde el último cambio de precio) · hay 6 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 0 · en la oficina 3 · (cuenta automática)
 caja:p1779912655490@Adriana#Turbulence=u|0|al precio de hoy vende 0 en 19 días con stock (desde el último cambio de precio) · hay 3 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 0 · en la oficina 3 · (cuenta automática)
+caja:p1793417351891@Luciana=u|0|Nunca vendió y ya hay 4 en Full (él 05/11: no mandar más hasta que vendan) · decidido a mano 11/11
