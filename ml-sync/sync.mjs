@@ -20497,6 +20497,51 @@ async function main() {
       for (const x of L.sort((a, b) => a.r.nivel.localeCompare(b.r.nivel)).slice(0, q ? 60 : 40)) console.log(`  ${String(x.p.name).slice(0, 50).padEnd(50)} ${x.r.txt}`);
       return;
     }
+    // BILLING_PROBE=envioquitar:<últimos dígitos del envío>;<palabra>[@color]=<u que se SACAN>;…[;go] (12/11/2026, él con el envío …915 de
+    // Luciana: "esto fue lo que entró físicamente en la caja. saqué cosas y unidades ya que no entraban. volvelos a la oficina ML") → SACA de
+    // las cajas NO llegadas de un envío las unidades que no entraron y las devuelve a la Oficina ML como YA ETIQUETADAS (como el "deshacer"
+    // de la web). Cada palabra tiene que agarrar UN renglón del envío. Sin `;go` sólo muestra.
+    if (/^envioquitar:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('envioquitar:'.length); const GO = /;go\s*$/.test(raw) && !DRY;
+      const partes = raw.replace(/;go\s*$/, '').split(';').map((x) => x.trim()).filter(Boolean);
+      const fin = String(partes.shift() || '').replace(/\D/g, '');
+      if (fin.length < 3 || !partes.length) { console.log('Usá: envioquitar:<últimos 3+ dígitos>;<palabra>[@color]=<u>;…[;go]'); return; }
+      const envs = (await db.get('cyc/envios_full')) || {};
+      const hits = Object.entries(envs).filter(([id, e]) => e && (String(id).endsWith(fin) || (Array.isArray(e.cajasDet) && e.cajasDet.some((c) => c && String(c.track || c.seg || '').endsWith(fin)))));
+      if (hits.length !== 1) { console.log(`"…${fin}" agarra ${hits.length} envío(s). Tiene que ser uno solo.`); return; }
+      const [id, e] = hits[0];
+      const prods = (await db.get('cyc/products')) || {}; const PL = Object.values(prods).filter((x) => x && x.id);
+      const nom = (pid) => String((PL.find((x) => x.id === pid) || {}).name || pid);
+      const nrmQ = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const cajas = (Array.isArray(e.cajasDet) ? e.cajasDet : Object.values(e.cajasDet || {})).map((c) => (c ? { ...c, items: (c.items || []).map((x) => ({ ...x })) } : c));
+      const filas = []; cajas.forEach((c, ci) => { if (c && !c.recibida) (c.items || []).forEach((x, xi) => { if (x && x.prodId && x.u > 0) filas.push({ ci, xi, x, n: nrmQ(nom(x.prodId) + ' ' + (x.variante || '')) }); }); });
+      console.log(`=== SACAR DEL ENVÍO …${String(id).slice(-4)} · ${e.cuenta || '?'} ${GO ? '(APLICO)' : '(PRUEBA: agregá ;go)'} ===`);
+      const mov = []; let mal = 0;
+      for (const pz of partes) {
+        const m = pz.match(/^(.+?)=(\d+)$/); if (!m) { console.log(`  ❌ "${pz}": falta =<unidades>`); mal++; continue; }
+        const [q0, col] = m[1].split('@'); const ws = nrmQ(q0).split(' ').filter(Boolean); const cq = col ? nrmQ(col) : '';
+        const h = filas.filter((f) => ws.every((w) => f.n.includes(w)) && (!cq || nrmQ(f.x.variante || '').includes(cq)));
+        if (h.length !== 1) { console.log(`  ❌ "${m[1]}" agarra ${h.length} renglón(es)${h.length ? ': ' + h.map((f) => nom(f.x.prodId).slice(0, 40)).join(' | ') : ''}`); mal++; continue; }
+        const u = parseInt(m[2]); if (u > h[0].x.u) { console.log(`  ❌ "${m[1]}": el envío tiene ${h[0].x.u} u., no se pueden sacar ${u}`); mal++; continue; }
+        mov.push({ f: h[0], u }); console.log(`  ↩️ ${nom(h[0].x.prodId)}${h[0].x.variante ? ' @' + h[0].x.variante : ''}: ${h[0].x.u} → ${h[0].x.u - u} en el envío · ${u} vuelven a la oficina`);
+      }
+      if (mal) { console.log('❌ NO ESCRIBO NADA hasta que todos los renglones estén bien.'); return; }
+      if (!GO) return;
+      for (const { f, u } of mov) { const it = cajas[f.ci].items[f.xi]; it.u -= u; }
+      for (const c of cajas) if (c) c.items = (c.items || []).filter((x) => x && x.u > 0);
+      await db.set('cyc/envios_full/' + id + '/cajasDet', cajas);
+      const inv = (await db.get('cyc/inventory')) || {};
+      for (const { f, u } of mov) {
+        const P = PL.find((x) => x.id === f.x.prodId); if (!P) { console.log('  ⚠️ sin ficha: ' + f.x.prodId); continue; }
+        const r = await ofiSumarBot(db, P, f.x.variante || '', u, inv);
+        if (!r) { console.log(`  ⚠️ ${P.name}: no la pude devolver (sumala a mano con ofi:…!ok)`); continue; }
+        if (r.se) await db.set(sinEtiqPath(P.id, r.se.cta, r.color || ''), r.se.antes || null);
+        console.log(`   ✓ ${P.name}${r.color ? ' @' + r.color : ''}: oficina ${r.antes} → ${r.ahora}`);
+      }
+      const rel = (await db.get('cyc/envios_full/' + id + '/cajasDet')) || [];
+      console.log(`✓ envío releído: ${(Array.isArray(rel) ? rel : Object.values(rel)).reduce((a, c) => a + ((c && c.items) || []).reduce((b, x) => b + (Number(x && x.u) || 0), 0), 0)} u. quedan en el envío`);
+      return;
+    }
     // BILLING_PROBE=enviovacio:<últimos dígitos del envío>[:go] (12/11/2026, él: "el envío de Matías que termina en 641 nunca se mandó y está
     // completamente desarmado… sólo está pago el envío… y el nuevo tampoco lo mandé… el próximo envío de Matías que sea al 641") → UN ENVÍO
     // QUE NO SALIÓ Y SE DESARMÓ: sus cajas no recibidas (y sin nada entrado a Full) vuelven a la Oficina ML como YA ETIQUETADAS (`!ok`: es la
