@@ -2997,6 +2997,8 @@ function startApp(){
     state.oficyc=d.oficyc||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
     state.pedperf=d.pedperf||{};   // 29/10: 🛍️ lo que pidió la perfumería (se suma en Pedidos de Bs As)
     state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
+    state.parachat=d.parachat||{};   // 12/11/2026: 📌 Pedidos de Claude al chat de Chrome. Se bajaba (CYC_KEYS) pero nunca se pasaba a la pantalla: el cuadro no salía desde el 10/11
+    if(d.recon_vivo)state.recon_vivo=d.recon_vivo;   // 12/11/2026: mismo error (se escuchaba y no se leía): la web volvía a escribirlo cada hora sin necesidad
     state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
     state.sinetiq=d.sinetiq||{};   // 23/10: 🏷️ mercadería en la oficina sin etiqueta de Full (la carga Claude: ofi:…!se / sinetiq:)
     state.noconsigo=d.noconsigo||{};   // 17/10: "🚫 No lo consigo" de Pedidos (Bs As/Paulvic): sin reposición hasta que entre algo a la oficina
@@ -3550,7 +3552,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.176';
+const APP_VERSION='28.177';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,6 +3565,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.177',f:'12/11',h:'13:40',c:[{n:2,t:'📌 Mensaje para Claude: ahora sí se ven los "Claude te pide" para el chat de Chrome (se guardaban pero el panel no los mostraba desde el 10/11).'}]},
   {v:'28.176',f:'12/11',h:'10:20',c:[{n:2,t:'🚚 Pedidos → Paraguay: cada pedido en camino dice lo que vio el chat de Chrome en Via Cargo (viajando, LLEGÓ y falta retirar, o retirado) y cuándo lo vio.'}]},
   {v:'28.175',f:'12/11',h:'05:40',c:[{n:1,t:'💡 Revisión de Ideas: 21 ideas para elegir en la lista de las 12:30 (Navidad en las cajas, stock antiguo de 180 días, comisión real de ML, cuotas con interés bajo, el pedido de Paraguay en un paso, preguntas desde el panel…).'}]},
   {v:'28.174',f:'11/11',h:'05:10',c:[{n:1,t:'🧾 Revisión de Datos terminada: 4 decisiones para vos en la lista de las 12:30 (Black Friday, escasez en el evento, descuentos en lo 🔒/🥊 y fechas especiales).'}]},
