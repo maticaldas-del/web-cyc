@@ -999,6 +999,8 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 
 - **11/11 · El chat de Chrome mira lo que ML marca "Para evitar descarte"** (él, con la captura de Estado de tu stock). Qué es: parte 6 del MIRAR TODO, renglones `DESCARTE · <cuenta>: …` (⏰ siempre) y el resumen de "Para impulsar ventas". Dónde: `ml-sync/PROMPT_RUTINA_MANANA.md`. Qué chequear: que aparezca cada día en el buzón y que lo marcado se trate en la vuelta (liquidar o pedir retiro antes de la fecha).
 
+- **12/11 · Tope de H con todas las categorías** (él: *"mostrame en esa barra todas las categorías… líneas blancas"*). Qué es: en la tarjeta ⚖️ la barra va hasta el tope de K, con raya blanca por categoría (H más gruesa), letras abajo y "hoy en X · al 31/12 cae en Y". Dónde: `index.html` (`renderHomeParejo`). Qué chequear: a 360 px las letras A-D quedan apretadas (A-E juntas en ~30% de la barra); que el color siga marcando pasarse de H.
+
 ## 2 · PLATA (martes)
 ### ✅ Plata y Local · decisiones del 08/11
 (Revisión de la Plata del 05/11 y del Local del 06/11; él eligió Plata 3a 7a 8a 9a 10a 12a 13a 14a 15a · Local 2a 5a 6a 8a. Local 3, 4b y 16 quedan como están, sin código.)

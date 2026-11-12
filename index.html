@@ -3552,7 +3552,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.177';
+const APP_VERSION='28.178';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3565,6 +3565,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.178',f:'12/11',h:'14:10',c:[{n:1,t:'⚖️ Facturas → tope de H: la barra de cada cuenta va hasta el tope de la K, con una raya blanca por cada categoría (A a K) y dice en qué categoría está hoy y en cuál cae al 31/12.'}]},
   {v:'28.177',f:'12/11',h:'13:40',c:[{n:2,t:'📌 Mensaje para Claude: ahora sí se ven los "Claude te pide" para el chat de Chrome (se guardaban pero el panel no los mostraba desde el 10/11).'}]},
   {v:'28.176',f:'12/11',h:'10:20',c:[{n:2,t:'🚚 Pedidos → Paraguay: cada pedido en camino dice lo que vio el chat de Chrome en Via Cargo (viajando, LLEGÓ y falta retirar, o retirado) y cuándo lo vio.'}]},
   {v:'28.175',f:'12/11',h:'05:40',c:[{n:1,t:'💡 Revisión de Ideas: 21 ideas para elegir en la lista de las 12:30 (Navidad en las cajas, stock antiguo de 180 días, comisión real de ML, cuotas con interés bajo, el pedido de Paraguay en un paso, preguntas desde el panel…).'}]},
@@ -27629,19 +27630,26 @@ function renderHomeParejo(){
     // en teoría y los productos nuevos"): lleno = facturado · medio = lo que ya vende, a su ritmo · rayado = lo nuevo que todavía no
     // vendió (Full, viajando o en la caja, a su precio de hoy), que NO entra en "en teoría" porque no tiene ritmo.
     const nuevo=Math.max(0,f.valNuevo||0), teo=Math.max(0,f.proy-f.fac-nuevo);
-    const wFac=Math.min(100,f.fac/d.topeH*100), wTeo=Math.max(0,Math.min(100-wFac,teo/d.topeH*100)), wNue=Math.max(0,Math.min(100-wFac-wTeo,nuevo/d.topeH*100));
+    // 12/11/2026 (él: "mostrame en esa barra todas las categorías del monotributo, que la barra sea el tope de la última categoría y líneas
+    // blancas que separen las categorías"): la barra entera = el tope de K (MONO_CATS) y cada categoría tiene su raya blanca con la letra.
+    const TOPB=MONO_CATS[MONO_CATS.length-1].lim;
+    const wFac=Math.min(100,f.fac/TOPB*100), wTeo=Math.max(0,Math.min(100-wFac,teo/TOPB*100)), wNue=Math.max(0,Math.min(100-wFac-wTeo,nuevo/TOPB*100));
+    const catProy=(MONO_CATS.find(c=>f.proy<=c.lim)||{c:'fuera de monotributo'}).c, catHoy=(MONO_CATS.find(c=>f.fac<=c.lim)||{c:'—'}).c;
+    const rayasCat=MONO_CATS.slice(0,-1).map(c=>{const x=(c.lim/TOPB*100).toFixed(2);const h=c.c==='H';return `<i style="position:absolute;top:0;bottom:0;left:${x}%;width:${h?2:1}px;background:#fff;opacity:${h?1:.75}"></i>`;}).join('');
+    const letras=MONO_CATS.map((c,i)=>{const a=i?MONO_CATS[i-1].lim:0;const x=((a+c.lim)/2/TOPB*100).toFixed(2);return `<span style="position:absolute;left:${x}%;transform:translateX(-50%);font-size:.5rem;color:${c.c==='H'?'var(--text)':'var(--muted)'};font-weight:${c.c==='H'?800:400};font-family:'DM Mono',monospace">${c.c}</span>`;}).join('');
     const raya=`repeating-linear-gradient(135deg,${col} 0 3px,transparent 3px 6px)`;
     const mu=(bg,op)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px;background:${bg};opacity:${op};border:1px solid ${col}"></span>`;
     return `<div style="margin:8px 0">
       <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
         <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
-      <div style="height:9px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-top:3px;display:flex"><div style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></div><div style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></div></div>
+      <div style="position:relative;height:11px;margin-top:3px"><div style="height:100%;background:var(--surface2);border-radius:5px;overflow:hidden;display:flex"><div style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></div><div style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></div></div>${rayasCat}</div><div style="position:relative;height:10px;margin-top:1px">${letras}</div><div style="font-size:.6rem;margin-top:1px">hoy en <b>${catHoy}</b> · al ${fD(d.fin).slice(0,5)} cae en <b style="color:${catProy==='H'?col:'var(--text)'}">${catProy}</b></div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5">${mu(col,1)}facturado ${fM(f.fac)} · ${mu(col,.45)}en teoría +${fM(teo)} <span style="opacity:.8">(lo que ya vende, a su ritmo: ${fM((f.diarioEsp||f.diario)*30)}/mes × ${d.faltan} d)</span>${nuevo>0?` · ${mu(raya,1)}nuevo sin vender +${fM(nuevo)} <span style="opacity:.8">(${f.uNuevo} u. en Full, viajando o en la caja, a su precio de hoy)</span>`:''}</div>
       <div style="font-size:.58rem;color:var(--muted);opacity:.75;margin-top:1px">con el ritmo parejo de los últimos 30 días serían ${fM(f.proy30)}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
       ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
     </div>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La barra entera es el tope de la K (${fM(MONO_CATS[MONO_CATS.length-1].lim)}); cada raya blanca es el tope de una categoría (la de H, más gruesa).</div>
     <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra tiene tres partes: <strong>llena</strong> = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · <strong>clarita</strong> = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre (lo recién llegado, a su ritmo desde que llegó) · <strong>rayada</strong> = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta.</div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo de Paraguay que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='matias')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Matías. <span style="color:var(--muted)">(Perfumes de Paraguay → Adriana · Luciana sólo lo que no es de Paraguay · lo que ya está en una cuenta, queda.)</span></div>
