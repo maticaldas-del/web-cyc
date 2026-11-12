@@ -3550,7 +3550,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.175';
+const APP_VERSION='28.176';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3563,7 +3563,8 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.175',f:'12/11',h:'10:20',c:[{n:2,t:'🚚 Pedidos → Paraguay: cada pedido en camino dice lo que vio el chat de Chrome en Via Cargo (viajando, LLEGÓ y falta retirar, o retirado) y cuándo lo vio.'}]},
+  {v:'28.176',f:'12/11',h:'10:20',c:[{n:2,t:'🚚 Pedidos → Paraguay: cada pedido en camino dice lo que vio el chat de Chrome en Via Cargo (viajando, LLEGÓ y falta retirar, o retirado) y cuándo lo vio.'}]},
+  {v:'28.175',f:'12/11',h:'05:40',c:[{n:1,t:'💡 Revisión de Ideas: 21 ideas para elegir en la lista de las 12:30 (Navidad en las cajas, stock antiguo de 180 días, comisión real de ML, cuotas con interés bajo, el pedido de Paraguay en un paso, preguntas desde el panel…).'}]},
   {v:'28.174',f:'11/11',h:'05:10',c:[{n:1,t:'🧾 Revisión de Datos terminada: 4 decisiones para vos en la lista de las 12:30 (Black Friday, escasez en el evento, descuentos en lo 🔒/🥊 y fechas especiales).'}]},
   {v:'28.173',f:'11/11',h:'04:40',c:[{n:2,t:'📈 Revisión de Datos: las rayas de un producto ya no pierden las ventas de una gemela o publicación cerrada (salía un 🔴 falso), un día con venta nunca cuenta como "sin visitas", y Métricas → Cambios de precio cuenta también mis descuentos.'}]},
   {v:'28.172',f:'10/11',h:'17:22',c:[{n:2,t:'🇵🇾 Pedido del momento: pasa sólo lo mirado en Nissei hace menos de 24 h (antes 2 días). El 💵 al venderse suma aparte la ganancia de la 🏬 Tienda (25%).'}]},
@@ -5950,6 +5951,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:6,t:'12/11 · 21 ideas nuevas para elegir',que:'Navidad en las cajas · stock antiguo de 180 días · resaca de enero · comisión con peso · cuotas con interés bajo · IIBB de Luciana · precio de retirar · kits · beneficio de ML · denuncias · pedido de Paraguay en un paso · run del chat · buzón solo · extracto de MP · decisiones de caja · preguntas en el panel · lo que llega · Tienda y ABEL · qué pasó la semana · decidir tocando · numerito',pedi:'resolvamos'},
   {etapa:5,t:'11/11 · 4 decisiones de Datos y cerebro',que:'ventas del Black Friday que confirman subas · escasez en el Black Friday · salir de un descuento en lo 🔒/🥊 · fecha especial con escalera de subas',pedi:'resolvamos'},
   {etapa:7,t:'10/11 · 15 cosas de Diseño para elegir',que:'lo chico de una vez · Comparar meses al revés · "a esta hora" · el 🧠 de Tito · Para comprar hoy · Contar en dos pisos · tablas en tarjetas · Ver deudas en dos pisos · Gastos para tocar · tope de H · Mezcla y escalera · Ventas · línea y puertas · 🧠 por color · 🇵🇾/🇦🇷 con pregunta',pedi:'resolvamos'},
   {etapa:4,t:'09/11 · 7 decisiones de Choques y fallas mudas',que:'noche con lecturas fallidas · comandos que se cortan · cada cuánto el ciclo · proteger la rama · ml-chequeo viejo · sumas de la oficina · rehacer días de la línea',pedi:'resolvamos'},
@@ -6003,7 +6005,8 @@ const REV_HIST={
   6:[{f:'2026-09-27',t:'Ideas 1-10: eligió Premium vs Clásica, visitas en Rotación, caja ML, tope de H, prueba de suba y motivo de reclamos.'},
      {f:'2026-10-15',t:'Etapa del 14/10 cerrada: lo de los reclamos que paga ML se midió (sí nos cuestan) y no quedó nada pendiente.'},
      {f:'2026-10-21',t:'4 revisores en máximo (datos de ML sin usar, plata, trabajo a mano, gusto): 24 ideas para elegir (el cupo de Ayelen repartido por plata, publicar lo nuevo desde el chat, la venta que dice qué significa, Pedidos con lo que cambió).'},
-     {f:'2026-11-02',t:'4 revisores en máximo: 19 ideas (Navidad en 4 tandas, edad real del stock en Full, la rutina del buzón sola, pedido de la Tienda en un paso, "Te espera a vos" en Inicio…); sólo propone.'}],
+     {f:'2026-11-02',t:'4 revisores en máximo: 19 ideas (Navidad en 4 tandas, edad real del stock en Full, la rutina del buzón sola, pedido de la Tienda en un paso, "Te espera a vos" en Inicio…); sólo propone.'},
+     {f:'2026-11-12',t:'4 revisores en máximo (datos de ML sin usar, trabajo a mano, plata hasta fin de año, comodidad con maqueta): 21 ideas para elegir (Navidad en las cajas, stock antiguo de 180 días, comisión con peso, cuotas con interés bajo, pedido de Paraguay en un paso, preguntas en el panel…).'}],
   7:[{f:'2026-09-29',t:'4 revisores (teléfono, lo que sobra, lo que cuesta encontrar, parejo): lo chico hecho.'},
      {f:'2026-10-01',t:'Cerrada: eligió 13 de 15 ideas (Inicio, Rotación en el teléfono, colores del %, Ventas por semana, Métricas con índice).'},
      {f:'2026-10-20',t:'4 revisores en máximo (teléfono, lo que sobra, lo que cuesta encontrar, parejo y lindo): ~60 arreglos chicos hechos (v25.54: buscadores, teléfono, tema claro, flechas, textos del robot viejo, accesos del ícono). Quedan ideas para que elija él.'},

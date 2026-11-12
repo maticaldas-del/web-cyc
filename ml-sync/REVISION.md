@@ -2308,6 +2308,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **Auditoría 03/11/2026 · el envío en pausa ya no sale como caja vieja en la sección 9 del `informe`.** Qué es: una caja con `pausado` (en la oficina, no cuenta días) salía "sin fecha" y se contaba en "9+ días en camino". Dónde: `ml-sync/sync.mjs`, bloque 9 del `informe` (`nPausI`). Qué chequear: con un envío en pausa, el renglón dice "⏸️ envío en pausa" y el título lo cuenta aparte ("· N en pausa"), no en los 9+ días.
 
 ## 6 · IDEAS NUEVAS (sábado)
+### 🔍 Revisión de la etapa 6 (12/11/2026, 4 revisores en máximo · sólo propuestas)
+- **Qué se hizo:** 4 frentes (datos de ML sin usar · trabajo a mano · plata hasta fin de año · comodidad con maqueta en el scratchpad de la sesión, `e6/r4/out/`). 21 ideas en `notas/para_mati.md` ("12/11 · Ideas nuevas"), ninguna repetida. Verificado contra el código antes de anotarlas: `decide_cajas.py` no mira el pico de Navidad; `STOCK_ANTIGUO_TABLA` pasa de $350 a $3.250 a los 180 días; `listing_prices` se pide sin `billable_weight`/`logistic_type` en ningún lugar; `eligibility_benefits` de la reposición sólo se imprime en un comando de prueba.
+- **Qué chequear:** cuando él elija, cada idea elegida se anota en su etapa.
 - 03/11/2026 · Etapa 6 · **experiencia: el -1 de ML es "sin dato"** (la primera corrida marcó 73 de 222 en 🔴 porque ML manda -1 a las que no tienen puntaje). **Chequear:** `experiencia` sólo pone 🔴 con un número de 0 a 74.
 ### ✅ 03/11/2026 · Las ideas del 02/11 que eligió (él: 7a 8a 9a 10a 11a 12a 13a 15a 17a; 14 → tarea del chat "CAJAS LLEGADAS")
 - **7 edad real del stock:** `edadreal[:<palabra>][:go]` arma por FIFO, desde el `st` diario de la línea (los movimientos de ML), la edad de la unidad más vieja de cada código de Full; sin go compara con el Excel de ML; con go escribe en `cyc/lotesfull/<código>` (`fuente:'movimientos'`) SÓLO donde no hay Excel o tiene más de 45 días. **Todavía no se corrió con go.**

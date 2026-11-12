@@ -121,3 +121,8 @@ Cada renglón: fecha · idea · plata estimada · estado (hecha / propuesta / de
 - **`decide_pedidos.py` ponía "Hola Tito! Hola Tito!"** cuando el juicio ya traía el saludo. Arreglado en `juicioQ`.
 - **El Triples Negro** sale con el ritmo de antes "por escasez" cuando la última suba fue de prueba. Lo corregí a mano: 0.
 - **40 publicaciones salen "sin leer"** en planilla, casi todas Paulvic de Adriana. ML no contestó esta noche.
+
+## 12/11 · de la completa
+- **`pedidostodo` falló 3 veces seguidas** porque ML no devolvía una tanda de 20 publicaciones de una cuenta (se mueve: Ayelen, Matías, Adriana). Planilla también salió con 20-80 sin leer varias vueltas del 11/11. Mirar si es cupo de ML (429) y reintentar sólo la tanda que falta en vez de abortar todo.
+- **Venta cancelada que confirmó una suba** (Espejo 7, 11/11): el robot subió con 3 ventas y una se canceló; sin stock en Full no deja volver. `decido` podría contar sólo ventas no canceladas y, si cambia, avisar.
+- **Hueco del punto medio** (Crystal Rock): después de volver por el punto medio, si ese precio tampoco vende no hay segunda vuelta hasta que la línea marque techo ahí.
