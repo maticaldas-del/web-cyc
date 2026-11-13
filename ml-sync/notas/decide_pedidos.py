@@ -11,7 +11,24 @@ def _leer_fijo():
     except Exception as e:
         print(f'⚠️ no pude leer FIJO de decide_cajas.py ({e}): lo de la perfumería se aparta sin contar lo fijo para Full'); return {}
 _FIJO=_leer_fijo()
-def fijo_q(pid,v): return max([q for (a,b,_c),(q,_m) in _FIJO.items() if a==pid and b==v] or [0])
+# Revisión etapa 9 (13/11/2026): lo FIJO que YA SALIÓ a Full (`fijo_salio.txt`, lo escribe decide_cajas.py) no se aparta más: decide_cajas ya
+# lo descuenta y acá se seguía apartando entero (3 en la oficina y 3 pedidas por la perfumería: Pedidos apartaba 2 y compraba 1 de más).
+def _leer_fijo_salio():
+    r={}
+    try:
+        for l in open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'fijo_salio.txt'),encoding='utf-8'):
+            if l.startswith('#') or not l.strip(): continue
+            pp=l.rstrip('\n').split('\t')
+            if len(pp)>=3:
+                try: r[pp[0]]=(int(pp[1]),int(pp[2]))
+                except ValueError: pass
+    except FileNotFoundError: pass
+    return r
+_FSAL=_leer_fijo_salio()
+def _fijo_resta(a,b,c,q):
+    fs=_FSAL.get(f"{a}|{b}|{c}")
+    return max(0,q-fs[1]) if (fs and fs[0]==q and q>0) else q
+def fijo_q(pid,v): return max([_fijo_resta(a,b,_c,q) for (a,b,_c),(q,_m) in _FIJO.items() if a==pid and b==v] or [0])
 # Arma los pedidos de TODO el catálogo a partir del log de `pedidostodo` (09/10/2026; revisión 9 del 13/10/2026).
 # Uso: python3 decide_pedidos.py <log de pedidostodo> <salida> → escribe <salida>, <salida>.json y pedidos.txt
 # Objetivo 30 días (Bs As 60 desde el 03/11, Paulvic 45): ritmo (por día CON stock: dCS) menos Full + oficina + camino + viajando. Sin ganancia o sin costo = 0.

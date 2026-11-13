@@ -150,7 +150,7 @@ Claude lo lee en su próxima vuelta y le pasa a Matías lo que hay que resolver.
 
 == AL TERMINAR: LO QUE LE ESCRIBÍS A MATÍAS EN EL CHAT (06/11, él: "hacé la rutina y hacés todo y me escribís qué es importante a resolver hoy o lo importante en gral y cargás todo en cyc") ==
 Cuando termine toda la rutina y esté todo cargado en el buzón, escribile corto, en castellano llano y sin datos de compradores:
-1. "Hoy llega": qué viene y de qué cuenta, y el código de cada cuenta (parte 16). Si no viene nada, decilo igual.
+1. "Hoy llega": SÓLO las cuentas a las que les llega algo hoy, cada una con qué llega y SU código (12/11, él: *"que no llegue si dice que no viene nada. que diga por ejemplo, hoy llega mercadería de matías y el código correspondiente"*). Ej.: "Hoy llega mercadería de Matías (compra de un teclado) · código XXXXXXXX". Si no llega nada a ninguna cuenta, este bloque NO va (ni los códigos). Lo de Via Cargo para retirar va acá también.
 2. "Para resolver hoy": lo ⏰ urgente, lo que vence antes primero, con cuenta, producto y hasta cuándo.
 3. "Importante en general": lo que no vence hoy pero conviene que sepa.
 4. Lo que no pudiste mirar. Si no hay nada urgente, decilo.
