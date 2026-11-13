@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['pyguia', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['pyguia', 'envioreal', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -56943,6 +56943,62 @@ async function main() {
       await db.set('cyc/parachat/' + id, { t: body.slice(0, 1500), ts: Number(id) });
       const r = await db.get('cyc/parachat/' + id); console.log(r && r.t ? '✓ guardado y releído' : '✗ no quedó');
       return;
+    }
+    // BILLING_PROBE=envioreal[:<palabra>][;go] (13/11/2026, él eligió 2a: "los productos hay que sacarle el costo de embalaje y se le agrega una vez
+    // se haya mandado la caja… mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos") → EL ENVÍO REAL EN EL COSTO. Por cada producto con stock en
+    // Full: las cajas en que viajó (cyc/envios_full/*/cajasDet, de la más nueva a la más vieja) hasta cubrir lo que hay en Full; cada unidad carga
+    // costoCaja ÷ las unidades de SU caja; el promedio pasa a ser `shipUSD` (al dólar de hoy) y `costFullUSD` se rehace como en `ponenvio`. Sin
+    // ninguna caja registrada queda el envío que tenía. Sin go sólo muestra (lo que más cambia arriba). Con go escribe y relee.
+    if (/^envioreal(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^envioreal:?/, ''); const GOe = /(^|;)go$/.test(raw) && !DRY; const q = norm(raw.replace(/;?go$/, '').trim());
+      const finE = (await db.get('cyc/finanzas')) || {}; const tcE = parseFloat(finE.tipo_cambio) || 0;
+      if (!tcE) { console.log('❌ sin dólar cargado: no toco nada'); return; }
+      const cfg = (await db.get('cyc/mlconfig')) || {}; const CC = parseFloat(cfg.costoCaja) || 17500;
+      const env = (await db.get('cyc/envios_full')) || {}; const inv = (await db.get('cyc/inventory')) || {};
+      const vpE = (await db.get('cyc/ventaprod')) || {}; setDevLive(vpE);
+      const CT = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const viajes = {};
+      for (const e of Object.values(env)) {
+        if (!e || !Array.isArray(e.cajasDet)) continue;
+        const t = e.fecha ? new Date(e.fecha + 'T12:00:00').getTime() : Number(e.ts) || 0;
+        for (const c of e.cajasDet) {
+          const its = (c && c.items) || []; const U = its.reduce((s, it) => s + (Number(it && it.u) || 0), 0); if (!(U > 0)) continue;
+          for (const it of its) { if (!it || !it.prodId || !(Number(it.u) > 0)) continue; (viajes[it.prodId] = viajes[it.prodId] || []).push({ t, u: Number(it.u), e: CC / U }); }
+        }
+      }
+      const fullDe = (pid) => {
+        let s = 0, sv = 0, hayV = false;
+        for (const [k, v] of Object.entries(inv)) {
+          if (!k.startsWith(pid + '__')) continue; const r = k.slice(pid.length + 2); const cta = r.split('__')[0];
+          if (!CT.includes(cta)) continue; const n = Number(v) || 0; if (r.includes('__v__')) { hayV = true; sv += n; } else s += n;
+        }
+        return hayV ? sv : s;
+      };
+      const plan = [];
+      for (const p of products) {
+        if (q && !norm(p.name || '').includes(q) && p.id !== q) continue;
+        const V = viajes[p.id]; if (!V || !V.length) continue;
+        const F = fullDe(p.id); if (!(F > 0)) continue;
+        let need = F, sumE = 0, sumU = 0;
+        for (const x of V.sort((a, b) => b.t - a.t)) { const u = Math.min(x.u, need); sumE += u * x.e; sumU += u; need -= u; if (need <= 0) break; }
+        if (!(sumU > 0)) continue;
+        const ePesos = sumE / sumU, shipNew = Math.round((ePesos / tcE) * 100) / 100, shipOld = parseFloat(p.shipUSD) || 0;
+        if (Math.abs(shipNew - shipOld) < 0.01) continue;
+        const dev = DEV_LIVE[p.id] != null ? DEV_LIVE[p.id] : (parseFloat(p.devPct) || 0); const costUSD = parseFloat(p.costUSD) || 0;
+        const fullUSD = Math.round((costUSD * (1 + dev / 100) + shipNew) * 100) / 100;
+        const antes = costoPesos(p, 1, tcE).costo, despues = costoPesos({ ...p, costFullUSD: fullUSD, shipUSD: shipNew }, 1, tcE).costo;
+        plan.push({ p, F, sumU, ePesos, shipOld, shipNew, fullUSD, antes, despues });
+      }
+      plan.sort((a, b) => Math.abs(b.despues - b.antes) - Math.abs(a.despues - a.antes));
+      console.log(`=== 📦 ENVÍO REAL EN EL COSTO · caja $${CC} · dólar $${tcE} · ${plan.length} producto(s) cambian ${GOe ? '(APLICANDO)' : '(PRUEBA)'} ===`);
+      for (const x of plan.slice(0, 80)) console.log(`  ${String(x.p.name || '').slice(0, 44).padEnd(44)} · ${x.F} en Full · envío por unidad ${money(Math.round(x.shipOld * tcE))} → ${money(Math.round(x.ePesos))} · costo ${money(x.antes)} → ${money(x.despues)}`);
+      if (plan.length > 80) console.log(`  … y ${plan.length - 80} más`);
+      const sube = plan.filter((x) => x.despues > x.antes).length; console.log(`  suben ${sube} · bajan ${plan.length - sube}`);
+      if (!GOe) { console.log('PRUEBA: no escribí nada. Para aplicar: envioreal;go'); return; }
+      for (const x of plan) await db.patch('cyc/products/' + x.p.id, { shipUSD: x.shipNew, costFullUSD: x.fullUSD, shipReal: { pesos: Math.round(x.ePesos), u: x.sumU, ts: Date.now() } });
+      const desp = (await db.get('cyc/products')) || {}; let ok = 0;
+      for (const x of plan) { const p2 = Object.values(desp).find((z) => z && z.id === x.p.id) || {}; if (Math.abs((parseFloat(p2.shipUSD) || 0) - x.shipNew) < 0.005) ok++; }
+      console.log(`✓ releído: ${ok} de ${plan.length} quedaron como pedí`); return;
     }
     // BILLING_PROBE=debendia:<id de la deuda>=<0 dom|1 lun|…|6 sáb|->;go (13/11/2026, él con Germán: "el pago de él vence el lunes… paga siempre
     // el domingo") → la cuota semanal vence ese día de la semana (`cyc/debencuotas/<id>/diaVence`); la web cuenta la próxima desde el último pago.
