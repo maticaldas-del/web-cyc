@@ -8,6 +8,9 @@ que no lo necesita. Cuando él diga "resolvamos" (o parecido) se le pasa esta li
 
 ## Abiertas
 
+### ✅ Contestó la lista de las 12:30 del 13/11: 1a 2a 3 (no es problema, se están mandando cajas) 4 (no darle bola) 5a 6a 7a 8 (pidió info) 9 (pidió info) 10a · Germán vence los lunes · perfumería: le pasa cada transferencia a Binance y se resta · los dos números (7791293033273 / 7790774338609): NADA · extracto de octubre de dinero disponible: sí, pedido al chat
+- 1a ya rige (decide_cajas producto por producto) · 2a aplicado con `realcaja;go` (136 productos) · 5a pedido al chat de Chrome (parachat) · 6a renovar Joystick a 172.490 (🔐 F10, autorizo en curso) · 7a Dalí: el 14/11 al vencer, entrar a la oferta de Black Friday de ML (149.370, ML pone 4,3%) · 10a ABEL republicada (ml-tienda) · Germán `debendia:…=1`
+
 ### ✅ Contestó las 27 del 08/11 a la noche: reglas 1a-14a 15b 16a 17a 18a · ideas 19a 20a 21a 22b 23a · 24a (autorizo Coderas a $20.290) 25a 26a ("tenés que estar muy seguro, si no no") 27b — APLICANDO
 
 ### ✅ Contestó las 10 de la noche del 08/11: 1b 2b 3b 4a 5a 6a 7 (si no se venden más en ML, a la perfumería) 8a 9b 10a + fotos en Inventario — APLICANDO
