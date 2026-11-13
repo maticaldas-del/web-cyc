@@ -4483,6 +4483,16 @@ sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia
 - 22/10/2026: `escasez` 🚨: las gemelas no salen como "nunca decidí su precio" (la decisión es la de su Clásica). Qué chequear: que la lista 🚨 no traiga MLA con `gemelaDe`.
 
 ## 9 · LOCAL (cada 7 días, nació el 29/10/2026)
+### 🔍 Tercera revisión de la etapa 9 (13/11/2026, 4 revisores en máximo: no se mezcla con ML · deudas · oficina y lo apartado · ABEL y pendientes)
+Arreglado (robot y scripts, sin tocar la web):
+- **El aviso de la perfumería al Telegram tapaba lo que le debemos:** `avisoPagoPerf` y `avisoMov` cortaban en $0 los saldos negativos ("Mercadería $0 · Total que debe $0" cuando le debíamos $150.000). Ahora suman con signo y dicen "a favor de ella" / "A favor de la perfumería (le debemos)".
+- **`debenmov …=devuelve` achica el último dejado por FECHA** (antes por el número de la clave: las del reparto tienen un dígito más y parecían las más nuevas; las de `=repartir` no son número).
+- **`debenmov … de=ml` sin `|color=`** con stock de 2+ colores en la Oficina ML ahora se niega (antes restaba del que más tenía y lo apartado de otro color quedaba libre y salía a Full).
+- **`debenmov … de=local`** mira la Oficina Local ANTES de anotar la deuda (como `de=ml`): si ya está contada por unidades y no alcanza, no escribe nada.
+- **`cajaarmar`** deja en la oficina lo que pidió la perfumería (`cyc/pedperf` menos lo que cubre la Oficina Local, misma cuenta que `pedPerfApartado`), aunque se haya pedido después de la completa; lo FIJO de él va antes (12b). Si no puede leer `cyc/pedperf`/`cyc/oficyc`, no carga nada.
+- **`decide_pedidos.py`** descuenta lo FIJO que ya salió a Full (`fijo_salio.txt`, como `decide_cajas.py`): Pedidos apartaba entero lo fijo y compraba de más para la perfumería (probado: los 3 de Nippon pasan de 1 a 0).
+- **El comando de la Tienda** que sugiere `pyped:llego` y el de CLAUDE.md §7 llevan `|de=ninguna` (sin eso el robot lo niega); CLAUDE.md §8 ya no dice "`de=mati` → `ofi:` aparte" (desde el 08/11 `de=ml` resta solo).
+- **Qué chequear:** el próximo pago de la perfumería con saldo a favor dice "a favor de ella"; una devolución después de un reparto achica el renglón del último día; `cajaarmar` sin `;go` dice "N quedan apartadas para la perfumería" cuando hay pedperf.
 ### 🌸 ABEL · análisis semanal (08/11)
 - **Qué se miró:** la página a 390 px (Playwright, con el armado nuevo de `hacer_abel.py`), `abel/productos.json` publicado (= el del repo: 1.105 perfumes, act 08/11), `buzon`, `tienda` (prueba), `tienda:id=` de 40 al azar y `tiendacaros:0.1`.
 - **Bien:** efectivo en verde (#16a34a) y grande, tarjeta/QR/transferencia en gris abajo, "Consultar por WhatsApp" en cada tarjeta, "llega en 7 días hábiles", cartel 🎄 "Pedí hasta el 6/12" y los 3 filtros (sin corrimiento horizontal a 390 px) · efectivo y tarjeta salen del mismo número en los 1.105 (30 de 30 al azar contra la tienda con el recargo de 21,5%: ABEL = tienda × 1,053; los que no dan es porque la TIENDA está bajada a 1,10 × ML) · 0 repetidos (nombre, código, id, primera foto) · 0 sin foto (751 con foto del proveedor) · 38 de 40 al azar son el mismo perfume que el del proveedor.
