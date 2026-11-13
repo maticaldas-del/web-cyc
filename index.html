@@ -3554,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.182';
+const APP_VERSION='28.183';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3567,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.183',f:'13/11',h:'18:40',c:[{n:1,t:'💰 Gastos del mes: lo que rindió Mercado Pago dice "sin dato" en vez de $0 cuando el extracto de ese mes no trae la línea de rendimientos.'}]},
   {v:'28.182',f:'13/11',h:'14:20',c:[{n:2,t:'💬 Inicio: los mensajes de Claude salen grandes arriba de todo, con ✅ Leído. Para contestar, Mi oficina → 📬 Mensaje para Claude.'}]},
   {v:'28.181',f:'13/11',h:'05:50',c:[{n:1,t:'🏪 Revisión del Local: el aviso de la perfumería ya dice cuando le debemos, "armá la caja" deja lo que pidió la perfumería, lo devuelto a la Oficina ML se suma solo. 10 cosas para elegir en la lista de las 12:30.'}]},
   {v:'28.180',f:'12/11',h:'20:10',c:[{n:2,t:'📦 Armar caja: el % de la caja con el envío entero ya no cuenta el envío dos veces (el costo de cada producto traía su parte de una caja llena).'}]},
@@ -28877,8 +28878,9 @@ function renderComprasChecklist(){
   // Con el extracto procesado por el robot (🔒 Archivo para Claude → `cyc/rendimientos_mp/<cuenta>/<mes>`) se tilda solo y dice lo que rindió.
   const _exYm=(()=>{const [y,m]=ymL.split('_').map(Number);const d=new Date(y,m-2,1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');})();
   const _rmp=state.rendimientos_mp||{},_ctasR=['Adriana','Luciana','Ayelen','Matias'].filter(c=>(_rmp[c]||{})[_exYm]);
+  const _rSin=c=>{const x=_rmp[c][_exYm]||{};return !(Number(x.nRend)>0)&&!(Number(x.rend)>0);};   // 13/11/2026 (él: "¿por qué aparece $0 de ganancia si hubo?"): ago-oct se cargaron con el informe de LIBERACIONES, que no trae la línea de rendimientos. Sin ningún renglón de rendimientos no es $0: es "sin dato"
   const _rTot=_ctasR.reduce((t,c)=>t+(Number(_rmp[c][_exYm].rend)||0),0);
-  const _rTxt=_ctasR.length?`rindió ${fmt(_rTot)} (${_ctasR.map(c=>c+' '+fmt(Number(_rmp[c][_exYm].rend)||0)+(_rmp[c][_exYm].encadena===false?' ⚠️ saldo no cierra':'')).join(' · ')})${_ctasR.length<4?` · faltan ${4-_ctasR.length} cuenta(s)`:''}`:'';
+  const _rTxt=_ctasR.length?`rindió ${_ctasR.every(_rSin)?'sin dato (ese extracto no trae los rendimientos: hay que bajar el de dinero disponible)':fmt(_rTot)} (${_ctasR.map(c=>c+' '+(_rSin(c)?'sin dato':fmt(Number(_rmp[c][_exYm].rend)||0))+(_rmp[c][_exYm].encadena===false?' ⚠️ saldo no cierra':'')).join(' · ')})${_ctasR.length<4?` · faltan ${4-_ctasR.length} cuenta(s)`:''}`:'';
   const filaEx={hay:!!_ex||_ctasR.length===4,mes:_exMes,nota:(_ex||{}).nota||'',rTxt:_rTxt};
   const faltan=filas.filter(f=>!f.hay).length+filasRet.filter(f=>!f.hay).length+(filaEx.hay?0:1);
   const buscar=(g)=>gastos.filter(x=>{
