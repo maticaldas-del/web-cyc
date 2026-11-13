@@ -487,6 +487,8 @@ for c in sorted(set(o['cta'] for o in out)):
             g,d,sh=pc; o['_pct']=(g+sh-e)/max(1,(d-sh+e))*100
             if o['_pct']<35 and not o.get('fijo'): malos.append(o)
         if not malos: break
+        # de a UNO, el peor primero: sacar uno sube el envío de los demás (si se sacaban todos juntos, caía en cadena lo que daba al quedar solo)
+        malos=[min(malos,key=lambda o:o['_pct'])]
         for o in malos:
             sacados.append(f"{o['nom']} ({o['q']} u. → {o['_pct']:.0f}%)")
             o['cola']=f"🟥 no va en esta caja: con su parte del envío (${COSTO_CAJA:,} ÷ {U} u. = ${e:,.0f} c/u) deja {o['_pct']:.0f}% en el peor caso, abajo del 35% (él, 12/11) · ".replace(f"{COSTO_CAJA:,}",f"{COSTO_CAJA:,}".replace(',','.')).replace(f"{e:,.0f}",f"{e:,.0f}".replace(',','.'))+o['cola']; o['q']=0
