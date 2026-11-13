@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['pyguia', 'envioreal', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -56944,13 +56944,13 @@ async function main() {
       const r = await db.get('cyc/parachat/' + id); console.log(r && r.t ? '✓ guardado y releído' : '✗ no quedó');
       return;
     }
-    // BILLING_PROBE=envioreal[:<palabra>][;go] (13/11/2026, él eligió 2a: "los productos hay que sacarle el costo de embalaje y se le agrega una vez
+    // BILLING_PROBE=realcaja[:<palabra>][;go] (13/11/2026, él eligió 2a: "los productos hay que sacarle el costo de embalaje y se le agrega una vez
     // se haya mandado la caja… mandar esa unidad no salió 0,1 dólar, salió 17.500 pesos") → EL ENVÍO REAL EN EL COSTO. Por cada producto con stock en
     // Full: las cajas en que viajó (cyc/envios_full/*/cajasDet, de la más nueva a la más vieja) hasta cubrir lo que hay en Full; cada unidad carga
     // costoCaja ÷ las unidades de SU caja; el promedio pasa a ser `shipUSD` (al dólar de hoy) y `costFullUSD` se rehace como en `ponenvio`. Sin
     // ninguna caja registrada queda el envío que tenía. Sin go sólo muestra (lo que más cambia arriba). Con go escribe y relee.
-    if (/^envioreal(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
-      const raw = String(process.env.BILLING_PROBE).replace(/^envioreal:?/, ''); const GOe = /(^|;)go$/.test(raw) && !DRY; const q = norm(raw.replace(/;?go$/, '').trim());
+    if (/^realcaja(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^realcaja:?/, ''); const GOe = /(^|;)go$/.test(raw) && !DRY; const q = norm(raw.replace(/;?go$/, '').trim());
       const finE = (await db.get('cyc/finanzas')) || {}; const tcE = parseFloat(finE.tipo_cambio) || 0;
       if (!tcE) { console.log('❌ sin dólar cargado: no toco nada'); return; }
       const cfg = (await db.get('cyc/mlconfig')) || {}; const CC = parseFloat(cfg.costoCaja) || 17500;
@@ -56994,7 +56994,7 @@ async function main() {
       for (const x of plan.slice(0, 80)) console.log(`  ${String(x.p.name || '').slice(0, 44).padEnd(44)} · ${x.F} en Full · envío por unidad ${money(Math.round(x.shipOld * tcE))} → ${money(Math.round(x.ePesos))} · costo ${money(x.antes)} → ${money(x.despues)}`);
       if (plan.length > 80) console.log(`  … y ${plan.length - 80} más`);
       const sube = plan.filter((x) => x.despues > x.antes).length; console.log(`  suben ${sube} · bajan ${plan.length - sube}`);
-      if (!GOe) { console.log('PRUEBA: no escribí nada. Para aplicar: envioreal;go'); return; }
+      if (!GOe) { console.log('PRUEBA: no escribí nada. Para aplicar: realcaja;go'); return; }
       for (const x of plan) await db.patch('cyc/products/' + x.p.id, { shipUSD: x.shipNew, costFullUSD: x.fullUSD, shipReal: { pesos: Math.round(x.ePesos), u: x.sumU, ts: Date.now() } });
       const desp = (await db.get('cyc/products')) || {}; let ok = 0;
       for (const x of plan) { const p2 = Object.values(desp).find((z) => z && z.id === x.p.id) || {}; if (Math.abs((parseFloat(p2.shipUSD) || 0) - x.shipNew) < 0.005) ok++; }
