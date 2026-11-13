@@ -44592,7 +44592,11 @@ async function main() {
           if ((await db.get('cyc/mlconfig/oficycPorUnidades')) === true) { const OCa = (await db.get('cyc/oficyc')) || {}; const tcA = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
             let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
             await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
-        else console.log(`  ⚠️ OBLIGATORIO · vuelve a la Oficina ML: sumalo YA con ofi:<palabras del nombre: ${String(pD.name).slice(0, 50)}>=+${uD};go (ml-sync; queda sin etiqueta).`);
+        // Revisión etapa 9 (13/11): vuelve a la Oficina ML SOLO (como `de=ml` resta solo desde el 08/11); queda sin etiqueta, igual que `ofi:`.
+        // Sin color seguro (producto con colores y sin |color=) no se adivina: sigue el aviso de hacerlo a mano.
+        else { let rO = null; try { rO = await ofiSumarBot(db, pD, extra.color || '', uD, null); } catch (eO) { rO = null; console.log(`  ⚠️ no pude sumar a la Oficina ML (${String(eO.message || eO).slice(0, 60)})`); }
+          if (rO) console.log(`  📦 Oficina ML: ${pD.name}${rO.color ? ' · ' + rO.color : ''} ${rO.antes} → ${rO.ahora} (queda sin etiqueta)`);
+          else console.log(`  ⚠️ OBLIGATORIO · vuelve a la Oficina ML: sumalo YA con ofi:<palabras del nombre: ${String(pD.name).slice(0, 50)}>=+${uD};go (ml-sync; queda sin etiqueta).`); }
         return;
       }
       // `=repartir` (30/10/2026, él: "cuando es así, repartilas lo más equitativas posible"): lo dejado SIN perfumería se reparte de a una
@@ -44758,7 +44762,7 @@ async function main() {
       // si ahí no había (ya contada por unidades), quedaba la deuda con su costo y la oficina sin restar: patrimonio y cobro de más.
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de) && (await db.get('cyc/mlconfig/oficycPorUnidades')) === true) {
         const xL = (await db.get('cyc/oficyc/' + prodF.id)) || {}; const tL = parseInt(xL.t) || 0, vL = Object.values(xL.v || {}).reduce((t2, q2) => t2 + (parseInt(q2) || 0), 0);
-        if (tL < u && vL < u) { console.log(`❌ en la Oficina Local hay ${Math.max(tL, vL)} de ${prodF.name}: no alcanzan para ${u}. Si salió de la Oficina ML usá |de=ml; si de ningún lado, |de=ninguna. No escribo nada.`); return; } }
+        if (tL < u) { console.log(`❌ en la Oficina Local hay ${tL} de ${prodF.name} sin color${vL ? ` (y ${vL} contadas por color, que esta resta no toca: cargalo con |de=ninguna y restá el color con oficyc:)` : ''}: no alcanzan para ${u}. Si salió de la Oficina ML usá |de=ml; si de ningún lado, |de=ninguna. No escribo nada.`); return; } }
       if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
       const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
