@@ -1005,6 +1005,8 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 
 ## 2 · PLATA (martes)
 
+- **13/11 · Cuota semanal con día fijo** (Germán vence los lunes y paga los domingos): `debendia:<id>=<0-6>;go` → `diaVence`; web `cuotaVence`: el último pago (cuota fechada o movimiento negativo) cubre el día fijo más cercano (±3 d) y la próxima es +7. Qué chequear: un pago atrasado de 4+ días después del lunes cuenta para el lunes siguiente.
+
 - **13/11 · Rindió MP "$0" era falta de dato**: ago-oct se cargaron con el informe de liberaciones (tipos availablemoney/settlement, sin rendimientos); noviembre con el extracto de dinero disponible (tipo "rendimientos"). La web (`_rSin`) dice "sin dato" sin renglones de rendimientos. Qué chequear: que el chat de Chrome baje el extracto de DINERO DISPONIBLE (no el de liberaciones) para los meses que faltan.
 ### ✅ Plata y Local · decisiones del 08/11
 (Revisión de la Plata del 05/11 y del Local del 06/11; él eligió Plata 3a 7a 8a 9a 10a 12a 13a 14a 15a · Local 2a 5a 6a 8a. Local 3, 4b y 16 quedan como están, sin código.)

@@ -3554,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.183';
+const APP_VERSION='28.184';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3567,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.184',f:'13/11',h:'19:10',c:[{n:2,t:'📥 Deudas en cuotas semanales: pueden vencer un día fijo de la semana (Germán: los lunes). El pago del domingo cubre el lunes y la próxima vence el lunes siguiente.'}]},
   {v:'28.183',f:'13/11',h:'18:40',c:[{n:1,t:'💰 Gastos del mes: lo que rindió Mercado Pago dice "sin dato" en vez de $0 cuando el extracto de ese mes no trae la línea de rendimientos.'}]},
   {v:'28.182',f:'13/11',h:'14:20',c:[{n:2,t:'💬 Inicio: los mensajes de Claude salen grandes arriba de todo, con ✅ Leído. Para contestar, Mi oficina → 📬 Mensaje para Claude.'}]},
   {v:'28.181',f:'13/11',h:'05:50',c:[{n:1,t:'🏪 Revisión del Local: el aviso de la perfumería ya dice cuando le debemos, "armá la caja" deja lo que pidió la perfumería, lo devuelto a la Oficina ML se suma solo. 10 cosas para elegir en la lista de las 12:30.'}]},
@@ -7926,6 +7927,11 @@ function _isoMas(f,frec,k,dias){const m=String(f||'').match(/^(\d{4})-(\d{2})-(\
 // LA PRÓXIMA CUOTA SE CUENTA DESDE EL ÚLTIMO PAGO (28/10/2026, él: "que la fecha de siguiente pago sea siempre un mes o semana después del
 // último pago"): sin pagos, la primera vence en `vence1`; con pagos fechados, último pago + un período; pagos viejos sin fecha, vence1 + N períodos.
 function cuotaVence(d){const pE=d.pagEf!=null?d.pagEf:d.pagadas;if(d.fin||pE>=d.n)return null;if(d.n<=1)return d.vence1||null;
+  // DÍA FIJO DE LA SEMANA (13/11/2026, él con Germán: "el pago de él vence el lunes… él paga siempre el domingo"): `diaVence` (0 dom … 1 lun … 6 sáb).
+  // El último pago (cuota fechada o movimiento de pago) cubre el día fijo más cercano (±3 días) y la próxima vence 7 días después.
+  if(d.frec==='sem'&&d.diaVence!=null&&d.diaVence!==''){const W=Number(d.diaVence);const fs=[...cuotaPagosFechas(d),...Object.values(d.movs||{}).filter(x=>x&&Number(x.m)<0&&x.f).map(x=>x.f)].sort();
+    const ult=fs.length?fs[fs.length-1]:(d.vence1||null);if(ult){const t=new Date(ult+'T12:00:00');const dd=((W-t.getDay())%7+7)%7;const off=dd<=3?dd:dd-7;
+      if(fs.length){t.setDate(t.getDate()+off+7);}else{t.setDate(t.getDate()+off);}return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}}
   const fs=cuotaPagosFechas(d);if(d.pagadas>0&&fs.length&&pE===d.pagadas)return _isoMas(fs[fs.length-1],d.frec,1,d.cadaDias);
   return d.vence1?_isoMas(d.vence1,d.frec,pE,d.cadaDias):null;}
 function cuotaPagosFechas(d){return Object.entries(d.pagos||{}).map(([k,v])=>(v&&v.f)?v.f:(()=>{const t=new Date(Number(k));return isFinite(t)?t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'):'';})()).filter(Boolean).sort();}

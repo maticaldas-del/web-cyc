@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['pyguia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['pyguia', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -56943,6 +56943,18 @@ async function main() {
       await db.set('cyc/parachat/' + id, { t: body.slice(0, 1500), ts: Number(id) });
       const r = await db.get('cyc/parachat/' + id); console.log(r && r.t ? '✓ guardado y releído' : '✗ no quedó');
       return;
+    }
+    // BILLING_PROBE=debendia:<id de la deuda>=<0 dom|1 lun|…|6 sáb|->;go (13/11/2026, él con Germán: "el pago de él vence el lunes… paga siempre
+    // el domingo") → la cuota semanal vence ese día de la semana (`cyc/debencuotas/<id>/diaVence`); la web cuenta la próxima desde el último pago.
+    if (/^debendia:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('debendia:'.length); const GOd = /;go$/.test(raw) && !DRY; const m = raw.replace(/;go$/, '').match(/^([\w-]+)=(\d|-)$/);
+      if (!m) { console.log('❌ Usá: debendia:<id>=<0-6 | ->;go (0 domingo, 1 lunes…)'); return; }
+      const d = await db.get('cyc/debencuotas/' + m[1]); if (!d) { console.log('❌ no existe esa deuda'); return; }
+      if (d.frec !== 'sem') console.log('⚠️ esa deuda no es semanal: el día fijo sólo se usa en las semanales');
+      const v = m[2] === '-' ? null : Number(m[2]); const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+      console.log(`📅 ${m[1]}: vence los ${v == null ? '(sin día fijo)' : DIAS[v]} ${GOd ? '(GUARDO)' : '(prueba: ;go)'}`);
+      if (!GOd) return; await db.patch('cyc/debencuotas/' + m[1], { diaVence: v });
+      const r = await db.get('cyc/debencuotas/' + m[1] + '/diaVence'); console.log((r ?? null) === v ? '✓ releído' : '✗ no quedó'); return;
     }
     // BILLING_PROBE=paramati:<texto>;go · paramati:leido=<id>;go · paramati (lista) (13/11/2026, él por el buzón: no puede entrar a Claude, "ponelo
     // en el inicio grande un mensaje así lo veo") → 💬 CLAUDE TE ESCRIBE: `cyc/paramati/<id>` = {t, ts, leido}; la web lo muestra grande arriba de
