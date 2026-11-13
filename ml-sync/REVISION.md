@@ -1005,6 +1005,8 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 
 ## 2 · PLATA (martes)
 
+- **13/11 · `realcaja`: el envío real de cada caja en el costo** (2a). Por producto con stock en Full: cajas de `envios_full/*/cajasDet` de la más nueva hacia atrás hasta cubrir el stock; costoCaja ÷ unidades de cada caja; promedio → `shipUSD` y `costFullUSD`. Primera corrida 13/11: 136 productos (lo que no tenía envío ahora tiene ~$400-1.400). Qué chequear: que la completa lo corra cada noche; productos con variantes en inventario (suma de `__v__`).
+
 - **13/11 · Cuota semanal con día fijo** (Germán vence los lunes y paga los domingos): `debendia:<id>=<0-6>;go` → `diaVence`; web `cuotaVence`: el último pago (cuota fechada o movimiento negativo) cubre el día fijo más cercano (±3 d) y la próxima es +7. Qué chequear: un pago atrasado de 4+ días después del lunes cuenta para el lunes siguiente.
 
 - **13/11 · Rindió MP "$0" era falta de dato**: ago-oct se cargaron con el informe de liberaciones (tipos availablemoney/settlement, sin rendimientos); noviembre con el extracto de dinero disponible (tipo "rendimientos"). La web (`_rSin`) dice "sin dato" sin renglones de rendimientos. Qué chequear: que el chat de Chrome baje el extracto de DINERO DISPONIBLE (no el de liberaciones) para los meses que faltan.
