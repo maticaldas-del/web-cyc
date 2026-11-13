@@ -52335,8 +52335,13 @@ async function main() {
         const IT = {}; const porCta = {};
         for (const p of todos) for (const [m, e] of clas(p.id)) if (tk35[e.cuenta]) (porCta[e.cuenta] = porCta[e.cuenta] || []).push(m);
         for (const [l, ids] of Object.entries(porCta)) for (let k = 0; k < ids.length; k += 20) {
-          try { const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,listing_type_id,category_id,site_id', tk35[l]);
-            for (const r of arr || []) if (r && r.code === 200 && r.body) IT[r.body.id] = { ...r.body, cuenta: l }; } catch { console.log(`⚠️ NO LEÍ: ${Math.min(20, ids.length - k)} publicaciones de ${l} para el 35% contra la competencia`); } }
+          // 13/11/2026: 3 días seguidos una tanda de 20 no contestó y decide_pedidos no armó nada: hasta 3 intentos con espera antes de dar NO LEÍ.
+          let ok35 = false, err35 = '';
+          for (let intento = 0; intento < 3 && !ok35; intento++) {
+            if (intento) await new Promise((res) => setTimeout(res, 4000 * intento));
+            try { const arr = await mlGet('/items?ids=' + ids.slice(k, k + 20).join(',') + '&attributes=id,price,status,listing_type_id,category_id,site_id', tk35[l]);
+              for (const r of arr || []) if (r && r.code === 200 && r.body) IT[r.body.id] = { ...r.body, cuenta: l }; ok35 = true; } catch (e) { err35 = String((e && e.message) || e).slice(0, 80); } }
+          if (!ok35) console.log(`⚠️ NO LEÍ: ${Math.min(20, ids.length - k)} publicaciones de ${l} para el 35% contra la competencia (3 intentos: ${err35})`); }
         const feeC = {};
         const fee = async (b, pr) => { const k = b.listing_type_id + '|' + b.category_id + '|' + Math.round(pr); if (feeC[k] !== undefined) return feeC[k];
           let o = null; try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${Math.round(pr)}&listing_type_id=${b.listing_type_id}&category_id=${b.category_id}`, tk35[b.cuenta]); const x = Array.isArray(d) ? d[0] : d; if (typeof x?.sale_fee_amount === 'number') o = x.sale_fee_amount; } catch { o = null; }
