@@ -2163,6 +2163,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+- **13/11 · `binance:` leía 19.72 como 1.972** (el punto como de miles; él: "error catastrófico"). Ahora un punto con 1-2 decimales es decimal; con coma, el punto es de miles. Qué chequear: otros comandos que reciben DÓLARES (`compray usd=`, `costousd`, `pyprecio`) con el mismo `replace(/\./g,'')`.
+
 ### Etapa 4 · 13/11/2026 · 🔁 Pedidos: la tanda de 20 que no contesta se reintenta 3 veces
 - **Qué es:** tres completas seguidas (11, 12 y 13/11) `pedidostodo` dijo "⚠️ NO LEÍ: 20 publicaciones de <cuenta> para el 35% contra la competencia" (cada vez otra cuenta) y `decide_pedidos.py` no armó los pedidos (no arma a medias). Esa lectura (`/items?ids=` de a 20) tenía un solo intento y `mlGet` sólo reintenta un 429.
 - **Dónde vive:** `sync.mjs`, bloque del 35% contra la competencia de `pedidostodo` (`ok35`/`err35`): hasta 3 intentos con 4 y 8 segundos de espera; si igual falla, el NO LEÍ dice el error (código de ML, 80 caracteres).

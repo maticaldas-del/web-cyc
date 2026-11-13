@@ -40504,7 +40504,7 @@ async function main() {
       const rawB = String(process.env.BILLING_PROBE).slice('binance:'.length); const GOb = /;go$/i.test(rawB);
       const mB = rawB.replace(/;go$/i, '').match(/^([a-z]+)=([\d.,]+)$/i);
       if (!mB) { console.log('Uso: binance:<cuenta>=<dólares>[;go]'); return; }
-      const cta = mB[1].toLowerCase(); const usd = parseFloat(mB[2].replace(/\./g, '').replace(',', '.'));
+      const cta = mB[1].toLowerCase(); const _rawU = mB[2]; const usd = /,/.test(_rawU) ? parseFloat(_rawU.replace(/\./g, '').replace(',', '.')) : (/^\d+\.\d{1,2}$/.test(_rawU) ? parseFloat(_rawU) : parseFloat(_rawU.replace(/\./g, '')));   // 13/11/2026 (él: "error catastrófico. son 19.72 no 1.972"): son DÓLARES, "19.72" con un punto y 1-2 decimales es 19,72 (antes el punto se tomaba de miles)
       if (!(usd >= 0) || !['tito'].includes(cta)) { console.log('✗ cuenta desconocida (hoy sólo "tito") o monto inválido'); return; }
       const fin = (await db.get('cyc/finanzas')) || {}; const cuentas = ['tito'];
       const tot = cuentas.reduce((t, c) => t + (c === cta ? usd : (Number(fin['bn_' + c]) || 0)), 0);
