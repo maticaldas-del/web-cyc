@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['pyguia', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['pyguia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -56942,6 +56942,22 @@ async function main() {
       if (!GOp) return;
       await db.set('cyc/parachat/' + id, { t: body.slice(0, 1500), ts: Number(id) });
       const r = await db.get('cyc/parachat/' + id); console.log(r && r.t ? '✓ guardado y releído' : '✗ no quedó');
+      return;
+    }
+    // BILLING_PROBE=paramati:<texto>;go · paramati:leido=<id>;go · paramati (lista) (13/11/2026, él por el buzón: no puede entrar a Claude, "ponelo
+    // en el inicio grande un mensaje así lo veo") → 💬 CLAUDE TE ESCRIBE: `cyc/paramati/<id>` = {t, ts, leido}; la web lo muestra grande arriba de
+    // Inicio. El texto pasa por el registro público de GitHub: nada privado (montos de MP, nombres, códigos). `//` = salto de renglón.
+    if (/^paramati(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).replace(/^paramati:?/, ''); const GOm = /(^|;)go$/.test(raw) && !DRY; const body = raw.replace(/;?go$/, '').trim();
+      const P = (await db.get('cyc/paramati')) || {};
+      const ml = body.match(/^leido=(\d+)$/);
+      if (ml) { if (!P[ml[1]]) { console.log('❌ no existe ese mensaje'); return; } if (GOm) { await db.patch('cyc/paramati/' + ml[1], { leido: Date.now() }); console.log('✓ marcado leído'); } else console.log('PRUEBA'); return; }
+      if (!body) { const L = Object.entries(P).sort((a, b) => Number(a[0]) - Number(b[0])); console.log(`=== 💬 MENSAJES DE CLAUDE EN INICIO · ${L.filter(([, x]) => x && !x.leido).length} sin leer ===`); for (const [id, x] of L.slice(-10)) console.log(`  ${x && x.leido ? '✓' : '•'} ${id} · ${String((x && x.t) || '').slice(0, 80)}`); return; }
+      const id = String(Date.now()); const t = body.replace(/\s*\/\/\s*/g, '\n').slice(0, 4000);
+      console.log(`💬 mensaje nuevo ${id} (${t.length} letras) ${GOm ? '(GUARDO)' : '(prueba: agregá ;go)'}`);
+      if (!GOm) return;
+      await db.set('cyc/paramati/' + id, { t, ts: Number(id) });
+      const r = await db.get('cyc/paramati/' + id); console.log(r && r.t ? '✓ guardado y releído' : '✗ no quedó');
       return;
     }
     // BILLING_PROBE=buzon[:leido=<ts>[,<ts>…]][;go] · buzon:ver=<ts>[,<ts>] (entero) → 📬 LOS MENSAJES PARA CLAUDE (25/10/2026, eligió la 15a). Los deja el chat de Chrome

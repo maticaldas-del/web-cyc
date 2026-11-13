@@ -1240,6 +1240,7 @@ setTimeout(function _ldVigia(){try{
 
 <!-- ════════════════════ HOME ════════════════════ -->
 <div id="page-home" class="page active">
+  <div id="home-claude"></div>
   <div id="home-logo-wrap" class="home-logo" style="display:none"></div>
   <div id="home-cab" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;margin:6px auto 16px;max-width:100%">
     <span id="home-dolar-logo" style="display:flex;align-items:center;justify-content:center;height:210px;width:min(640px,calc(100vw - 48px));overflow:hidden"></span>
@@ -2865,7 +2866,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['paramati','parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -2997,6 +2998,7 @@ function startApp(){
     state.oficyc=d.oficyc||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
     state.pedperf=d.pedperf||{};   // 29/10: 🛍️ lo que pidió la perfumería (se suma en Pedidos de Bs As)
     state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
+    state.paramati=d.paramati||{};try{renderHomeClaude();}catch(_){}   // 13/11/2026: 💬 mensajes de Claude para Matías, grandes arriba de Inicio
     state.parachat=d.parachat||{};   // 12/11/2026: 📌 Pedidos de Claude al chat de Chrome. Se bajaba (CYC_KEYS) pero nunca se pasaba a la pantalla: el cuadro no salía desde el 10/11
     if(d.recon_vivo)state.recon_vivo=d.recon_vivo;   // 12/11/2026: mismo error (se escuchaba y no se leía): la web volvía a escribirlo cada hora sin necesidad
     state.buzon=d.buzon||{};   // 25/10: 📬 mensajes para Claude (los deja el chat de Chrome que arma cajas o él)
@@ -3552,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.181';
+const APP_VERSION='28.182';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3565,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.182',f:'13/11',h:'14:20',c:[{n:2,t:'💬 Inicio: los mensajes de Claude salen grandes arriba de todo, con ✅ Leído. Para contestar, Mi oficina → 📬 Mensaje para Claude.'}]},
   {v:'28.181',f:'13/11',h:'05:50',c:[{n:1,t:'🏪 Revisión del Local: el aviso de la perfumería ya dice cuando le debemos, "armá la caja" deja lo que pidió la perfumería, lo devuelto a la Oficina ML se suma solo. 10 cosas para elegir en la lista de las 12:30.'}]},
   {v:'28.180',f:'12/11',h:'20:10',c:[{n:2,t:'📦 Armar caja: el % de la caja con el envío entero ya no cuenta el envío dos veces (el costo de cada producto traía su parte de una caja llena).'}]},
   {v:'28.179',f:'12/11',h:'18:40',c:[{n:3,t:'📦 Armar caja: el envío ($17.500) ahora se cuenta ENTERO contra lo que lleva la caja. Si lo que deja todo lo que va, menos el envío, no llega al 35%, la caja sale en rojo "No conviene" y espera a juntar más (antes una caja de 1 unidad que usaba todo el cupo salía MANDALA YA).'}]},
@@ -10964,6 +10967,18 @@ function _cajaNo35(p){const o=_cajaPct35(p);if(!o||!(o.mejor.m<o.META))return'';
 function _cajaNo35Det(p){const o=_cajaPct35(p);if(!o)return'';const f=(x,txt)=>x?`${txt} <b>${fmt(x.P)}</b> → <b style="color:${x.m!=null&&x.m>=o.META?'var(--green)':'var(--red)'}">${x.m==null?'?':Math.round(x.m)+'%'}</b>`:`${txt} <span style="color:var(--muted)">sin dato</span>`;
   const fk=k=>k?String(k).split('_').reverse().slice(0,2).join('/'):'';
   return `<div style="font-size:.66rem;color:var(--muted);margin:4px 0">💯 % en el peor caso (meta ${o.META}%): ${f(o.hoy,'hoy en ML')} · ${f(o.venta,'la venta de 60 días que más da'+(o.venta?' ('+fk(o.venta.k)+')':'')+' a')} · ${f(o.comp,'competencia'+(o.comp&&o.comp.ts?' (medida el '+new Date(o.comp.ts).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+')':'')+' a')}${o.mejor.m<o.META?' · <b style="color:var(--red)">no llega en ninguno</b>':''}</div>`;}
+// 💬 CLAUDE TE ESCRIBE (13/11/2026, él por el buzón: "no puedo iniciar sesión de claude… ¿podemos hablar por acá? ¿dónde veo tu respuesta?
+// ponelo en el inicio grande un mensaje así lo veo"). Claude deja el mensaje con `paramati:<texto>;go` (`cyc/paramati/<ts>` = {t, ts, leido});
+// sale grande arriba de Inicio hasta que toca ✅ Leído. Para contestar: Mi oficina → 📬 Mensaje para Claude (el buzón).
+function renderHomeClaude(){
+  const el=document.getElementById('home-claude');if(!el)return;
+  const L=Object.entries(state.paramati||{}).filter(([,x])=>x&&x.t&&!x.leido).sort((a,b)=>Number(a[0])-Number(b[0]));
+  if(!L.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="margin:8px auto 14px;max-width:760px;padding:14px 16px;border-radius:14px;border:2px solid rgba(168,85,247,.7);background:rgba(168,85,247,.10);font-size:1rem;line-height:1.55;box-sizing:border-box">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.25rem;margin-bottom:6px">💬 Claude te escribe (${L.length})</div>
+    ${L.map(([id,x])=>`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere">${_esc(x.t)}<div style="font-size:.7rem;color:var(--muted);margin-top:6px">${new Date(Number(id)).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} <button class="btn" style="padding:4px 10px;font-size:.72rem;margin-left:8px" onclick="fbSet('paramati/${id}/leido',Date.now()).then(()=>toast('✅ Leído'))">✅ Leído</button></div></div>`).join('')}
+    <div style="font-size:.78rem;color:var(--muted);margin-top:10px">Para contestarme: <b>Mi oficina → 📬 Mensaje para Claude</b>. Lo leo en cada vuelta.</div></div>`;
+}
 function cajasVerdes(filas){
   return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});
 }
