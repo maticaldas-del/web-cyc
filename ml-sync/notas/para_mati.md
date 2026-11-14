@@ -710,3 +710,4 @@ Todo lo abierto de para_mati y de las revisiones, renumerado 1-66 (precios 1-15 
 - 17 Batidores: por regla (a), aviso a Tito en el motivo del pedido.
 - Quedan sin contestar: 32-66 (diseño e ideas).
 - ✅ Diseño (lista grande 32-46, revisión del 10/11): 32a 33a 34a 35a 36b 37a 38a 39a 40a 41a 42a 43a 44a 45a 46a → todo a hacer menos 36 (sin "Para comprar hoy" de Tito). Se hace cuando termine lo de las reglas (los dos tocan la web).
+- ✅ Ideas (lista grande 47-66, revisión del 12/11): 47a-53a · 54 NO (él: "si no está en catálogo no. No vendemos sin catálogo cosas nuevas") · 55a-66a → a hacer después del diseño.
