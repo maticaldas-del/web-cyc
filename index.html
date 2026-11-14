@@ -372,6 +372,19 @@ body.light .mz-pct{color:#fff}
 .esc-t tbody tr:hover{background:none}
 .esc-t tbody td,.esc-t tbody td:first-child{padding:3px 6px 3px 0;border-top:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-weight:400;font-size:.68rem;vertical-align:top;text-align:left;white-space:normal}
 .esc-t tbody td:nth-child(-n+2){white-space:nowrap}.esc-t td:last-child,.esc-t th:last-child{text-align:center;padding-right:0}
+/* 13a del Diseño 10/11 · puertas de Inicio de 32 px y numerito azul de ventas nuevas */
+.ht-rojo.ht-azul{background:var(--blue,#3b82f6)}
+.ht-grid .ht-ped-b{min-height:32px}
+@media(max-width:640px){.ht-grid .ht-ped-b{min-height:32px;display:inline-flex;align-items:center;justify-content:center}}
+/* 13a del Diseño 10/11 · cabecera de la línea de tiempo en un renglón */
+#linea-modal .ln-nom{font-size:.9rem;font-weight:700;line-height:1.35;flex:1 1 120px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#linea-modal .ln-chip{flex:none;font-size:.62rem;font-weight:700;color:#22c55e;background:color-mix(in srgb,#22c55e 12%,transparent);border:1px solid color-mix(in srgb,#22c55e 35%,transparent);border-radius:999px;padding:3px 9px;white-space:nowrap}
+#linea-modal .ln-btns1{overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+#linea-modal .ln-btns1::-webkit-scrollbar{display:none}
+#linea-modal .ln-btns1>*{flex:none}
+#linea-modal .ln-vars{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:2px 0 4px}
+#linea-modal .ln-vars>span{margin-left:0!important}
+@media(max-width:640px){#linea-modal .ln-cab1{gap:6px}#linea-modal .ln-nom{font-size:.78rem;flex-basis:60px;min-width:72px}#linea-modal .ln-chip{font-size:.56rem;padding:2px 7px}#linea-modal .ln-chip-l{display:none}#linea-modal .ln-btns1{max-width:34%}}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -1309,6 +1322,7 @@ setTimeout(function _ldVigia(){try{
   <div class="home-grid ht-grid">
     <div class="nav-card nc2 ht" onclick="goPage('ventaprod')" title="Qué producto se vendió, en qué cuenta y ranking del mes.">
       <span class="nc-icon">🏷️</span>
+      <span class="ht-rojo ht-azul" id="hv-ven-nuevas" style="display:none"></span>
       <div class="nc-title">Ventas</div>
       <div class="ht-vivo" id="hv-ventas"></div>
       <span class="nc-arrow">→</span>
@@ -3596,7 +3610,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.193';
+const APP_VERSION='28.194';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3609,6 +3623,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.194',f:'14/11',h:'01:56',c:[{n: 1, t: "📈 Línea de tiempo: la cabecera en un solo renglón (nombre, \"🎯 techo X% seguro\", los botones se corren de costado y el ✕ siempre a la vista); los colores van abajo (13a del Diseño 10/11)."}, {n: 1, t: "🏠 Inicio: los botones de las puertas (Pedidos, Arqueo, Rotación) de 32 px y Ventas con un numerito azul de las ventas nuevas; abajo, la ganancia \"sin mirar\" (13a)."}]},
   {v:'28.193',f:'14/11',h:'01:52',c:[{n: 1, t: "🧮 La Mezcla: en el teléfono cada barra va a todo el ancho (arriba el mes y la plata cada $100) y el % adentro se lee (letra oscura sobre los colores claros) (11a del Diseño 10/11)."}, {n: 1, t: "🪜 La escalera de compra de Pedidos es una tablita: Si lo pagás hasta · Traé · Se vende a · ⭐ (11a)."}]},
   {v:'28.192',f:'14/11',h:'01:49',c:[{n: 1, t: "⚖️ Tope de H de un vistazo: un renglón por cuenta con su barra, la raya del tope de H y \"le quedan / se pasa\"; tocando la cuenta se abre el detalle (10a del Diseño 10/11)."}]},
   {v:'28.191',f:'14/11',h:'01:46',c:[{n: 2, t: "🔢 Contar lo que hay en dos pisos: arriba la foto y el nombre entero; abajo − casilla + (de 44 px, de a una unidad) y \"+ llegó\". Al anotar un número la pantalla ya no salta (6a y parte del 1a del Diseño 10/11)."}]},
@@ -13991,7 +14006,7 @@ function lineaPintar(prodId){
     return m==null?null:dateToKey(new Date(m));})();
   const _conSt=(d,k)=>(!!d&&(d.u>0||d.st>0||(d.vis>0&&!(d.st!=null&&d.stN>=d.pubs))))||(!!k&&_stHistDesde!=null&&k>=_stHistDesde&&!(d&&d.st!=null&&d.stN>=d.pubs&&!(d.st>0)));
   const _stIni=ks.find(k=>dias[k]&&(dias[k].u>0||dias[k].st!=null||dias[k]._stVisto||dias[k].vis>0))||'9999';
-  let _prNotas=[],_prRayasDe='',_stReloj='',_pctCosto=0,_stI={};
+  let _prNotas=[],_prRayasDe='',_stReloj='',_pctCosto=0,_stI={},_lnChip='';   // _lnChip: 13a del Diseño 10/11, "🎯 techo X% seguro" en la cabecera
   let svg='';
   // EL RELOJ DE LOS 4 MESES (16/10/2026, él: "agregar lo que falta para llegar a los 4 meses, por día, con una barra que
   // se vaya llenando, siempre roja"). CORREGIDO EL MISMO DÍA (él con el Metatarso: "toma desde que tiene stock, pero el stock
@@ -14153,6 +14168,7 @@ function lineaPintar(prodId){
       const _prueba=R.techo&&_pHoy>R.techo.p*1.02&&Object.keys(porMlaF).some(m=>{const e=estrategiaDe(m);return e&&(e.t==='techo'||e.t==='escasez');});
       if(_prueba)_prNotas.push(`<span style="color:#fb923c">${R.techo===R.noVende?'🔴 techo (no vendía)':'🟠 dejaba de convenir'} medido antes ${fmt(R.techo.p)} · hoy probando ${fmt(_pHoy)}</span>`);
       const _sgNV=R.noVende?_segTecho({probado:R.noVende.p}):null;
+      if(R.noVende)_lnChip=`🎯 techo<span class="ln-chip-l"> ${fmt(R.noVende.p)} ·</span> ${_sgNV&&_sgNV.dias?Math.round(_sgNV.seg*100)+'% seguro':'por regla'}`;
       // 29/10/2026 (él: "quiero que TODOS los que tienen techo digan el % de seguridad"): el 🔴 también dice con cuánto se sabe.
       if(R.noVende)_ray(R.noVende.p,'#ef4444','6,3',`🔴 techo ${fmt(R.noVende.p)}: no vende · ${R.noVende.dias} días sin vender · ${_sgNV&&_sgNV.dias?Math.round(_sgNV.seg*100)+'% seguro':R.noVende.dias>=(R.noVende.diasReq||TECHO_DIAS_SIN_VENTA_W)?(R.noVende.diasReq||TECHO_DIAS_SIN_VENTA_W)+'+ días: techo por regla':'sin % medible'}`,`🔴 Techo ${fmt(R.noVende.p)}: a ese precio o más estuvo ${R.noVende.dias} días a la venta con stock y no vendió ninguna. Eso es el techo: el precio al que no se vende (${R.noVende.diasReq||TECHO_DIAS_SIN_VENTA_W} días${(R.noVende.diasReq||0)>TECHO_DIAS_SIN_VENTA_W?': vende menos de 1 por semana, así que se mira con 3 ventas esperadas (8a del 08/11)':', regla suya del 02/11'}). Si una suba salió mal, vuelve de una al último precio que vendía; si no, escalera.`,-3);
       // 🟠 deja de convenir (27/10/2026): vende, pero menos de lo que hace falta para dejar la misma plata por día que el 💰. No es el techo
@@ -14162,6 +14178,7 @@ function lineaPintar(prodId){
       // De las rayas (lo medido) o, en un lanzamiento, lo que anotó techo95 de noche (visitas × conversión, `cyc/techo95pct`).
       {const EP=R.enPrueba,T95=Object.keys(porMlaF).map(m=>(state.techo95pct||{})[m]).filter(x=>x&&!x.ok&&x.seg!=null).sort((a,b)=>b.ts-a.ts)[0];
         const ep=EP||(T95&&T95.lanza?{p:T95.p,dias:T95.dias,seg:T95.seg,umb:T95.umb,lz:true}:null);
+        if(!R.techo&&ep&&ep.seg!=null&&!(_pHoy&&_pHoy<ep.p*0.98))_lnChip=`🎯 techo<span class="ln-chip-l"> a ${fmt(ep.p)}:</span> ${Math.round(ep.seg*100)}% seguro`;
         // 25/10/2026, él con el Centímetro Blanco: "está bajando y dice que está un 73% seguro y que termina de decidir en 2 días. no tiene
         // sentido nada". El "(2 días)" eran los días MEDIDOS, no los que faltan; y si el precio ya volvió abajo la prueba terminó: no se dice
         // que "decide", se dice que se cortó y con cuánto.
@@ -14358,13 +14375,16 @@ function lineaPintar(prodId){
          sus colores) y los botones en el MISMO renglón; los botones fijos a la derecha (no se corren al cambiar de color). En el celu, si no
          entran, los botones quedan arriba (wrap-reverse). -->
     <!-- DISEÑO 12 DEL 31/10 (él: "sí"): la cabecera queda fija arriba al bajar (sticky) y el ✕ es grande para el dedo (ln-x). -->
-    <div class="ln-cab" style="display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap-reverse">
-    <div style="font-size:.9rem;font-weight:700;line-height:1.35;overflow-wrap:anywhere;flex:1 1 260px;min-width:0">📈 ${p.name}${_vars.length>1?(()=>{   // 26/10/2026, él (con los 60 aromas de Paulvic): "que las variantes estén en un desplegable. que aparezca sólo la variante que clickee yo en la venta y todas juntas"
+    <!-- 13a del Diseño 10/11: la cabecera en UN renglón (de 100 a 48 px en el teléfono): nombre con "…" · 🎯 techo X% seguro · botones que se
+         corren de costado · ✕ siempre a la vista. Los colores (variantes) van abajo, fuera de la cabecera fija. -->
+    <div class="ln-cab ln-cab1" style="display:flex;align-items:center;gap:6px 10px">
+    <div class="ln-nom" title="${_esc(p.name)}">📈 ${p.name}</div>${_lnChip?`<span class="ln-chip">${_lnChip}</span>`:''}
+    <div class="linea-btns ln-btns1" style="display:flex;gap:6px;align-items:center;justify-content:flex-start;margin-left:auto;flex:0 1 auto;min-width:0">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}</div><button class="btn ln-x" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px;flex:none" title="Cerrar">✕</button>
+    </div>
+    ${(()=>{const _v=_vars.length>1?(()=>{   // 26/10/2026, él (con los 60 aromas de Paulvic): "que las variantes estén en un desplegable. que aparezca sólo la variante que clickee yo en la venta y todas juntas"
       const _ch=(v,i)=>`<button class="btn" onclick="lineaVar(_lineaVarsL[${i}],'${prodId}')" style="font-size:.62rem;padding:2px 9px;${_lineaVar===v?'background:var(--sel-bg);color:var(--sel-tx);border-color:var(--sel-bg);font-weight:700':''}">${v||'Todas juntas'}</button>`;
       const iv=_lineaVarsL.indexOf(_lineaVar);
-      return `<span style="display:inline-flex;gap:5px;flex-wrap:wrap;align-items:center;vertical-align:middle;margin-left:8px">${_ch('',0)}${_lineaVar&&iv>0?_ch(_lineaVar,iv):''}<select onchange="if(this.value!=='')lineaVar(_lineaVarsL[+this.value],'${prodId}')" style="font-size:.62rem;padding:2px 6px;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:6px;max-width:170px"><option value="">${_vars.length} variantes ▾</option>${_vars.map((v,i)=>`<option value="${i+1}"${_lineaVar===v?' selected':''}>${String(v).replace(/</g,'&lt;')}</option>`).join('')}</select></span>`;})():''}</div>
-    <div class="linea-btns" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;flex:0 1 auto;max-width:100%">${_lineaFichaMlas(prodId,_lineaVar).length?`<button class="btn" onclick="lineaFichaAbrir('${prodId}',event)" style="font-size:.66rem;padding:3px 10px" title="La ficha completa de la publicación: lo que ya sabemos, cada cambio de precio y cómo le fue">📋 Ficha</button>`:''}<button class="btn" onclick="lineaTodoAbrir(event)" style="font-size:.66rem;padding:3px 10px" title="La misma línea con TODOS los productos juntos">📈 Todos</button>${btn(365)}${btn(90)}${btn(30)}${_lineaGiroBtn()}<button class="btn ln-x" onclick="document.getElementById('linea-modal').remove()" style="font-size:.7rem;padding:3px 10px" title="Cerrar">✕</button></div>
-    </div>
+      return `<span style="display:inline-flex;gap:5px;flex-wrap:wrap;align-items:center;vertical-align:middle;margin-left:8px">${_ch('',0)}${_lineaVar&&iv>0?_ch(_lineaVar,iv):''}<select onchange="if(this.value!=='')lineaVar(_lineaVarsL[+this.value],'${prodId}')" style="font-size:.62rem;padding:2px 6px;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:6px;max-width:170px"><option value="">${_vars.length} variantes ▾</option>${_vars.map((v,i)=>`<option value="${i+1}"${_lineaVar===v?' selected':''}>${String(v).replace(/</g,'&lt;')}</option>`).join('')}</select></span>`;})():'';return _v?`<div class="ln-vars">${_v}</div>`:'';})()}
     ${_lnAlerta}${_pubsDistintas()}
     <div style="font-size:.6rem;color:var(--muted);margin:0 0 4px;line-height:1.5">${_lineaRango} días · historial de stock: <span style="color:var(--green)">${dCon} d con</span> · <span style="color:var(--red)">${dSin} d sin</span> · ${dNo} d sin dato${dRem?` · ${dRem} d rematando`:''} · ${Object.keys(porMlaF).length} publicación(es)${C.fallo?' · <span style="color:var(--amber)">alguna publicación no se pudo leer</span>':''}</div>
     ${(()=>{/* DISEÑO 12 DEL 31/10: en el teléfono, arriba del gráfico, los chips de hoy (precio · estrategia · 🔴 techo · 🟠 deja de convenir ·
@@ -28248,7 +28268,8 @@ function _vivosDatos(){
 function _homeVivos(d){
   d=d||_vivosDatos();const out={};
   if(d.ventas!=null)out.ventas=d.ventas?`<b>${fmtN(d.ventas)}</b> hoy · <span class="g">${fmt(d.gan)}</span>`:'todavía ninguna hoy';
-  if(d.nuevas!=null)out.ventas=d.nuevas?`<span style="color:var(--blue,#3b82f6)">🔵 <b>${fmtN(d.nuevas)}</b> nueva${d.nuevas===1?'':'s'}</span>${ocultaVendido()?'':` · <span class="${d.nuevasGan>=0?'g':'r'}">${d.nuevasGan>=0?'+':''}${fmt(d.nuevasGan)}</span>`}<br><span style="color:var(--muted)">desde que miraste</span>`:'<span style="color:var(--muted)">✓ ya viste todas</span>';
+  // 13a del Diseño 10/11: cuántas nuevas va en el numerito azul de la esquina (`hv-ven-nuevas`); acá lo que dejaron y "desde que miraste" (antes quedaba tapado).
+  if(d.nuevas!=null)out.ventas=d.nuevas?`${ocultaVendido()?'':`<span class="${d.nuevasGan>=0?'g':'r'}">${d.nuevasGan>=0?'+':''}${fmt(d.nuevasGan)}</span><br>`}<span style="color:var(--muted)" title="ganancia de las ventas nuevas desde que miraste Ventas">sin mirar</span>`:'<span style="color:var(--muted)">✓ ya viste todas</span>';
   if(d.peds!=null)out.ped=d.peds?(d.rojo?`<span class="r">🔴 ${fmtN(d.rojo)} en rojo</span>`:(d.pedN?`${fmtN(d.pedN)} por comprar`:'<span class="g">✓ nada en rojo</span>')):'';
   if(d.cajas!=null)out.ofi=d.cajas?`<span class="g">📦 ${d.cajas} caja${d.cajas===1?'':'s'} ya</span>`:(d.mandar?`${fmtN(d.mandar)} u. para mandar`:d.casa?`${fmtN(d.casa)} u. en casa`:'nada contado');
   if(d.gastosFaltan!=null)out.gastos=d.gastosFaltan?`<span class="a">${d.gastosFaltan} sin cargar</span>`:'<span class="g">✓ todo cargado</span>';
@@ -28258,6 +28279,7 @@ function renderHomeVivos(){
   const _d=_vivosDatos(),v=_homeVivos(_d);
   [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
   // DISEÑO 5 DEL 31/10: la tarjeta Pedidos lleva una 🔴 con cuántos pedidos están en rojo (la misma cuenta del semáforo, `_pedSem`).
+  try{const r=document.getElementById('hv-ven-nuevas');if(r){const n=_d.nuevas||0;r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
   try{const r=document.getElementById('hv-ped-rojo');if(r){const n=_d.rojo||0;r.textContent=n?String(n):'';r.title=n?`${n} pedido${n===1?'':'s'} en rojo (se cortan en 14 días o menos)`:'';r.style.display=n?'':'none';}}catch(e){}
   return v;
 }

@@ -2589,6 +2589,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 13a línea de tiempo y puertas de Inicio (14/11/2026, v28.194)
+- **Cabecera de la línea (`lineaRepintar`, el template de `m.innerHTML`):** `.ln-cab1` en un renglón: `.ln-nom` (nombre con "…", entero en el título) · `.ln-chip` "🎯 techo X% seguro" (`_lnChip`: del 🔴 que no vende con su % de `_segTecho`, o de la prueba en curso/lanzamiento de `cyc/techo95pct`; en el teléfono sin el precio, `.ln-chip-l`) · `.ln-btns1` (Ficha, Todos, 365/90/30, de costado: se corren de costado, sin barra) · ✕ fuera de la tira, siempre visible. Los colores (variantes) pasaron abajo (`.ln-vars`), fuera de la cabecera fija. Medido: 48 px a 360 y a 1200 (antes ~100 en el teléfono).
+- **Puertas de Inicio:** `.ht-grid .ht-ped-b` min 32 px (antes 23-25), las tarjetas siguen de 108/164 px sin desbordar (medido). Ventas lleva `#hv-ven-nuevas` (`.ht-rojo.ht-azul`) con cuántas ventas nuevas; el texto dice "+$X / sin mirar" (antes "desde que miraste" quedaba tapado).
+- **Qué chequear:** a 360, el ✕ y el chip a la vista; en una línea con colores, los botones de colores debajo de la cabecera.
 ### 🎨 Diseño del 10/11 · 11a Mezcla y escalera de compra (14/11/2026, v28.193)
 - **🧮 Mezcla:** `renderMetMezcla` → renglones `.mz-f` (grilla: mes · barra · $ cada $100). ≤640 px la barra pasa abajo a todo el ancho. El % adentro de cada color es `.mz-pct`: letra casi negra en oscuro (los colores del tema oscuro son claros: el blanco sobre el amarillo daba 1,5 de contraste) y blanca en el claro (ahí los colores son oscuros). El "$X c/$100" va con coma.
 - **🪜 Escalera de compra:** `pedEscHTML` arma `<table class="esc-t">` con Si lo pagás hasta · Traé · Se vende a (con el ritmo) · ⭐; lo poco medido en gris. El detalle sigue en el título de cada renglón. Las reglas de tabla generales (`thead th`, `tbody td:first-child`) se pisan con `.esc-t tbody td`.
