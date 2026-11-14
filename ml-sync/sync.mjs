@@ -44565,6 +44565,11 @@ async function main() {
         await db.set('cyc/cobro_corr/' + ym, arsN ? { ars: arsN, nota: notaN, ts: Date.now() } : null);
         const r = await db.get('cyc/cobro_corr/' + ym); console.log((arsN ? r && Number(r.ars) === arsN : !r) ? `  ✓ corrección del cobro de ${ym.replace('_', '/')} = ${money(arsN)} (no se cobra como crecimiento)` : '  ⚠️ no pude releer la corrección del cobro: cargala con cobrocorr');
       };
+      // 📅 30a del 14/11/2026 (él: "a"): lo DEJADO o DEVUELTO con fecha de un mes YA CERRADO (`cyc/snapshots/<mes>.total`) que se carga tarde no
+      // entra al cobro del mes en que se carga: lo que mueve el patrimonio va a "lo viejo cargado tarde" (`cyc/cobro_corr/<próximo cierre>`, lo
+      // mismo que `cobrocorr`) con `_corrCobro`. null = no se pudo leer el cierre (se avisa: la corrección hay que cargarla a mano).
+      const _mesCerrado = async (fx) => { const ymX = String(fx || '').slice(0, 7).replace('-', '_'); if (!/^\d{4}_\d{2}$/.test(ymX)) return false;
+        try { const sn = await db.get('cyc/snapshots/' + ymX); return !!(sn && sn.total != null); } catch { return null; } };
       const mds = String(resto).trim().match(/^desde\s*\$?\s*([\d.,]+)$/i);
       if (mds) {
         let cand2 = lista.filter(([id]) => id === quien);
@@ -44710,10 +44715,16 @@ async function main() {
           console.log(`  ↩️ ${q} × ${x.prodNom} dejado el ${x.f}: ${uX} → ${nuevoU} u. · ${money(Number(x.m))} → ${money(nuevoM)}${gU != null ? ` · ganancia ${money(Math.round(Number(x.gan)))} → ${money(Math.round(gU * nuevoU))}` : ''}`);
           falta -= q; }
         console.log(`  la perfumería debe ${money(Math.round(bajaM))} menos · sale ${money(Math.round(bajaG))} de ganancia del local · vuelve a la Oficina ${aD === 'local' ? 'Local' : 'ML'} (${fD})`);
-        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        // 30a del 14/11: devuelto con fecha de un mes cerrado → lo que baja el patrimonio (la ganancia que sale) va a "lo viejo cargado tarde".
+        const cerD = await _mesCerrado(fD); let corrD = 0;
+        if (cerD === null) console.log(`  ⚠️ no pude leer si ${fD.slice(0, 7)} está cerrado: si lo está, cargá la corrección con cobrocorr (−${money(Math.round(bajaG))}).`);
+        else if (cerD) { if (bajaG > 0) corrD = -Math.round(bajaG); else console.log('  ⚠️ mes cerrado y sin la ganancia de lo devuelto: la corrección del cobro hay que cargarla a mano (cobrocorr).');
+          if (corrD) console.log(`  📅 ${fD.slice(0, 7)} ya está cerrado: lo que baja el patrimonio no se descuenta del cobro de este mes (30a del 14/11)`); }
+        if (!GO) { if (corrD) await _corrCobro(corrD, ''); console.log('No se guardó nada (falta ;go).'); return; }
         for (const [k, pt] of cambios) await db.patch(`cyc/debencuotas/${idD}/movs/${k}`, pt);
         const rD = await db.get(`cyc/debencuotas/${idD}/movs/${cambios[0][0]}`);
         console.log(rD && Number(rD.u) === cambios[0][1].u ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if (rD && corrD) await _corrCobro(corrD, `devuelto el ${fD} (mes cerrado) cargado tarde`);
         if (rD) await avisoMov(idD, `↩️ <b>Devolvieron sin vender</b> (${String(fD).split('-').reverse().join('/')})`, [`${uD} × ${String(pD.name).slice(0, 70)} · vuelve a la Oficina ${aD === 'local' ? 'Local' : 'ML'}`, `debe ${money(Math.round(bajaM))} menos · sale ${money(Math.round(bajaG))} de ganancia`, locD ? 'perfumería: ' + locD : '']);
         if (aD === 'local') { const x = (await db.get('cyc/oficyc/' + pD.id)) || null; const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
           obj.t = ant + uD; await db.set('cyc/oficyc/' + pD.id, obj); console.log(`  🏪 Oficina Local: ${pD.name} ${ant} → ${ant + uD} (sin color; si tiene color, corregilo con oficyc:${pD.id}@<color>=…;go)`);
@@ -44896,7 +44907,14 @@ async function main() {
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de) && (await db.get('cyc/mlconfig/oficycPorUnidades')) === true) {
         const xL = (await db.get('cyc/oficyc/' + prodF.id)) || {}; const tL = parseInt(xL.t) || 0, vL = Object.values(xL.v || {}).reduce((t2, q2) => t2 + (parseInt(q2) || 0), 0);
         if (tL < u) { console.log(`❌ en la Oficina Local hay ${tL} de ${prodF.name} sin color${vL ? ` (y ${vL} contadas por color, que esta resta no toca: cargalo con |de=ninguna y restá el color con oficyc:)` : ''}: no alcanzan para ${u}. Si salió de la Oficina ML usá |de=ml; si de ningún lado, |de=ninguna. No escribo nada.`); return; } }
-      if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+      // 30a del 14/11: lo dejado con fecha de un mes cerrado → lo que sube el patrimonio (la ganancia si salió de una oficina; todo si de=ninguna)
+      // va a "lo viejo cargado tarde" y no al cobro de este mes.
+      let corrV = 0;
+      if (signo > 0 && prodF) { const cerV = await _mesCerrado(f);
+        if (cerV === null) console.log(`  ⚠️ no pude leer si ${f.slice(0, 7)} está cerrado: si lo está, cargá la corrección con cobrocorr.`);
+        else if (cerV) { corrV = Math.round(/ningun|nada/i.test(String(extra.de || '')) || costoU == null ? monto : (montoU - costoU) * u);
+          console.log(`  📅 ${f.slice(0, 7)} ya está cerrado: ${money(corrV)} van a "lo viejo cargado tarde", no al cobro de este mes (30a del 14/11)${costoU == null && !/ningun|nada/i.test(String(extra.de || '')) ? ' · ⚠️ sin costo: va el monto entero' : ''}`); } }
+      if (!GO) { if (corrV) await _corrCobro(corrV, ''); console.log('No se guardó nada (falta ;go).'); return; }
       const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
         ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
       // `local=reparto` (30/10/2026, él: "cuando es así, repartilas lo más equitativas posible y listo"): las unidades se reparten de a una
@@ -44916,6 +44934,7 @@ async function main() {
         const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
         console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       }
+      if (corrV) await _corrCobro(corrV, `dejado el ${f} (mes cerrado) cargado tarde`);
       if (signo < 0 && /perfumer/.test(_n(d.nom)) && !extra.prod) await avisoPagoPerf(monto, f);
       else { const fD2 = String(f).split('-').reverse().join('/');
         await avisoMov(id, signo > 0 ? (prodF ? `🛍️ <b>Venta: ${money(Math.round(monto))}</b> (${fD2})` : `➕ <b>Nos debe ${money(Math.round(monto))} más</b> (${fD2})`) : `💵 <b>Pagó ${money(Math.round(monto))}</b> (${fD2})`,
