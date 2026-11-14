@@ -114,7 +114,7 @@ Cuántas hay y las que empiezan o terminan en los próximos 3 días: MLA o nombr
 https://dolarhoy.com/ → compra y venta del blue y del oficial, y compará con el "DÓLAR ACTUAL" de arriba del panel. Si difieren en
 más de 2%, marcalo con ⏰.
 
-== 16 · QUÉ LE LLEGA HOY Y EL CÓDIGO PARA RECIBIRLO (06/11, él: "fijate si hay un retiro en camino o si va a llegar algo hoy. y si hay algún código para recibirlo") ==
+== 16 · (SE HACE PRIMERO, ANTES DE TODA LA RUN: ver CHAT_LOCAL a00) · QUÉ LE LLEGA HOY Y EL CÓDIGO PARA RECIBIRLO (06/11, él: "fijate si hay un retiro en camino o si va a llegar algo hoy. y si hay algún código para recibirlo") ==
 En cada cuenta: https://vendedores.mercadolibre.com.ar/fulfillment/withdrawals (TODAS las páginas: ?page=2, ?page=3…).
 - CÓDIGO: arriba dice "Código de autorización válido para hoy". Anotá el de cada cuenta, SIEMPRE, aunque no venga nada. Es uno por cuenta,
   cambia todos los días y sirve para todas las visitas de ese día: se ingresa al escanear el QR del transportista. Es el mismo que aparece en

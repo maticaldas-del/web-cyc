@@ -1140,6 +1140,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 
+- **14/11 · HOY LLEGA primero en la run** (CHAT_LOCAL a00): código del día + lo que llega, mensaje "HOY LLEGA" al buzón antes de todo → Telegram en 2 min. Qué chequear: que el robot lo mande una sola vez y que el MIRAR TODO no lo repita.
+
 - **14/11 · 🚨 Venta que no sale por Full** (él miraba Ventas → Envíos de hoy por si algo en depósito se vendió): `avisoVentaFueraFull` dentro de `activarPausadasFull` (cada hora, `pausarFuera`): ventas pagadas de 48 h con envío no-Full y sin despachar → aviso URGENTE una vez (`mlapi/ventafuerafull`). Y MIRAR TODO §1/§2 con las direcciones de Posventa (reclamos, devoluciones, mensajes leídos sin respuesta). Qué chequear: que no avise las de Full; que corra en las 4 cuentas.
 
 - **14/11 · MIRAR TODO §7 Mercado Pago ampliado** (él saca la pestaña de MP que abría cada mañana): A pagar (deudas), retenido (sólo sí/no y motivo, sin monto), Créditos, salidas por categoría fuera de ML, carteles. Qué chequear: que el buzón no traiga saldos ni nombres; que las salidas raras crucen con el análisis del extracto.
