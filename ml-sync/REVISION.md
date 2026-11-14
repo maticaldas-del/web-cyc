@@ -2649,6 +2649,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### ➖ Sin "Nuevo movimiento a mano" en Gastos (14/11/2026, él: "todos los movimientos los hacés vos")
+- `index.html` `#cmp-nuevo` oculto (v28.210). Chequear que Gastos no tenga otro formulario de carga a mano visible.
+
 ### 🔴 Sin numerito en el ícono (14/11/2026, él: "no me gusta ese número de notificación. sacalo")
 - **Qué es:** se apagó el numerito del ícono de la 21a; la app y el aviso de venta lo limpian. **Dónde:** `index.html` `hxBadge`, `sw.js` push. **Chequear:** que el ícono quede sin número después de abrir la app (v28.205).
 

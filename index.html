@@ -2696,7 +2696,8 @@ setTimeout(function _ldVigia(){try{
   <div id="cmp-comp-result"></div>
 
   <!-- 7.30 (21/10/2026, eligió la a): los gastos los carga Claude con `cargargasto`; el formulario a mano queda plegado. -->
-  <details id="cmp-nuevo" class="cmp-nuevo">
+  <!-- 14/11/2026 (él: "sacar esto. todos los movimientos los hacés vos"): oculto; queda en el código por las funciones que lo usan. -->
+  <details id="cmp-nuevo" class="cmp-nuevo" style="display:none">
   <summary class="stitle" style="cursor:pointer;list-style:none">➕ Nuevo movimiento a mano <span style="font-size:.66rem;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">· casi siempre lo cargo yo (Claude) ▾</span></summary>
   <div class="pedidos-add" style="flex-wrap:wrap">
     <select id="cmp-tipo" class="cal-select" style="font-size:.74rem;padding:8px 12px;font-weight:700" onchange="onCmpTipo()">
@@ -3713,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.209';
+const APP_VERSION='28.210';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3726,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.210',f:'14/11',h:'15:05',c:[{n:1,t:'Gastos: se sacó "Nuevo movimiento a mano" (los carga Claude).'}]},
   {v:'28.209',f:'14/11',h:'14:30',c:[{n:2,t:'Gastos del mes: cada gasto y el total muestran cuánto fue el mes anterior y la diferencia.'}]},
   {v:'28.208',f:'14/11',h:'14:45',c:[{n:2,t:'Pedidos: la tarjeta ya no se abre ni tiene desplegable; sólo nombre, máximo, unidades y los colores a comprar.'}]},
   {v:'28.207',f:'14/11',h:'14:20',c:[{n:2,t:'Pedidos: si los colores tienen distinto precio máximo de compra, arriba dice «👉 mirá cada color» en vez de un solo número (para no comprar todos al mismo precio).'}]},
