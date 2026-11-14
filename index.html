@@ -10714,6 +10714,7 @@ function ventas7De(p,vari){
     Object.values(state.ventaprod[k]||{}).forEach(v=>{
       if(!v||v.cancelada||!ventaEsDe(v,p))return;
       const ts=Number(v.ts)||Date.parse(v.ts||'')||0;if(ts&&ts<t7)return;
+      if(ts&&_enBFW(ts))return; // 15a del 14/11: las ventas del Black Friday no aceleran la escasez (como el robot)
       if(vari){const c=v.variante||(vm&&vm[v.mla])||'';if(sid(String(c))!==vs)return;}
       u+=Number(v.qty)||1;
     });
@@ -10730,8 +10731,14 @@ function ventas7De(p,vari){
     else continue;
     const dd=Math.max(0,Math.min(7,ms/864e5));if(d==null||dd>d)d=dd;
   }
+  // 15a del 14/11/2026: sin los días del Black Friday (25-30/11), como `horasBF` del robot
+  const hB=_horasBFW(t7,now)/24;if(hB>0)d=Math.max(1,(d==null?7:d)-hB);
   return{u7:u,d7:d};
 }
+// 15a del 14/11/2026: la ventana del Black Friday (2 días antes y los 4 del evento). Copia de `bfVentana`/`enBlackFriday`/`horasBF` del robot.
+function _bfVentW(ts){const y=new Date(Number(ts)-3*3600e3).getUTCFullYear(),f=_fechasEspR(y).find(x=>x.nom==='Black Friday');return f?{ini:f.ts-(Number(f.pre)||0)*864e5,fin:f.ts+(Number(f.dur)||1)*864e5}:null;}
+function _enBFW(ts){const v=_bfVentW(ts);return !!v&&Number(ts)>=v.ini&&Number(ts)<v.fin;}
+function _horasBFW(t0,t1){let h=0;const vs=new Map();for(const t of [t0,t1]){const v=_bfVentW(t);if(v)vs.set(v.ini,v);}for(const v of vs.values())h+=Math.max(0,Math.min(t1,v.fin)-Math.max(t0,v.ini))/36e5;return h;}
 function escasezDe(p,o){
   // 2a (16/10/2026): la escasez se mide con el ritmo NORMAL (`cyc/ritmonormal`, sin remate). Si una suba frenó las ventas,
   // el ritmo de hoy no puede achicar la cuenta: si no, "hay para un montón de días" y Tito no compra nunca (el bucle).

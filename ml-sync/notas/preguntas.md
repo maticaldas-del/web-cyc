@@ -100,3 +100,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 - (13/11) Cuando abro un canal nuevo para hablar con él (o él queda sin su canal de siempre), ¿quién lo mira y cada cuánto? Dejarlo mirando en el momento, no esperar la próxima vuelta.
 - (13/11) Después de cargar un número, ¿el que quedó guardado es el que quería (mismo orden de magnitud)? Dólares con decimales: escribirlos con coma.
 - (14/11) Cuando entra plata de un lado (un cobro), ¿dónde quedó? Si cambia una deuda, también cambia una caja (Binance, MP, efectivo): las dos patas.
+- (14/11) Antes de pasarle una decisión de PRECIO: ¿alguna regla del CEREBRO ya la resuelve (punto medio, liquidación, stock antiguo, lanzamiento, sobra)? Si sí, la aplico y le cuento en un renglón. Si es 🔐 (sólo suya), un renglón con el código para que diga "autorizo". Nunca una a/b larga de precio.

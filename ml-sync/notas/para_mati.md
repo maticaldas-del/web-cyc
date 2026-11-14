@@ -705,3 +705,7 @@ Ya arreglado (en el robot, ninguna regla cambió): el aviso del Telegram de la p
 
 ## 14/11 · LISTA GRANDE pasada en el chat a la noche (él: "pasamelas todas juntas y arrancamos")
 Todo lo abierto de para_mati y de las revisiones, renumerado 1-66 (precios 1-15 · mercadería 16-19 · plata 20-21 · local 22-31 · diseño 32-46 · ideas 47-66). El texto completo está en el chat del 14/11. Lo ya contestado (todas las revisiones hasta el 09/11) quedó afuera. Al contestar: aplicar y anotar acá cuál eligió.
+### ✅ Contestó la LISTA GRANDE del 14/11: 1a · 2 "bajar luego de Navidad" (microSD queda a 249.890 hasta después del 25/12) · 3a · 4a · 5a · 7b · 8a · 16.1b · 16.2a · 18a · 19b · 20 "no des bola" · 21 "200 dólares" (una sola cuota de Claude) · 22a 23b 24a 25a 26b 27a 28a 29b 30a 31b
+- Precios sin contestar (6, 9-15): él dijo que los resuelva yo por regla ("¿no se supone que lo hacés vos y me preguntás cuando hay duda?"). Lo 🔐 (Pizarra 9 y Mazo 10) va en UN renglón para su autorizo.
+- 17 Batidores: por regla (a), aviso a Tito en el motivo del pedido.
+- Quedan sin contestar: 32-66 (diseño e ideas).

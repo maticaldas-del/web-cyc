@@ -6050,19 +6050,21 @@ const PUNTO_MEDIO_MIN_H = 24;     // él: "mínimo dejar 24 h" a un precio antes
 const PUNTO_MEDIO_ESPERADAS = 3;  // se juzga con ~3 ventas esperadas al ritmo de antes
 // 4 · ¿SE CONFIRMÓ LA SUBA? La próxima +50% espera a que el precio de hoy venda al menos la MITAD de lo que se esperaba al ritmo del precio de
 // antes (con 3+ esperadas), o 3 ventas, y 24 h como mínimo. Sin ritmo de antes medible: 1 venta y 24 h (como antes). {ok, txt} · null = no leí.
+// 15a del 14/11/2026 (él: "a"): las ventas y las horas del Black Friday (25-30/11) NO confirman una suba (como ya no cuentan en la vuelta):
+// el ritmo de antes se mide sin esos días y las ventas del evento no suman.
 async function subaConfirmada(db, mla, links, prods, desde, viejo, ahora = Date.now()) {
-  const horas = (ahora - desde) / 36e5;
+  const horas = Math.max(0, (ahora - desde) / 36e5 - horasBF(desde, ahora));
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `lleva ${Math.round(horas)} h a este precio: se juzga con 24 h como mínimo (él, 02/11)` };
   let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; } catch { return null; }
   const J = await lineaJuntaStock(links, prods || {}, mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } });
-  let R = viejo > 0 ? ritmoAPrecioLin(J.d, viejo, desde - 60 * 864e5, desde) : null;
+  let R = viejo > 0 ? ritmoAPrecioLin(J.d, viejo, desde - 60 * 864e5, desde, true) : null;
   // Revisión etapa 1, 03/11/2026: desde la 2ª suba el escalón anterior siempre tiene menos de 2 días en la línea y caía en "1 venta alcanza"
   // ($4.290 → $6.390 → $9.590 con 1 venta → $14.390: las Cartas Casino otra vez). Se mide contra el último escalón MEDIBLE de la cadena de
   // subas seguidas (como `vueltaDeSuba`).
   if (!R || R.dias < 2 || !(R.r > 0)) { let cc = null; try { cc = (await db.get('cyc/claudecambios')) || {}; } catch { cc = null; }
     if (cc) { const ch = Object.values(cc).filter((r) => r && String(r.mla) === String(mla) && r.por !== 'errores' && Number(r.ts) < desde - 60e3 && Number(r.ts) > desde - 60 * 864e5).sort((x, y) => Number(y.ts) - Number(x.ts));
-      for (const c of ch) { if (!(Number(c.a) > Number(c.de) * 1.02)) break; const R2 = ritmoAPrecioLin(J.d, Number(c.de), Number(c.ts) - 60 * 864e5, Number(c.ts)); if (R2 && R2.dias >= 2 && R2.r > 0) { R = R2; break; } } } }
-  const uds = await ventasGrupoEntre(db, mla, links, prods, desde, ahora, viejo); if (uds == null) return null;
+      for (const c of ch) { if (!(Number(c.a) > Number(c.de) * 1.02)) break; const R2 = ritmoAPrecioLin(J.d, Number(c.de), Number(c.ts) - 60 * 864e5, Number(c.ts), true); if (R2 && R2.dias >= 2 && R2.r > 0) { R = R2; break; } } } }
+  const uds = await ventasGrupoEntre(db, mla, links, prods, desde, ahora, viejo, true); if (uds == null) return null;
   // 13a del 03/11/2026 (él: "a" = los lanzamientos piden 3 ventas, como el resto): sin un ritmo de antes medible (un 🆕 que arranca, o una
   // cadena de subas sin escalón medido) una venta sola ya no confirma: hacen falta 3 ventas a este precio (antes alcanzaba 1).
   if (!R || R.dias < 2 || !(R.r > 0)) return uds >= PUNTO_MEDIO_ESPERADAS ? { ok: true, txt: `vendió ${uds} en ${Math.round(horas)} h (sin ritmo de antes medible: con 3 ventas se confirma)` } : { ok: false, txt: uds ? `vendió ${uds} en ${Math.round(horas)} h y no hay ritmo de antes medible: la próxima +50% espera a 3 ventas a este precio (13a del 03/11)` : 'no vendió a este precio' };
@@ -6189,7 +6191,8 @@ async function vendioAEstePrecio(db, mla, links, prods) {
   const desdeE = ahora - 30 * 864e5;
   for (let t = Math.min(desde, desdeE), i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
     let vd; try { vd = (await db.get('cyc/ventaprod/' + dayKeyFromISO(t))) || {}; } catch { return null; }
-    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ventaCuentaDesde(v, mla, desde, ts, viejo)) uds += Number(v.qty) || 1;
+    // 15a del 14/11/2026: una venta del Black Friday (25-30/11) no cuenta como "vendió a este precio" (ni la de la gemela de envío).
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (enBlackFriday(ts)) continue; if (ventaCuentaDesde(v, mla, desde, ts, viejo)) uds += Number(v.qty) || 1;
       if (ts > desdeE && (links[v.mla] || {}).gemelaTipo === 'envio') { const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); if (pu >= UMBRAL_ENVIO_GRATIS && pu > envMax) envMax = pu; } }
   }
   return { uds, desde, envMax, viejo };
@@ -6486,10 +6489,11 @@ async function detectarErrores(db, o = {}) {
       // la gemela de envío gratis se mira 30 días aunque sea de antes del último cambio (la suba hasta la barrera no la "consume")
       for (let t = ahora - 30 * 864e5, i = 0; i < 32 && t <= ahora + 864e5; t += 864e5, i++) {
         if (t + 864e5 < tsU) { const kd = dayKeyFromISO(t); const vd0 = await ventasDia(kd); if (vd0 == null) continue;
-          for (const v of Object.values(vd0)) { if (!v || v.cancelada || !grupo.includes(v.mla) || (links[v.mla] || {}).gemelaTipo !== 'envio') continue; const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (pu > pEnv) { pEnv = pu; tsEnv = ts; } }
+          for (const v of Object.values(vd0)) { if (!v || v.cancelada || !grupo.includes(v.mla) || (links[v.mla] || {}).gemelaTipo !== 'envio' || enBlackFriday(Number(v.ts) || Date.parse(v.ts || '') || 0)) continue; const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (pu > pEnv) { pEnv = pu; tsEnv = ts; } }
           continue; }
         const vd = await ventasDia(dayKeyFromISO(t)); if (vd == null) { sinLeer = true; continue; }
         for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0;
+          if (enBlackFriday(ts)) continue;   // 15a del 14/11: las ventas del Black Friday no piden +50% (ni 📈 ni 🔥/⏳)
           if ((links[v.mla] || {}).gemelaTipo === 'envio' && ts > ahora - 30 * 864e5) { const pu = (Number(v.total) || 0) / (Number(v.qty) || 1); if (pu > pEnv) { pEnv = pu; tsEnv = ts; } }
           if (ventaCuentaDesde(v, m, tsU, ts, viejoU)) { uds += Number(v.qty) || 1; if (!primera || ts < primera) primera = ts; } }
       }
@@ -50613,13 +50617,15 @@ async function main() {
         if (cs.length) {
           const desdeR = Math.max(t0, Math.min(...cs));
           const d = desdeR < ahora ? diasStockE(k, desdeR, ahora) : null;
-          if (d != null && d >= 3) { const u = vv.vts.filter(([t]) => t >= desdeR).reduce((s2, [, q]) => s2 + q, 0); return { r: u / d, d, cal: false }; }
+          // 15a del 14/11/2026: sin las ventas ni los días del Black Friday (25-30/11)
+          const dB = d != null ? d - horasBF(desdeR, ahora) / 24 : null;
+          if (dB != null && dB >= 3) { const u = vv.vts.filter(([t]) => t >= desdeR && !enBlackFriday(t)).reduce((s2, [, q]) => s2 + q, 0); return { r: u / dB, d: dB, cal: false }; }
         }
         // Respaldo: días corridos desde que volvió el stock (la cuenta de antes).
         const h = sh[k] || {}; const desde = Number(h.desde) || 0;
         const ini = Math.max(t0, desde && !h.aprox ? desde : 0);
-        const dCon = Math.max(1, (ahora - ini) / 864e5);
-        const uVen = vv.vts.filter(([t]) => t >= ini).reduce((s2, [, q]) => s2 + q, 0);
+        const dCon = Math.max(1, (ahora - ini) / 864e5 - horasBF(ini, ahora) / 24);
+        const uVen = vv.vts.filter(([t]) => t >= ini && !enBlackFriday(t)).reduce((s2, [, q]) => s2 + q, 0);
         return dCon >= 3 ? { r: uVen / dCon, d: dCon, cal: true } : { r: vv.u30 / 30, d: 30, cal: true };
       };
       // Qué se juzga: cada producto × cuenta con ventas en 30 días. Si tiene stock POR COLOR (claves `__v__` en el
@@ -50694,7 +50700,8 @@ async function main() {
           if (mlasK[k].some((m) => LINR[m] === null)) { linRota.push(k); continue; }
           const ms = mlasK[k].filter((m) => LINR[m]); if (!ms.length) { sinLin++; continue; }
           const dias = {};
-          for (const m of ms) for (const [dk, d] of Object.entries(LINR[m])) { if (dk >= hoyK || !d) continue; const x = (dias[dk] = dias[dk] || { u: 0, uR: 0, st: null, vis: 0 }); x.u += Number(d.u) || 0; x.uR += Number(d.uR) || 0; x.vis += Number(d.vis) || 0; if (d.st != null) x.st = (x.st || 0) + (Number(d.st) || 0); }
+          // 15a del 14/11/2026: los días del Black Friday (25-30/11) no entran al ritmo de la escasez (se mide con el ritmo de antes del evento).
+          for (const m of ms) for (const [dk, d] of Object.entries(LINR[m])) { if (dk >= hoyK || !d || diaEnBF(dk)) continue; const x = (dias[dk] = dias[dk] || { u: 0, uR: 0, st: null, vis: 0 }); x.u += Number(d.u) || 0; x.uR += Number(d.uR) || 0; x.vis += Number(d.vis) || 0; if (d.st != null) x.st = (x.st || 0) + (Number(d.st) || 0); }
           const ult = Object.keys(dias).sort().slice(-30);
           let u = 0, dc = 0; for (const dk of ult) { const d = dias[dk]; if (d.u > 0 || d.st > 0 || (d.vis > 0 && d.st == null)) { dc++; u += Math.max(0, d.u - d.uR); } }
           // 2a (16/10/2026, él: el bucle "no vende porque está caro, y no se compra porque hay para un montón de días"): la
@@ -50756,8 +50763,9 @@ async function main() {
         // SE ACELERÓ: MANDA EL RITMO RÁPIDO (18/10/2026, eligió la a, con el Cabotine Turquoise: 4 u. en 10 d con stock y
         // no se subió). Si en los últimos 7 días (con stock) vendió 2+ u. y el doble o más del ritmo de 30 d, la escasez se
         // mide con ese ritmo: lo que se está por acabar rápido no espera a que el promedio largo se entere.
-        { const t7 = ahora - 7 * 864e5, u7 = vv.vts.filter(([t]) => t >= t7).reduce((s2, [, q]) => s2 + q, 0);
-          const d7 = Math.max(1, Math.min(7, diasStockE(k, t7, ahora) ?? 7)), r7 = u7 / d7;
+        // 15a del 14/11/2026 (él: "a"): las ventas del Black Friday (25-30/11) NO aceleran la escasez: se sacan sus ventas y sus días.
+        { const t7 = ahora - 7 * 864e5, u7 = vv.vts.filter(([t]) => t >= t7 && !enBlackFriday(t)).reduce((s2, [, q]) => s2 + q, 0);
+          const d7 = Math.max(1, Math.min(7, diasStockE(k, t7, ahora) ?? 7) - horasBF(t7, ahora) / 24), r7 = u7 / d7;
           if (u7 >= 2 && r7 >= 2 * rr.r) rr = { ...rr, r: r7, d: d7, rapido: true }; }
         const r14 = rr.r, r3 = vv.u3 / 3;
         // 🎄 2a del 03/11/2026 (él: "a" = la escasez de Navidad antes de que se note): lo regalable que en la Navidad pasada vendió ×1,3 o más
@@ -53574,6 +53582,15 @@ async function main() {
             if (t9 && Number(t9.seg) >= umbS && Number(t9.p) > 0 && Date.now() - Number(t9.ts) < 4 * 864e5 && a >= Number(t9.p) * 0.98 && p0 >= Number(t9.p) * 0.98) {
               d.accion = 'nada'; d.freno = true; d.motivo = `🚫 FRENO 50%: ya hay ${Math.round(Number(t9.seg) * 100)}% de certeza de que ${money(Number(t9.p))} es el techo (techo95 del ${new Date(Number(t9.ts)).toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}): ${umbS > 0.5 ? `vendió a este precio, pero ya deja de convenir (🟠, pide ${Math.round(umbS * 100)}%): termina la búsqueda acá.` : 'para subir hace falta que sea más probable ganar que perder (menos de 50%). Se espera a que la prueba termine.'}`;
             }
+          }
+          // 15a del 14/11/2026 (él: "a"): 🔥/⏳ que "vendió" sólo en el Black Friday (25-30/11) no sube por esa venta: las ventas del evento no
+          // aceleran la escasez. Sólo mira cuando el Black Friday cae desde el último cambio de precio. Salida: !chico con "EXCEPCIÓN: …".
+          if (d.accion === 'sube' && fz.vendio && ['escasez', 'sinrepo'].includes(tg) && !exc('chico') && horasBF(Date.now() - 30 * 864e5, Date.now()) > 0) {
+            if (!globalThis._ritmoCacheD) globalThis._ritmoCacheD = { m: new Map(), prods: null };
+            if (!globalThis._ritmoCacheD.prods) { try { globalThis._ritmoCacheD.prods = (await db.get('cyc/products')) || {}; } catch { globalThis._ritmoCacheD.prods = {}; } }
+            const vB = await vendioAEstePrecio(db, d.mla, linksD, globalThis._ritmoCacheD.prods);
+            if (vB == null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO Black Friday: no pude leer sus ventas para ver si vendió fuera del Black Friday. Se vuelve a mirar en la próxima vuelta.'; continue; }
+            if (!vB.uds && !(vB.envMax > 0)) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO Black Friday: desde el último cambio sólo vendió en el Black Friday (25-30/11): esas ventas no aceleran la escasez ni piden +50% (15a del 14/11). Se mide con el ritmo de antes del evento.'; continue; }
           }
           // 9a del 08/11/2026 (él: "a"): 🔥 escasez con la caja en camino: si el stock de hoy alcanza al ritmo de este precio hasta que llega la
           // caja, no se sube (es "🚚 cubierto", no escasez). Salida: !chico con "EXCEPCIÓN: …".
