@@ -2589,6 +2589,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### ✅ Diseño del 10/11 cerrado en el cartel (14/11/2026, v28.200)
+- Sale de `REV_PENDIENTE` "10/11 · 15 cosas de Diseño para elegir" y queda en `REV_HIST[7]` del 14/11: eligió 1a 2a 3a 4a 6a-15a; la 5 (Para comprar hoy) dijo que no. Hechas en v28.189-28.199.
 ### 🎨 Diseño del 10/11 · 1a lo chico de una vez (14/11/2026, v28.199)
 Medido con Playwright a 360/390/1200, oscuro y claro, con datos de prueba (y con montos ×4000 para los números de 10 cifras): 0 cortes en Inicio, Ventas, Pedidos, Oficina, Arqueo, Rotación, Métricas, Resumen y Ajustes (Facturas y Gastos tienen tablas que se corren de costado a propósito).
 - **Botones para el dedo:** ≤640 px `.vbtn` y `.pf-btn` mín 40 px y las flechas ‹ › (`[onclick*="Nav("]`, `.vp-flecha`) 44×44. "✎ AFIP / meses" de 19 a 36 px. En Ver deudas el ✕ y en el pedido del momento el ✕ de 40 px.
