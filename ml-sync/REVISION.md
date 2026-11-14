@@ -2589,6 +2589,16 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 1a lo chico de una vez (14/11/2026, v28.199)
+Medido con Playwright a 360/390/1200, oscuro y claro, con datos de prueba (y con montos ×4000 para los números de 10 cifras): 0 cortes en Inicio, Ventas, Pedidos, Oficina, Arqueo, Rotación, Métricas, Resumen y Ajustes (Facturas y Gastos tienen tablas que se corren de costado a propósito).
+- **Botones para el dedo:** ≤640 px `.vbtn` y `.pf-btn` mín 40 px y las flechas ‹ › (`[onclick*="Nav("]`, `.vp-flecha`) 44×44. "✎ AFIP / meses" de 19 a 36 px. En Ver deudas el ✕ y en el pedido del momento el ✕ de 40 px.
+- **Coma decimal:** "2.5pts" (Ventas → Análisis), "▲0.0" de los KPIs de Métricas, recargo de Paraguay ("22,7% real"), IIBB y reclamos del desglose, margen de Listas, rotación (3,82) y el factor de Rotación.
+- **☰:** `goPage` lo muestra y por 1 s el scroll no lo esconde (`window._fnEntro`): el salto de lugar al entrar contaba como "bajar".
+- **Tema claro:** `.who-badge`, `.pi-var-*` y los colores fijos `#a78bfa/#f59e0b/#fbbf24/#b8932f/#38bdf8/#fb923c/#22c55e/#4ade80` escritos en el `style` se oscurecen en `body.light` (contraste de 2,1-2,7 a 4,5+).
+- **Números de 10 cifras:** `_encajarNumeros` (observa los redibujos, 150 ms) achica de a 6% la letra de `.met-kpi .mk-val`, `.casc-row .cv` y `.summary-cards .sc-val` hasta que entra; las casillas pueden achicarse (`min-width:0`).
+- **Pedido del momento:** el subtotal de cada renglón con ancho fijo (`.pm-ctrl>div` 92 px): la casilla queda en el mismo píxel en todos.
+- **Mercadería Perfumería (Ver deudas):** el ✅ Pagó pasa a una 3ª columna que ocupa los dos renglones; el 2º renglón (fecha · perfumería · ganancia · %) entra entero; ≤420 px el botón dice sólo ✅.
+- **Ya estaba o se hizo en otro punto:** la flecha doble ▶▾ (no quedó ningún desplegable con las dos, medido), los $ en Comparar meses (2a), "Contar lo que hay" que saltaba (6a).
 ### 🎨 Diseño del 10/11 · 7a tablas del teléfono en tarjetas (14/11/2026, v28.198)
 - **Qué es:** clase `table.tcard` (≤640 px): cada renglón es una tarjeta con el nombre entero arriba (`td.tc-n`) y los datos en 3 columnas fijas con su nombre (`data-l`). Aplicada a 📦 Inventario (`renderInv`, `#inv-tbl`: Costo · Adriana · Luciana / Ayelen · Matias · Total / Valor · vs ant.; los colores en tarjeta punteada con la celda del costo vacía pero ocupando su lugar, `tc-vacia`) y a 🏪 Rotación → Local (`renderRotLocal`: Unidades · Capital · En stock / Salieron · Última salida · Estado). Rotación ML ya era tarjeta (`#rot-tbl`, 📈 y 🧠 fijos arriba a la derecha): no se tocó. En la PC siguen siendo tablas.
 - **Qué chequear:** a 360 las columnas caen en el mismo píxel en todos los renglones (medido: 48/139/231) y no se corta ningún nombre.

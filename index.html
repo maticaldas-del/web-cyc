@@ -438,6 +438,25 @@ body.light .mz-pct{color:#fff}
   table.tcard tr.total-row{border-color:var(--border2)}
   #inv-tbl.tcard tbody td.tc-n{max-width:none;overflow:visible;white-space:normal}
 }
+/* 1a del Diseño 10/11 · en el teléfono los botones de elegir (Día/Mes/Año, filtros, ordenar) y las flechas ‹ › para el dedo */
+@media(max-width:640px){.vbtn,.pf-btn{min-height:40px}.vbtn.vp-flecha,button.vbtn[onclick*="Nav("],button.vbtn[onclick*="nav("],button.vbtn[onclick*="Nav(-"]{min-width:44px;min-height:44px}}
+/* 1a del Diseño 10/11 · tema claro: los colores fijos claros (lila, ámbar, dorado, celeste) no se leían sobre blanco (2,1-2,7) */
+body.light .who-badge,body.light .pi-var-toggle,body.light .pi-var-chip{color:#6d28d9}
+body.light [style*="color:#a78bfa"]{color:#6d28d9!important}
+body.light [style*="color:#f59e0b"],body.light [style*="color:#fbbf24"]{color:#b45309!important}
+body.light [style*="color:#b8932f"]{color:#7c5e10!important}
+body.light [style*="color:#38bdf8"]{color:#0369a1!important}
+body.light [style*="color:#fb923c"]{color:#c2410c!important}
+body.light [style*="color:#22c55e"],body.light [style*="color:#4ade80"]{color:#15803d!important}
+/* 1a del Diseño 10/11 · Pedido del momento: el subtotal tiene ancho fijo (con "US$ 22,50" la casilla se corría) y el ✕ es de 40 px */
+.pm-ctrl>div{min-width:92px!important}
+.pm-ctrl>.btn{min-width:40px;min-height:40px}
+/* 1a del Diseño 10/11 · números de 10 cifras: la casilla puede achicarse y `_encajarNumeros` achica la letra hasta que entra */
+.met-kpi{min-width:0}.met-kpi .mk-val{overflow:hidden}
+.casc-row .cv{min-width:0;overflow:hidden;flex:0 1 auto}
+.summary-cards .sc{min-width:0}.summary-cards .sc-val{overflow:hidden;white-space:nowrap}
+/* 1a del Diseño 10/11 · Mercadería Perfumería: en el teléfono el botón es sólo ✅ y el 2º renglón (fecha · perfumería · ganancia) entra entero */
+@media(max-width:420px){.dl-pago{display:none}}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3665,7 +3684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.198';
+const APP_VERSION='28.199';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3678,6 +3697,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.199',f:'14/11',h:'02:18',c:[{n: 1, t: "📱 Lo chico del Diseño 10/11 (1a): en el teléfono los botones de elegir (Día/Mes/Año, filtros, ordenar) de 40 px y las flechas ‹ › de 44; números con coma (2,5 pts, 22,7%, rotación 3,82); el ☰ ya no desaparece al entrar a una pantalla."}, {n: 1, t: "☀️ Tema claro: los nombres de cuenta, el lila, el ámbar, el dorado de ABEL y el celeste fijos se leen sobre blanco."}, {n: 1, t: "🔢 Métricas y Resumen: los números de 10 cifras se achican para entrar enteros en su cuadro. Pedido del momento: la casilla ya no se corre cuando el subtotal es más largo."}, {n: 1, t: "🛍️ Mercadería Perfumería: el botón ✅ va a la derecha de los dos renglones y el 2º renglón (fecha · perfumería · ganancia · %) entra entero."}]},
   {v:'28.198',f:'14/11',h:'02:08',c:[{n: 1, t: "📦 En el teléfono, Inventario y Rotación → Local van en tarjetas: arriba el nombre entero y abajo cada dato con su nombre, siempre en el mismo lugar (7a del Diseño 10/11)."}]},
   {v:'28.197',f:'14/11',h:'02:05',c:[{n: 1, t: "🧠 de un producto con colores: un bloque por color con su nota, su último cambio de precio (con el motivo), su barrita y su 📋 Ficha (14a del Diseño 10/11)."}]},
   {v:'28.196',f:'14/11',h:'02:04',c:[{n: 2, t: "🧠 Pedidos (lo que lee Tito): \"‹ 3 de 6 Siguiente ›\" en una barra fija abajo de 44 px que no salta; arriba la foto y \"Comprá N · Pagá hasta $X\"; cada nota sale una sola vez (los colores sin nota propia ya no repiten la del producto) (4a del Diseño 10/11)."}]},
@@ -4965,6 +4985,8 @@ window.addEventListener('popstate',ev=>{
 });
 function goPage(page,opt){
   opt=opt||{};
+  // 1a del Diseño 10/11: al entrar a una pantalla el ☰ se escondía (el salto de lugar contaba como "bajar"). Se muestra y 1 s no se esconde.
+  try{window._fnEntro=Date.now();document.body.classList.remove('fnav-oculto');}catch(e){}
   try{_vistoSalir();_vistoEntrar(page);}catch(e){}   // etapa 6 (G1/G6): "lo viste" se anota al salir de Pedidos / Ventas
   // El historial: guardar dónde quedó la pantalla que se deja y anotar el paso (no al volver con atrás ni al redibujar la misma).
   if(currentPage&&currentPage!==page){_pagScroll[currentPage]=window.scrollY;if(!opt.atras)_histPush(page);}
@@ -8213,11 +8235,11 @@ function cuotaDetalleHTML(d){
   const _filaProd=x=>{const ab=window._cuotaMovAb===x.mov,pm=!x.pagado&&x.pagadoM>0.5?x.pagadoM:0,pp=Math.round(x.pagPct||0);return `<div style="border-top:1px solid var(--border);${x.pagado?'background:rgba(34,197,94,.09);':pm?`background:linear-gradient(90deg,rgba(34,197,94,.13) ${pp}%,transparent ${pp}%);`:''}border-radius:6px">
     <!-- DISEÑO 10 DEL 31/10 (él: "sí"): en DOS renglones de alto fijo. Arriba el producto (antes, a 360 px, la columna del nombre quedaba en
          ~30 px y no se veía qué era) y el total; abajo fecha · perfumería · ganancia y el ✅ Pagó grande. Mismas cuentas y mismos botones. -->
-    <div onclick="event.stopPropagation();window._cuotaMovAb=window._cuotaMovAb==='${x.mov}'?null:'${x.mov}';renderCuotas()" style="cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:8px;row-gap:3px;height:52px;align-content:center;padding:0 6px;font-size:.7rem">
+    <div onclick="event.stopPropagation();window._cuotaMovAb=window._cuotaMovAb==='${x.mov}'?null:'${x.mov}';renderCuotas()" style="cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:8px;row-gap:3px;height:52px;align-content:center;padding:0 6px;font-size:.7rem">
       <span style="min-width:0;${_cel};font-weight:600;color:var(--text)">🛍️ ${x.u>1?'<b>'+x.u+' ×</b> ':''}${_escC(x.nom)}</span>
       <b style="text-align:right;font-family:'DM Mono',monospace;white-space:nowrap;color:var(--text)">${_pesos(x.m)}</b>
-      <span style="min-width:0;${_cel};color:var(--muted);font-size:.64rem"><span style="font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span> · <span style="color:${_locColor(x.loc)};font-weight:700">${_escC(x.loc||'—')}</span> · <span style="color:${x.gan==null?'var(--muted)':colPctLocal(x.gan,x.m-x.gan)}">${x.gan==null?'sin costo':(x.gan>=0?'+':'−')+_pesos(Math.abs(x.gan))+(x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':'')}</span>${pm?` · <span style="color:var(--amber)">pagó ${_pesos(pm)} · ${pp}%</span>`:''}</span>
-      <span style="text-align:right">${x.pagado?`<span style="font-size:.66rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.7rem;padding:4px 12px;min-height:28px;white-space:nowrap;font-weight:700" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="Pagaron hasta este producto (de abajo hacia arriba): se carga la plata que falta para cubrirlo a él y a los más viejos">✅ Pagó</button>`}</span></div>
+      <span style="text-align:right;grid-row:1/3;grid-column:3">${x.pagado?`<span style="font-size:.66rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.7rem;padding:4px 12px;min-height:28px;white-space:nowrap;font-weight:700" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="Pagaron hasta este producto (de abajo hacia arriba): se carga la plata que falta para cubrirlo a él y a los más viejos">✅<span class="dl-pago"> Pagó</span></button>`}</span>
+      <span style="min-width:0;${_cel};color:var(--muted);font-size:.6rem;letter-spacing:-.2px;grid-column:1/3;grid-row:2"><span style="font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span> · <span style="color:${_locColor(x.loc)};font-weight:700">${_escC(x.loc||'—')}</span> · <span style="color:${x.gan==null?'var(--muted)':colPctLocal(x.gan,x.m-x.gan)}">${x.gan==null?'sin costo':(x.gan>=0?'+':'−')+_pesos(Math.abs(x.gan))+(x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':'')}</span>${pm?` · <span style="color:var(--amber)">pagó ${_pesos(pm)} · ${pp}%</span>`:''}</span></div>
     ${ab?`<div style="padding:2px 6px 8px 12px;font-size:.66rem;color:var(--muted);line-height:1.55;word-break:break-word">
       <div style="color:var(--text)">${x.u>1?x.u+' × ':''}${_escC(x.nom)}${x.loc?' · '+_escC(x.loc):''}</div>
       ${x.gan!=null?`<div>paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${colPctLocal(x.gan,x.m-x.gan)}">${_pesos(x.gan)}</b>${x.m-x.gan>0?' ('+Math.round(x.gan/(x.m-x.gan)*100)+'% sobre el costo)':''}</div>`:'<div>sin costo cargado: la ganancia no se sabe</div>'}
@@ -16630,7 +16652,7 @@ function renderVpScopeBlocks(){
       const dg=c.ganancia-(p.ganancia||0);
       const _ah=_aeh?(general?_aeh.tot:_aeh.rows.find(x=>x.a===nombre)):null;
       const dGan=_ah?vpAehChip(_ah):(p.ganancia||0)!==0?`<span class="db ${dg>=0?'up':'dn'}">${dg>=0?'▲':'▼'} ${fmt(Math.abs(dg))}</span>`:(c.ganancia>0?'<span class="db up">nuevo</span>':'');
-      const dPct=(cp!==null&&pp!==null)?`<span class="db ${cp>=pp?'up':'dn'}">${cp>=pp?'▲':'▼'} ${Math.abs(cp-pp).toFixed(1)}pts</span>`:'';
+      const dPct=(cp!==null&&pp!==null)?`<span class="db ${cp>=pp?'up':'dn'}">${cp>=pp?'▲':'▼'} ${String(Math.abs(cp-pp).toFixed(1)).replace('.',',')} pts</span>`:'';
       const val=cp!==null?`${cp>=0?'+':''}${cp.toFixed(1).replace('.',',')}%`:(c.costo>0?'—':'sin costo');
       const w=Math.max(2,Math.abs(c.ganancia)/maxG*100);
       return`<div style="padding:12px 0;${general?'border-top:2px solid var(--accent);margin-top:4px':'border-bottom:1px solid var(--border)'}">
@@ -19849,7 +19871,7 @@ function pyRecargoReal(c){
   if(!(tc>0))falta.push('el dólar del día del pedido');if(!(usd>0))falta.push('los dólares crudos');
   if(falta.length)return{r:null,falta};
   const p=c.pagos||{};const tot=(Number(p.mercaderia)||0)+(Number(p.cambista)||0)+(Number(p.envio)||0)+(Number(p.retira)||0)+(Number(p.otros)||0)+(Number(p.adelanto)||0)-pyPersonalARS(c);   // revisión etapa 3, 29/10/2026
-  const r=tot/tc/usd;if(!(r>=1&&r<=1.6))return{r:null,falta:['el recargo da '+((r-1)*100).toFixed(1)+'%: algún número está mal']};
+  const r=tot/tc/usd;if(!(r>=1&&r<=1.6))return{r:null,falta:['el recargo da '+((r-1)*100).toFixed(1).replace('.',',')+'%: algún número está mal']};
   return{r:Math.round(r*10000)/10000,falta:[]};
 }
 // Etapa 2 (20/10/2026): EL RECARGO PARA LAS FICHAS DE UN PEDIDO CON TICKET. Cada renglón guarda el precio PAGADO, pero
@@ -20183,7 +20205,7 @@ function pyPedidoDetalleHTML(c){
           if(ch&&!(n>(Number(ch.n)||0)))return fila('📷 foto del ticket',`<b style="color:var(--green)">✓ la vio Claude en el chat</b> <span style="color:var(--muted)">(${Number(ch.n)||n} foto${(Number(ch.n)||n)>1?'s':''})</span> <button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">📷 subir igual</button>`,'Me pasaste la foto por el chat y la comparé renglón por renglón con lo cargado. La imagen no se guarda acá porque tendría que pasar por un lugar público.');
           return fila('📷 foto del ticket',`${n?`<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketVer('${c.id}')">ver${n>1?' ('+n+')':''}</button> `:`<b style="color:${t.faltaFoto?'var(--red)':'var(--muted)'}">${t.faltaFoto?'falta':'no hay'}</b> `}<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">${n?'+ otra':'subir'}</button>`,'La foto del ticket del mayorista. Si algo no llega, con la foto se ve si lo cobraron. Es obligatoria para cerrar el pedido (los ya llegados antes del '+PY_TICKET_FOTO_DESDE.split('-').reverse().join('/')+' no la piden).');})()}
         ${fila('mercadería cruda',fmtUS2(pyBaseUSD(c)),'El precio de comprasparaguay, sin el recargo.')}
-        ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1)+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),fmtUS2(puesto),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
+        ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1).replace('.',',')+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),fmtUS2(puesto),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}
         ${c.gananciaEst?fila('si se vende todo deja','<b style="color:var(--green)">'+fmt(c.gananciaEst)+'</b>','Estimado con el margen medido de cada producto al momento del pedido.'):''}
       </div>
@@ -20944,10 +20966,10 @@ function simPYCalc(){
     ${r.cuo?fila('cuotas sin interés',r.cuo,'−'):''}
     <div style="border-top:1px solid var(--border);margin:4px 0"></div>
     ${fila('te deposita ML',r.neto,'')}
-    ${fila('IIBB + monotributo ('+impPct.toFixed(2)+'%)',r.imp,'−')}
+    ${fila('IIBB + monotributo ('+impPct.toFixed(2).replace('.',',')+'%)',r.imp,'−')}
     ${fila('mercadería puesta (US$ '+puestoUSD.toFixed(2)+')',mercPy,'−',fmtUS2(usd)+' de comprasparaguay + recargo = US$ '+puestoUSD.toFixed(2)+', al dólar de hoy.')}
     ${aFull?fila('mandarlo a Full ('+fmt(costoCaja())+' ÷ '+cajaU+')',aFull,'−','Lo que sale mandar una caja a Full, repartido entre las unidades que entran. Es el mismo número que el Envío+embalaje de cualquier ficha.'):''}
-    ${recl?fila('reclamos ('+devP.toFixed(1)+'%)',recl,'−'):''}
+    ${recl?fila('reclamos ('+devP.toFixed(1).replace('.',',')+'%)',recl,'−'):''}
     <div style="border-top:1px solid var(--border);margin:6px 0"></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
       <span style="font-size:.66rem;color:var(--muted)">te queda</span>
@@ -22124,7 +22146,7 @@ async function autoDespausarPrecio(lista){
       const e=x.e||{};
       if(e.ped&&e.ped.id)(state[e.coll||'pedidos']=state[e.coll||'pedidos']||[]).push(e.ped);
       delete state.pausaPrecio[x.pid];
-      await log('Volvió solo a Pedidos (el precio volvió a dar '+x.margen.toFixed(1)+'%, piso '+x.piso+'%): '+((x.prod?x.prod.name:e.producto)||x.pid));
+      await log('Volvió solo a Pedidos (el precio volvió a dar '+x.margen.toFixed(1).replace('.',',')+'%, piso '+x.piso+'%): '+((x.prod?x.prod.name:e.producto)||x.pid));
     }
     const noms=vuelven.map(x=>(x.prod?x.prod.name:(x.e||{}).producto)||x.pid);
     toast('↩︎ '+(noms.length===1?'Volvió a Pedidos: '+noms[0]:noms.length+' volvieron a Pedidos: '+noms.slice(0,3).join(', ')+(noms.length>3?' y '+(noms.length-3)+' más':'')),'ok');
@@ -23173,7 +23195,7 @@ function renderRotacionStock(){
   if(banner&&diasHistorial>=MAX_DAYS){banner.innerHTML='';banner.style.display='none';}
   else if(banner){
     banner.style.display='';
-    banner.innerHTML=`📅 Historial: <strong>${diasHistorial} día${diasHistorial!==1?'s':''}</strong> (desde 01/06/2026) · Factor de normalización: <strong>×${factor.toFixed(2)}</strong>${diasHistorial<MAX_DAYS?` — ventana completa en ${MAX_DAYS-diasHistorial} día${MAX_DAYS-diasHistorial!==1?'s':''}` :''}`;
+    banner.innerHTML=`📅 Historial: <strong>${diasHistorial} día${diasHistorial!==1?'s':''}</strong> (desde 01/06/2026) · Factor de normalización: <strong>×${factor.toFixed(2).replace('.',',')}</strong>${diasHistorial<MAX_DAYS?` — ventana completa en ${MAX_DAYS-diasHistorial} día${MAX_DAYS-diasHistorial!==1?'s':''}` :''}`;
   }
 
   // ── Clasificación por producto ─────────────────────────────────
@@ -23394,7 +23416,7 @@ function renderRotacionStock(){
         <td class="rc-s" data-l="Stock" style="text-align:right;font-size:.72rem">${st} u.</td>
         <td class="rc-s" data-l="Capital" style="font-size:.72rem;color:var(--muted)">${st>0?fmt(st*(costFullP(p)||0)):'—'}</td>
         <td class="rc-s" data-l="Ventas período" style="text-align:right;font-size:.72rem">${vp} u.</td>
-        <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2):'—'}</td>
+        <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace;font-size:.72rem">${st>0?rotN.toFixed(2).replace('.',','):'—'}</td>
         <td class="rc-s" data-l="Días sin vender" style="text-align:right;font-size:.72rem">${rotDiasSinVenderHtml(dsv,st<=0)}</td>
         <td class="rc-g" data-l="Margen hoy" style="text-align:right">${mgV}${_pubV&&_pubV.mla?rayasBarHTML(_pubV.mla,{corto:true,ancho:'90px'}):''}</td>
         <td class="rc-s" data-l="En stock hace" style="text-align:right;font-size:.66rem">${rotEnStockHtml({pid:p.id,diasEnStock:diasEnStockVarDe(p,v),diasCaja:null,diasSinStock:diasSinStockDe(LOCS.map(l=>[getQV(p.id,l,v),invKeyV(p.id,l,v)]))})}</td>
@@ -23409,7 +23431,7 @@ function renderRotacionStock(){
     <td class="rc-s" data-l="Stock" style="text-align:right">${r.stock} u.</td>
     <td class="rc-s" data-l="Capital">${r.capital>0?fmt(r.capital):'—'}</td>
     <td class="rc-s" data-l="Ventas período" style="text-align:right">${r.ventasPeriodo} u.</td>
-    <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2):'—'}</td>
+    <td class="rc-s" data-l="Rotación" style="text-align:right;font-family:'DM Mono',monospace">${r.stock>0?r.rotNorm.toFixed(2).replace('.',','):'—'}</td>
     <td class="rc-s" data-l="Días sin vender" style="text-align:right">${rotDiasSinVenderHtml(r.diasSinVender,!(r.stock>0))}</td>
     <td class="rc-g" data-l="Margen hoy" style="text-align:right">${rotMargenHtml(r)}${(()=>{const _p=prodById(r.pid);if(_p&&Array.isArray(_p.variantes)&&_p.variantes.length>1)return '';const m=_rayasMlaDeProd(r.pid);return m?rayasBarHTML(m,{corto:true,ancho:'90px'}):'';})()}</td>
     <td class="rc-s" data-l="En stock hace" style="text-align:right">${rotEnStockHtml(r)}</td>
@@ -26972,7 +26994,7 @@ function renderMetricas(){
       const mk=g/c*100;
       let d='';
       if(pc>0){const diff=mk-(pg/pc*100);const up=diff>=0;
-        d=` <span title="${up?'+':'−'}${Math.abs(diff).toFixed(1)} puntos contra el período anterior" style="color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'}${Math.abs(diff).toFixed(1)}</span>`;}
+        d=` <span title="${up?'+':'−'}${Math.abs(diff).toFixed(1).replace('.',',')} puntos contra el período anterior" style="color:${up?'var(--green)':'var(--red)'}">${up?'▲':'▼'}${Math.abs(diff).toFixed(1).replace('.',',')}</span>`;}
       return` · <span style="color:${_esLoc(a)?colPctLocalP(mk):pctColor(mk)};font-weight:600">${mk.toFixed(1).replace('.',',')}% gan.</span>${d}`;
     };
     let ganTot=0,cosTot=0,ganTotPrev=0,cosTotPrev=0;
@@ -27397,7 +27419,7 @@ function renderMetPctAvg(buckets,bucketsPrev,bucketsYear){
   const prevAlt=enCurso?avgPct(bucketsPrev.slice(0,nCur)):prev,yearAlt=enCurso?avgPct((bucketsYear||[]).slice(0,nCur)):year;
   const fmtP=v=>v==null?'s/datos':v.toFixed(1).replace('.',',')+'%';
   const delta=(a,b,ref)=>{if(a==null||b==null)return'';const d=a-b,up=d>=0;
-    return ` <span style="color:${up?'var(--green)':'var(--red)'};font-size:.6rem;font-weight:600;white-space:nowrap">${up?'▲':'▼'} ${Math.abs(d).toFixed(1)} pts vs ${ref}</span>`;};
+    return ` <span style="color:${up?'var(--green)':'var(--red)'};font-size:.6rem;font-weight:600;white-space:nowrap">${up?'▲':'▼'} ${String(Math.abs(d).toFixed(1)).replace('.',',')} pts vs ${ref}</span>`;};
   const chip=(color,lbl,val,extra='')=>`<div style="display:flex;flex-direction:column;gap:3px;padding:9px 13px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;min-width:118px">`
     +`<span style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px;vertical-align:middle"></span>${lbl}</span>`
     +`<span style="font-size:1rem;font-weight:700;color:var(--text)">${fmtP(val)}</span>${extra}</div>`;
@@ -27917,7 +27939,7 @@ function renderHomeParejo(){
     <div style="font-size:.6rem;color:var(--muted);margin-top:2px">al cierre de ARCA, el ${fD(d.fin).slice(0,5)} · tocá una cuenta para el detalle <span class="tt-i" title="La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra entera es el tope de la K (${fM(MONO_CATS[MONO_CATS.length-1].lim)}); cada raya blanca es el tope de una categoría (la de H, más gruesa). Tres partes: llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · clarita = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre · rayada = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta." onclick="ttI(this,event)">ⓘ</span></div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo de Paraguay que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='matias')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Matías. <span style="color:var(--muted)">(Perfumes de Paraguay → Adriana · Luciana sólo lo que no es de Paraguay · lo que ya está en una cuenta, queda.)</span></div>
-    <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
+    <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:6px 12px;min-height:36px;font-size:.64rem;cursor:pointer">✎ AFIP / meses</button></div>`);
 }
 // LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12
 // meses terminados en el último 30/06 o 31/12. En agosto de 2026 la recategorización se hace con
@@ -28574,7 +28596,7 @@ function renderPuntajeMes(){
   const el=document.getElementById('home-puntaje');if(!el)return;
   const P=calcPuntajeMes(puntMesSel||undefined);puntMesSel=P.ym;
   const facARCA=_facARCA();   // una sola vez: recorrer todas las ventas por cuenta sería 4 veces lo mismo
-  const monoHtml=`<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Monotributo · cómo vendés vs AFIP</span><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>${P.monoCuentas.map(m=>{
+  const monoHtml=`<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Monotributo · cómo vendés vs AFIP</span><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:6px 12px;min-height:36px;font-size:.64rem;cursor:pointer">✎ AFIP / meses</button></div>${P.monoCuentas.map(m=>{
     const mlF=m.fac;
     const mc=monoCat(mlF);   // categoría según cómo vendés (ML)
     const col=mc.excede?'#ef4444':mc.pct>=90?'#f59e0b':'#22c55e';
@@ -29549,7 +29571,7 @@ function fnavIrOfi(t){
 }
 // 7.22 · EL ☰ SE ESCONDE AL BAJAR Y VUELVE AL SUBIR (21/10/2026, eligió la a): bajando se lee sin el botón tapando el renglón
 // de abajo; apenas se sube un poco, vuelve. Con el menú abierto no se esconde nunca.
-{let _fnY=0;window.addEventListener('scroll',()=>{const y=window.scrollY||0,d=y-_fnY;if(Math.abs(d)<6)return;
+{let _fnY=0;window.addEventListener('scroll',()=>{const y=window.scrollY||0,d=y-_fnY;if(Date.now()-(window._fnEntro||0)<1000){_fnY=y;document.body.classList.remove('fnav-oculto');return;}if(Math.abs(d)<6)return;
   document.body.classList.toggle('fnav-oculto',d>0&&y>120&&!fnavOpen);_fnY=y;},{passive:true});}
 document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn')&&!e.target.closest('#fnav-menu')){fnavOpen=false;_syncFnav();}});
 
@@ -29557,6 +29579,14 @@ document.addEventListener('click',e=>{if(fnavOpen&&!e.target.closest('#fnav-btn'
 // ratito se cierra"). Cada vez que llega un dato nuevo de la base la sección se redibuja y los <details> nacen cerrados. Se recuerda
 // cuáles abrió (por el texto de su título sin números, dentro de la sección con id más cercana) y al redibujar se vuelven a abrir.
 // Vale para todos los desplegables de la app; si uno se cierra a mano, queda cerrado.
+// 1a del Diseño 10/11: LOS NÚMEROS GRANDES ENTRAN ENTEROS. En Métricas y Resumen un número de 10 cifras ($7.574.280.000) se salía de su
+// cuadro en el teléfono. Después de cada redibujo (con 150 ms de espera), cada número de esas casillas que no entra se achica de a 6% hasta entrar.
+const _NUM_FIT='.met-kpi .mk-val,.casc-row .cv,.summary-cards .sc-val';
+function _encajarNumeros(){try{document.querySelectorAll('.page.active '+_NUM_FIT.split(',').join(',.page.active ')).forEach(e=>{if(!e.offsetParent)return;
+  if(e.dataset.fitFs){e.style.fontSize='';}let n=0;const cw=e.clientWidth;if(!(cw>0))return;
+  let fs=parseFloat(getComputedStyle(e).fontSize)||14;while(e.scrollWidth>cw+1&&fs>9&&n<20){fs*=0.94;e.style.fontSize=fs.toFixed(1)+'px';e.dataset.fitFs='1';n++;}});}catch(er){}}
+{let _nfT=null;new MutationObserver(()=>{clearTimeout(_nfT);_nfT=setTimeout(_encajarNumeros,150);}).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+  window.addEventListener('resize',()=>{clearTimeout(_nfT);_nfT=setTimeout(_encajarNumeros,150);});}
 const _detAbiertos=new Set();
 const _detClave=d=>{const s=d.querySelector(':scope>summary');if(!s)return'';const t=(s.textContent||'').replace(/[0-9.,$%]+/g,'').replace(/\s+/g,' ').trim().slice(0,80);
   let p=d.parentElement;while(p&&!p.id)p=p.parentElement;return (p?p.id:'')+'|'+t;};
