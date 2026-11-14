@@ -1165,6 +1165,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🎄 Las cajas a Full llevan el pico de Navidad (47a del 14/11/2026)
+- **Qué es:** una caja armada del 16/11 al 07/12 cuenta (x−1) × los días de venta de esa caja (desde que entra a Full, a los 7 días, hasta el día 37/60) que caen del 03/12 al 24/12, igual que Pedidos (`NAV x` de `pedidostodo` = el pico de la Navidad pasada, sólo regalable). El tope de 90 días se corre lo mismo. El motivo de la caja dice "🎄 pico de Navidad ×x: N días de esta caja caen del 03/12 al 24/12" y "hacen falta" ya los incluye.
+- **Dónde vive:** `ml-sync/notas/decide_cajas.py` (`nav_extra`, `calc(..., nav=)`; `CAJAS_HOY=AAAA-MM-DD` cambia "hoy" para probar). La web (Armar caja) no calcula sola: muestra lo que decide este script (`SOLO_CLAUDE`), así que no hizo falta tocarla.
+- **Qué chequear:** en la completa del 16/11, un regalable con `NAV` (perfume, reloj, auriculares) con más unidades que el 15/11 y el 🎄 en el motivo; lo sin `NAV` igual que antes; que el cupo de Full siga recortando (lo de Navidad que no entra espera en la oficina, 1a del 03/11). El 08/12 deja de sumarse solo.
+
 ### 🏬 Lo de la Tienda o del local no cambia el costo de la ficha de ML (27a del 14/11/2026)
 - **Qué es:** al poner los costos con el ticket (`compray det=` → `aplicarCostosPedido`, también desde `pyped:llego`), un renglón marcado 🏬 Tienda (`tienda`) o del local (`paraLocal`/`sololocal`) que apunta a una ficha de ML (sin `soloLocal`) se saltea: no la sube ni la baja. Si la ficha es sólo del local, sí toma su costo. La salida lo dice ("🏬 renglones de Tienda/local: no tocan…").
 - **Dónde vive:** `sync.mjs` `aplicarCostosPedido`.

@@ -63,9 +63,30 @@ def r_de(v30,v60,v180,tiene,dcs=30,hoy=None):
     # cuenta está en cero (lo pone `calc`). Antes 2 ventas en 7 días con stock pedían 8 u. (etapa 3, 20/10/2026).
     if v30>0 or v60>0: return 0,f"pocas ventas ({v30} en {d} d con stock, {v60} en 60 d): sin ritmo, sólo el mínimo si está en cero"
     return 0,"no vende"
+# 🎄 EL PICO DE NAVIDAD EN LAS CAJAS (47a del 14/11/2026, él: "a"): Pedidos (`Tde` de decide_pedidos.py) y la escasez ya llevaban el pico,
+# pero las cajas no: lo comprado para Navidad quedaba en la oficina y Full se vaciaba en la semana fuerte. Una caja armada del 16/11 al 07/12
+# cuenta los días de venta que caen del 03/12 al 24/12 x veces (`NAV x` de pedidostodo = cuánto más vendió ese producto en la Navidad pasada,
+# sólo regalable, ×1,3 a ×5): se suman (x-1) × esos días a los días de la caja. La caja entra a Full a los CAJA_VIAJE_DIAS (7) y vende hasta el
+# día D desde hoy. El tope de 90 días se corre lo mismo (si no, el pico lo cortaba). `CAJAS_HOY=AAAA-MM-DD` cambia "hoy" para probar.
+import datetime as _dtn
+def _hoy_cajas():
+    e=os.environ.get('CAJAS_HOY','')
+    try: return _dtn.date.fromisoformat(e) if e else _dtn.date.today()
+    except ValueError: return _dtn.date.today()
+NAV_ARMA=((11,16),(12,7))   # cajas armadas en esta ventana llevan el pico
+NAV_VENTA=((12,3),(12,24))  # los días de venta que cuentan x veces (los mismos de Pedidos)
+def nav_extra(nav,D):
+    if not nav or nav<=1: return 0,''
+    h=_hoy_cajas(); y=h.year
+    if not (_dtn.date(y,*NAV_ARMA[0])<=h<=_dtn.date(y,*NAV_ARMA[1])): return 0,''
+    ini=h+_dtn.timedelta(days=7); fin=h+_dtn.timedelta(days=D)
+    a=_dtn.date(y,*NAV_VENTA[0]); b=_dtn.date(y,*NAV_VENTA[1])
+    sol=max(0,(min(fin,b)-max(ini,a)).days+1)
+    if sol<=0: return 0,''
+    return round((nav-1)*sol),f"🎄 pico de Navidad ×{nav:.1f}: {sol} días de esta caja caen del 03/12 al 24/12".replace('.',',')
 PISO_CERO=4     # cuenta en cero que vende: mínimo para no quedar sin vender
 TOPE_LENTO=90   # lo que se manda nunca pasa los 90 días de venta (Full cobra a los 120 en lo chico). Eligió la a, 15/10/2026
-def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T,hoy=None,tDest=None,sinPubOtras=False):
+def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T,hoy=None,tDest=None,sinPubOtras=False,nav=0):
     # Revisión etapa 3, 29/10/2026: `full` y `cam` son los de las 4 cuentas juntas (igual que el ritmo: v30/v60/v180 son del producto).
     # La cobertura (lo que hace falta para D días y el tope de 90) sigue con el total: si otra cuenta todavía tiene, esas unidades
     # también se venden. Pero "está en CERO" (el mínimo de 4 y el primer lugar del cupo) es de la cuenta que RECIBE (`tDest` = SU Full +
@@ -77,10 +98,12 @@ def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T,hoy=None,tDest=None,sinPubOtra
     # NUEVO (nunca vendió en 180 d y no hay nada en Full ni en camino): no se sabe cuánto vende, va el mínimo
     # para que pueda arrancar. Antes daba "no vende" y no salía nada (15/10/2026, eligió la a).
     if v30==v60==v180==0 and t==0: return max(0,min(PISO_CERO,casa)),0,'nuevo: nunca vendió, va el mínimo para arrancar'
-    q=math.ceil(r*dias-t-0.25) if r*dias>t else 0
+    ext,nt=nav_extra(nav,dias) if r>0 else (0,'')   # 🎄 47a del 14/11
+    if ext: b+=' · '+nt
+    q=math.ceil(r*(dias+ext)-t-0.25) if r*(dias+ext)>t else 0
     if cero and (r>0 or v30>0 or v60>0): q=max(q,PISO_CERO)
     if r>0:
-        tope=math.floor(r*TOPE_LENTO-t)
+        tope=math.floor(r*(TOPE_LENTO+ext)-t)
         if q>0 and q>max(tope,0):
             q=max(tope,1 if cero else 0); b+=f' · tope {TOPE_LENTO} días (vende lento)'
     return max(0,min(q,casa)),r,b
@@ -148,7 +171,7 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,cu=cuc,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
                  fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11),
-                 soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),pcx=_pcx(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
+                 nav=(float(re.search(r' · NAV ([\d.]+)',m.group(11)).group(1)) if re.search(r' · NAV ([\d.]+)',m.group(11)) else 0),soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),pcx=_pcx(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
@@ -317,8 +340,8 @@ for p in P:
             if _b35:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=_b35[0],cola=_b35[1]+perf_txt(x.get('perfR',0))+AUTO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
-            q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras)
-            out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
+            q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
+            out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((x['full']+x['cam'])/r if r>0 else None),casa=x['casa'],dec=x['dec'].get(c)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
     elif (p['id'],'',cta) in FIJO_ACT:
@@ -332,8 +355,8 @@ for p in P:
         if _b35:
             out.append(dict(cab=f"caja:{p['id']}@{cta}",q=_b35[0],cola=_b35[1]+perf_txt(p.get('perfR',0))+AUTO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],dec=p['dec'].get(cta))); continue
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
-        q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras)
-        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*D:.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,
+        q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
+        out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,
                         cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((p['full']+p['cam'])/r if r>0 else None),casa=p['casa'],dec=p['dec'].get(cta)))
         if D==T_LARGO: largos.append(p['n'][:38])
 # LAS DECISIONES A MANO DE LA VUELTA NO SE PISAN (28/10/2026, error mío: al rearmar las cajas pisé las de la completa —Cartas Casino 0,
