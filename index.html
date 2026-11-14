@@ -357,6 +357,21 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .th-r{font-family:'DM Mono',monospace;font-size:.66rem;white-space:nowrap;text-align:right}
 .th-d{padding:2px 0 8px 0}
 @media(max-width:420px){.th-s{grid-template-columns:64px minmax(0,1fr) auto;gap:8px}}
+/* 11a del Diseño 10/11 · 🧮 La Mezcla: barra a todo el ancho en el teléfono, % que contrasta */
+.mz-f{display:grid;grid-template-columns:82px minmax(0,1fr) 92px;align-items:center;gap:8px;margin:6px 0}
+.mz-n{font-size:.7rem;color:var(--muted);white-space:nowrap}
+.mz-b{display:flex;height:18px;border-radius:5px;overflow:hidden;background:var(--border)}
+.mz-v{text-align:right;font-size:.74rem;white-space:nowrap}
+.mz-pct{display:block;font-size:.6rem;color:#111;font-weight:800;padding-left:3px;line-height:18px;white-space:nowrap}
+body.light .mz-pct{color:#fff}
+@media(max-width:640px){.mz-f{grid-template-columns:1fr auto;gap:2px 8px;margin:8px 0}.mz-b{grid-column:1/-1;grid-row:2;height:20px}.mz-pct{line-height:20px}}
+/* 11a del Diseño 10/11 · la escalera de compra como tablita */
+.esc-t{border-collapse:collapse;font-size:.68rem;width:100%;max-width:520px;table-layout:auto}
+.esc-t thead th{font-weight:600;color:var(--muted);text-align:left;font-size:.6rem;padding:2px 6px 2px 0;white-space:nowrap;text-transform:none;letter-spacing:0;font-family:'DM Mono',monospace;background:none;border-bottom:0}
+.esc-t b{font:inherit;font-weight:700}
+.esc-t tbody tr:hover{background:none}
+.esc-t tbody td,.esc-t tbody td:first-child{padding:3px 6px 3px 0;border-top:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-weight:400;font-size:.68rem;vertical-align:top;text-align:left;white-space:normal}
+.esc-t tbody td:nth-child(-n+2){white-space:nowrap}.esc-t td:last-child,.esc-t th:last-child{text-align:center;padding-right:0}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3581,7 +3596,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.192';
+const APP_VERSION='28.193';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3594,6 +3609,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.193',f:'14/11',h:'01:52',c:[{n: 1, t: "🧮 La Mezcla: en el teléfono cada barra va a todo el ancho (arriba el mes y la plata cada $100) y el % adentro se lee (letra oscura sobre los colores claros) (11a del Diseño 10/11)."}, {n: 1, t: "🪜 La escalera de compra de Pedidos es una tablita: Si lo pagás hasta · Traé · Se vende a · ⭐ (11a)."}]},
   {v:'28.192',f:'14/11',h:'01:49',c:[{n: 1, t: "⚖️ Tope de H de un vistazo: un renglón por cuenta con su barra, la raya del tope de H y \"le quedan / se pasa\"; tocando la cuenta se abre el detalle (10a del Diseño 10/11)."}]},
   {v:'28.191',f:'14/11',h:'01:46',c:[{n: 2, t: "🔢 Contar lo que hay en dos pisos: arriba la foto y el nombre entero; abajo − casilla + (de 44 px, de a una unidad) y \"+ llegó\". Al anotar un número la pantalla ya no salta (6a y parte del 1a del Diseño 10/11)."}]},
   {v:'28.190',f:'14/11',h:'01:43',c:[{n: 1, t: "💵 Ver deudas en dos pisos: arriba el nombre entero, abajo los avisos, el % y lo que falta; todos los renglones del mismo alto (8a del Diseño 10/11)."}, {n: 1, t: "🧾 Gastos del mes: \"Faltan N de 11\" con barra, botones de 40 px, las notas largas detrás de una ⓘ y el retiro una sola vez (9a)."}]},
@@ -23846,9 +23862,10 @@ function pedEscHTML(pr,color){
     const enPesos=pr.origen!=='py'||esProductoPaulvic(pr),tc=curTC();
     const pl=v=>(enPesos||!(tc>0))?fmt(v):'US$ '+(v/tc).toFixed(2).replace('.',',');
     const rit=r=>r>=1?r.toFixed(1).replace('.',',')+'/día':(r*30>=10?Math.round(r*30):(r*30).toFixed(1).replace('.',','))+'/mes';
+    // 11a del Diseño 10/11: como TABLITA "Si lo pagás hasta · Traé · Se vende a · ⭐" (antes un párrafo de letra de 10 px).
     const rows=F.slice().sort((a,b)=>a.c-b.c).map(f=>{const poco=f.d<7;
-      return `<span style="white-space:nowrap;${poco?'opacity:.55':''}" title="Vendiéndolo a ${fmt(f.p)} se vendieron ~${rit(f.r)} (${f.d} días con stock a ese precio). Para que a ese precio deje 35% hay que pagarlo hasta ${pl(f.c)}, y con ese ritmo van ${f.u} u. para el pedido.${f.s?' ⭐ Es el precio que más plata por día deja: al que lo pensamos vender.':''}${poco?' Poco medido: menos de 7 días a ese precio.':''}">${f.s?'⭐ ':''}hasta <b style="color:var(--text)">${pl(f.c)}</b> → <b style="color:var(--text)">${fmtN(f.u)} u.</b> (~${rit(f.r)} a ${fmt(f.p)}${poco?' · poco medido':''})</span>`;}).join(' · ');
-    return `<div class="ped-esc" style="flex-basis:100%;font-size:.62rem;line-height:1.6;color:var(--muted);margin-top:2px">🪜 Según lo que lo pagues: ${rows}</div>`;
+      return `<tr style="${poco?'opacity:.55':''}" title="Vendiéndolo a ${fmt(f.p)} se vendieron ~${rit(f.r)} (${f.d} días con stock a ese precio). Para que a ese precio deje 35% hay que pagarlo hasta ${pl(f.c)}, y con ese ritmo van ${f.u} u. para el pedido.${f.s?' ⭐ Es el precio que más plata por día deja: al que lo pensamos vender.':''}${poco?' Poco medido: menos de 7 días a ese precio.':''}"><td><b>${pl(f.c)}</b></td><td><b>${fmtN(f.u)} u.</b></td><td>${fmt(f.p)} <span style="color:var(--muted)">~${rit(f.r)}${poco?' · poco medido':''}</span></td><td>${f.s?'⭐':''}</td></tr>`;}).join('');
+    return `<div class="ped-esc" style="flex-basis:100%;margin-top:4px"><table class="esc-t"><thead><tr><th>🪜 Si lo pagás hasta</th><th>Traé</th><th>Se vende a</th><th>⭐</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }catch(e){return '';}
 }
 function maxCompraHTML(p){
@@ -26204,12 +26221,13 @@ function renderMetMezcla(){
   const sel=`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">${_b('a','semana','Semana')}${_b('a','mes','Mes')}${_b('a','anio','Año')}<span style="width:8px"></span>${[3,6,12,24].map(x=>_b('n',x,'últimos '+x)).join('')}${_b('n',0,'Todo')}</div>`;
   const fila=m=>{
     const g100=m.tot>0?m.gan/m.tot*100:null;
-    const bar=MEZCLA_TRAMOS.map(t=>{const p=m.tot>0?m.tr[t.k].tot/m.tot*100:0;return p>0?`<div title="${t.t}: ${p.toFixed(0)}% de lo facturado (${fmt(m.tr[t.k].tot)}) · dejó ${fmt(m.tr[t.k].gan)}${m.tr[t.k].tot>0?' = $'+(m.tr[t.k].gan/m.tr[t.k].tot*100).toFixed(0)+' cada $100':''}" style="width:${p}%;background:${t.col};height:100%">${p>=9?`<span style="font-size:.58rem;color:#fff;font-weight:700;padding-left:3px">${Math.round(p)}%</span>`:''}</div>`:'';}).join('');
+    const bar=MEZCLA_TRAMOS.map(t=>{const p=m.tot>0?m.tr[t.k].tot/m.tot*100:0;return p>0?`<div title="${t.t}: ${p.toFixed(0)}% de lo facturado (${fmt(m.tr[t.k].tot)}) · dejó ${fmt(m.tr[t.k].gan)}${m.tr[t.k].tot>0?' = $'+(m.tr[t.k].gan/m.tr[t.k].tot*100).toFixed(0)+' cada $100':''}" style="width:${p}%;background:${t.col};height:100%">${p>=9?`<span class="mz-pct">${Math.round(p)}%</span>`:''}</div>`:'';}).join('');
     const c100=g100==null?'var(--muted)':g100>=MEZCLA_META_100?'var(--green)':g100>=MEZCLA_META_100-3?'var(--amber)':'var(--red)';
-    return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0">
-      <div style="width:66px;font-size:.7rem;color:var(--muted);white-space:nowrap">${nom(m.ym)}${m.ym===cur?' <span style="font-size:.55rem">(va)</span>':''}</div>
-      <div style="flex:1;display:flex;height:18px;border-radius:5px;overflow:hidden;background:var(--border)">${bar}</div>
-      <div style="width:92px;text-align:right;font-size:.74rem"><b style="color:${c100}">${g100==null?'—':'$'+g100.toFixed(1)}</b> <span style="font-size:.58rem;color:var(--muted)">c/$100</span></div></div>`;};
+    // 11a del Diseño 10/11: en el teléfono la barra va a TODO el ancho (arriba el mes y la plata cada $100) y el % adentro con letra que contraste.
+    return `<div class="mz-f">
+      <div class="mz-n">${nom(m.ym)}${m.ym===cur?' <span style="font-size:.55rem">(va)</span>':''}</div>
+      <div class="mz-b">${bar}</div>
+      <div class="mz-v"><b style="color:${c100}">${g100==null?'—':'$'+g100.toFixed(1).replace('.',',')}</b> <span style="font-size:.58rem;color:var(--muted)">c/$100</span></div></div>`;};
   const ley=MEZCLA_TRAMOS.map(t=>`<span style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${t.col};vertical-align:middle"></span> ${t.t}</span>`).join(' · ');
   const sc=ms.reduce((a,m)=>a+m.sinCosto,0);
   el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px">

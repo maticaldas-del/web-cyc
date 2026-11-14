@@ -2589,6 +2589,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 11a Mezcla y escalera de compra (14/11/2026, v28.193)
+- **🧮 Mezcla:** `renderMetMezcla` → renglones `.mz-f` (grilla: mes · barra · $ cada $100). ≤640 px la barra pasa abajo a todo el ancho. El % adentro de cada color es `.mz-pct`: letra casi negra en oscuro (los colores del tema oscuro son claros: el blanco sobre el amarillo daba 1,5 de contraste) y blanca en el claro (ahí los colores son oscuros). El "$X c/$100" va con coma.
+- **🪜 Escalera de compra:** `pedEscHTML` arma `<table class="esc-t">` con Si lo pagás hasta · Traé · Se vende a (con el ritmo) · ⭐; lo poco medido en gris. El detalle sigue en el título de cada renglón. Las reglas de tabla generales (`thead th`, `tbody td:first-child`) se pisan con `.esc-t tbody td`.
+- **Qué chequear:** 360/1200 oscuro y claro sin cortes (medido); los números son los mismos que el párrafo de antes.
 ### 🎨 Diseño del 10/11 · 10a ⚖️ Tope de H de un vistazo (14/11/2026, v28.192)
 - **Qué es:** `renderHomeParejo`: cada cuenta es un `<details class="th-f">` con un renglón `.th-s` (nombre · barra hasta el tope de K con UNA raya, la del tope de H · "le quedan / se pasa $X" en su color). Al tocarla se abre `.th-d` con todo lo de antes (barra con las rayas de cada categoría y sus letras, proyección, categoría hoy y al cierre, facturado/en teoría/nuevo, ritmo de 30 días, oficina, inscripción). La explicación larga de la barra quedó detrás de una ⓘ. Lo abierto queda abierto al redibujar (`_detAbiertos`).
 - **Qué chequear:** a 360 entra en 4 renglones de 40 px; una cuenta que se pasa sale con 🔴 y en rojo; los datos del detalle son los mismos de antes (no cambió ninguna cuenta).
