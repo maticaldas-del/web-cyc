@@ -2589,6 +2589,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 10a ⚖️ Tope de H de un vistazo (14/11/2026, v28.192)
+- **Qué es:** `renderHomeParejo`: cada cuenta es un `<details class="th-f">` con un renglón `.th-s` (nombre · barra hasta el tope de K con UNA raya, la del tope de H · "le quedan / se pasa $X" en su color). Al tocarla se abre `.th-d` con todo lo de antes (barra con las rayas de cada categoría y sus letras, proyección, categoría hoy y al cierre, facturado/en teoría/nuevo, ritmo de 30 días, oficina, inscripción). La explicación larga de la barra quedó detrás de una ⓘ. Lo abierto queda abierto al redibujar (`_detAbiertos`).
+- **Qué chequear:** a 360 entra en 4 renglones de 40 px; una cuenta que se pasa sale con 🔴 y en rojo; los datos del detalle son los mismos de antes (no cambió ninguna cuenta).
 ### 🎨 Diseño del 10/11 · 6a Contar lo que hay en dos pisos (14/11/2026, v28.191)
 - **Qué es:** `renderOfiContar`: cada renglón (`.oc-row`, variantes `.oc-var`) con `.oc-top` (foto + nombre entero, `overflow-wrap:anywhere`) y `.oc-bot` (− casilla + de 44 px · la casilla punteada de lo que llegó y "+ llegó"). `ofiPaso(pid,variante,±1)` suma o resta una unidad por el MISMO camino que escribir el número (`setQ`/`setOfiVar`).
 - **No salta (parte del 1a):** al tocar un renglón se guarda dónde estaba en la pantalla (`window._ocAncla`, vale 4 s) y cada redibujo lo vuelve a poner en el mismo lugar. Medido con pantalla de 700 px: escribir 7 y tocar + deja el renglón en el mismo píxel (antes saltaba 90-120 px).

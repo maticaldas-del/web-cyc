@@ -347,6 +347,16 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .oc-bot{display:flex;align-items:center;gap:6px}
 .oc-sep{flex:1}
 .btn.oc-pm{flex:none;width:44px;height:44px;padding:0;font-size:1.2rem;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+/* 10a del Diseño 10/11 · ⚖️ Tope de H: un renglón por cuenta */
+.th-f{margin:6px 0;border-top:1px solid var(--border)}
+.th-s{list-style:none;cursor:pointer;display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:40px;font-size:.7rem}
+.th-s::-webkit-details-marker{display:none}
+.th-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.th-bar{position:relative;height:12px;display:block}
+.th-bar>span:first-child{position:absolute;inset:0}
+.th-r{font-family:'DM Mono',monospace;font-size:.66rem;white-space:nowrap;text-align:right}
+.th-d{padding:2px 0 8px 0}
+@media(max-width:420px){.th-s{grid-template-columns:64px minmax(0,1fr) auto;gap:8px}}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3571,7 +3581,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.191';
+const APP_VERSION='28.192';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3584,6 +3594,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.192',f:'14/11',h:'01:49',c:[{n: 1, t: "⚖️ Tope de H de un vistazo: un renglón por cuenta con su barra, la raya del tope de H y \"le quedan / se pasa\"; tocando la cuenta se abre el detalle (10a del Diseño 10/11)."}]},
   {v:'28.191',f:'14/11',h:'01:46',c:[{n: 2, t: "🔢 Contar lo que hay en dos pisos: arriba la foto y el nombre entero; abajo − casilla + (de 44 px, de a una unidad) y \"+ llegó\". Al anotar un número la pantalla ya no salta (6a y parte del 1a del Diseño 10/11)."}]},
   {v:'28.190',f:'14/11',h:'01:43',c:[{n: 1, t: "💵 Ver deudas en dos pisos: arriba el nombre entero, abajo los avisos, el % y lo que falta; todos los renglones del mismo alto (8a del Diseño 10/11)."}, {n: 1, t: "🧾 Gastos del mes: \"Faltan N de 11\" con barra, botones de 40 px, las notas largas detrás de una ⓘ y el retiro una sola vez (9a)."}]},
   {v:'28.189',f:'14/11',h:'01:40',c:[{n: 2, t: "📅 Comparar meses cuenta nuevo menos viejo: si el patrimonio bajó dice ▼ en rojo, si el stock subió ▲ en verde; el dólar del cierre dice \"dólar a $X\" (2a y 1a del Diseño 10/11)."}, {n: 1, t: "⏱️ Ventas sin ventas hoy compara con el promedio de los últimos 5 días iguales a esta hora, igual que Inicio (3a)."}, {n: 1, t: "🇵🇾/🇦🇷 de la ficha: ahora está adentro de la ficha (al lado de 🗑️) y pregunta antes de cambiar (15a)."}]},
@@ -27747,18 +27758,24 @@ function renderHomeParejo(){
     const letras=MONO_CATS.map((c,i)=>{const a=i?MONO_CATS[i-1].lim:0;const x=((a+c.lim)/2/TOPB*100).toFixed(2);return `<span style="position:absolute;left:${x}%;transform:translateX(-50%);font-size:.5rem;color:${c.c==='H'?'var(--text)':'var(--muted)'};font-weight:${c.c==='H'?800:400};font-family:'DM Mono',monospace">${c.c}</span>`;}).join('');
     const raya=`repeating-linear-gradient(135deg,${col} 0 3px,transparent 3px 6px)`;
     const mu=(bg,op)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:3px;background:${bg};opacity:${op};border:1px solid ${col}"></span>`;
-    return `<div style="margin:8px 0">
-      <div style="display:flex;justify-content:space-between;gap:8px;font-size:.66rem"><strong>${MET_LABELS[f.a]}</strong>
-        <span style="color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></div>
-      <div style="position:relative;height:11px;margin-top:3px"><div style="height:100%;background:var(--surface2);border-radius:5px;overflow:hidden;display:flex"><div style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></div><div style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></div></div>${rayasCat}</div><div style="position:relative;height:10px;margin-top:1px">${letras}</div><div style="font-size:.6rem;margin-top:1px">hoy en <b>${catHoy}</b> · al ${fD(d.fin).slice(0,5)} cae en <b style="color:${catProy==='H'?col:'var(--text)'}">${catProy}</b></div>
+    // 10a del Diseño 10/11: UN RENGLÓN POR CUENTA (nombre · barra con la raya del tope de H · "le quedan / se pasa"); el detalle al tocarlo
+    // (antes ~45 renglones a 360 px). Lo abierto queda abierto al redibujar (`_detAbiertos` mira el id).
+    return `<details class="th-f" id="th-${f.a}"><summary class="th-s">
+      <strong class="th-n">${f.proy>d.topeH?'🔴 ':''}${MET_LABELS[f.a]}</strong>
+      <span class="th-bar"><span style="height:100%;background:var(--surface2);border-radius:5px;overflow:hidden;display:flex"><span style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></span><span style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></span><span style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></span></span>${(()=>{const cH=MONO_CATS.find(c=>c.c==='H');return cH?`<i style="position:absolute;top:-3px;bottom:-3px;left:${(cH.lim/TOPB*100).toFixed(2)}%;width:2px;background:var(--text)" title="tope de H"></i>`:'';})()}</span>
+      <span class="th-r" style="color:${col}">${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)}</span></summary>
+      <div class="th-d">
+      <div style="position:relative;height:11px;margin-top:2px"><div style="height:100%;background:var(--surface2);border-radius:5px;overflow:hidden;display:flex"><div style="height:100%;width:${wFac.toFixed(1)}%;background:${col}"></div><div style="height:100%;width:${wTeo.toFixed(1)}%;background:${col};opacity:.45"></div><div style="height:100%;width:${wNue.toFixed(1)}%;background:${raya}"></div></div>${rayasCat}</div>
+      <div style="position:relative;height:10px;margin:1px 0 2px">${letras}</div>
+      <div style="font-size:.62rem;color:${col};font-family:'DM Mono',monospace">${fM(f.proy)} al ${fD(d.fin).slice(0,5)} · ${f.proy>d.topeH?'se pasa '+fM(-f.resta):'le quedan '+fM(f.resta)} del tope de H</div>
+      <div style="font-size:.6rem;margin-top:1px">hoy en <b>${catHoy}</b> · al ${fD(d.fin).slice(0,5)} cae en <b style="color:${catProy==='H'?col:'var(--text)'}">${catProy}</b></div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5">${mu(col,1)}facturado ${fM(f.fac)} · ${mu(col,.45)}en teoría +${fM(teo)} <span style="opacity:.8">(lo que ya vende, a su ritmo: ${fM((f.diarioEsp||f.diario)*30)}/mes × ${d.faltan} d)</span>${nuevo>0?` · ${mu(raya,1)}nuevo sin vender +${fM(nuevo)} <span style="opacity:.8">(${f.uNuevo} u. en Full, viajando o en la caja, a su precio de hoy)</span>`:''}</div>
       <div style="font-size:.58rem;color:var(--muted);opacity:.75;margin-top:1px">con el ritmo parejo de los últimos 30 días serían ${fM(f.proy30)}</div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:1px">${_ofiTxt(f.ofi,fM)}</div>
       ${(()=>{const t=_parejoCatLinea(f.a,fM,facARCA);return t?`<div style="font-size:.6rem;color:var(--muted);margin-top:1px">${t}</div>`:'';})()}
-    </div>`;}).join('');
+    </div></details>`;}).join('');
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La barra entera es el tope de la K (${fM(MONO_CATS[MONO_CATS.length-1].lim)}); cada raya blanca es el tope de una categoría (la de H, más gruesa).</div>
-    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra tiene tres partes: <strong>llena</strong> = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · <strong>clarita</strong> = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre (lo recién llegado, a su ritmo desde que llegó) · <strong>rayada</strong> = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta.</div>
+    <div style="font-size:.6rem;color:var(--muted);margin-top:2px">al cierre de ARCA, el ${fD(d.fin).slice(0,5)} · tocá una cuenta para el detalle <span class="tt-i" title="La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra entera es el tope de la K (${fM(MONO_CATS[MONO_CATS.length-1].lim)}); cada raya blanca es el tope de una categoría (la de H, más gruesa). Tres partes: llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · clarita = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre · rayada = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta." onclick="ttI(this,event)">ⓘ</span></div>
     ${barras}${aviso}
     <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo de Paraguay que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='matias')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Matías. <span style="color:var(--muted)">(Perfumes de Paraguay → Adriana · Luciana sólo lo que no es de Paraguay · lo que ya está en una cuenta, queda.)</span></div>
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:.6rem;cursor:pointer">✎ AFIP / meses</button></div>`);
