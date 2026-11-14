@@ -153,6 +153,26 @@ def _pcx(t):
 def _p35(t):
     m_=re.search(r' · M35 no:[^:\s]*:[^:\s]*:(\d+)',t or ''); return int(m_.group(1)) if m_ else None
 LIQ_PRUEBA=2
+# 🏷️ LO QUE SUGIERE ML (55a del 14/11/2026, él: "a"): `pedidostodo` imprime ` · MLSUG [Ad5* Lu3]` (lo que ML recomienda reponer en cada cuenta;
+# `*` = si se manda lo que pide, ML se hace cargo del stock antiguo de esas unidades). Si la caja YA iba a llevar ese producto (o color) a esa
+# cuenta y ML ofrece hacerse cargo, sube a lo que sugiere ML, sin pasar lo que hay en la oficina ni los 90 días de venta (TOPE_LENTO); el cupo
+# de Full lo recorta después como a todo. Sin `*`, o con la caja en 0, no se toca (es sólo para comparar, como en la web).
+def _mlsug(t):
+    m_=re.search(r' · MLSUG \[([^\]]*)\]',t or '')
+    if not m_: return {}
+    o={}
+    for x in m_.group(1).split():
+        mm=re.match(r'^([A-Z][a-z])(\d+)(\*?)$',x)
+        if mm and mm.group(1) in AB: o[AB[mm.group(1)]]=(int(mm.group(2)),mm.group(3)=='*')
+    return o
+def sube_mlsug(q,r,t,casa,sg,b):
+    if not sg or q<=0: return q,b
+    u,ben=sg
+    if not ben or u<=q: return q,b
+    tope=math.floor(r*TOPE_LENTO-t) if r>0 else q
+    q2=min(u,casa,max(tope,q))
+    if q2>q: return q2,b+f" · 🏷️ ML sugiere {u} y, si se manda lo que pide, se hace cargo del stock antiguo: van {q2} (55a)"
+    return q,b
 def bajo35(ph,full,cam,casa,p35):
     if ph is None or ph>=35: return None
     if full+cam>0: return (0,f"💸 hoy se vende a {ph}% (menos de 35%): no va más a Full hasta vender lo que hay ahí ({full+cam}), después se sube al 35% y se prueba 2 meses (él, 11/11)")
@@ -171,12 +191,12 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),v=list(map(int,m.group(3,4,5))),dcs=int(m.group(6)),full=int(m.group(7)),br=m.group(8),casa=int(m.group(9)),cam=int(m.group(10)),
                  ctas=[AB[x] for x in ct.group(1).split() if x in AB] if ct else None,vars=[],gan=gan,cu=cuc,grande=' · GRANDE' in m.group(11),porcaja=(int(re.search(r' · GRANDE porcaja (\d+)',m.group(11)).group(1)) if re.search(r' · GRANDE porcaja (\d+)',m.group(11)) else None),hoy=hoy_de(m.group(11)),
                  fullC=_ctas_num(m.group(8)),camC=_num_o_none(m.group(11),'camcta'),pub=_lst_o_none(m.group(11),'pub'),dec=_num_o_none(m.group(11),'cajadec'),perf=re.search(r' · PERF (\d+)(?:@(\S+))?',m.group(11)),resto=m.group(11),
-                 nav=(float(re.search(r' · NAV ([\d.]+)',m.group(11)).group(1)) if re.search(r' · NAV ([\d.]+)',m.group(11)) else 0),soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),pcx=_pcx(m.group(11)),p35=_p35(m.group(11)));P.append(cur);continue
+                 nav=(float(re.search(r' · NAV ([\d.]+)',m.group(11)).group(1)) if re.search(r' · NAV ([\d.]+)',m.group(11)) else 0),soloPerf=(re.search(r' · SOLOPERF (\w+)',m.group(11)).group(1) if re.search(r' · SOLOPERF (\w+)',m.group(11)) else None),ph=_ph(m.group(11)),pcx=_pcx(m.group(11)),p35=_p35(m.group(11)),mlsug=_mlsug(m.group(11)));P.append(cur);continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
     if re.match(r'^p\w+ · ',l): cur=None; noEnt.append(l[:110]); continue
     m=re.match(r'^   # (.*?) · v30 (\d+) v60 (\d+) v180 (\d+) · últ \S+(?: · dCS (\d+))?(?: · cortes \d+)? · Full (\d+) · casa (\d+) · camino (\d+)',l)
     if m and cur: cur['vars'].append(dict(v=m.group(1),s=list(map(int,m.group(2,3,4))),dcs=int(m.group(5)) if m.group(5) else cur['dcs'],full=int(m.group(6)),casa=int(m.group(7)),cam=int(m.group(8)),hoy=hoy_de(l),
-                                          fullC=_num_o_none(l,'fullcta'),camC=_num_o_none(l,'camcta'),pubV=_lst_o_none(l,'pubV'),dec=_num_o_none(l,'cajadec'),ph=_ph(l),pcx=_pcx(l),p35=_p35(l)))
+                                          fullC=_num_o_none(l,'fullcta'),camC=_num_o_none(l,'camcta'),pubV=_lst_o_none(l,'pubV'),dec=_num_o_none(l,'cajadec'),ph=_ph(l),pcx=_pcx(l),p35=_p35(l),mlsug=_mlsug(l)))
 print(f"leí {len(P)} de {esper} productos"+(' ✓' if len(P)==esper else ' ⚠️ NO CIERRA: hay renglones que no entendí'))
 # NO SE ESCRIBE NADA A MEDIAS (etapa 5, 20/10/2026): renglones que no entendí, grupos que no cierran, falta un grupo o la
 # línea final "CUENTA: … ✓" (el log se cortó o el comando se cayó) → no se arma cajas.txt.
@@ -341,6 +361,7 @@ for p in P:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=_b35[0],cola=_b35[1]+perf_txt(x.get('perfR',0))+AUTO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
+            q,b=sube_mlsug(q,r,x['full']+x['cam'],x['casa'],x.get('mlsug',{}).get(c),b)   # 🏷️ 55a
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((x['full']+x['cam'])/r if r>0 else None),casa=x['casa'],dec=x['dec'].get(c)))
             if D==T_LARGO: largos.append(f"{p['n'][:38]} · {x['v']}")
@@ -356,6 +377,7 @@ for p in P:
             out.append(dict(cab=f"caja:{p['id']}@{cta}",q=_b35[0],cola=_b35[1]+perf_txt(p.get('perfR',0))+AUTO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],dec=p['dec'].get(cta))); continue
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
+        q,b=sube_mlsug(q,r,p['full']+p['cam'],p['casa'],p.get('mlsug',{}).get(cta),b)   # 🏷️ 55a
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,
                         cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((p['full']+p['cam'])/r if r>0 else None),casa=p['casa'],dec=p['dec'].get(cta)))
         if D==T_LARGO: largos.append(p['n'][:38])

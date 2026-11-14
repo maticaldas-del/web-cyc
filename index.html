@@ -3684,7 +3684,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.200';
+const APP_VERSION='28.201';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3697,6 +3697,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.201',f:'14/11',h:'02:31',c:[{n: 2, t: "🏷️ Armar caja: al lado de lo que recomienda ML ahora dice 🎁 si ML se hace cargo del stock antiguo cuando mandás lo que sugiere, ⭐ producto estrella y ⛔ restringido (55a)."}]},
   {v:'28.200',f:'14/11',h:'02:21',c:[{n: 1, t: "🔎 Ajustes → Revisiones: las 15 de Diseño del 10/11 salen de pendientes (hechas las 14 que elegiste; la 5 no)."}]},
   {v:'28.199',f:'14/11',h:'02:18',c:[{n: 1, t: "📱 Lo chico del Diseño 10/11 (1a): en el teléfono los botones de elegir (Día/Mes/Año, filtros, ordenar) de 40 px y las flechas ‹ › de 44; números con coma (2,5 pts, 22,7%, rotación 3,82); el ☰ ya no desaparece al entrar a una pantalla."}, {n: 1, t: "☀️ Tema claro: los nombres de cuenta, el lila, el ámbar, el dorado de ABEL y el celeste fijos se leen sobre blanco."}, {n: 1, t: "🔢 Métricas y Resumen: los números de 10 cifras se achican para entrar enteros en su cuadro. Pedido del momento: la casilla ya no se corre cuando el subtotal es más largo."}, {n: 1, t: "🛍️ Mercadería Perfumería: el botón ✅ va a la derecha de los dos renglones y el 2º renglón (fecha · perfumería · ganancia · %) entra entero."}]},
   {v:'28.198',f:'14/11',h:'02:08',c:[{n: 1, t: "📦 En el teléfono, Inventario y Rotación → Local van en tarjetas: arriba el nombre entero y abajo cada dato con su nombre, siempre en el mismo lugar (7a del Diseño 10/11)."}]},
@@ -9386,7 +9387,7 @@ function renderOfiCaja(){
     const _tog=`onclick="cajaToggleDet(${JSON.stringify(_kAb).replace(/"/g,'&quot;')})"`;
     const _resum=sug.filter(s=>s.mandar>0).map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:12px">
         <span class="pi-prov">${s.cuenta}</span><strong style="font-family:'Syne',sans-serif;font-size:1rem">mandar ${s.mandar} u.</strong>
-        ${s.etiq?`<span title="Código de la etiqueta de Full en ${s.cuenta} (no es el MLA)." style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:'<span style="font-size:.62rem;color:var(--muted)">sin código</span>'}${(r=>r&&r.tipo==='REPLENISH'&&r.sug!=null?`<span title="Lo que recomienda mandar ML (lo lee el robot una vez por día). No decide: es para comparar." style="font-size:.6rem;color:${['THIS_WEEK','NEXT_WEEK','IN_TWO_WEEKS'].includes(r.plazo)?'var(--amber)':'var(--muted)'}">ML ${r.sug}</span>`:'')(fullRecoDe(f.p.id,s.cuenta,f.variante||''))}</span>`).join('');
+        ${s.etiq?`<span title="Código de la etiqueta de Full en ${s.cuenta} (no es el MLA)." style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:'<span style="font-size:.62rem;color:var(--muted)">sin código</span>'}${(r=>r&&r.tipo==='REPLENISH'&&r.sug!=null?`<span title="Lo que recomienda mandar ML (lo lee el robot una vez por día). No decide: es para comparar." style="font-size:.6rem;color:${['THIS_WEEK','NEXT_WEEK','IN_TWO_WEEKS'].includes(r.plazo)?'var(--amber)':'var(--muted)'}">ML ${r.sug}${r.ben?' 🎁':''}${r.estrella?' ⭐':''}${r.restr?' ⛔':''}</span>`:'')(fullRecoDe(f.p.id,s.cuenta,f.variante||''))}</span>`).join('');
     const _hayAviso=sug.some(s=>s.sinPub)||!!f.sinContarPorAroma||!!f.sinPublicar;
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
       <div class="caja-g">
@@ -22268,12 +22269,16 @@ function fullRecoHTML(prodId,cuenta,variante,mandar){
   const sinSt=sem.reduce((a,x)=>a+(Number(x&&x[1])||0),0);
   const pronto=r.tipo==='REPLENISH'&&['THIS_WEEK','NEXT_WEEK','IN_TWO_WEEKS'].includes(r.plazo);
   const reco=r.tipo==='REPLENISH'?`ML recomienda <b>${r.sug!=null?r.sug:'?'} u.</b>${r.plazo?' · '+(FULLRECO_PLAZO[r.plazo]||r.plazo):''}`:`ML: <b>no hace falta reponer</b>`;
+  // 🏷️ 55a del 14/11/2026: lo que antes se tiraba de la misma respuesta de ML: si se manda lo que sugiere, ML se hace cargo del stock antiguo
+  // (`ben`, el texto crudo en `benef`), y las etiquetas del producto (⭐ estrella · ⛔ restringido). `decide_cajas.py` sube la caja a lo que
+  // sugiere ML cuando ya iba a llevar ese producto y ML ofrece hacerse cargo.
+  const extra55=[r.ben?`<span style="color:var(--green)" title="${_esc(String(r.benef||''))}">🎁 si mandás lo que sugiere, ML se hace cargo del stock antiguo</span>`:'',r.estrella?'⭐ producto estrella':'',r.restr?`<span style="color:var(--red)" title="${_esc((r.ptags||[]).join(', '))}">⛔ restringido</span>`:''].filter(Boolean).join(' · ');
   const col=pronto?'var(--amber)':'var(--muted)';
   let aviso='';
   if(mandar>0&&r.tipo==='REPLENISH'&&r.sug>0&&mandar>=r.sug*2.5)aviso=`Mandás ${(mandar/r.sug).toFixed(1).replace('.',',')} veces lo que recomienda ML: mirá el ritmo antes de cerrar la caja.`;
   else if(mandar>0&&r.tipo!=='REPLENISH')aviso='ML dice que no hace falta reponer: mirá el ritmo antes de cerrar la caja.';
   const barras=sem.length?`<span style="display:inline-flex;gap:2px;align-items:flex-end;height:14px;margin-left:6px;vertical-align:middle" title="Semanas según ML (de la más vieja a la última): la barra son las vendidas, el rojo abajo los días sin stock">${sem.map(x=>{const u=Number(x&&x[0])||0,d=Number(x&&x[1])||0,mx=Math.max(1,...sem.map(y=>Number(y&&y[0])||0));return `<span style="display:inline-flex;flex-direction:column;justify-content:flex-end;width:5px;height:14px"><span style="height:${Math.max(1,Math.round(u/mx*12))}px;background:var(--accent2);opacity:.8"></span><span style="height:${d?2:0}px;background:var(--red)"></span></span>`;}).join('')}</span>`:'';
-  return `<div style="font-size:.64rem;color:${col};margin:3px 0 0 2px;line-height:1.45">📦 ${reco}${barras}${sinSt?` · <span style="color:var(--red)">${sinSt} días sin stock en 6 semanas según ML</span>`:''}${r.viejo?' <span style="color:var(--amber)">(dato de hace '+Math.floor((Date.now()-r.ts)/86400000)+' d)</span>':''}${aviso?`<div style="color:var(--amber)">⚠️ ${aviso}</div>`:''}</div>`;
+  return `<div style="font-size:.64rem;color:${col};margin:3px 0 0 2px;line-height:1.45">📦 ${reco}${extra55?' · '+extra55:''}${barras}${sinSt?` · <span style="color:var(--red)">${sinSt} días sin stock en 6 semanas según ML</span>`:''}${r.viejo?' <span style="color:var(--amber)">(dato de hace '+Math.floor((Date.now()-r.ts)/86400000)+' d)</span>':''}${aviso?`<div style="color:var(--amber)">⚠️ ${aviso}</div>`:''}</div>`;
 }
 // 🏷️ EL CÓDIGO DE ETIQUETA DE FULL EN LA TARJETA DEL PRODUCTO (25/10/2026, él con los Separadores de dedos: "poner código de ml de
 // envío full"). Es el `inventory_id` que guarda el robot en `cyc/mllinks/<MLA>/inv` (por color en `invVar`): uno por cuenta (y por

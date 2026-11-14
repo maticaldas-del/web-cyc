@@ -2885,7 +2885,23 @@ function leerRepoFullML(j) {
     st: n(j.stock && j.stock.total_stock), urg: (j.stock && j.stock.shipping_urgency) || null,
     v30: v30r && typeof v30r === 'object' ? n(v30r.full) : n(v30r), sem,
     tipo: r.recommendation_type || null, sug: sq && typeof sq === 'object' ? n(sq.value) : n(sq), plazo: r.replenishment_deadline || null,
+    ...repoFullExtras(j),
   };
+}
+// 🏷️ 55a del 14/11/2026 (él: "a"): LO QUE SE TIRABA DE LA MISMA RESPUESTA. `eligibility_benefits` (si se manda lo que sugiere ML, ML se hace
+// cargo del stock antiguo de esas unidades: la revisión de ideas del 12/11 lo vio en la pantalla de reposición) y las etiquetas del producto
+// (`product.tags`: "producto estrella", "restringido"). Se guarda compacto: `benef` = el texto de los beneficios (corto; son datos de ML, no
+// de personas), `ben` = hay alguno, `ptags` = las etiquetas, `estrella`/`restr` = lo que se deduce de ellas. CÓMO VIENEN NO ESTÁ MEDIDO
+// (sólo se veía con `cargosfull`): si `ben` sale siempre o nunca, mirar `benef` crudo en `cyc/fullreco` y ajustar `RE_FR_*`.
+const RE_FR_ESTRELLA = /star|estrella|top_?seller|best_?seller|featured/i, RE_FR_RESTR = /restrict|restring|block|bloque|limited|no_?inbound/i;
+function repoFullExtras(j) {
+  const eb = j && j.eligibility_benefits; let benef = null, ben = false;
+  if (eb != null && !(Array.isArray(eb) && !eb.length) && !(typeof eb === 'object' && !Array.isArray(eb) && !Object.keys(eb).length)) {
+    try { benef = JSON.stringify(eb).slice(0, 300); } catch { benef = null; }
+    ben = !!benef && !/^(false|null|\[\]|\{\})$/.test(benef) && !/"eligible"\s*:\s*false/.test(benef);
+  }
+  const ptags = Array.isArray(j && j.product && j.product.tags) ? j.product.tags.map((x) => String(x).slice(0, 40)).slice(0, 12) : [];
+  return { benef, ben, ptags, estrella: ptags.some((t) => RE_FR_ESTRELLA.test(t)), restr: ptags.some((t) => RE_FR_RESTR.test(t)) };
 }
 // Lo que ML pide reponer pronto: REPLENISH con plazo de esta semana, la próxima o en dos semanas (las "2 semanas de margen").
 const FULLRECO_PRONTO = new Set(['THIS_WEEK', 'NEXT_WEEK', 'IN_TWO_WEEKS']);
@@ -52388,6 +52404,18 @@ async function main() {
       const pubVDe = (p, va) => C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c && ((e.invVar && Object.keys(e.invVar).length)
         ? true
         : (() => { const cv = e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []); return !cv || cv === va; })())));
+      // 🏷️ 55a del 14/11/2026: LO QUE SUGIERE ML MANDAR A FULL, por cuenta (y color), de `cyc/fullreco` (lo lee el robot una vez por día).
+      // ` · MLSUG [Ad5* Lu3]` = REPLENISH con esa cantidad; `*` = ML se hace cargo del stock antiguo si se manda lo que sugiere (`ben`).
+      // `decide_cajas.py` lo usa: si la caja ya llevaba ese producto, sube a lo que sugiere ML (sin pasar la oficina, el cupo ni 90 días).
+      // Si no se pudo leer, sale ` · MLSUG ?` y el script no toca nada.
+      let FRpt = null; try { FRpt = (await db.get('cyc/fullreco')) || {}; } catch { FRpt = null; }
+      const mlsugTxt = (p, va) => { if (FRpt == null) return ' · MLSUG ?';
+        const o = {}; for (const e of (pubR[p.id] || [])) { const r = e.upid ? FRpt[e.upid] : null; if (!r || r.tipo !== 'REPLENISH' || !(Number(r.sug) > 0)) continue;
+          if (Date.now() - (Number(r.ts) || 0) > 3 * 864e5) continue;   // dato de más de 3 días: no se usa (la web lo muestra como viejo)
+          const cv = e.variant ? String(e.variant) : varianteDeTitulo(e.title || '', p.variantes || []);
+          if (va ? cv !== va : ((p.variantes || []).length && cv)) continue;
+          const x = o[e.cuenta] || (o[e.cuenta] = { u: 0, b: false }); x.u = Math.max(x.u, parseInt(r.sug) || 0); if (r.ben) x.b = true; }
+        return ` · MLSUG [${C4.filter((c) => o[c]).map((c) => ab2(c) + o[c].u + (o[c].b ? '*' : '')).join(' ')}]`; };
       const cajaDecTxt = (pid, va) => C4.map((c) => { const d = CDC[pid + '__' + c.toLowerCase() + (va ? '__v__' + sid(String(va).toLowerCase()) : '')];
         return d && typeof d === 'object' && Number.isFinite(Number(d.u)) ? ab2(c) + Math.max(0, parseInt(d.u) || 0) : ''; }).filter(Boolean).join(' ');
       const grupos = { bsas: [], py: [], paulvic: [] }; const fuera = [];
@@ -52478,7 +52506,7 @@ async function main() {
         const uvC = (p.variantes || []).map((va) => ultV(p.id, va)).filter((x) => x > 0);
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' + (porCajaBot(p) > 0 ? ' porcaja ' + porCajaBot(p) : '') : '')
-          + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
+          + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]` + mlsugTxt(p, '');   // revisión etapa 3, 29/10/2026 (ver `pubR`) · 55a: MLSUG
         console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${Math.round(s.t30)} v60 ${Math.round(s.t60)} v180 ${Math.round(s.t180)} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''} · CONS ${conseguirDe(p, _CONS).nivel}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
@@ -52505,7 +52533,7 @@ async function main() {
             let xs = de((cM) => cM === va); if (!xs.length) xs = de((cM) => !cM);
             let win = null; for (const r of xs) { const c = { ...r, neto: Number(r.neto), activa: !!r.activa }; if (_netoGana(c, win)) win = c; } return win; })();
           const netoCTxt = npC ? ` · netoC $${Math.round(npC.neto)} precioC $${Math.round(Number(npC.precio) || 0)} envC $${Math.round(Number(npC.envio) || 0)}` : '';
-          console.log(`   # ${va} · v30 ${Math.round(sv.t30)} v60 ${Math.round(sv.t60)} v180 ${Math.round(sv.t180)} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${ESC[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
+          console.log(`   # ${va} · v30 ${Math.round(sv.t30)} v60 ${Math.round(sv.t60)} v180 ${Math.round(sv.t180)} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${ESC[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]${mlsugTxt(p, va)}`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
