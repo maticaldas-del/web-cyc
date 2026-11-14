@@ -5338,7 +5338,10 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const edadF = brkEdad(edadViejaFull(e, 'k', lotes || {}, { k: hSh.aprox === false ? hSh : null }));   // revisión etapa 8: FIFO (ver `edadFifo`)
     const cobraDesde = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0];
     const antiguoCerca = edadF != null && edadF >= cobraDesde - 20;
-    const antiguo15 = edadF != null && edadF >= cobraDesde - 15;   // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12)
+    // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12). 48a del 14/11/2026 (él: "a"): contados desde el CIERRE de esa cuenta en que
+    // ML cobra por primera vez (Adriana el 10, las otras el 12: cobra según la edad de cada unidad ese día, `cierreCobroAntiguo`), no desde el
+    // día en que la unidad cumple los 120 (o 60) días: la que los cumple el 13 recién paga el 12 del mes siguiente.
+    const antiguo15 = edadF != null && ahora >= cierreCobroAntiguo(ahora - edadF * 864e5, cobraDesde, cta, ahora) - 15 * 864e5;
     // F13: la edad de la unidad más vieja, también de las que comparten su stock (la gemela no tiene su propio Excel de lotes).
     // Revisión etapa 8, 28/10/2026: nunca más vieja que la FIFO del stock compartido (`brkEdad`).
     const edad13 = brkEdad((() => { let m = edadF != null ? edadF : edadViejaFull(e, 'k', lotes || {}, { k: hSh && hSh.desde ? hSh : null });   // aproximada = la real es igual o mayor
@@ -11902,7 +11905,7 @@ async function calcAntiguoFilas(db, products, labels, soloA) {
         // Por color, el ritmo de 30 días sólo vale si casi todas las ventas de 30 días traen el color anotado (si no, sale bajo de mentira).
         const _k0 = colS ? k.slice(0, k.indexOf('__v__')) : k, _cob = colS ? (conVar30[_k0] || 0) / Math.max(1, v30A[_k0] || 0) : 1;
         if (!resto && rDia > 0 && r30A < rDia * 0.7 && _cob >= 0.8) { const cg30 = cargoAntiguoProy(lotes, r30A, tabla, DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12); t30 = cg30.meses.slice(0, 12).reduce((s2, x) => s2 + x.cargo, 0); }
-        filas.push({ k, t30, r30: r30A, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0) });
+        filas.push({ k, t30, r30: r30A, n: nomF, sinColor: !!resto, cta, st, edad, f: lotes[0].f, rDia, tam, prox, tres, tot: doce, sinVenta: !(rDia > 0), cierre: cg.meses[0] ? new Date(cg.meses[0].T - 3 * 36e5).toISOString().slice(5, 10) : '?', rnF: !!(rn && rn.pd > 0), lotes, tabla, dCierre: DIA_CIERRE_ALM_CTA[_ctaSinTilde(cta)] || 12 });
       }
   filas.sort((a, b) => b.tot - a.tot || b.edad - a.edad);
   return { filas, mirados, sinLink, uTotal, uFilas: filas.reduce((a, x) => a + (x.st || 0), 0) };
@@ -11917,6 +11920,43 @@ const STOCK_ANTIGUO_TABLA = {
   extragrande: [[0, 120, 0], [120, 180, 4680], [180, 365, 47840], [365, 1e9, 92400]],
 };
 const DIA_CIERRE_ALM_CTA = { adriana: 10, luciana: 12, matias: 12, ayelen: 12 };
+// ⏰ LOS 180 DÍAS (48a del 14/11/2026, él: "a"): a los 180 días el stock antiguo de lo chico pasa de $350 a $3.250 por unidad por mes (×9).
+// `cruce180(fila)` (una fila de `calcAntiguoFilas`) proyecta, vendiendo lo viejo primero al ritmo de la fila, el PRIMER CIERRE de esa cuenta
+// (ML cobra en su día de cierre, `DIA_CIERRE_ALM_CTA`, según la edad de cada unidad ese día) en que quedan unidades de 180+ días, cuántas son
+// y cuánto cuesta ese mes (contra lo que costaban a la tarifa de 120-180). `ventana` = 15 días antes de ese cierre (desde ahí se decide);
+// `d165` = el día en que la unidad más vieja que llega cumple 165 días (lo decidido antes de ese día se vuelve a decidir: "se queda y paga"
+// con $350 no es lo mismo que con $3.250). null si al ritmo de hoy se vende todo antes. Lo usa `antiguo180` y la lista 💸 del informe.
+// El primer cierre de la cuenta (`DIA_CIERRE_ALM_CTA`, a las 03 UTC como `cargoAntiguoProy`) en que una unidad que entró en `tsEntro` tiene
+// `edadCobra` días o más: el día en que ML la cobra por primera vez (48a del 14/11/2026: la ventana de los 15 días se cuenta desde acá).
+function cierreCobroAntiguo(tsEntro, edadCobra, cuenta, ahora) {
+  ahora = ahora || Date.now(); const dc = DIA_CIERRE_ALM_CTA[_ctaSinTilde(cuenta)] || 12;
+  const cumple = Number(tsEntro) + Number(edadCobra) * 864e5, d = new Date(Math.max(cumple, ahora - 40 * 864e5) - 3 * 3600e3);
+  let y = d.getUTCFullYear(), m = d.getUTCMonth(); if (d.getUTCDate() > dc) m++;
+  for (let k = 0; k < 6; k++) { const T = Date.UTC(y, m + k, dc, 3); if (T >= cumple) return T; }
+  return cumple;
+}
+const EDAD_X9 = 180, EDAD_REDECIDE = 165;
+function cruce180(f, ahora) {
+  ahora = ahora || Date.now();
+  if (!f || !Array.isArray(f.lotes) || !f.lotes.length || !Array.isArray(f.tabla)) return null;
+  const tramo = f.tabla.find(([a]) => a === EDAD_X9) || f.tabla.find(([a, b]) => EDAD_X9 >= a && EDAD_X9 < b);
+  if (!tramo || !(tramo[2] > 0)) return null;
+  const tarifa = (ed) => { for (const [a, b, $] of f.tabla) if (ed >= a && ed < b) return $; return 0; };
+  const rDia = Math.max(0, Number(f.rDia) || 0), dc = Number(f.dCierre) || 12;
+  const d = new Date(ahora - 3 * 3600e3); let y = d.getUTCFullYear(), m = d.getUTCMonth(); if (d.getUTCDate() >= dc) m++;
+  for (let k = 0; k < 24; k++) {
+    const T = Date.UTC(y, m + k, dc, 3);
+    let vend = rDia * Math.max(0, T - ahora) / 864e5, u180 = 0, cuesta = 0, antes = 0, viejo = null, quedan = 0;
+    for (const l of f.lotes) {   // de la más vieja a la más nueva (`lotesFifo`)
+      const sale = Math.min(l.u, vend); vend -= sale; const u = l.u - sale; if (u <= 0) continue;
+      quedan += u; const ed = (T - l.ts) / 864e5;
+      if (ed >= EDAD_X9) { u180 += u; cuesta += u * tarifa(ed); antes += u * tarifa(EDAD_X9 - 1); if (viejo == null) viejo = l.ts; }
+    }
+    if (u180 > 0) return { T, u: Math.round(u180), cuesta: Math.round(cuesta), antes: Math.round(antes), ventana: T - 15 * 864e5, d165: viejo + EDAD_REDECIDE * 864e5, d180: viejo + EDAD_X9 * 864e5, yaPaga: (ahora - viejo) / 864e5 >= EDAD_X9 };
+    if (quedan <= 0) return null;
+  }
+  return null;
+}
 const _ctaSinTilde = (c) => String(c || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 // Tamaño de Full y tabla de stock antiguo de un producto×cuenta: UNA sola función para la entrada a la sobra
 // (`calcCajaBarata`) y la salida (`ritmo`). Con dos copias la salida medía el Tendedero como pequeño y la
@@ -20124,6 +20164,30 @@ async function main() {
     // que tiene stock en Full, al ritmo normal (`cyc/ritmonormal`, si no las ventas de 60 días): la unidad más vieja,
     // lo que ML cobraría en el próximo cierre, en los 3 siguientes y en total, y de dónde salió la fecha.
     // Es para que el cerebro mire lo que se acerca ANTES de que llegue la factura; no decide nada.
+    // BILLING_PROBE=antiguo180[:<cuenta>] → ⏰ CUÁNDO CRUZA CADA PRODUCTO LOS 180 DÍAS EN FULL Y CUÁNTO CUESTA (48a del 14/11/2026, él: "a").
+    // SOLO LEE. A los 180 días el stock antiguo de lo chico pasa de $350 a $3.250 por unidad por mes. Con la misma cuenta que `antiguo`
+    // (`calcAntiguoFilas`, color por color, lo viejo se vende primero al ritmo normal) y `cruce180`: el primer cierre de ESA cuenta (Adriana el
+    // 10, las otras el 12) con unidades de 180+ días, cuántas, cuánto cuesta ese mes (y cuánto costaban a la tarifa de antes), desde cuándo
+    // se decide (15 días antes de ese cierre) y el día de los 165 días (lo decidido antes se vuelve a decidir: la lista 💸 del informe lo pide).
+    if (/^antiguo180(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const soloA = (String(process.env.BILLING_PROBE).split(/[:;]/)[1] || '').trim().toLowerCase();
+      const _rA = await calcAntiguoFilas(db, products, labels, soloA);
+      if (_rA.error) { console.log('⚠️ ' + _rA.error + ' · no saco cuentas a medias'); process.exitCode = 1; return; }
+      const $ = (n) => '$' + Math.round(n).toLocaleString('es-AR'), fd = (ts) => { const x = new Date(Number(ts) - 3 * 3600e3).toISOString(); return x.slice(8, 10) + '/' + x.slice(5, 7) + '/' + x.slice(2, 4); };
+      const ahora = Date.now(), L = [];
+      for (const f of _rA.filas) { if (f.nuevo || f.sinFechaReal) continue; const c = cruce180(f, ahora); if (c) L.push({ f, c }); }
+      L.sort((a, b) => a.c.T - b.c.T || b.c.cuesta - a.c.cuesta);
+      console.log(`=== ⏰ LOS 180 DÍAS EN FULL (${soloA || 'las 4 cuentas'}) · ${L.length} producto×cuenta (o color) cruzan al ritmo de hoy · SOLO LEE ===`);
+      console.log('A los 180 días la unidad chica pasa de $350 a $3.250 por mes (×9). "cierre" = el día que ML cobra en esa cuenta; "decidir desde" = 15 días antes; "165 d" = lo decidido antes de ese día se vuelve a decidir.\n');
+      const porMes = {};
+      for (const { f, c } of L) {
+        const mes = new Date(c.T - 3 * 3600e3).toISOString().slice(0, 7); porMes[mes] = (porMes[mes] || 0) + c.cuesta;
+        console.log(`⏰ ${String(f.n).slice(0, 44)} · ${f.cta} · ${f.st} u. en Full · vende ${(f.rDia * 30).toFixed(1)}/mes · cruzan ${c.u} u. el ${fd(c.d180)}${c.yaPaga ? ' (YA PAGAN ×9)' : ''} · cierre ${fd(c.T)}: ${$(c.cuesta)}/mes (antes ${$(c.antes)}) · decidir desde ${fd(c.ventana)} · 165 d el ${fd(c.d165)}${ahora >= c.d165 ? ' ⚠️ YA PASÓ: decidir de nuevo' : ''}`);
+      }
+      if (L.length) console.log('\nPOR MES (lo que cuesta el primer mes a 180+ días): ' + Object.entries(porMes).sort().map(([m, v]) => m + ' ' + $(v)).join(' · '));
+      console.log(`\nCUENTA: ${_rA.filas.length} filas = ${L.length} cruzan + ${_rA.filas.length - L.length} no cruzan al ritmo de hoy (o recién llegados / sin fecha real)`);
+      return;
+    }
     if (/^antiguo(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const soloA = (String(process.env.BILLING_PROBE).split(':')[1] || '').trim().toLowerCase();
       const _rA = await calcAntiguoFilas(db, products, labels, soloA);
@@ -50981,12 +51045,16 @@ async function main() {
               const iv = f.k.indexOf('__v__'), base = iv > 0 ? f.k.slice(0, iv) : f.k, pid = base.split('__')[0], ctaS = base.slice(pid.length + 2);
               const ms = pubsDe({ pid, cta: ctaS, color: iv > 0 ? f.k.slice(iv + 5) : '' });
               const dec = ms.map((m) => ultDec[m]).filter(Boolean).sort((x, y) => Number(y.ts) - Number(x.ts))[0];
-              const reciente = dec && Number(dec.ts) >= ahora - 7 * 864e5;
+              // ⏰ 48a del 14/11/2026: lo que cruza los 180 días (×9) se vuelve a decidir a los 165 días; una decisión de antes de ese día
+              // ("se queda y paga" con $350 por mes) no alcanza.
+              const c180 = cruce180(f, ahora), redec = !!(c180 && ahora >= c180.d165 && (!dec || Number(dec.ts) < c180.d165));
+              const reciente = dec && Number(dec.ts) >= ahora - 7 * 864e5 && !redec;
               // Una SUBA en algo que paga no cuenta como decidido (la Tira Led "decidida" el 12/10 era una suba por el peor caso).
               const subaQuePaga = dec && Number(dec.a) > Number(dec.de) && (f.prox > 0 || f.tot > 0);
               if (f.sinFechaReal) console.log(`   ⚠️ NO VENDIÓ Y NO SÉ DESDE CUÁNDO ESTÁ (la fecha es de cuando empecé a mirarlo): puede ser viejo · mirar en ML si avisa descarte`);
               if (subaQuePaga) console.log(`   ⚠️ LA ÚLTIMA FUE UNA SUBA (${dd(dec.ts)} ${money(dec.de || 0)} → ${money(dec.a || 0)}) y esto paga stock antiguo: revisarla hoy`);
               console.log(`💸 ${f.n} · ${f.cta} · ${f.st} u. · la más vieja ${f.edad} d (${f.f}) · vende ${(f.rDia * 30).toFixed(1)}/mes · próximo cierre ${money(f.prox || 0)} · 12 cierres ${money(f.tot || 0)}${f.t30 > 0 ? ` (al ritmo de 30 d: ${money(f.t30)})` : ''} · ${ms.join(', ') || 'sin publicación viva'}`);
+              if (c180) console.log(`   ⏰ 180 días: cruzan ${c180.u} u. el ${dd(c180.d180)} · cierre ${dd(c180.T)} ${money(c180.cuesta)}/mes (antes ${money(c180.antes)}) · decidir desde ${dd(c180.ventana)}${redec ? ' · ⚠️ PASÓ LOS 165 DÍAS: lo decidido antes (ej. "se queda y paga") se vuelve a decidir HOY' : ''}`);
               console.log(`   ${reciente && !subaQuePaga ? `mi decisión ${dd(dec.ts)}: ${money(dec.de || 0)} → ${money(dec.a || 0)} · ${String(dec.motivo || '').replace(/\s+/g, ' ').slice(0, 200)}` : (subaQuePaga ? '⚠️ SIN DECIDIR (la suba no resuelve el stock antiguo)' : '⚠️ SIN DECIDIR (ninguna decisión mía en 7 días)') + ': decidir hoy · promo/remate para que salga antes del cierre, o por qué se deja'}`);
             }
             console.log('');
