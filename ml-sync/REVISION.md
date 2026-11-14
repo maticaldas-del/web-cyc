@@ -2589,6 +2589,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 14a el 🧠 por color (14/11/2026, v28.197)
+- **Qué es:** `cerebroAbrir` (camino de Claude, fuera de Pedidos y Armar caja): si las publicaciones del producto son de 2+ colores (`_lineaColorDe`), arma un `.cer-col` por color con: su nota 💭 (con la cuenta si hay más de una publicación de ese color; "la misma nota de arriba" si se repite), "Último cambio" de ese color (`cyc/claudecambios` + `cyc/autoprecio`, con flecha y motivo), `_rayasBarrasHTML` y `_fichaBotones` de ese color. Sin colores sigue igual que antes ("Por qué cambió el precio" con los últimos 3, barras y fichas al final).
+- **Qué chequear:** un producto con colores (Sábanas, Paulvic) muestra cada color en su cuadro y ningún 📋 suelto al final.
 ### 🎨 Diseño del 10/11 · 4a el 🧠 "Siguiente ›" de Pedidos (14/11/2026, v28.196)
 - **Qué es:** en `cerebroAbrir` con `d.ped`: la navegación sale de la cabecera (el título se partía en una palabra por renglón) y va en `.cer-nav`, barra fija abajo de la pantalla (‹ · N de M · Siguiente ›, botones de 44 px; el cuadro deja 84 px abajo para no taparse). Arriba, `_cerPedCabHTML`: foto (`fotoMiniHTML` 64 px, del color si hay) y "Comprá N · Pagá hasta $X" con los MISMOS números de la tarjeta (`cantidad` o `variantesNec[].q` del pedido y `maxCompraDe` con el color; pesos en Bs As/Paulvic, US$ en Paraguay).
 - **Una nota por producto:** `_cerPedVecinos` saltea un botón cuya nota (mismo texto y hora) ya salió en un paso anterior (un color sin nota propia mostraba la del producto: 5 de cada 8 pasos repetían la de las Sábanas); y adentro, con color, la nota del producto (`siFalta`) sale sólo si el color no tiene la suya.

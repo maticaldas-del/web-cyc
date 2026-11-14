@@ -419,6 +419,10 @@ body.light .mz-pct{color:#fff}
 .cer-nav>span{text-align:center;font-size:.8rem;color:var(--muted);white-space:nowrap}
 .cer-nav>.btn{min-height:44px;font-size:.9rem}
 .cer-nav>.btn:last-child{min-width:130px}
+/* 14a del Diseño 10/11 · 🧠 de un producto con colores: un bloque por color */
+.cer-col{margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
+.cer-col-h{font-weight:700;font-size:.82rem}
+.cer-col>p:first-of-type{margin-top:4px}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3646,7 +3650,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.196';
+const APP_VERSION='28.197';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3659,6 +3663,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.197',f:'14/11',h:'02:05',c:[{n: 1, t: "🧠 de un producto con colores: un bloque por color con su nota, su último cambio de precio (con el motivo), su barrita y su 📋 Ficha (14a del Diseño 10/11)."}]},
   {v:'28.196',f:'14/11',h:'02:04',c:[{n: 2, t: "🧠 Pedidos (lo que lee Tito): \"‹ 3 de 6 Siguiente ›\" en una barra fija abajo de 44 px que no salta; arriba la foto y \"Comprá N · Pagá hasta $X\"; cada nota sale una sola vez (los colores sin nota propia ya no repiten la del producto) (4a del Diseño 10/11)."}]},
   {v:'28.195',f:'14/11',h:'02:01',c:[{n: 1, t: "🏷️ Ventas en la PC: el total, la ganancia y el % caen siempre en la misma columna (12a del Diseño 10/11)."}, {n: 1, t: "📱 Ventas en el teléfono: carteles cortos (\"💳 6 cuotas\", \"🔬 normal\") que no se parten, y la barra del período en un renglón con flechas de 44 px que no salta al pasar de Día a Mes o Año; el 🧠 \"qué pasó\" está adentro del menú del período (12a)."}]},
   {v:'28.194',f:'14/11',h:'01:56',c:[{n: 1, t: "📈 Línea de tiempo: la cabecera en un solo renglón (nombre, \"🎯 techo X% seguro\", los botones se corren de costado y el ✕ siempre a la vista); los colores van abajo (13a del Diseño 10/11)."}, {n: 1, t: "🏠 Inicio: los botones de las puertas (Pedidos, Arqueo, Rotación) de 32 px y Ventas con un numerito azul de las ventas nuevas; abajo, la ganancia \"sin mirar\" (13a)."}]},
@@ -14831,7 +14836,32 @@ async function cerebroAbrir(el,ev){
     // precio (por publicación) van en Ventas, Productos y Rotación.
     const soloUnid=!!(d.ped||d.ctx==='caja');
     const varias=mlas.length>1;
-    for(const k of (soloUnid?[]:mlas)){
+    // 14a del Diseño 10/11: UN BLOQUE POR COLOR. Con publicaciones de colores distintos, cada color junta su nota, su último cambio (con
+    // el motivo), su barrita de rayas y su 📋 Ficha. Antes "Por qué cambió el precio" no decía de qué color era y los 📋 quedaban sueltos al final.
+    const _colsCer=soloUnid?[]:[...new Set(mlas.map(k=>_lineaColorDe(L[k]||{})))];
+    const porColor=!soloUnid&&_colsCer.length>1&&_colsCer.every(Boolean);
+    if(porColor){
+      const _ccTodos=Object.values(state.claudecambios||{}).filter(c=>c&&mlas.includes(c.mla)&&Number(c.ts)>0);
+      for(const k of mlas){const a=(state.autoprecio||{})[k];if(a&&Number(a.ts)>0&&Number(a.a)>0&&!_ccTodos.some(c=>c.mla===k&&Math.abs(Number(c.ts)-Number(a.ts))<15*60e3))_ccTodos.push({mla:k,ts:Number(a.ts),de:a.de,a:a.a,motivo:a.motivo||(a.por?'('+a.por+')':'')});}
+      for(const col of _colsCer){
+        const gm=mlas.filter(k=>_lineaColorDe(L[k]||{})===col);let b='',bn=0;
+        for(const k of gm){const c=cl[k],e=L[k]||{};
+          if(c===undefined){falla=true;continue;}
+          if(!c||!c.simple)continue;nn++;bn++;
+          const cab=gm.length>1?`<b>${_cerEsc(e.cuenta||'')}${e.status&&e.status!=='active'?' · pausada':''}:</b> `:(e.status&&e.status!=='active'?'<b>pausada:</b> ':'');
+          if(_repetido(c.simple)){b+=par(`<span style="color:var(--muted)">${cab}💭 la misma nota de arriba</span>`);continue;}_decir(c.simple);
+          b+=par(`${cab}💭 ${_cerEsc(_cerFecha(c.ts))}: ${_cerEsc(c.simple)}`);
+          const _vd=Number(c.ts)>0?_comprasEntre(k,Number(c.ts),Date.now()+60e3):{n:0};
+          if(_vd.n>0)b+=par(`<span style="color:var(--amber)">⚠️ Esta nota es del ${_cerEsc(_cerFecha(c.ts))} y después vendió ${_vd.n} ${_vd.n===1?'vez':'veces'} (la última el ${_cerEsc(_cerFecha(_vd.ult))}): todavía no la revisé con ${_vd.n===1?'esa venta':'esas ventas'}.</span>`);
+        }
+        const uc=_ccTodos.filter(c=>gm.includes(c.mla)).sort((x,y)=>Number(y.ts)-Number(x.ts))[0];
+        if(uc){const sube=Number(uc.a)>Number(uc.de);if(uc.motivo&&!_repetido(uc.motivo))_decir(uc.motivo);
+          b+=par(`<b>Último cambio:</b> ${flechaHTML(flechaTipo(uc.mla,Number(uc.ts),'',sube),sube)} ${_cerEsc(_cerFecha(uc.ts))}: ${fmt(Number(uc.de)||0)} → ${fmt(Number(uc.a)||0)} · ${_cerEsc(uc.motivo||'sin motivo anotado')}`);nn++;bn++;}
+        if(!bn)b+=par('<span style="color:var(--muted)">Todavía no escribí nada sobre el precio de este color.</span>');
+        h+=`<div class="cer-col"><div class="cer-col-h">🎨 ${_cerEsc(col)}</div>${b}${_rayasBarrasHTML(gm)}${_fichaBotones(gm)}</div>`;
+      }
+    }
+    for(const k of (soloUnid||porColor?[]:mlas)){
       const c=cl[k],e=L[k]||{};
       if(c===undefined){falla=true;continue;}
       if(!c||!c.simple)continue;nn++;
@@ -14846,7 +14876,7 @@ async function cerebroAbrir(el,ev){
     }
     // POR QUÉ CAMBIÓ EL PRECIO (13/10/2026, él con el Paulvic Barbarella: "no explica por qué aumentó de 58 a 97%"): la nota
     // de la publicación dice cómo está hoy; el motivo de cada suba o baja vive en `cyc/claudecambios`. Van los últimos 3.
-    if(!soloUnid){
+    if(!soloUnid&&!porColor){
       // También el último cambio de `cyc/autoprecio` si no está en claudecambios (los del 07-08/10, antes de anotar cada uno).
       const cc0=Object.values(state.claudecambios||{}).filter(c=>c&&mlas.includes(c.mla)&&Number(c.ts)>0);
       for(const k of mlas){const a=(state.autoprecio||{})[k];if(a&&Number(a.ts)>0&&Number(a.a)>0&&!cc0.some(c=>c.mla===k&&Math.abs(Number(c.ts)-Number(a.ts))<15*60e3))cc0.push({mla:k,ts:Number(a.ts),de:a.de,a:a.a,motivo:a.motivo||(a.por?'('+a.por+')':'')});}
@@ -14858,8 +14888,7 @@ async function cerebroAbrir(el,ev){
     }
     if(falla)h+=par('<span style="color:var(--amber)">No pude leer alguna nota. Probá de nuevo en un rato.</span>');
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
-    h+=_rayasBarrasHTML(mlas);
-    h+=_fichaBotones(mlas);
+    if(!porColor){h+=_rayasBarrasHTML(mlas);h+=_fichaBotones(mlas);}
     m.innerHTML=caja(h+navPed);
     return;
   }
