@@ -14125,7 +14125,7 @@ const PY_TRAD = [
   [/(?<![\p{L}])[oó]culos(?![\p{L}])/giu, 'anteojos'],   /* revisión etapa 10 (07/11): "Binóculos" daba "Binanteojos" */ [/\bbin[oó]culos\b/giu, 'binoculares'], [/\bcarteira\b/gi, 'billetera'], [/\bpanela\b/gi, 'olla'], [/\bfrigideira\b/gi, 'sarten'], [/\bfaca\b/gi, 'cuchillo'],
   [/\bt[eê]nis\b/gi, 'zapatillas'], [/\blanterna\b/gi, 'linterna'], [/\bbalan[cç]a\b/gi, 'balanza'], [/\btesoura\b/gi, 'tijera'],
   [/\bimpressora\b/gi, 'impresora'], [/\bconsole\b/gi, 'consola'], [/\bteclado\s+sem\s+fio\b/gi, 'teclado inalambrico'], [/\bcompat[ií]vel\b/gi, 'compatible'],
-  [/\bsuporte\b/gi, 'soporte'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
+  [/\bsuporte\b/gi, 'soporte'], [/\breprodutor\b/gi, 'reproductor'], [/\bmicrofone\b/gi, 'microfono'], [/\bcopo\b/gi, 'vaso'], [/\bbolsa\b/gi, 'cartera'], [/\bpilhas?\b/gi, 'pilas'],
   // 04/11/2026 (control diario de la tienda): el \b de JS no ve una letra con acento al principio ("Óculos" quedaba en portugués) y faltaban
   // palabras comunes (93 nombres de la tienda con "Elétrico/a", 31 con "Projetor", 33 con "Protetor").
   [/(?<![\p{L}\p{N}])[oóÓ]culos(?![\p{L}])/giu, 'anteojos'], [/\bel[eé]tric([oa]s?)\b/giu, 'eléctric$1'], [/\bprojetor(es)?\b/gi, 'proyector$1'],
