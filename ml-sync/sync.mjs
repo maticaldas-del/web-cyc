@@ -15414,7 +15414,7 @@ const BARRERA_CADA_H = 6;
 // cola como `cupo:…;go` (sólo las cuentas con números claros y no más de 3 veces lo de antes) y `ancla:buzon=<ts>;go` (los saldos de MP, que
 // no se imprimen nunca). Lo raro (un "?", un cupo 3 veces más grande, los `visto:` y lo que no sé leer) queda anotado en
 // `mlapi/rutinaauto/<ts>` para que lo mire Claude en la vuelta (el `buzon` lo muestra).
-const COLA_OK = new Set(['listapriv', 'listawoo', 'pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla', 'cajasmirar']);
+const COLA_OK = new Set(['listapriv', 'binancepriv', 'listawoo', 'pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla', 'cajasmirar']);
 const COLA_DIR = '/tmp/cyc-cola';
 const RUTINA_AUTO_DESDE = Date.parse('2026-11-03T18:00:00Z');   // las RUTINA de antes las cargó Claude a mano
 async function colaParaRobot(db, labels) {
@@ -15519,6 +15519,12 @@ async function colaParaRobot(db, labels) {
   try { const inP = (await db.get('mlapi/privado_in')) || {};
     for (const [k, e] of Object.entries(inP)) { if (!e || e.tipo !== 'lista' || e.encola || e.intentos) continue;
       const id = String(Date.now()) + String(Math.floor(Math.random() * 90) + 10); cola[id] = { t: `listapriv:${k};go`, por: 'lista cerrada', estado: 'nuevo', ts: Date.now() };
+      await db.set('cyc/pararobot/' + id, cola[id]); await db.patch('mlapi/privado_in/' + k, { encola: Date.now() }); } }
+  catch (e) { /* la próxima vuelta */ }
+  // 🪙 SALDO DE BINANCE CERRADO del Archivo para Claude (25a del 14/11) → a la cola, una vez cada uno (`binancepriv:<id>;go`)
+  try { const inB = (await db.get('mlapi/privado_in')) || {};
+    for (const [k, e] of Object.entries(inB)) { if (!e || e.tipo !== 'binance' || e.encola || e.intentos) continue;
+      const id = String(Date.now()) + String(Math.floor(Math.random() * 90) + 10); cola[id] = { t: `binancepriv:${k};go`, por: 'saldo de Binance cerrado', estado: 'nuevo', ts: Date.now() };
       await db.set('cyc/pararobot/' + id, cola[id]); await db.patch('mlapi/privado_in/' + k, { encola: Date.now() }); } }
   catch (e) { /* la próxima vuelta */ }
   // 2) lo nuevo, a /tmp para que lo corra ciclo.sh
@@ -40563,6 +40569,41 @@ async function main() {
     // BILLING_PROBE=binance:<cuenta>=<dólares>[;go] · 🪙 EL SALDO DE BINANCE DE UNA CUENTA (09/11/2026, él: "ahora vamos a usar binance… tipo mercado
     // pago con cada cuenta. hoy tenemos una sola cuenta de binance de tito"). En DÓLARES (USDT), como el Arqueo: escribe `cyc/finanzas/bn_<cuenta>` y el
     // total `cyc/finanzas/binance` (la suma de las cuentas), con la fecha en `_ts.binance`. El saldo no se imprime (registro público): sólo si quedó.
+    // BILLING_PROBE=binancepriv[:<id>][;go] (25a del 14/11/2026, él: "a" = el saldo de Binance no aparece en el registro público). Se pega en Mi
+    // oficina → 🔒 Archivo para Claude → "Saldo de Binance" (`tito=19,72` o sólo el número): la página lo CIERRA con la llave del robot en
+    // `mlapi/privado_in/<ts>` {tipo:'binance'}, el ciclo de 2 min lo pone en la cola y acá se abre en memoria y corre como `binance:<cuenta>=<usd>;go`
+    // (que no imprime el saldo). Cargado, sale de la entrada. Si falla queda con `intentos` y no se vuelve a encolar: se pega de nuevo.
+    if (/^binancepriv(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const rawP = String(process.env.BILLING_PROBE).slice('binancepriv'.length).replace(/^:/, ''); const GOp = /(^|;)go\s*$/.test(rawP);
+      const idP = rawP.replace(/(^|;)go\s*$/, '').trim();
+      // Cuando lo carga Claude (él le pasa el saldo por el chat): lo cierra con `ml-sync/tools/cifrar.mjs` y `ml-sync/tools/comprob.pub.pem` en
+      // `ml-sync/privado/<nombre>.enc` y manda `binancepriv:privado=<nombre>;go` (se abre con `leerPrivado`; después se borra el .enc del repo).
+      if (/^privado=[\w.-]+$/.test(idP)) {
+        const bufB = await leerPrivado(db, idP.slice(8)); if (!bufB) return;
+        let tB = bufB.toString('utf8').replace(/^\uFEFF/, '').replace(/^binance:/i, '').replace(/;go\s*$/i, '').replace(/us\$|usdt|\$/gi, '').replace(/\s+/g, '').trim();
+        if (/^[\d.,]+$/.test(tB)) tB = 'tito=' + tB;
+        if (!/^[a-z]+=[\d.,]+$/i.test(tB)) { console.log('❌ adentro no hay "<cuenta>=<dólares>" (no se imprime lo que hay)'); return; }
+        console.log('🔒 binancepriv (archivo cerrado del repo, abierto en memoria, no se imprime)');
+        process.env.BILLING_PROBE = 'binance:' + tB + (GOp ? ';go' : '');
+      } else {
+      const inP = (await db.get('mlapi/privado_in')) || {};
+      const pend = Object.entries(inP).filter(([, e]) => e && e.tipo === 'binance').sort((a, b) => Number(a[0]) - Number(b[0]));
+      if (!idP) { console.log(`=== 🔒 SALDOS DE BINANCE CERRADOS ESPERANDO: ${pend.length} ===`); for (const [k, e] of pend) console.log(`  ${k}${e.intentos ? ` · ⚠️ ${e.intentos} intento(s) sin cargar (${e.error || '?'})` : ''}`); console.log('Cargar uno: binancepriv:<id>;go'); return; }
+      const e = inP[idP]; if (!e || e.tipo !== 'binance') { console.log(`❌ No hay ningún saldo de Binance cerrado ${idP} esperando.`); return; }
+      const ll = await db.get('mlapi/ticketllave'); if (!ll || !ll.priv) { console.log('❌ No está la llave del robot (ticketllave;go): no lo puedo abrir.'); return; }
+      let txt = '';
+      try { const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+        const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
+        txt = Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8'); }
+      catch (er) { console.log(`❌ ${idP}: no se pudo abrir`); if (GOp) await db.patch('mlapi/privado_in/' + idP, { intentos: (Number(e.intentos) || 0) + 1, error: 'no se pudo abrir' }); return; }
+      txt = txt.replace(/^\uFEFF/, '').replace(/^binance:/i, '').replace(/;go\s*$/i, '').replace(/us\$|usdt|\$/gi, '').replace(/\s+/g, '').trim();
+      if (/^[\d.,]+$/.test(txt)) txt = 'tito=' + txt;   // hoy hay una sola cuenta (Tito)
+      if (!/^[a-z]+=[\d.,]+$/i.test(txt)) { console.log(`❌ ${idP}: adentro no hay "<cuenta>=<dólares>" (ej. tito=19,72) ni un número (no se imprime lo que hay)`); if (GOp) await db.patch('mlapi/privado_in/' + idP, { intentos: (Number(e.intentos) || 0) + 1, error: 'no es cuenta=dólares' }); return; }
+      console.log(`🔒 binancepriv ${idP} (abierto en memoria, no se imprime)`);
+      if (GOp) { await db.patch('mlapi/privado_in/' + idP, { intentos: (Number(e.intentos) || 0) + 1 }); globalThis.__binPrivId = idP; }
+      process.env.BILLING_PROBE = 'binance:' + txt + (GOp ? ';go' : '');
+      }
+    }
     if (/^binance:/.test(String(process.env.BILLING_PROBE || ''))) {
       const rawB = String(process.env.BILLING_PROBE).slice('binance:'.length); const GOb = /;go$/i.test(rawB);
       const mB = rawB.replace(/;go$/i, '').match(/^([a-z]+)=([\d.,]+)$/i);
@@ -40576,7 +40617,9 @@ async function main() {
       await db.patch('cyc/finanzas', { ['bn_' + cta]: usd, binance: tot });
       await db.patch('cyc/finanzas/_ts', { binance: Date.now() });
       const r = (await db.get('cyc/finanzas')) || {};
-      console.log(Number(r['bn_' + cta]) === usd && Number(r.binance) === tot ? '✓ releído de la base' : '✗ no quedó como pedí');
+      const okB = Number(r['bn_' + cta]) === usd && Number(r.binance) === tot;
+      console.log(okB ? '✓ releído de la base' : '✗ no quedó como pedí');
+      if (okB && globalThis.__binPrivId) { await db.set('mlapi/privado_in/' + globalThis.__binPrivId, null); console.log('  🔒 el saldo cerrado ya se cargó: sale de la entrada'); }   // 25a del 14/11
       return;
     }
     // BILLING_PROBE=finsuma:<campo>=<+pesos|-pesos>|<nota>[;go] · SUMAR O RESTAR PESOS A UNA DEUDA DE CYC CON LOS SOCIOS (01/11/2026, él: "cobré mis

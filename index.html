@@ -3554,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.186';
+const APP_VERSION='28.187';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3567,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.187',f:'14/11',h:'01:33',c:[{n:2,t:'🪙 Saldo de Binance cerrado: en Mi oficina → 🔒 Archivo para Claude → "Saldo de Binance" (ej. tito=19,72). El robot lo carga solo y el número no aparece en ningún registro (25a del 14/11).'}]},
   {v:'28.186',f:'14/11',h:'01:26',c:[{n:2,t:'📅 Rayas: un día de fecha especial sale sólo si al MISMO precio (±2%) hay días fuera de fecha para comparar y vendió el doble; si no, se queda (16.2a del 14/11).'}]},
   {v:'28.185',f:'14/11',h:'01:25',c:[{n:1,t:'🛍️ Black Friday (25-30/11): sus ventas no confirman una suba ni aceleran la escasez (15a del 14/11).'}]},
   {v:'28.184',f:'13/11',h:'19:10',c:[{n:2,t:'📥 Deudas en cuotas semanales: pueden vencer un día fijo de la semana (Germán: los lunes). El pago del domingo cubre el lunes y la próxima vence el lunes siguiente.'}]},
@@ -9621,6 +9622,17 @@ async function privadoGuardar(){
     if(ta)ta.value='';if(fi)fi.value='';
     toast(`🔒 Lista de ${mP[1].trim()} guardada cerrada (${Math.round(t1.length/1024)} KB). El robot la carga en unos minutos (el resultado sale en 📥 Para el robot).`,'ok',6000);return;
   }
+  // 🪙 SALDO DE BINANCE (25a del 14/11/2026, él: "a" = que el saldo no aparezca en el registro público): `tito=19,72` o sólo el número
+  // (hoy la única cuenta es la de Tito), en DÓLARES. Queda cerrado; el robot lo carga solo en unos minutos (`binancepriv` → `binance`).
+  if((document.getElementById('priv-tipo')?.value||'')==='binance'){
+    const t1=txt.replace(/^\uFEFF/,'').replace(/\s+/g,'').replace(/us\$|usdt|\$/gi,'');
+    if(!/^([a-z]+=)?[\d.,]+$/i.test(t1)){toast('Va el saldo en dólares: tito=19,72 (o sólo el número)','err',6000);return;}
+    const tsB=Date.now();
+    try{const e=await privadoCerrar(t1);await db.ref('mlapi/privado_in/'+tsB).set({...e,tipo:'binance',ts:tsB});}
+    catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+    if(ta)ta.value='';if(fi)fi.value='';
+    toast('🔒 Saldo de Binance guardado cerrado. El robot lo carga en unos minutos (sale en 📥 Para el robot, sin el número).','ok',6000);return;
+  }
   if(!cta){toast('Elegí de qué cuenta es','err');return;}
   if(txt.length<50){toast('Pegá el contenido del archivo (o elegilo)','err');return;}
   if(txt.length>6e6){toast('Muy grande: partilo en dos (por meses)','err',6000);return;}
@@ -9634,9 +9646,9 @@ function renderPrivadoCard(){
   const el=document.getElementById('ofi-privado-card');if(!el||el.dataset.ok)return;el.dataset.ok='1';
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px">
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">🔒 Archivo para Claude (queda cerrado)</summary>
-    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el extracto de Mercado Pago ("Todas las transacciones") y para la lista de precios de un mayorista que llega en PDF o WhatsApp (Pirineo, Dai Nippon…). Se cierra con candado acá mismo: sólo el robot lo puede abrir. El extracto guarda únicamente los totales (rendimientos, saldo) y trae nombres de otras personas: nunca lo pegues en otro lado. La lista va como el comando entero (<code>lista:&lt;mayorista&gt;|fecha=AAAA-MM-DD;&lt;producto&gt;=&lt;pesos&gt;@&lt;código&gt;;…</code>) y se carga sola en unos minutos, sin que sus precios aparezcan en ningún registro.</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el saldo de Binance (en dólares, ej. <code>tito=19,72</code> o sólo el número), el extracto de Mercado Pago ("Todas las transacciones") y la lista de precios de un mayorista que llega en PDF o WhatsApp (Pirineo, Dai Nippon…). Se cierra con candado acá mismo: sólo el robot lo puede abrir. El extracto guarda únicamente los totales (rendimientos, saldo) y trae nombres de otras personas: nunca lo pegues en otro lado. La lista va como el comando entero (<code>lista:&lt;mayorista&gt;|fecha=AAAA-MM-DD;&lt;producto&gt;=&lt;pesos&gt;@&lt;código&gt;;…</code>) y se carga sola en unos minutos, sin que sus precios aparezcan en ningún registro.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-      <select id="priv-tipo" class="cal-select" style="font-size:.72rem"><option value="extracto">Extracto de Mercado Pago</option><option value="lista">Lista de un mayorista</option></select>
+      <select id="priv-tipo" class="cal-select" style="font-size:.72rem"><option value="extracto">Extracto de Mercado Pago</option><option value="lista">Lista de un mayorista</option><option value="binance">Saldo de Binance</option></select>
       <select id="priv-cta" class="cal-select" style="font-size:.72rem"><option value="">¿De qué cuenta?</option><option>Adriana</option><option>Luciana</option><option>Ayelen</option><option>Matias</option></select>
       <input id="priv-per" class="fin-input" placeholder="período (ej. 2026-10)" style="width:150px;font-size:.72rem">
       <input id="priv-file" type="file" accept=".csv,.txt,text/csv,text/plain" style="font-size:.66rem">
