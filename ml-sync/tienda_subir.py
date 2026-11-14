@@ -33,8 +33,11 @@ if not tienda or not isinstance(tienda.get('productos'), list) or not tienda['pr
     print('❌ la lista nueva no se puede leer o está vacía: no subo nada'); sys.exit(3)
 antes = leer(os.path.join(DEST, 'productos.json'), {}) or {}
 nA, nN = len(antes.get('productos') or []), len(tienda['productos'])
-if nA and nN * 4 < nA * 3 and not FORZAR:
-    print(f'❌ la lista nueva tiene {nN} productos y la publicada {nA} (menos del 75%): no la subo (si es a propósito, ml-tienda con "forzar")'); sys.exit(2)
+# Revisión etapa 10 (14/11/2026): con la Tienda frenada por el 75% igual se suben ABEL y las páginas (antes no se subía NADA y ABEL quedaba
+# congelado esas noches, como el 09/11); sólo la lista y los detalles de la Tienda quedan como están, y no se borra ninguna foto vieja.
+FRENO = bool(nA and nN * 4 < nA * 3 and not FORZAR)
+if FRENO:
+    print(f'⚠️ la lista nueva tiene {nN} productos y la publicada {nA} (menos del 75%): la lista de la Tienda NO se sube (si es a propósito, ml-tienda con "forzar"); ABEL y las páginas sí')
 
 # ── 1a · FOTOS DEL PROVEEDOR ────────────────────────────────────────────────────────────────────────────────────────────────
 def nombre_foto(u):
@@ -112,7 +115,7 @@ for L in listas:
     sacados[id(L)] = len(L['productos']) - len(quedan); L['productos'] = quedan
 usadas = {u.rsplit('/', 1)[1] for L in listas for p in L['productos'] for u in p['f'] if u.startswith('/fotos/')}
 borradas = 0
-for n in hay - usadas:
+for n in (set() if FRENO else hay - usadas):   # con freno, la lista publicada vieja sigue usando sus fotos
     os.remove(os.path.join(FOTOS, n)); borradas += 1
 # Nada del proveedor puede quedar en la lista (fuera de las fotos de ML).
 for L in listas:
@@ -122,12 +125,13 @@ for L in listas:
 print(f'📷 fotos del proveedor: {len(prov)} en uso · {ok_n} nuevas bajadas · {fallo_n} no se pudieron bajar · {borradas} viejas borradas · productos sin ninguna foto (afuera): Tienda {sacados[id(tienda)]}' + (f' · ABEL {sacados[id(abel)]}' if abel else ''))
 
 # Lista, ABEL y detalles.
-with open(os.path.join(DEST, 'productos.json'), 'w', encoding='utf-8') as f: f.write(json.dumps(tienda, ensure_ascii=False, separators=(',', ':')) + '\n')
+if not FRENO:
+    with open(os.path.join(DEST, 'productos.json'), 'w', encoding='utf-8') as f: f.write(json.dumps(tienda, ensure_ascii=False, separators=(',', ':')) + '\n')
 if abel and (len(abel.get('productos') or []) >= 20 or abel.get('actualizando')):
     os.makedirs(os.path.join(DEST, 'abel'), exist_ok=True)
     with open(os.path.join(DEST, 'abel', 'productos.json'), 'w', encoding='utf-8') as f: f.write(json.dumps(abel, ensure_ascii=False, separators=(',', ':')) + '\n')
 det = os.path.join(ORIG, 'detalles')
-if os.path.isdir(det):
+if os.path.isdir(det) and not FRENO:
     os.makedirs(os.path.join(DEST, 'detalles'), exist_ok=True)
     for n in os.listdir(det):
         if re.fullmatch(r'd\d+\.json', n) and leer(os.path.join(det, n)) is not None: shutil.copyfile(os.path.join(det, n), os.path.join(DEST, 'detalles', n))
@@ -189,7 +193,7 @@ for rel in ('index.html', 'abel/index.html', 'sw.js'):
     t = sin_comentarios_js(s) if rel.endswith('.js') else sin_comentarios_html(s)
     scripts = [t] if rel.endswith('.js') else re.findall(r'<script>(.*?)</script>', t, re.S)
     if PROHIBIDO.search(t) or re.search(r'él eligió|\b\d{2}/\d{2}/2026\b', t) or not all(js_anda(x) for x in scripts):
-        print(f'⚠️ página {rel}: sin los comentarios no quedó bien (o quedó algo interno): no la cambio'); continue
+        print(f'::warning::página {rel}: sin los comentarios no quedó bien (o quedó algo interno): no la cambio (queda la publicada)'); continue
     paginas[rel] = t
 for rel, t in paginas.items():
     d = os.path.join(DEST, os.path.dirname(rel)); os.makedirs(d, exist_ok=True)

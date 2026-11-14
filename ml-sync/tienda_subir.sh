@@ -6,7 +6,7 @@
 set -u
 ARCHIVO="$1"; FORZAR="${2:-}"; ORIG="$(dirname "$ARCHIVO")"; OUT="${GITHUB_OUTPUT:-/dev/null}"
 REPO="${TIENDA_REPO:-tiendacyc/tiendacyc.github.io}"
-if [ -z "${TIENDA_TOKEN:-}" ]; then echo "Sin TIENDA_TOKEN: la Tienda sigue bajando la lista como antes."; echo "directo=no" >> "$OUT"; exit 0; fi
+if [ -z "${TIENDA_TOKEN:-}" ]; then echo "::warning::Sin TIENDA_TOKEN: las PÁGINAS de la Tienda y ABEL no se suben (quedan las viejas); la lista sí la baja el repo de la Tienda."; echo "directo=no" >> "$OUT"; exit 0; fi
 if [ ! -s "$ARCHIVO" ]; then echo "La tienda no dejó archivo: no subo nada."; echo "directo=no" >> "$OUT"; exit 0; fi
 DEST="$RUNNER_TEMP/tienda_repo"; rm -rf "$DEST"
 for i in 1 2 3; do
