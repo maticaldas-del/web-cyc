@@ -139,7 +139,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['cajafijo', 'pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -45272,6 +45272,52 @@ async function main() {
       console.log(`releído: ${okN} de ${ops.length} ${okN === ops.length ? '✓' : '⚠️ NO CIERRA'} · se suma en Pedidos en la próxima vuelta (o con decido:ped ahora)`);
       return;
     }
+    // BILLING_PROBE=cajafijo[:<palabras o id>@<cuenta>[#<color>]=<N|no|->[|<motivo>];…][;go] → 📦 SUS DECISIONES DE CAJA, A LA BASE (61a del
+    // 14/11/2026, él: "a"). Antes "no va a Full" o "mandá 1" se escribía a mano en el `FIJO` de decide_cajas.py y falló dos veces (el ";" del 09/11
+    // dejó la completa sin cajas). Ahora `cyc/cajafijo/<id>__<cuenta>[__v__<color>]` = {pid, cta, va, u, motivo, ts}; `pedidostodo` lo imprime
+    // (`FIJO|…`) y decide_cajas.py lo suma a su FIJO (lo de la base manda). `=N` van N (de una vez: se cumple solo cuando salen en cajas ARMADAS
+    // después de la decisión) · `=no` (o `=0`) no va a Full hasta que él diga otra cosa · `=-` lo saca. Sin nada: lista. Sin ;go sólo muestra.
+    // El motivo arranca con "Él <fecha>:" (lo lee Matías en Armar caja); sin `;` ni `|`. Va por ml-consulta (`CONSULTA_ESCRIBE`).
+    if (/^cajafijo(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('cajafijo'.length).replace(/^[:;]/, '');
+      const GO = /(^|;)go\s*$/i.test(raw); const cuerpo = raw.replace(/(^|;)go\s*$/i, '').trim();
+      let CF; try { CF = (await db.get('cyc/cajafijo')) || {}; } catch (e) { console.log('⚠️ NO LEÍ cyc/cajafijo: ' + String(e.message || e).slice(0, 60)); process.exitCode = 1; return; }
+      const _n = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const byId = {}; for (const p of products) byId[p.id] = p;
+      const CTAS = ['Adriana', 'Luciana', 'Ayelen', 'Matias'];
+      const hoyTx = new Date(Date.now() - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/');
+      if (!cuerpo) { const ks = Object.keys(CF); console.log(`=== 📦 SUS DECISIONES DE CAJA (cyc/cajafijo) · ${ks.length} ===`);
+        for (const x of Object.values(CF)) if (x) console.log(`  · ${(byId[x.pid] || {}).name || x.pid}${x.va ? ' #' + x.va : ''} → ${x.cta}: ${Number(x.u) > 0 ? 'van ' + x.u : 'NO va a Full'} · ${x.motivo || ''} · desde ${new Date((Number(x.ts) || 0) - 3 * 3600e3).toISOString().slice(0, 10)}`);
+        return; }
+      const malos = [], ops = [];
+      for (const it of cuerpo.split(';').map((x) => x.trim()).filter(Boolean)) {
+        const [cab, ...resto] = it.split('|'); const i = cab.lastIndexOf('='); if (i < 1) { malos.push(`"${it}": va <producto>@<cuenta>[#color]=<N|no|->`); continue; }
+        const vRaw = cab.slice(i + 1).trim().toLowerCase(); const borrar = vRaw === '-' || vRaw === 'borrar';
+        const u = borrar ? null : (vRaw === 'no' ? 0 : parseInt(vRaw, 10)); if (!borrar && !(u >= 0)) { malos.push(`"${it}": las unidades (N, no o -)`); continue; }
+        let q = cab.slice(0, i).trim(), va = '', cta = '';
+        const ih = q.indexOf('#'); if (ih > 0) { va = q.slice(ih + 1).trim(); q = q.slice(0, ih).trim(); }
+        const ia = q.lastIndexOf('@'); if (ia > 0) { cta = q.slice(ia + 1).trim(); q = q.slice(0, ia).trim(); }
+        const C = CTAS.find((c) => _n(c) === _n(cta)); if (!C) { malos.push(`"${it}": falta la cuenta (@Adriana, @Luciana, @Ayelen o @Matias)`); continue; }
+        let pc = products.filter((x) => x.id === q); if (!pc.length) { const pw = _n(q).split(' ').filter(Boolean); pc = products.filter((x) => pw.every((w) => (' ' + _n(x.name) + ' ').includes(w))); }
+        if (pc.length !== 1) { malos.push(`"${q}" agarra ${pc.length} fichas${pc.length ? ': ' + pc.slice(0, 6).map((x) => `${x.name} (${x.id})`).join(' | ') : ''}`); continue; }
+        const P = pc[0]; const vs = (P.variantes || []).map(String).filter(Boolean);
+        if (va) { const vv = vs.find((x) => _n(x) === _n(va)); if (!vv) { malos.push(`${P.name} no tiene el color "${va}" (tiene: ${vs.join(' | ') || 'ninguno'})`); continue; } va = vv; }
+        let mot = resto.join(' ').replace(/[;|\n]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!borrar && !mot) { malos.push(`"${it}": falta el motivo (|<lo que dijo él>)`); continue; }
+        if (mot && !/^él\b/i.test(mot)) mot = `Él ${hoyTx}: ${mot}`;
+        const k = `${P.id}__${C.toLowerCase()}${va ? '__v__' + sid(String(va).toLowerCase()) : ''}`.replace(/[.#$\[\]\/]/g, '_');
+        ops.push({ k, P, C, va, u, borrar, mot: mot.slice(0, 200) });
+      }
+      if (malos.length) { console.log('❌ NO ESCRIBO NADA:\n   ' + malos.join('\n   ')); process.exitCode = 1; return; }
+      console.log(`=== 📦 SUS DECISIONES DE CAJA · ${GO ? 'APLICANDO' : 'PRUEBA'} ===`);
+      for (const o of ops) { const ant = CF[o.k]; console.log(`  · ${o.P.name}${o.va ? ' #' + o.va : ''} → ${o.C}: ${ant ? (Number(ant.u) > 0 ? 'van ' + ant.u : 'no va') : '(nada)'} → ${o.borrar ? '(se saca: vuelve la cuenta automática)' : o.u > 0 ? 'van ' + o.u + ' (de una vez)' : 'NO va a Full'}${o.mot ? ' · ' + o.mot : ''}`); }
+      if (!GO) { console.log('No se guardó nada (falta ;go). Corre en la próxima completa (o pedidostodo → decide_cajas.py ahora).'); return; }
+      const ts = Date.now();
+      for (const o of ops) await db.set('cyc/cajafijo/' + o.k, o.borrar ? null : { pid: o.P.id, cta: o.C, va: o.va || '', u: o.u, motivo: o.mot, ts });
+      const R2 = (await db.get('cyc/cajafijo')) || {}; const okN = ops.filter((o) => o.borrar ? !R2[o.k] : (R2[o.k] && Number(R2[o.k].u) === o.u)).length;
+      console.log(`releído: ${okN} de ${ops.length} ${okN === ops.length ? '✓' : '⚠️ NO CIERRA'}`);
+      return;
+    }
     if (String(process.env.BILLING_PROBE || '') === 'capital') {
       const fin = (await db.get('cyc/finanzas')) || {};
       const inv = (await db.get('cyc/inventory')) || {};
@@ -52842,6 +52888,22 @@ async function main() {
         arr.forEach(ln);
       }
       console.log(`\n════ FUERA (papelera / no traer / sólo local) · ${fuera.length} ════\n${fuera.join('\n')}`);
+      // 📦 61a del 14/11/2026: SUS DECISIONES DE CAJA, DE LA BASE (`cajafijo`, `cyc/cajafijo`) → `FIJO|<id>|<color>|<cuenta>|<u>|<salió>|<ts>|<motivo>`
+      // para `decide_cajas.py` (se suman a su `FIJO` del código; lo de la base manda). `salió` = las unidades de ese producto (y color) que
+      // salieron a esa cuenta en envíos ARMADOS DESPUÉS de la decisión y que ya salieron (`envSalidaTs`): "van N" se cumple solo al salir la caja.
+      // Si no se pudo leer la base: NO LEÍ (decide_cajas.py no arma a medias).
+      { let CF = null; try { CF = (await db.get('cyc/cajafijo')) || {}; } catch { CF = null; }
+        if (CF == null) console.log('⚠️ NO LEÍ: cyc/cajafijo (sus decisiones de caja) — no armo cajas a medias');
+        else { const ahoraF = Date.now(), cuentaF = {};
+          for (const env of Object.values(ENV || {})) { if (!env || !env.cuenta) continue;
+            const tA = Number(env.ts) || Date.parse(String(env.fecha || '').slice(0, 10) + 'T12:00:00-03:00') || 0; const sale = envSalidaTs(env.fecha, env.reanudado || env.ts, env.pausado);
+            if (!(sale > 0 && sale <= ahoraF)) continue;
+            for (const c of (Array.isArray(env.cajasDet) ? env.cajasDet : [])) for (const it of (c && c.items) || []) if (it && it.prodId && Number(it.u) > 0)
+              (cuentaF[it.prodId + '|' + String(env.cuenta).toLowerCase()] = cuentaF[it.prodId + '|' + String(env.cuenta).toLowerCase()] || []).push({ tA, u: Number(it.u), va: String(it.variante || '') }); }
+          const sinT = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          for (const x of Object.values(CF)) { if (!x || !x.pid || !x.cta) continue;
+            const salio = (cuentaF[x.pid + '|' + sinT(x.cta).toLowerCase()] || cuentaF[x.pid + '|' + String(x.cta).toLowerCase()] || []).filter((e) => e.tA >= (Number(x.ts) || 0) - 60e3 && (!x.va || sinT(e.va).toLowerCase() === sinT(x.va).toLowerCase())).reduce((a, e) => a + e.u, 0);
+            console.log(`FIJO|${x.pid}|${String(x.va || '').replace(/\|/g, ' ')}|${sinT(x.cta)}|${Math.max(0, parseInt(x.u) || 0)}|${salio}|${Number(x.ts) || 0}|${String(x.motivo || '').replace(/[|;\n]/g, ' ').slice(0, 200)}`); } } }
       const nG = grupos.bsas.length + grupos.py.length + grupos.paulvic.length;
       console.log(`\nCUENTA: ${prods.length} fichas = ${nG} para decidir + ${fuera.length} fuera ${nG + fuera.length === prods.length ? '✓' : '⚠️ NO CIERRA'}`);
       return;

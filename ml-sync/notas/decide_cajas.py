@@ -271,6 +271,24 @@ for (pid,v,c),(fq,fm) in FIJO.items():
     nom=(q['n'][:38] if q else pid)+(f" · {v}" if v else '')
     if sal>=fq: fijoCumplidos.append(f"{nom} → {c}: lo FIJO de {fq} ya salió entero → vuelve la cuenta automática"); continue
     FIJO_ACT[(pid,v,c)]=(fq-sal,fm+(f" · ya salieron {sal} de {fq}: faltan {fq-sal}" if sal else ''))
+# 📦 61a del 14/11/2026 (él: "a"): SUS DECISIONES TAMBIÉN DESDE LA BASE (`cajafijo:<producto>@<cuenta>[#color]=<N|no>|motivo;go` → `cyc/cajafijo`),
+# que `pedidostodo` imprime como `FIJO|<id>|<color>|<cuenta>|<u>|<salió>|<ts>|<motivo>`. Se suman a las de arriba y, para la misma clave, MANDA LA
+# DE LA BASE. "van N" se cumple solo: `salió` = lo que salió a esa cuenta en cajas armadas DESPUÉS de la decisión (lo cuenta pedidostodo con los
+# envíos), sin `fijo_salio.txt`. Un "no" (0) queda hasta que él lo saque (`=-`).
+FIJO_DB={}
+for l in L:
+    if not l.startswith('FIJO|'): continue
+    pp=l.split('|')
+    if len(pp)<8: print('⚠️ renglón FIJO que no entiendo: '+l[:100]); continue
+    try: FIJO_DB[(pp[1],pp[2],pp[3])]=(int(pp[4]),int(pp[5]),'|'.join(pp[7:]).replace(';',','))
+    except ValueError: print('⚠️ renglón FIJO que no entiendo: '+l[:100])
+for k,(fq,sal,fm) in FIJO_DB.items():
+    q_=_byId.get(k[0]); nom=(q_['n'][:38] if q_ else k[0])+(f" · {k[1]}" if k[1] else '')
+    FIJO_ACT.pop(k,None)
+    if fq<=0: FIJO_ACT[k]=(0,fm); continue
+    if sal>=fq: fijoCumplidos.append(f"{nom} → {k[2]}: lo que decidió él ({fq}, de la base) ya salió entero → vuelve la cuenta automática (sacarlo con cajafijo:…=-)"); continue
+    FIJO_ACT[k]=(fq-sal,fm+(f" · ya salieron {sal} de {fq}: faltan {fq-sal}" if sal else ''))
+if FIJO_DB: print(f"📦 {len(FIJO_DB)} decisión(es) de caja suya(s) de la base (cajafijo)")
 FIJO_TAG=' · (fijo de él)'   # lo lee `cajaarmar` (sync.mjs): lo fijo va aunque pase el cupo (6a del 08/11)
 out=[];res=[];sin=[];amano=[];nOfi=0;largos=[];soloPerfFuera=[]
 # Revisión etapa 3, 29/10/2026: lo que CALCULA este script lleva esta marca al final del motivo. Así se distingue, sin adivinar por el
