@@ -358,6 +358,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   🔒 **🛍️ Black Friday (25-30/11, 2 días antes y los 4 del evento): no se ARRANCA ninguna prueba 📈** (ni `!vendio`, ni la prueba del mes,
   ni la del lento) **y la vuelta del punto medio se mide SIN esos días** (sus horas, sus ventas y el ritmo de antes) (12a del 08/11: las
   ventas del evento trababan 45-60 días un precio que deja −24%). Freno en `decido`; las listas de `errores` no las piden; se retoma el 01/12.
+  🔒 **📉 La resaca de enero** (49a del 14/11): del 25/12 al 31/01 los días del 03/12 al 24/12 cuentan como el Black Friday: la escasez, el
+  punto medio, el ritmo normal y Pedidos/cajas (NOR y HOY sin esos días; v30/v60/v180 con lo vendido ÷ el pico `NAV`) no los toman como ritmo normal (`navResacaVentana`).
 - **Cómo:** 🔒 **siempre un salto grande, nunca de a poco** (21/10/2026, regla suya: *"cuando buscan techo siempre dar un salto
   grande nunca ir subiendo de a poco. después cuando se encuentre el techo ahí sí bajar de a poco con descuentos"*): **+50% como
   mínimo** (27/10 a la noche; antes +30%; ML deja hasta +100%; 🔒 más del doble pide `!salto`). `decido` frena una suba #techo de menos de +50% salvo

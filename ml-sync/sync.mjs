@@ -5930,8 +5930,22 @@ const RE_MAL_PUESTO = /mal\s+puesto/i;
 // arranca ninguna prueba 📈 (ni !vendio, ni la prueba del mes) y la vuelta del punto medio se mide SIN esos días (sus horas y sus ventas
 // no cuentan): las ventas del evento trababan 45-60 días un precio que deja menos.
 function bfVentana(ts) { const y = new Date(Number(ts) - 3 * 3600e3).getUTCFullYear(); const f = fechasEspeciales(y).find((x) => x.nom === 'Black Friday'); return f ? { ini: f.ts - (Number(f.pre) || 0) * 864e5, fin: f.ts + (Number(f.dur) || 1) * 864e5 } : null; }
-function enBlackFriday(ts) { const v = bfVentana(ts); return !!v && Number(ts) >= v.ini && Number(ts) < v.fin; }
+// 📉 LA RESACA DE ENERO (49a del 14/11/2026, él: "a"): del 25/12 al 31/01 los días del pico de Navidad (03/12 al 24/12, los de `picosNavidad`)
+// no son ritmo normal: con ellos, en enero Pedidos y las cajas pedían 2-4 meses de más y la escasez subía precios con la demanda cayendo. En
+// esas semanas se tratan COMO EL BLACK FRIDAY: `enBlackFriday`/`diaEnBF`/`horasBF` también los sacan, así la escasez (ritmo de 30 y 7 días),
+// el punto medio (`ritmoAPrecioLin`, `ventasGrupoEntre`, `vueltaDeSuba`) y el detector no los cuentan. Pedidos (`pedidostodo`: NOR y HOY sin
+// esos días; v30/v60/v180 con lo vendido ÷ el pico `NAV` del producto) y el ritmo normal de la noche (`calcRitmoNormal`) también. Las rayas ya los
+// sacaban (`diasFechaPico`). `enBlackFriday(ahora)` (no arrancar pruebas) no cambia: en la resaca "ahora" nunca cae del 03/12 al 24/12.
+function navResacaVentana(ahora = Date.now()) {
+  const d = new Date(Number(ahora) - 3 * 3600e3), y = d.getUTCFullYear(), m = d.getUTCMonth(), dd = d.getUTCDate();
+  const yN = m === 11 && dd >= 25 ? y : (m === 0 ? y - 1 : null); if (yN == null) return null;
+  return { ini: Date.UTC(yN, 11, 3, 3), fin: Date.UTC(yN, 11, 25, 3) };
+}
+const enNavResaca = (ts, ahora = Date.now()) => { const v = navResacaVentana(ahora); return !!v && Number(ts) >= v.ini && Number(ts) < v.fin; };
+const diaNavResaca = (k, ahora = Date.now()) => enNavResaca(Date.parse(String(k).slice(0, 10).replace(/_/g, '-') + 'T12:00:00-03:00'), ahora);
+function enBlackFriday(ts) { const v = bfVentana(ts); return (!!v && Number(ts) >= v.ini && Number(ts) < v.fin) || enNavResaca(ts); }
 function horasBF(t0, t1) { let h = 0; const vs = new Map(); for (const t of [t0, t1]) { const v = bfVentana(t); if (v) vs.set(v.ini, v); }
+  { const vN = navResacaVentana(); if (vN) vs.set(vN.ini, vN); }   // 49a del 14/11: la resaca de enero
   for (const v of vs.values()) h += Math.max(0, Math.min(t1, v.fin) - Math.max(t0, v.ini)) / 36e5; return h; }
 const diaEnBF = (k) => enBlackFriday(Date.parse(String(k).replace(/_/g, '-') + 'T12:00:00-03:00'));
 // 6a del 08/11/2026 (él: "a"): EL PRECIO QUE NO RINDIÓ CUENTA COMO TECHO MEDIDO (como ya hacía `ventasraras`): el anotado en
@@ -10410,6 +10424,7 @@ function calcRitmoNormal(o) {
       const rec = { dk, u: x.u, rem: false, fr: null, caja: diR ? diR[2] : '', p: diR ? Number(diR[1]) || 0 : 0 };
       hD.push(rec);
       if (esRemDia(k, dk)) { nR++; rec.rem = true; continue; }
+      if (diaNavResaca(dk, hoyTs)) { rec.rem = true; continue; }   // 📉 49a del 14/11: en la resaca de enero los días del pico de Navidad no son ritmo normal
       let fr = fracStock(k, dk);
       if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0;
         // Sin dato de stock: con visitas había stock, sin visitas (ni ventas) no (regla suya del 03/10/2026).
@@ -52211,6 +52226,8 @@ async function main() {
         // `ventasHistoricas` de la web (etapa 3, 20/10/2026). Lo agotado se dividía por 180 fijo: el Adaptador 8 en 1 (35 en junio,
         // agotado desde julio) daba 6 por mes cuando vendía más de 1 por día mientras tuvo.
         const t = Number(v.ts) || 0;
+        // 📉 49a del 14/11: en la resaca de enero lo vendido del 03/12 al 24/12 cuenta ÷ el pico de Navidad del producto (lo normal de esos días).
+        if (PNAV[v.prodId] > 1 && diaNavResaca(k, hoy)) q = q / PNAV[v.prodId];
         const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; if (t > 0) { if (!(o.t0 <= t)) o.t0 = t; if (!(o.t1 >= t)) o.t1 = t; } };
         add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
       };
@@ -52438,7 +52455,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' + (porCajaBot(p) > 0 ? ' porcaja ' + porCajaBot(p) : '') : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]`;   // revisión etapa 3, 29/10/2026 (ver `pubR`)
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${s.t30} v60 ${s.t60} v180 ${s.t180} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''} · CONS ${conseguirDe(p, _CONS).nivel}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${Math.round(s.t30)} v60 ${Math.round(s.t60)} v180 ${Math.round(s.t180)} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''} · CONS ${conseguirDe(p, _CONS).nivel}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);
@@ -52464,7 +52481,7 @@ async function main() {
             let xs = de((cM) => cM === va); if (!xs.length) xs = de((cM) => !cM);
             let win = null; for (const r of xs) { const c = { ...r, neto: Number(r.neto), activa: !!r.activa }; if (_netoGana(c, win)) win = c; } return win; })();
           const netoCTxt = npC ? ` · netoC $${Math.round(npC.neto)} precioC $${Math.round(Number(npC.precio) || 0)} envC $${Math.round(Number(npC.envio) || 0)}` : '';
-          console.log(`   # ${va} · v30 ${sv.t30} v60 ${sv.t60} v180 ${sv.t180} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${ESC[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
+          console.log(`   # ${va} · v30 ${Math.round(sv.t30)} v60 ${Math.round(sv.t60)} v180 ${Math.round(sv.t180)} · últ ${sv.ult ? sv.ult.slice(8, 10) + '/' + sv.ult.slice(5, 7) : '—'} · dCS ${dCS(p.id, '__v__' + sid(va), dCS(p.id))}${cortes60(p.id, '__v__' + sid(va)) ? ' · cortes ' + cortes60(p.id, '__v__' + sid(va)) : ''} · Full ${fv} · casa ${cv} · camino ${mv}${pvx ? ' · PVviaja ' + pvx : ''}${lix ? ' · LIviaja ' + lix : ''}${nuncaPD[p.id + '#' + sid(va)] ? ' · NUNCA' : ''}${hV ? ' · hist ' + hV + 'd' : ''}${NORM[p.id + '#' + va] || ''}${M35[p.id + '#' + va] || ''}${ESC[p.id + '#' + va] || ''}${(() => { const u = ultV(p.id, va); if (!u) return ''; const hs = mlasP.filter(([mla, e]) => !e.gemelaDe && colorMla(mla, e) === va).map(([mla]) => Number((NPp[mla] || {}).precio) || 0).filter((x) => x > 0); return ' · ultv $' + u + (hs.length ? ' · hoy $' + Math.max(...hs) : ''); })()}${manoTxt}${camV.length ? ' · cambios (' + camV.join(' ') + ')' : ''}${netoCTxt} · fullcta [${brN(Object.fromEntries(C4.map((c) => [c, n0(I[p.id + '__' + c + '__v__' + sid(va)])])))}] · camcta [${brN(((cam[p.id] || {}).vc || {})[va])}] · pubV [${pubVDe(p, va).map(ab2).join(' ')}] · cajadec [${cajaDecTxt(p.id, va)}]`);
         }
       };
       console.log(`dólar ${tc} · ventana 30 d desde ${k30} · ${prods.length} fichas`);
@@ -52518,6 +52535,7 @@ async function main() {
         // sólo se sacaba lo que decía la estrategia y algo que vendía 1 por día con 60 días liquidando quedaba en 0,84 (Pedidos compraba de menos).
         for (const m of mlas) { const lin = await lineaDe(m); if (lin == null) return null;
           for (const [k, x] of Object.entries(lin || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
+            if (diaNavResaca(k, hoy)) { conDato.add(k); remD.add(k); continue; }   // 📉 49a del 14/11: la resaca de enero (el día y sus ventas no cuentan)
             if (x.st != null || x.est != null) conDato.add(k);
             if (Number(x.rem) === 1) { remD.add(k); conDato.add(k); continue; }
             if (diaConStock(x) && normalEn(m, mediodia(k))) dias.add(k); } }
