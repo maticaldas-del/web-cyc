@@ -334,7 +334,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - **Venta barata ≠ remate:** remate sólo si estuvo parado de verdad (30+ d con stock vendiendo <1 por semana).
 - **Venta abajo del 35% con poco stock** → se sube en la misma vuelta. **Lo nuevo que vuela** se sube al toque.
 - **Lo que vuelve de agotado** se compara contra su último tramo con stock.
-- **Vendedores del exterior** no se miran salvo que no haya argentinos: ahí su precio +20%.
+- **Vendedores del exterior: en la compra (Paraguay y listas) cuentan siempre, con su precio +33%** (19b del 14/11; antes no se miraban salvo que no hubiera argentinos, +20%). El precio de ML del de afuera no trae el 21% de IVA que paga el comprador. Para "2+ vendedores" cuentan sólo los de acá.
 - **Visitas que caen sin cambio de precio** → preguntas sin responder y descripción (lo arregla él, va a `notas/para_mati.md`).
 - **Pendrives de Matías como familia**: el de 32 es el conveniente; 8 y 16 (⏳) pueden quedar más caros a propósito.
 - **Juzgar resultados todos los días:** `supervisor:medir:go` + `juzgo:`; lo que perdió no vuelve por regla, se piensa. Nada en
