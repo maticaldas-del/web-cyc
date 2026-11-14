@@ -13434,6 +13434,30 @@ function precioAIgualar(ofertas) {
 // la misma tabla que usa el chat. Si el chat cargó `cuotasGan` a mano, manda lo suyo.
 const CUOTAS_PCT_ML = { 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 };
 const CUOTAS_AUTO_PREMIUM = 6, CUOTAS_AUTO_CAMPANA = 9;
+// 💳 51a del 14/11/2026 (él: "a"): LO QUE CUESTAN LAS CUOTAS SEGÚN SU TIPO. Antes toda campaña `pcj` contaba 9 cuotas sin interés (17,8%) y
+// toda Premium 6 (13,4%), aunque la que gana diera cuotas "con interés bajo" (el comprador paga un interés chico y al vendedor le cuesta ~4%)
+// o fuera Premium de 3 cuotas: se descartaban compras que sí daban 35% (el Montblanc del 10/11: 28,7% contado, 37-46% real). Ahora, cuando la
+// oferta dice el tipo, cuenta lo de ESE tipo; cuando no lo dice, queda como antes (el lado seguro).
+//   · `interesBajo` 4%: lo midió la revisión de ideas del 12/11 (etapa 6) en la pantalla de ML de "cuotas con interés bajo"; ML no lo da por
+//     API. Si ML cambia el %, se cambia acá.
+//   · sin interés: la tabla de siempre por cantidad de cuotas (`CUOTAS_PCT_ML`, capturas suyas del 02/10).
+// Cómo se sabe el tipo: (1) `installments` de la oferta, si viene ({quantity, rate}: rate > 0 = con interés → interés bajo; rate 0 = sin interés,
+// con su cantidad); (2) una etiqueta de interés bajo (`pcj-…low…`, `…interes-bajo…`, `…low_interest…`); (3) si no, como antes.
+const CUOTAS_PCT_TIPO = { interesBajo: 4 };
+const RE_CUOTA_INTERES_BAJO = /low[_-]?interest|interes[_-]?bajo|bajo[_-]?interes|pcj[-_].*low/;
+function cuotasPctTabla(n) { n = parseInt(n) || 0; if (n < 3) return 0; for (const k of [3, 6, 9, 12]) if (n <= k) return CUOTAS_PCT_ML[k]; return CUOTAS_PCT_ML[12]; }
+function cuotasInfoDeOferta(o) {
+  if (!o) return { n: 0, pct: 0, tipo: '', sabe: true };
+  const tags = (o.tags || []).map((x) => String(x).toLowerCase());
+  const ins = o.installments && typeof o.installments === 'object' ? o.installments : null;
+  const qI = ins ? parseInt(ins.quantity) || 0 : 0, rI = ins && ins.rate != null ? Number(ins.rate) : null;
+  if (qI > 1 && rI != null && rI > 0) return { n: qI, pct: CUOTAS_PCT_TIPO.interesBajo, tipo: 'interés bajo', sabe: true };
+  if (tags.some((t) => RE_CUOTA_INTERES_BAJO.test(t))) return { n: qI || 0, pct: CUOTAS_PCT_TIPO.interesBajo, tipo: 'interés bajo', sabe: true };
+  if (qI >= 3 && rI === 0) return { n: qI, pct: cuotasPctTabla(qI), tipo: `${qI} sin interés`, sabe: true };
+  const n = cuotasDeOferta(o); if (!n) return { n: 0, pct: 0, tipo: '', sabe: !!ins };
+  return { n, pct: CUOTAS_PCT_ML[n] || cuotasPctTabla(n), tipo: tags.some((t) => t.startsWith('pcj')) ? 'campaña (supongo 9 sin interés)' : 'Premium (supongo 6 sin interés)', sabe: false };
+}
+const cuotasPctDeOferta = (o) => cuotasInfoDeOferta(o).pct;
 function cuotasDeOferta(o) {
   if (!o) return 0;
   const tags = (o.tags || []).map((x) => String(x).toLowerCase());
@@ -14588,7 +14612,7 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
       if (!pi) { upd.m = null; upd.sv = 1; res.sinVend++; console.log(`  · catálogo sin vendedores · ${e.n.slice(0, 60)} → ${upd.mi}`); if (aplicar) await db.patch(RUTA + '/' + cod, upd); continue; }
       upd.sv = null; upd.mp = Math.round(pi.precio); upd.mv = ofertas[0] && ofertas[0]._vista ? 0 : nVend; upd.svm = ofertas[0] && ofertas[0]._vista ? 1 : null; upd.afu = piAfuera ? 1 : null;   // 1 = el más barato es uno de afuera: medido contra él +33% (19b del 14/11)
       upd.pp = pi.promoPct || null;   // 6.D5: el más barato está en promo (−N%): su precio puede volver a subir
-      const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? CUOTAS_PCT_ML[cuoA] || 0 : 0;
+      const cuoA = cuotasDeOferta(pi.ref); const cuoPct = cuoA ? cuotasPctDeOferta(pi.ref) : 0;   // 51a del 14/11: según el tipo
       const puesto = esLista ? Math.round(Number(e.p) * (1 + (Number(opts.rec) || 0) / 100) / tc * 100) / 100 : Math.round(e.u * RECARGO_PAR * 100) / 100;
       const cn = cuentaNuevoDe({ nombre: e.n, mlTit: upd.mt });
       const r = await cuentaCandidatoMejor(Math.min(pi.precio, TECHO_DURO), catDeOfertas(ofertas, pi.ref), puesto, tc, monoP, feeAt, cuoPct, cn);
@@ -15047,8 +15071,8 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
       cat = catDeOfertas(ofertas, ref);
       if (ref && ref._afuera) console.log(`      🌎 el más barato es de afuera: ${money(Math.round(ref._afuera))} en ML → mido contra ${money(Math.round(mlPrecio))} (+${Math.round(RECARGO_INTER * 100)}%)`);
       if (ref && ref.listing_type_id) lt = ref.listing_type_id;
-      if (!cuoN) { const ca = cuotasDeOferta(ref); if (ca) { cuoAuto = ca; cuoPct = cuoPctDe(ca);
-        console.log(`      💳 el que hay que igualar da cuotas sin interés (${ref.listing_type_id === 'gold_pro' ? 'es Premium' : 'campaña de cuotas de ML'}): cuento ${ca} cuotas = ${cuoPct}% del precio`); } }
+      if (!cuoN) { const ca = cuotasDeOferta(ref), ci = cuotasInfoDeOferta(ref); if (ca || ci.pct > 0) { cuoAuto = ci.n || ca; cuoPct = ci.pct || cuoPctDe(ca);   // 51a del 14/11: según el tipo
+        console.log(`      💳 el que hay que igualar da cuotas (${ref.listing_type_id === 'gold_pro' ? 'es Premium' : 'campaña de cuotas de ML'} · ${ci.tipo || ca + ' sin interés'}): cuento ${cuoPct}% del precio${ci.sabe ? '' : ' (ML no dice el tipo: el lado seguro)'}`); } }
       // Se DICE contra quién se mide y por qué: un precio de referencia que no es el más barato de
       // la lista se lee como un error si no se explica.
       if (_pi && _pi.premioPct > 0) {
@@ -26769,7 +26793,7 @@ async function main() {
         // 6 · LA CUENTA, HECHA DE NUEVO Y CONTRA EL PRECIO DE HOY.
         // Misma cuenta que `candidatos`: Clásica, cuotas del que hay que igualar (o del chat), IIBB de la
         // cuenta donde iría y la mejor de las dos formas de pelear (06/10/2026).
-        const _cuoR = Number(c.cuotasGan) >= 3 ? ({ 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 })[[3, 6, 9, 12].find((k) => Number(c.cuotasGan) <= k) || 12] : (CUOTAS_PCT_ML[cuotasDeOferta(ref)] || 0);
+        const _cuoR = Number(c.cuotasGan) >= 3 ? ({ 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 })[[3, 6, 9, 12].find((k) => Number(c.cuotasGan) <= k) || 12] : cuotasPctDeOferta(ref);   // 51a del 14/11
         const r = await cuentaCandidatoMejor(Math.min(mlPrecio, TECHO_DURO), catDeOfertas(aca, ref), puesto, tc, monoP, feeAt, _cuoR, cuentaNuevoDe(c));   // techo $650.000 (03/10)
         if (!r) {
           frenos.push('ML no contestó la comisión a ese precio');
@@ -27864,7 +27888,7 @@ async function main() {
         ofs = ofertasParaMedir(ofs).ofs; const pi = precioAIgualar(ofs);
         if (pi && pi.ref) catx = catDeOfertas(ofs, pi.ref);   // 19b del 14/11: con uno de afuera de referencia, la categoría de uno de acá
         // 10/11/2026: las CUOTAS sin interés del que hay que igualar se cuentan, igual que la compra (Montblanc daba 53% sin cuotas y 28,7% con las 6 del ganador).
-        const _cuo = (o) => { const n = parseInt(cuotasDeOferta(o)) || 0; if (n < 3) return 0; const T = { 3: 8.9, 6: 13.4, 9: 17.8, 12: 21.6 }; for (const k of [3, 6, 9, 12]) if (n <= k) return T[k]; return T[12]; };
+        const _cuo = (o) => cuotasPctDeOferta(o);   // 51a del 14/11: según el tipo (interés bajo ~4%)
         const refF = pi ? ofs.filter(esOfertaFull).sort((x, y) => (Number(x.price) || 0) - (Number(y.price) || 0))[0] : null;
         const ml = async (p, o) => (p > 0 && catx ? cuentaCandidatoMejor(Math.min(p, TECHO_DURO), catx, puesto, tc, monoP, feeAt, _cuo(o), it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS)) : null);
         const rT = pi ? await ml(pi.baratoTodos, pi.ref) : null, rF = pi && pi.baratoFull ? await ml(pi.baratoFull, refF) : null;
@@ -29400,10 +29424,10 @@ async function main() {
         if (!(iMin < domMin)) { no('el de afuera está más caro que el de acá'); continue; }
         conAfuBarato++;
         const catx = (pi.ref && pi.ref.category_id) || refA.category_id; if (!catx) { no('sin categoría'); continue; }
-        const mHoy = await cuentaCandidatoMejor(Math.min(domMin, TECHO_DURO), catx, q.puesto, tc, monoP, feeAt, (CUOTAS_PCT_ML[cuotasDeOferta(pi.ref)] || 0), q.cn);
+        const mHoy = await cuentaCandidatoMejor(Math.min(domMin, TECHO_DURO), catx, q.puesto, tc, monoP, feeAt, cuotasPctDeOferta(pi.ref), q.cn);
         const ms = [];
         for (const x of X) { const ref = Math.min(domMin, iMin * (1 + x)); const refO = ref < domMin ? refA : pi.ref;
-          const r = await cuentaCandidatoMejor(Math.min(ref, TECHO_DURO), catx, q.puesto, tc, monoP, feeAt, (CUOTAS_PCT_ML[cuotasDeOferta(refO)] || 0), q.cn); ms.push(r ? r.margen : null); }
+          const r = await cuentaCandidatoMejor(Math.min(ref, TECHO_DURO), catx, q.puesto, tc, monoP, feeAt, cuotasPctDeOferta(refO), q.cn); ms.push(r ? r.margen : null); }
         filas.push({ q, domMin, iMin, nA: afu.length, nC: aca.length, primero: esOfertaDeAfuera(res[0] || {}) ? 'afuera' : (esOfertaFull(res[0] || {}) ? 'acá con Full' : 'acá sin Full'), mHoy: mHoy ? mHoy.margen : null, ms, tagA: ((refA.shipping && refA.shipping.tags) || []).some((t) => /cbt_fulfil/i.test(String(t))) ? 'con depósito de ML afuera' : 'sin depósito' });
       }
       const f1 = (v) => v == null ? '—' : Math.round(v) + '%';

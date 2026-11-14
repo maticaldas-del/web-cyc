@@ -296,7 +296,7 @@
 - **La caja de compra orienta, no decide** (12/10). Perdiendo y vendiendo bien no se baja. **Full vale ~19% de precio** contra un
   vendedor sin Full (rango 3-26,6%, medido 18 de 18); Flex compite como Full; contra otro con Full el premio es 0.
 - **Un solo vendedor en ML no vale como precio** (19/10). **Los vendedores de afuera cuentan siempre en la compra (Paraguay y listas), con su precio +33%** (19b del 14/11; antes se sacaban si había uno de acá y si no, +20%): el precio de ML del de afuera no trae el 21% de IVA del comprador. Se mide contra el más barato de todos (`ofertasParaMedir`, `RECARGO_INTER`); para "2+ vendedores" cuentan sólo los de acá; el techo de nuestras publicaciones sigue sin ellos.
-- **Cuotas Premium:** en algunas categorías `listing_prices` ya trae las cuotas (`enComision`); no contarlas dos veces. Premium sin
+- **Cuotas Premium:** en algunas categorías `listing_prices` ya trae las cuotas (`enComision`); no contarlas dos veces. **Las cuotas de la que gana cuestan según su tipo** (51a del 14/11, `cuotasInfoDeOferta`): "con interés bajo" ~4% (`CUOTAS_PCT_TIPO`), sin interés la tabla por cantidad (3 = 8,9% · 6 = 13,4% · 9 = 17,8% · 12 = 21,6%); si ML no dice el tipo, como antes (campaña 9, Premium 6). Pendiente: probar el 4% (interés bajo) en los Paulvic para ganar la caja en vez de bajar (lo prende él en ML). Premium sin
   cuotas medidas no se baja ni activa. **Dalí (`MLA1869295911`) queda Premium** (17/10, no volver a proponer).
   **En revisión de ML para siempre, no se miran más** (24/10, él: *"nunca se van a liberar"*): Dalí La Belle `MLA1869295385`, Galaxy A06 `MLA3528837100`,
   Scandal Bliss `MLA1695210793` (`ML_REVISION_NO_MIRAR`: fuera de `planilla` y del `informe`; su stock sigue contando).
