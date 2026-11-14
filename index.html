@@ -3713,7 +3713,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.204';
+const APP_VERSION='28.205';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3726,6 +3726,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.205',f:'14/11',h:'13:25',c:[{n:1,t:'Se sacó el numerito rojo del ícono de la app (él: no le gusta).'}]},
   {v:'28.204',f:'14/11',h:'11:15',c:[{n:1,t:"Inicio: se sacaron las tarjetas 💬 Preguntas y 🚚 Lo que llega (él: eso se resuelve en el chat)"}]},
   {v:'28.203',f:'14/11',h:'05:20',c:[{n:1,t:'🛍️ Revisión de la Tienda: un producto nuevo ya no figura "mirado hoy" con un precio viejo, menos datos del proveedor en el registro, mejores nombres. 8 cosas para elegir (lo urgente: el permiso para subir las páginas).'}]},
   {v:'28.202',f:'14/11',h:'02:55',c:[{n: 2, t: "💬 Inicio: las preguntas de compradores de las 4 cuentas se contestan desde acá (con la ficha y «ya contestaste una igual»); el robot las manda y las relee de ML (62a)."},{n: 2, t: "🗳️ Inicio: las decisiones que te paso salen como tarjetas: tocás (a) o (b) y «📨 Mandar a Claude» (66a)."},{n: 2, t: "🚚 Inicio: «Lo que llega», todo junto por fecha: en rojo lo que hay que retirar, HOY con su código, los próximos días y en ámbar lo atrasado (63a)."},{n: 2, t: "🔍 Inicio: «¿Qué pasó esta semana?» sale sólo cuando la ganancia de los últimos 7 días viene 15% o más abajo de lo normal, con la causa de cada producto (65a)."},{n: 1, t: "🛍️ Los botones de la Tienda y ABEL dicen cuántos productos y de qué día; «👀 Cómo la ve la gente» muestra la página publicada y comparte el link (64a)."},{n: 1, t: "🔴 El ícono de CYC muestra cuántas ventas buenas nuevas hay (las de $10.000+), como WhatsApp (21a)."},{n: 1, t: "📋 HOY TOCA del chat de Chrome en el orden nuevo: RUTINA → PERFUMES → GUAY…; el MIRAR TODO completo una vez por semana y los otros días el corto (58a)."}]},
@@ -11404,7 +11405,8 @@ async function hxCompartir(link,nom){try{if(navigator.share){await navigator.sha
 
 // ── 🔴 EL NUMERITO EN EL ÍCONO (21a) ── cuántas ventas BUENAS nuevas (las que dejan $10.000+, las mismas del aviso al teléfono) hay desde que
 // miraste Ventas. Lo pone la app al abrirse y el aviso de venta lo suma en el teléfono (sw.js); al mirar Ventas vuelve a 0.
-function hxBadge(n){try{if('setAppBadge' in navigator){if(n>0)navigator.setAppBadge(n);else navigator.clearAppBadge();}}catch(e){}
+// 14/11 (él: "no me gusta ese número de notificación. sacalo"): el numerito del ícono (21a) se apagó; siempre se limpia.
+function hxBadge(n){try{if('clearAppBadge' in navigator)navigator.clearAppBadge();}catch(e){}
   try{caches.open('badge-cyc').then(c=>c.put('n',new Response(String(Math.max(0,n|0)))));}catch(e){}}
 function cajasVerdes(filas){
   return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});

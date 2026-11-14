@@ -1,5 +1,5 @@
 // Service worker de CYC: cachea la app (mismo origen) para que abra como app instalada.
-const CACHE = "cyc-v1287";
+const CACHE = "cyc-v1288";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -78,7 +78,8 @@ self.addEventListener("push", (e) => {
   e.waitUntil((async () => {
     await self.registration.showNotification(titulo, opts);
     // 🔴 21a del 14/11/2026: cada aviso de venta (sólo salen las de $10.000+) suma 1 al numerito del ícono; la app lo vuelve a poner al abrirse.
-    try { if (self.navigator && "setAppBadge" in self.navigator) { const c = await caches.open("badge-cyc"); const r = await c.match("n"); const n = (parseInt(r ? await r.text() : "0", 10) || 0) + 1; await c.put("n", new Response(String(n))); await self.navigator.setAppBadge(n); } } catch (_) {}
+    // 14/11 (él: "no me gusta ese número de notificación. sacalo"): ya no se pone el numerito; se limpia.
+    try { if (self.navigator && "clearAppBadge" in self.navigator) await self.navigator.clearAppBadge(); } catch (_) {}
     for (let i = 2; i <= veces; i++) { await espera(1800); await self.registration.showNotification(titulo, { ...opts, vibrate: [350] }); }
   })());
 });

@@ -2635,6 +2635,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🔴 Sin numerito en el ícono (14/11/2026, él: "no me gusta ese número de notificación. sacalo")
+- **Qué es:** se apagó el numerito del ícono de la 21a; la app y el aviso de venta lo limpian. **Dónde:** `index.html` `hxBadge`, `sw.js` push. **Chequear:** que el ícono quede sin número después de abrir la app (v28.205).
+
 ### ✅ Diseño del 10/11 cerrado en el cartel (14/11/2026, v28.200)
 - Sale de `REV_PENDIENTE` "10/11 · 15 cosas de Diseño para elegir" y queda en `REV_HIST[7]` del 14/11: eligió 1a 2a 3a 4a 6a-15a; la 5 (Para comprar hoy) dijo que no. Hechas en v28.189-28.199.
 ### 🎨 Diseño del 10/11 · 1a lo chico de una vez (14/11/2026, v28.199)
