@@ -3554,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.187';
+const APP_VERSION='28.188';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3567,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.188',f:'14/11',h:'01:35',c:[{n:1,t:'🔤 Ventas a personas: el robot las carga con la inicial y la deuda dice "✏️ completá el nombre" hasta que lo completás en ✏️ Editar (28a del 14/11).'}]},
   {v:'28.187',f:'14/11',h:'01:33',c:[{n:2,t:'🪙 Saldo de Binance cerrado: en Mi oficina → 🔒 Archivo para Claude → "Saldo de Binance" (ej. tito=19,72). El robot lo carga solo y el número no aparece en ningún registro (25a del 14/11).'}]},
   {v:'28.186',f:'14/11',h:'01:26',c:[{n:2,t:'📅 Rayas: un día de fecha especial sale sólo si al MISMO precio (±2%) hay días fuera de fecha para comparar y vendió el doble; si no, se queda (16.2a del 14/11).'}]},
   {v:'28.185',f:'14/11',h:'01:25',c:[{n:1,t:'🛍️ Black Friday (25-30/11): sus ventas no confirman una suba ni aceleran la escasez (15a del 14/11).'}]},
@@ -8000,7 +8001,7 @@ function renderCuotas(){
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${fin?'':cq?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:''}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.68rem" onclick="cuotasEditar('${d.id}')">✏️ Editar</button></div></div>`:'';
     return `<div style="border:1px solid ${bord};${bg}border-radius:var(--r)">
       <div onclick="cuotaToggle('${d.id}')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 12px" title="Tocá para ver el detalle y la historia">
-      <b style="flex:1;min-width:0;font-size:.8rem;word-break:break-word;${fin?'color:var(--green)':''}">${ab?'▾':'▸'} ${_escC(d.nom)}${atr?' <span style="font-size:.62rem;color:var(--red)">⚠️ atrasada</span>':''}</b>
+      <b style="flex:1;min-width:0;font-size:.8rem;word-break:break-word;${fin?'color:var(--green)':''}">${ab?'▾':'▸'} ${_escC(d.nom)}${d.nomCompletar?' <span style="font-size:.6rem;color:var(--amber,#b7791f)" title="El robot la cargó sólo con la inicial (el registro es público): tocá ✏️ Editar y completá el nombre">✏️ completá el nombre</span>':''}${atr?' <span style="font-size:.62rem;color:var(--red)">⚠️ atrasada</span>':''}</b>
       ${pctTxt}
       <b style="font-size:.85rem;white-space:nowrap;font-family:'DM Mono',monospace;${atr||resta<-0.5?'color:var(--red)':fin?'color:var(--green)':''}"${resta<-0.5?' title="Devolvió más de lo que debía: ahora le debemos nosotros"':''}>${fin?'✅':resta<-0.5?'le debemos '+_pesos(-resta):_pesos(resta)}</b></div>
       ${_barraPago(d,fin,resta,cq)}
@@ -8196,6 +8197,7 @@ async function cuotasGuardar(){
   if(ya&&(Number(ya.pagadas)||0)>n&&!confirm(`Ya pagó ${ya.pagadas} cuotas y ahora serían ${n}: queda pagada entera. ¿Sigo?`))return;
   const id=id0||('c'+Date.now()),d={...(ya||{}),nom:nom.slice(0,80),det:g('cq_det').value.trim().slice(0,160)||null,monto:Math.round(monto),n,pagadas:pag,costo:costo>0?Math.round(costo):null,sinGan:sinGan||null,fija:g('cq_fija').checked,vence1:vence||null,frec:n>1?frec:null,cadaDias:n>1&&frec==='dias'?cadaDias:null,ts:ya?ya.ts:Date.now(),quien:ya?(ya.quien||''):(whoAmI||'')};
   if(ya)d.editado=Date.now();
+  if(ya&&ya.nomCompletar&&nom!==ya.nom)delete d.nomCompletar;   // 28a del 14/11: ya completó el nombre que el robot cargó con la inicial
   Object.keys(d).forEach(k=>{if(d[k]===null||d[k]===undefined)delete d[k];});
   try{await fbSet('debencuotas/'+id,d);state.debencuotas={...(state.debencuotas||{}),[id]:d};}catch(e){toast('No se guardó: '+e.message,'err');return;}
   g('cuotas-form').style.display='none';renderCuotas();cuotasSync();log(`${ya?'Edité la deuda':'Deuda a CYC'}: ${nom} · ${_pesos(monto)}${n>1?' en '+n+' cuotas '+cuotaFrecTxt(frec,cadaDias):''}`).catch(()=>{});toast('✓ Guardada');

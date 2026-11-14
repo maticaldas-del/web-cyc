@@ -44512,7 +44512,7 @@ async function main() {
       // |frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD|pagos=AAAA-MM-DD,…|costo=<pesos>;go`. Las fechas de `pagos` = cuotas ya pagadas.
       if (_n(quien) === 'nueva') {
         const kv = {}; for (const x of String(resto).split('|')) { const i2 = x.indexOf('='); if (i2 > 0) kv[x.slice(0, i2).trim().toLowerCase()] = x.slice(i2 + 1).trim(); else if (!kv.nom) kv.nom = x.trim(); }
-        const nom = String(kv.nom || '').slice(0, 80), nC = parseInt(kv.cuotas, 10) || 1, cuota = Math.round(pesosArg(kv.cuota) || 0);
+        let nom = String(kv.nom || '').slice(0, 80); const nC = parseInt(kv.cuotas, 10) || 1, cuota = Math.round(pesosArg(kv.cuota) || 0);
         const fr = String(kv.frec || (nC > 1 ? 'men' : '')).toLowerCase(), mDias = fr.match(/^dias:(\d+)$/);
         const frec = mDias ? 'dias' : (['sem', 'men', 'quin'].includes(fr) ? fr : null);
         const fOk = (f) => /^\d{4}-\d{2}-\d{2}$/.test(f);
@@ -44520,7 +44520,15 @@ async function main() {
         if (!nom || !(cuota > 0) || (nC > 1 && (!frec || !fOk(kv.vence1 || ''))) || pagosF.some((f) => !fOk(f)) || pagosF.length > nC) {
           console.log('❌ Usá: debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>|frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD[|fecha=AAAA-MM-DD (día de la venta, si no es hoy)][|pagos=AAAA-MM-DD,…][|costo=<pesos>];go'); return; }
         // Revisión etapa 9, 30/10/2026: el registro de GitHub es público: ni acá ni abajo sale el nombre entero ni lo que se llevó (inicial + id).
-        const yaN = lista.find(([, d]) => _n(d.nom) === _n(nom));
+        // 🔤 28a del 14/11/2026 (él: "a"): el texto del comando queda en el registro PÚBLICO: a una persona va sólo la INICIAL (ej. `nueva=G|…`) y
+        // el nombre se completa en la web (✏️ Editar; la deuda sale con "✏️ completá el nombre"). Dos o más palabras de 3+ letras = nombre y
+        // apellido: se niega. Una sola palabra larga pasa con aviso.
+        const palL = String(nom).split(/[\s.,]+/).filter((w) => w.replace(/[^\p{L}]/gu, '').length > 2);
+        if (palL.length > 1 && !/perfumer/i.test(nom)) { console.log('❌ En el comando va sólo la INICIAL de la persona (ej. nueva=G|det=…): el texto queda en el registro público. El nombre se completa después en la web (✏️ Editar deuda). No escribo nada.'); return; }
+        if (palL.length === 1 && !/perfumer/i.test(nom)) console.log('⚠️ Mejor sólo la inicial (el texto del comando es público); el nombre se completa en la web.');
+        const nomIni = !palL.length;
+        let yaN = lista.find(([, d]) => _n(d.nom) === _n(nom));
+        if (yaN && nomIni) { let k = 2; while (lista.find(([, d]) => _n(d.nom) === _n(nom + ' ' + k))) k++; nom = nom + ' ' + k; yaN = null; console.log(`  (ya había otra deuda con esa inicial: ésta queda "${_tapaNom({ nom })} ${k}" hasta que completes el nombre en la web)`); }
         if (yaN) { console.log(`❌ Ya hay una deuda con ese nombre: ${_tapaNom(yaN[1])} (${yaN[0]}). No la duplico.`); return; }
         // EL DÍA DE LA VENTA (7a de la revisión etapa 9, 30/10/2026, él): `fecha0` = el día en que se vendió (`fecha=AAAA-MM-DD`, o hoy de acá),
         // no la primera cuota. Antes era `vence1` y una venta en cuotas caía en Métricas el día de la primera cuota (a futuro).
@@ -44528,7 +44536,7 @@ async function main() {
         const f0N = kv.fecha || new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
         const ts0 = Date.now(), pagos = {}; pagosF.forEach((f, i) => { pagos[String(Date.parse(f + 'T12:00:00-03:00') + i)] = { f }; });
         const costo = Math.round(pesosArg(kv.costo) || 0);
-        const dN = { nom, ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1 } : {}), fecha0: f0N, ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
+        const dN = { nom, ...(nomIni ? { nomCompletar: true } : {}), ...(kv.det ? { det: kv.det.slice(0, 160) } : {}), monto: cuota * nC, n: nC, pagadas: pagosF.length, ...(pagosF.length ? { pagos } : {}), ...(frec ? { frec } : {}), ...(mDias ? { cadaDias: parseInt(mDias[1], 10) } : {}), ...(kv.vence1 ? { vence1: kv.vence1 } : {}), fecha0: f0N, ...(costo > 0 ? { costo } : {}), ts: ts0, quien: 'robot' };
         console.log(`=== DEUDA NUEVA "${_tapaNom({ nom })}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${kv.det ? 'con lo que se llevó anotado (no se imprime) · ' : ''}${nC} cuota(s) de ${money(cuota)} (${frec || 'sin cuotas'}) = ${money(dN.monto)} · vendida el ${f0N} · primera ${kv.vence1 || '—'} · pagó ${pagosF.length}${pagosF.length ? ' (' + pagosF.join(', ') + ')' : ''} · falta ${money(cuota * (nC - pagosF.length))}${costo > 0 ? ' · costo ' + money(costo) : ''}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         const idN = 'c' + ts0; await db.set('cyc/debencuotas/' + idN, dN);
@@ -44626,6 +44634,8 @@ async function main() {
         if (cand1.length !== 1) { console.log(`❌ "${quien}" agarra ${cand1.length} deudas${cand1.length ? ': ' + cand1.map(([id, d]) => `${_tapaNom(d)} (${id})`).join(' | ') : ''}. No escribo nada.`); return; }
         const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
         const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
+        // 28a del 14/11/2026: el nombre completo de una persona no va por el comando (registro público): se completa en la web.
+        if (campo === 'nom' && !/perfumer/i.test(String(val || '')) && String(val || '').split(/[\s.,]+/).filter((w) => w.replace(/[^\p{L}]/gu, '').length > 2).length > 1) { console.log('❌ El nombre completo de una persona no va en el comando (queda en el registro público): completalo en la web (✏️ Editar deuda). No escribo nada.'); return; }
         console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] ? '(texto de ' + String(d[campo]).length + ' letras)' : '—')} → ${campo === 'nom' ? _tapaNom({ nom: val }) : (val ? '(texto de ' + val.length + ' letras)' : '—')}`);   // revisión etapa 9 (06/11): "qué se llevó" puede traer nombres: no va al registro   // revisión etapa 9, 30/10/2026: el nombre nuevo con la misma regla (antes `!d.fija`)
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
