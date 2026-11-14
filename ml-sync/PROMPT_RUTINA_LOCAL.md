@@ -53,7 +53,8 @@ No copies la lista de movimientos: trae nombres de otras personas.
    US$ crudo, link y foto, un comando cada 5 páginas, por ml-consulta:
      pycat:#<página>@perfumes;<código>|<nombre>|<US$>|<link>|<foto>;…;#<página siguiente>;…;go
    SIN ";fin=" al final (no es la vuelta completa). Lo que diga "no disponible" no se copia (va a candprecio:<código>=nohay;…;go).
-   En el buzón: un renglón "perfumes: <cuántos copiaste> en <cuántas páginas>".
+   En el buzón: un mensaje APARTE que empiece "PERFUMES <AAAA-MM-DD>: <cuántos copiaste> en <cuántas páginas>" (14/11: es su propia tarea en el
+   orden fijo, RUTINA → PERFUMES → GUAY). Los renglones "visto:" se cargan solos: escribilos exacto "visto: <código>=<US$ de hoy|AGOTADO|NO LO ENCONTRÉ>".
 Si aparece un "no soy un robot", avisale a Matías y seguí con lo demás.
 
 == PARTE 3b · LO QUE ML FRENA O AVISA EN PUBLICACIONES (4a del 26/10) ==

@@ -35,6 +35,19 @@ LAS TAREAS (cada una tiene su texto completo más abajo, en este mismo mensaje)
 
 CUÁNDO HACÉS CADA COSA (30/10/2026, él: "sin horario y sin fecha, ya que no sé cuándo la prendo")
 No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
+**🔢 EL ORDEN FIJO DE LA RUN (14/11/2026, Matías eligió la idea 12a: "sin repetir lo que ya ve el robot, orden fijo, y si a las 11 falta algo me avisa").**
+Siempre en este orden, una tarea atrás de la otra, sin saltear: HOY LLEGA (a00) → VIA CARGO (si hay guías) → **RUTINA → PERFUMES → GUAY** →
+MIRAR CORTO → CAJAS LLEGADAS → EXTRACTO → MÁS VENDIDOS → COMPETENCIA → lo semanal que toque (MIRAR TODO completo, LISTAS, MAYORISTAS WEB, ONCE, IMEGA) → TIENDA.
+- PERFUMES deja SU mensaje aparte: "PERFUMES <fecha>: <cuántos copiaste> en <cuántas páginas>" (ya no va adentro de la RUTINA).
+- **MIRAR CORTO** (todos los días): del MIRAR TODO (PROMPT_RUTINA_MANANA) hacés SÓLO lo que el robot NO ve: la parte 2 (mensajes de compradores sin
+  leer), la 4 (lo que ML frena o avisa), la 7 (Mercado Pago: deudas y cosas raras) y la 8 (facturas de ML). Lo demás (reclamos, preguntas,
+  reputación, Full, stock, métricas, promos, dólar) ya lo lee el robot por su lado: NO lo repitas. Mensaje: "MIRAR CORTO <fecha>: …" con el mismo formato.
+- **MIRAR TODO completo, una vez por semana** (cuando la línea "Última vez" dice 7 días o más, o "nunca"): ese día hacés el MIRAR TODO entero
+  en vez del corto.
+- **A las 11 de la mañana** el robot mira el 📋 HOY TOCA: si falta algo le llega a Matías "falta GUAY: decile seguí". Cuando te diga "seguí",
+  arrancás por lo primero que falte en el orden de arriba.
+- Lo que dejás en el buzón se carga solo (14/11): los renglones "visto:" de la RUTINA (precios mirados en Nissei), lo de MÁS VENDIDOS (se mide
+  contra ML), QUIÉN LO TRAE y COMPETENCIA. Escribilos EXACTO con el formato de cada tarea, si no el robot no los lee.
 **📌 PEDIDOS DE CLAUDE, LO PRIMERO DE TODO (10/11/2026, Matías: "todas esas cosas que vos no ves, que te las responda el chat local").** En Mi oficina → 📬 Mensaje para Claude, arriba de todo, puede haber un cuadro azul "📌 Claude te pide": son cosas que Claude no puede ver ni tocar en ML (una caja, un reclamo, un envío, una pregunta). Hacelos ANTES que la RUTINA, contestá cada uno en el buzón con un mensaje que empiece "RESPUESTA <número>: …" (qué viste, qué hiciste, qué no pudiste) y tocá ✅ Hecho. Si algo pide tocar ML y no estás seguro, no lo toques: contá lo que ves. Cuentan en el "RUN <fecha>" final.
 **⚠️ LA RUN SE HACE COMPLETA, SIEMPRE (10/11/2026, Matías: "la rutina hacía 5 días no hacía Nissei… se saltea cosas… es muy importante que se haga la rutina completa siempre que se la pida").**
 - En Mi oficina → 📬 Mensaje para Claude está el cuadro **📋 HOY TOCA**: cada tarea con ✅ (ya dejaste su mensaje hoy) o ❌ (falta). **La run NO termina hasta que esté todo ✅.**
@@ -59,7 +72,7 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    f) IMEGA → si hace 14 días o más.
    f3) MAYORISTAS WEB (AnD Mitre y AVL 112, los que visita Tito) → si hace 7 días o más (03/11/2026). El catálogo lo baja el robot (`listawoo`): vos lo actualizás, revisás que lo que da 35% sea el mismo producto en ML y anotás lo que la página no dice (IVA, mínimo, packs). Texto: PROMPT_MAYORISTAS_WEB.
    a0) VIA CARGO → TODOS LOS DÍAS mientras haya guías en el cuadro amarillo "🚚 Para mirar en Via Cargo" (10/11/2026, Matías: "que el chat local también entre a Via Cargo y mire por dónde vienen los envíos y cuándo van a llegar"): entrá a viacargo.com.ar → seguimiento de envíos, poné cada guía y anotá en el buzón "VIA CARGO <fecha>: <pedido> · <estado> · <dónde está / última sucursal> · <cuándo dice que llega>". Si dice algo raro (retenido, demorado, falta pagar, dirección), ponelo primero. No toques nada ni cambies datos del envío. **Si ya llegó a la agencia ("Recibido en destino", "para retirar"), escribí la palabra LLEGÓ en el mensaje** (10/11: el robot se lo manda a Matías por Telegram en el momento; el #1012 estuvo 3 días en la agencia y él no sabía).
-   a1) MIRAR TODO → TODOS LOS DÍAS, justo después de la RUTINA (06/11/2026, él: "que mire todo. Que por el momento no haga nada"): reclamos, mediaciones, devoluciones, mensajes sin leer, preguntas, lo que ML frena o avisa, reputación, Full, avisos de Mercado Pago, facturas y el panel, en las 4 cuentas, SIN TOCAR NADA. Texto: PROMPT_RUTINA_MANANA.
+   a1) MIRAR CORTO → TODOS LOS DÍAS, después de RUTINA, PERFUMES y GUAY (14/11, ver "EL ORDEN FIJO" arriba); el MIRAR TODO completo (reclamos, mediaciones, devoluciones, mensajes sin leer, preguntas, lo que ML frena o avisa, reputación, Full, avisos de Mercado Pago, facturas y el panel, en las 4 cuentas, SIN TOCAR NADA) UNA VEZ POR SEMANA. Texto: PROMPT_RUTINA_MANANA.
    a2) CAJAS LLEGADAS → todos los días, justo después de la RUTINA (ver abajo). Es corta.
    f2) MÁS VENDIDOS → TODOS LOS DÍAS (06/11, él: "la mayoría para seguridad es diario, menos las listas"), después de CAJAS LLEGADAS (ver abajo).
    a3) EXTRACTO → TODOS LOS DÍAS, justo después de MIRAR TODO (06/11/2026, él: "así vamos paso a paso" y "siempre se hace desde el último que se hizo hasta el día anterior a hacer la run"): el extracto de Mercado Pago de las 4 cuentas DESDE EL DÍA SIGUIENTE AL ÚLTIMO PEGADO HASTA AYER (nunca hoy). El último pegado lo dice el mensaje `EXTRACTO … hasta AAAA-MM-DD` del buzón. Texto: PROMPT_EXTRACTO. Mensaje `EXTRACTO <hoy>: del AAAA-MM-DD hasta AAAA-MM-DD · 4 de 4`.
@@ -69,7 +82,7 @@ No hay día ni hora fijos: cada vez que te prendan, hacé esto en orden.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
    fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …",
-   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …", "COMPETENCIA …".
+   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …", "MIRAR CORTO …", "PERFUMES …", "COMPETENCIA …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
 
 CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026; corregido el mismo día, él: "ya va por dos horas, ¿no será que va más lento que antes?")

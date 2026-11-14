@@ -83,6 +83,30 @@ body.discreto .vp-aviso{animation:none}
 @media(prefers-reduced-motion:reduce){.punt-rompe{animation:none}}
 .esc-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;animation-name:escLlena;animation-timing-function:ease-out;animation-fill-mode:both}@keyframes escLlena{from{width:var(--w0)}to{width:var(--w)}}@media(prefers-reduced-motion:reduce){.esc-fill{animation:none}}
 .vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
+.hx-card{margin:8px auto 12px;max-width:760px;box-sizing:border-box;padding:10px 14px;border-radius:14px;border:1.5px solid var(--border2);background:var(--surface);font-size:.86rem;line-height:1.45;overflow-wrap:anywhere}
+.hx-card a{color:#38bdf8}
+.hx-cab{display:flex;align-items:center;gap:8px;cursor:pointer;flex-wrap:wrap;min-height:32px}
+.hx-tit{font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem}
+.hx-sub{font-size:.72rem;color:var(--muted);flex:1;min-width:0}
+.hx-fl{color:var(--muted);margin-left:auto}
+.hx-item{border-top:1px solid var(--border);padding:8px 0 6px;margin-top:6px}
+.hx-mini{font-size:.74rem;line-height:1.45;margin:2px 0}
+.hx-q{font-size:.92rem;margin:4px 0;font-style:italic;white-space:pre-wrap}
+.hx-chip{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--surface2);font-size:.68rem}
+.hx-sug{font-size:.76rem;margin:6px 0;padding:6px 8px;border-radius:8px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3)}
+.hx-ta{width:100%;box-sizing:border-box;margin-top:6px;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font:inherit;font-size:.86rem;resize:vertical}
+.hx-b{padding:6px 12px;font-size:.78rem;min-height:36px}
+.hx-sec{font-size:.76rem;font-weight:700;margin:8px 0 2px}
+.hx-ops{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+@media (max-width:520px){.hx-ops{grid-template-columns:1fr}}
+.hx-op{text-align:left;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border2);background:transparent;color:var(--text);font:inherit;font-size:.78rem;cursor:pointer;min-height:44px;line-height:1.35}
+.hx-op.sel{border-color:#a855f7;background:rgba(168,85,247,.16)}
+.hx-num{white-space:nowrap;font-weight:700}
+.hx-foto{width:56px;height:56px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#fff}
+.hx-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.hx-kpi{padding:6px 8px;border-radius:10px;background:var(--surface2);min-width:0}.hx-kpi b{font-size:1rem}
+.hx-muestra{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.hx-muestra>div{font-size:.66rem;min-width:0}.hx-muestra img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:6px}
+.hc-est{display:block;font-size:.62rem;font-weight:600;line-height:1.1}
 .tito-modal{position:fixed;inset:0;z-index:9300;background:rgba(0,0,0,.6);overflow-y:auto;display:flex;justify-content:center;align-items:flex-start;padding:14px}
 .tito-caja{background:var(--surface);border:1px solid var(--border2);border-radius:14px;max-width:560px;width:100%;padding:14px 16px;margin:10px 0 40px}
 .tito-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:.9rem}
@@ -476,6 +500,7 @@ body.light [style*="color:#22c55e"],body.light [style*="color:#4ade80"]{color:#1
   #home-cab #home-dolar-val{font-size:1.25rem!important;padding:2px 1px 3px!important;line-height:1.3!important;max-width:100%!important;min-width:0!important}
   #home-cab .hc-lnk{padding:6px 9px!important;font-size:.8rem!important;gap:4px!important;justify-content:center;white-space:nowrap}
   #home-cab .hc-cel-no{display:none}
+  #home-cab .hx-gente{grid-column:1/-1}
 }
 .nav-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 22px 44px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;text-align:left;height:100%}
 .nav-card:hover{transform:translateY(-2px);border-color:var(--border2)}
@@ -1368,6 +1393,7 @@ setTimeout(function _ldVigia(){try{
 <!-- ════════════════════ HOME ════════════════════ -->
 <div id="page-home" class="page active">
   <div id="home-claude"></div>
+  <div id="home-extra"></div>
   <div id="home-logo-wrap" class="home-logo" style="display:none"></div>
   <div id="home-cab" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:24px;margin:6px auto 16px;max-width:100%">
     <span id="home-dolar-logo" style="display:flex;align-items:center;justify-content:center;height:210px;width:min(640px,calc(100vw - 48px));overflow:hidden"></span>
@@ -1377,9 +1403,11 @@ setTimeout(function _ldVigia(){try{
       <input id="home-dolar-val" type="text" inputmode="numeric" title="Editá el dólar y apretá Enter (o salí del campo) para guardarlo" oninput="fmtMoneyInput(this);_dolarAncho(this)" onchange="saveTC(this.value)" onkeydown="if(event.key==='Enter')this.blur()" style="font-size:2rem;line-height:1.4;color:var(--green);font-family:'Syne',sans-serif;font-weight:800;background:transparent;border:none;border-bottom:2px dashed rgba(34,197,94,.5);width:150px;min-width:110px;flex-shrink:0;max-width:calc(100vw - 110px);text-align:left;outline:none;padding:4px 2px 6px;cursor:text">
     </div>
     <!-- 30/10/2026, él: "me gustaría que el botón de tienda esté abajo de todo al lado del precio del dólar": abre la Tienda en otra pestaña. -->
-    <a href="https://tiendacyc.github.io/" class="hc-lnk" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(232,89,12,.1);border:1px solid rgba(232,89,12,.35);color:#e8590c;font-weight:800;text-decoration:none;font-size:1.05rem">🛍️ Tienda</a>
+    <a href="https://tiendacyc.github.io/" class="hc-lnk" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(232,89,12,.1);border:1px solid rgba(232,89,12,.35);color:#e8590c;font-weight:800;text-decoration:none;font-size:1.05rem"><span>🛍️ Tienda<span id="hc-tienda-est" class="hc-est" style="display:none"></span></span></a>
     <!-- 01/11/2026, él: "agregar tienda perfumería en la web de cyc al lado del dólar también": abre el catálogo ABEL. -->
-    <a href="https://tiendacyc.github.io/abel/" class="hc-lnk" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(212,178,94,.1);border:1px solid rgba(212,178,94,.45);color:#b8932f;font-weight:800;text-decoration:none;font-size:1.05rem">🌸 <span class="hc-cel-no">Perfumería </span>ABEL</a>
+    <a href="https://tiendacyc.github.io/abel/" class="hc-lnk" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:14px;background:rgba(212,178,94,.1);border:1px solid rgba(212,178,94,.45);color:#b8932f;font-weight:800;text-decoration:none;font-size:1.05rem"><span>🌸 <span class="hc-cel-no">Perfumería </span>ABEL<span id="hc-abel-est" class="hc-est" style="display:none"></span></span></a>
+    <!-- 64a del 14/11/2026: lo que de verdad ve la gente (la página publicada) y compartir el link de siempre. -->
+    <button class="hc-lnk hx-gente" onclick="hxTiendaHoja()" style="display:flex;align-items:center;gap:6px;padding:12px 16px;border-radius:14px;background:transparent;border:1px solid var(--border2);color:var(--text);font-weight:700;font-size:.9rem;cursor:pointer">👀 Cómo la ve la gente</button>
   </div>
   <!-- Arriba de todo CYC y el dólar; ahí nomás las ventas de hoy y el puntaje (29/09/2026, pedido suyo) -->
   <div id="home-hoy" style="width:100%"></div>
@@ -2996,7 +3024,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['paramati','parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['pregpend','pregresp','decisiones','paramati','parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
@@ -3128,6 +3156,7 @@ function startApp(){
     state.oficyc=d.oficyc||{};   // 29/10: 🏪 Oficina CYC por unidades (la carga Claude con oficyc:)
     state.pedperf=d.pedperf||{};   // 29/10: 🛍️ lo que pidió la perfumería (se suma en Pedidos de Bs As)
     state.prompts=d.prompts||{};   // 29/10: 🤖 textos para el chat de Chrome (los copia el robot de ml-sync/PROMPT_*.md)
+    state.pregpend=d.pregpend||{};state.pregresp=d.pregresp||{};state.decisiones=d.decisiones||{};   // 14/11/2026 (62a, 66a): 💬 preguntas y 🗳️ decisiones de Inicio
     state.paramati=d.paramati||{};try{renderHomeClaude();}catch(_){}   // 13/11/2026: 💬 mensajes de Claude para Matías, grandes arriba de Inicio
     state.parachat=d.parachat||{};   // 12/11/2026: 📌 Pedidos de Claude al chat de Chrome. Se bajaba (CYC_KEYS) pero nunca se pasaba a la pantalla: el cuadro no salía desde el 10/11
     if(d.recon_vivo)state.recon_vivo=d.recon_vivo;   // 12/11/2026: mismo error (se escuchaba y no se leía): la web volvía a escribirlo cada hora sin necesidad
@@ -3684,7 +3713,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.201';
+const APP_VERSION='28.202';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3697,6 +3726,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.202',f:'14/11',h:'02:55',c:[{n: 2, t: "💬 Inicio: las preguntas de compradores de las 4 cuentas se contestan desde acá (con la ficha y «ya contestaste una igual»); el robot las manda y las relee de ML (62a)."},{n: 2, t: "🗳️ Inicio: las decisiones que te paso salen como tarjetas: tocás (a) o (b) y «📨 Mandar a Claude» (66a)."},{n: 2, t: "🚚 Inicio: «Lo que llega», todo junto por fecha: en rojo lo que hay que retirar, HOY con su código, los próximos días y en ámbar lo atrasado (63a)."},{n: 2, t: "🔍 Inicio: «¿Qué pasó esta semana?» sale sólo cuando la ganancia de los últimos 7 días viene 15% o más abajo de lo normal, con la causa de cada producto (65a)."},{n: 1, t: "🛍️ Los botones de la Tienda y ABEL dicen cuántos productos y de qué día; «👀 Cómo la ve la gente» muestra la página publicada y comparte el link (64a)."},{n: 1, t: "🔴 El ícono de CYC muestra cuántas ventas buenas nuevas hay (las de $10.000+), como WhatsApp (21a)."},{n: 1, t: "📋 HOY TOCA del chat de Chrome en el orden nuevo: RUTINA → PERFUMES → GUAY…; el MIRAR TODO completo una vez por semana y los otros días el corto (58a)."}]},
   {v:'28.201',f:'14/11',h:'02:31',c:[{n: 2, t: "🏷️ Armar caja: al lado de lo que recomienda ML ahora dice 🎁 si ML se hace cargo del stock antiguo cuando mandás lo que sugiere, ⭐ producto estrella y ⛔ restringido (55a)."}]},
   {v:'28.200',f:'14/11',h:'02:21',c:[{n: 1, t: "🔎 Ajustes → Revisiones: las 15 de Diseño del 10/11 salen de pendientes (hechas las 14 que elegiste; la 5 no)."}]},
   {v:'28.199',f:'14/11',h:'02:18',c:[{n: 1, t: "📱 Lo chico del Diseño 10/11 (1a): en el teléfono los botones de elegir (Día/Mes/Año, filtros, ordenar) de 40 px y las flechas ‹ › de 44; números con coma (2,5 pts, 22,7%, rotación 3,82); el ☰ ya no desaparece al entrar a una pantalla."}, {n: 1, t: "☀️ Tema claro: los nombres de cuenta, el lila, el ámbar, el dorado de ABEL y el celeste fijos se leen sobre blanco."}, {n: 1, t: "🔢 Métricas y Resumen: los números de 10 cifras se achican para entrar enteros en su cuadro. Pedido del momento: la casilla ya no se corre cuando el subtotal es más largo."}, {n: 1, t: "🛍️ Mercadería Perfumería: el botón ✅ va a la derecha de los dos renglones y el 2º renglón (fecha · perfumería · ganancia · %) entra entero."}]},
@@ -9850,17 +9880,21 @@ function renderBuzonCard(){
       // mira esta línea al arrancar y hace lo que toca. Sale de TODOS los mensajes del buzón (leídos o no) que empiezan con el nombre de la tarea.
       // 03/11/2026: + CAJAS LLEGADAS, MÁS VENDIDOS y MAYORISTAS WEB; cada mensaje cuenta para la tarea de nombre MÁS LARGO que coincide
       // (un "CAJAS LLEGADAS …" no es la tarea CAJAS).
-      const T=['RUTINA','MIRAR TODO','COMPETENCIA','CAJAS','CAJAS LLEGADAS','GUAY','LISTAS','ONCE','IMEGA','MAYORISTAS WEB','MÁS VENDIDOS','TIENDA'],ult={};
+      const T=['RUTINA','MIRAR TODO','MIRAR CORTO','COMPETENCIA','CAJAS','CAJAS LLEGADAS','GUAY','LISTAS','ONCE','IMEGA','MAYORISTAS WEB','MÁS VENDIDOS','TIENDA'],ult={};
       Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T.filter(t=>m.startsWith(t)).sort((a,b)=>b.length-a.length)[0];if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
       const dd=ts=>Math.floor((Date.now()-ts)/864e5);
       // 📋 HOY TOCA (10/11/2026, él: "la rutina del chat local hacía 5 días no hacía Nissei. tiene errores y se saltea cosas… es muy importante que
       // se haga la rutina completa siempre que se la pida"): la lista de lo que le toca HOY a la run, con ✅ lo que ya dejó su mensaje hoy (día de
       // acá, no 24 h) y ❌ lo que falta. La run no termina hasta que todo esté ✅ (CHAT_LOCAL). EXTRACTO y PERFUMES también cuentan.
-      const T2=['EXTRACTO','PERFUMES','VIA CARGO'];Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T2.find(t=>m.startsWith(t));if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;});
+      const T2=['EXTRACTO','PERFUMES','VIA CARGO'];Object.values(state.buzon||{}).forEach(x=>{if(!x||!x.t)return;const m=String(x.t).trim().toUpperCase();const k=T2.find(t=>m.startsWith(t));if(k&&(!ult[k]||x.ts>ult[k]))ult[k]=x.ts;
+        if(m.startsWith('RUTINA')&&/^\s*perfumes:/im.test(String(x.t))&&(!ult.PERFUMES||x.ts>ult.PERFUMES))ult.PERFUMES=x.ts;});   // 58a del 14/11: el renglón "perfumes:" de la RUTINA también cuenta
       const dia=ts=>{const d=new Date(ts);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();},hoyD=dia(Date.now());
       const domingo=(()=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();})();
       const _hayGuia=Object.values(state.compraspy||{}).some(c=>c&&c.guia&&c.estado!=='llego');
-      const toca=[...(_hayGuia?[['VIA CARGO',1]]:[]),['RUTINA',1],['MIRAR TODO',1],['CAJAS LLEGADAS',1],['EXTRACTO',1],['PERFUMES',1],['GUAY',1],['MÁS VENDIDOS',1],['COMPETENCIA',1],['LISTAS',7],['MAYORISTAS WEB',7],['ONCE','dom'],['IMEGA',14]]
+      // 58a del 14/11/2026: el ORDEN FIJO de la run (RUTINA → PERFUMES → GUAY → …); el MIRAR TODO completo una vez por semana y los otros días
+      // el MIRAR CORTO (sólo lo que el robot no ve). Un MIRAR TODO de hoy cuenta también como el corto.
+      if(ult['MIRAR TODO']&&(!ult['MIRAR CORTO']||ult['MIRAR TODO']>ult['MIRAR CORTO']))ult['MIRAR CORTO']=ult['MIRAR TODO'];
+      const toca=[...(_hayGuia?[['VIA CARGO',1]]:[]),['RUTINA',1],['PERFUMES',1],['GUAY',1],['MIRAR CORTO',1],['CAJAS LLEGADAS',1],['EXTRACTO',1],['MÁS VENDIDOS',1],['COMPETENCIA',1],['MIRAR TODO',7],['LISTAS',7],['MAYORISTAS WEB',7],['ONCE','dom'],['IMEGA',14]]
         .filter(([k,c])=>c===1||!ult[k]||(c==='dom'?ult[k]<domingo:dd(ult[k])>=c)||dia(ult[k])===hoyD);
       const okT=k=>ult[k]&&dia(ult[k])===hoyD,faltan=toca.filter(([k])=>!okT(k));
       const hoyHTML=`<div style="font-size:.7rem;margin:6px 0;padding:6px 8px;border-radius:8px;line-height:1.7;border:1px solid ${faltan.length?'rgba(239,68,68,.45)':'rgba(34,197,94,.45)'}">📋 <b>HOY TOCA</b> <span style="color:var(--muted)">(la run no termina hasta que todo esté ✅; si se corta, dejá "FALTA: …" y seguí en la próxima)</span><br>${toca.map(([k])=>okT(k)?`✅ ${k}`:`<b style="color:var(--red)">❌ ${k}</b>${ult[k]?` <span style="color:var(--muted)">(hace ${dd(ult[k])} d)</span>`:''}`).join(' · ')}${faltan.length?`<br><b style="color:var(--red)">Faltan ${faltan.length}</b>`:'<br><b style="color:var(--green)">Todo hecho ✅</b>'}</div>`;
@@ -11178,6 +11212,196 @@ function renderHomeClaude(){
     ${L.map(([id,x])=>`<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere">${_esc(x.t)}<div style="font-size:.7rem;color:var(--muted);margin-top:6px">${new Date(Number(id)).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} <button class="btn" style="padding:4px 10px;font-size:.72rem;margin-left:8px" onclick="fbSet('paramati/${id}/leido',Date.now()).then(()=>toast('✅ Leído'))">✅ Leído</button></div></div>`).join('')}
     <div style="font-size:.78rem;color:var(--muted);margin-top:10px">Para contestarme: <b>Mi oficina → 📬 Mensaje para Claude</b>. Lo leo en cada vuelta.</div></div>`;
 }
+// ═══ INICIO · LAS TARJETAS DE LAS IDEAS DEL 12/11 (él eligió la a el 14/11) ═══════════════════════════════════════════════════════════
+// Una sola función las dibuja en `#home-extra` (arriba de Inicio, debajo de "💬 Claude te escribe"): 💬 preguntas de compradores (62a),
+// 🗳️ decisiones para tocar (66a), 🚚 lo que llega (63a) y 🔍 ¿qué pasó esta semana? (65a, sólo si la semana viene 15%+ abajo). Cada una sale
+// sólo si tiene algo. La llama `renderHomeVivos` (al entrar a Inicio y cada vez que llegan datos).
+function renderHomeExtra(){
+  const el=document.getElementById('home-extra');if(!el)return;
+  // no se redibuja mientras escribe una respuesta (se perdería lo tipeado)
+  const foco=document.activeElement;if(foco&&el.contains(foco)&&foco.tagName==='TEXTAREA')return;
+  let h='';
+  for(const f of [_hxPreguntas,_hxDecisiones,_hxLlega,_hxSemana]){try{h+=f()||'';}catch(e){try{(window._diag=window._diag||{}).hxErr=String(e&&e.message||e).slice(0,160);}catch(_){}}}
+  el.innerHTML=h;
+  try{_hxTiendaBotones();}catch(e){}
+}
+const _hxP2=n=>String(n).padStart(2,'0');
+const _hxDiaTxt=t=>{const d=new Date(t);return _hxP2(d.getDate())+'/'+_hxP2(d.getMonth()+1);};
+const _hxHace=t=>{const m=(Date.now()-Number(t||0))/60e3;return m<60?`hace ${Math.max(1,Math.round(m))} min`:m<48*60?`hace ${Math.round(m/60)} h`:`hace ${Math.round(m/1440)} días`;};
+function _hxAbierta(k,def){try{const v=localStorage.getItem('cycHx_'+k);return v==null?def:v==='1';}catch(e){return def;}}
+function hxToggle(k){try{localStorage.setItem('cycHx_'+k,_hxAbierta(k,true)?'0':'1');}catch(e){}renderHomeExtra();}
+function _hxCab(k,ico,tit,sub,col,def){const ab=_hxAbierta(k,def);
+  return `<div class="hx-cab" onclick="hxToggle('${k}')"><span class="hx-tit" style="color:${col}">${ico} ${tit}</span><span class="hx-sub">${sub||''}</span><span class="hx-fl">${ab?'▾':'▸'}</span></div>`;}
+
+// ── 💬 PREGUNTAS DE COMPRADORES (62a) ── las deja el robot en `cyc/pregpend` (cada 10 min) y la respuesta va a `cyc/pregresp/<id>`: el robot la
+// manda en la próxima vuelta (~2 min) con el mismo freno de siempre y la RELEE de ML. "Ya contestaste una igual" = la respuesta que ya se dio
+// en esa publicación o en otra del mismo producto (memoria del robot).
+const HX_RESP_MAL=/\S+@\S+|https?:\/\/|www\.|\d[\d\s.-]{5,}\d/i;
+function _hxPreguntas(){
+  const R=state.pregresp||{};
+  const P=Object.entries(state.pregpend||{}).filter(([id,x])=>x&&x.q&&!(R[id]&&(R[id].estado==='nuevo'||R[id].estado==='hecho'))).sort((a,b)=>(a[1].ts||0)-(b[1].ts||0));
+  const S=Object.entries(R).filter(([,r])=>r&&r.estado&&Date.now()-(Number(r.fin||r.ts)||0)<12*36e5).sort((a,b)=>(Number(b[1].ts)||0)-(Number(a[1].ts)||0));
+  if(!P.length&&!S.length)return '';
+  const ab=_hxAbierta('preg',true);
+  const est={nuevo:['⏳','var(--amber)','sale en la próxima vuelta del robot (~2 min)'],hecho:['✅','var(--green)','contestada (releída de ML)'],falló:['❌','var(--red)',''],rechazada:['❌','var(--red)',''],yaestaba:['↩️','var(--muted)','ya estaba contestada en ML']};
+  const sal=S.slice(0,6).map(([id,r])=>{const e=est[r.estado]||['·','var(--muted)',''];return `<div class="hx-mini" style="color:${e[1]}">${e[0]} ${_esc(String(r.t).slice(0,70))}${String(r.t).length>70?'…':''} <span style="color:var(--muted)">· ${_esc(r.motivo||e[2])}</span></div>`;}).join('');
+  const item=([id,x])=>{const L=(state.mllinks||{})[x.mla]||{};const p=x.prodId?(state.products||[]).find(pp=>pp.id===x.prodId):null;
+    const sug=x.igual||x.parecida;const precio=Number(L.price||L.precio)||0;
+    return `<div class="hx-item">
+      <div class="hx-mini"><b class="hx-chip">${_esc(x.cuenta||'?')}</b> ${_esc(String(x.tit||x.mla).slice(0,70))} · <span style="color:var(--muted)">${_hxHace(x.ts)}</span></div>
+      <div class="hx-q">“${_esc(x.q)}”</div>
+      <div class="hx-mini" style="color:var(--muted)">📋 ${precio?fmt(precio)+' · ':''}${p?'stock en Full '+stockOf(p)+' · ':''}<a href="https://articulo.mercadolibre.com.ar/MLA-${_esc(String(x.mla).slice(3))}" target="_blank" rel="noopener">ver la publicación</a>${p?` · <a href="#" onclick="event.preventDefault();lineaFichaAbrir('${_esc(p.id)}',event)">ficha completa</a>`:''}</div>
+      ${sug?`<div class="hx-sug"><b>${x.igual?'🔁 Ya contestaste una igual':'≈ Contestaste una parecida'}</b>${x.igual?'':` (“${_esc(String(sug.q).slice(0,120))}”)`}: «${_esc(sug.a)}» <button class="btn hx-b" onclick="hxPregUsar('${_esc(String(id))}')">Usar esa</button></div>`:''}
+      <textarea id="hxp-${_esc(String(id))}" class="hx-ta" rows="2" maxlength="500" placeholder="Tu respuesta (10 a 500 letras, sin teléfonos, mails ni links)"></textarea>
+      <div style="text-align:right"><button class="btn hx-b" onclick="hxPregMandar('${_esc(String(id))}')">📨 Mandar</button></div></div>`;};
+  return `<div class="hx-card" style="border-color:rgba(56,189,248,.6)">${_hxCab('preg','💬',P.length?`${P.length} pregunta${P.length===1?'':'s'} te espera${P.length===1?'':'n'}`:'Preguntas','las 4 cuentas · contestás desde acá','#38bdf8',true)}
+    ${ab?P.slice(0,15).map(item).join('')+(P.length>15?`<div class="hx-mini" style="color:var(--muted)">… y ${P.length-15} más</div>`:'')+sal:''}</div>`;
+}
+function hxPregUsar(id){const x=(state.pregpend||{})[id];const s=x&&(x.igual||x.parecida);const ta=document.getElementById('hxp-'+id);if(s&&ta){ta.value=s.a;ta.focus();}}
+async function hxPregMandar(id){
+  const ta=document.getElementById('hxp-'+id);if(!ta)return;const t=ta.value.replace(/\s+/g,' ').trim();
+  if(t.length<10||t.length>500){toast('La respuesta tiene que tener entre 10 y 500 letras','err');return;}
+  if(HX_RESP_MAL.test(t)){toast('Sin teléfonos, mails, links ni números largos (ML la rechaza)','err',5000);return;}
+  try{await fbSet('pregresp/'+id,{t,ts:Date.now(),estado:'nuevo'});state.pregresp=state.pregresp||{};state.pregresp[id]={t,ts:Date.now(),estado:'nuevo'};}
+  catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+  ta.blur();toast('✅ Sale en la próxima vuelta del robot (~2 min)');renderHomeExtra();
+}
+
+// ── 🗳️ DECIDIR TOCANDO (66a) ── las carga Claude (`decisiones:archivo=…;go` → `cyc/decisiones`). Tocás (a) o (b) (queda guardado) y
+// "📨 Mandar a Claude" deja en el 📬 buzón "DECISIONES <fecha>: 3a 4b …" (lo leo en la vuelta).
+function _hxDecisiones(){
+  const D=Object.entries(state.decisiones||{}).filter(([,x])=>x&&x.tit&&!x.enviada).sort((a,b)=>(Number(a[1].n)||0)-(Number(b[1].n)||0));
+  if(!D.length)return '';
+  const eleg=D.filter(([,x])=>x.elegida).length;const ab=_hxAbierta('dec',true);
+  const op=(id,x,k)=>{const o=x[k]||{};const sel=x.elegida===k;const pc=o.pct!=null?Math.round(o.pct)+'%':'';
+    return `<button class="hx-op${sel?' sel':''}" onclick="hxDecElegir('${_esc(id)}','${k}')"><b>(${k})${k==='a'?' sugerida':''}</b> ${_esc(o.t)}${o.precio?` <span class="hx-num">${fmt(Number(o.precio)||0)}</span>`:''}${pc?` <span class="hx-num" style="color:${o.pct>=35?'var(--green)':'var(--red)'}">${pc}</span>`:''}</button>`;};
+  const item=([id,x])=>{const L=x.mla?(state.mllinks||{})[x.mla]||{}:{};const foto=L.foto||'';
+    return `<div class="hx-item"><div style="display:flex;gap:10px;align-items:flex-start">${foto?`<img src="${_esc(foto)}" alt="" class="hx-foto" loading="lazy">`:''}<div style="min-width:0;flex:1">
+      <div class="hx-q" style="font-style:normal"><b>${_esc(x.n)}.</b> ${_esc(x.tit)}</div>
+      <div class="hx-mini" style="color:var(--muted)">${x.pctHoy!=null?`hoy <b style="color:${x.pctHoy>=35?'var(--green)':'var(--red)'}">${Math.round(x.pctHoy)}%</b> · `:''}${x.stock?_esc(x.stock)+' · ':''}${x.techo?'techo: '+_esc(x.techo):''}</div>
+      ${x.txt?`<div class="hx-mini" style="white-space:pre-wrap">${_esc(x.txt)}</div>`:''}</div></div>
+      <div class="hx-ops">${op(id,x,'a')}${op(id,x,'b')}</div></div>`;};
+  return `<div class="hx-card" style="border-color:rgba(168,85,247,.6)">${_hxCab('dec','🗳️',`${D.length} decisi${D.length===1?'ón':'ones'} para vos`,`elegidas ${eleg} de ${D.length}`,'#a855f7',true)}
+    ${ab?D.map(item).join('')+`<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;margin-top:8px"><span class="hx-mini" style="color:var(--muted)">${eleg?`se mandan ${eleg}: ${D.filter(([,x])=>x.elegida).map(([,x])=>x.n+x.elegida).join(' ')}`:'tocá (a) o (b) en cada una'}</span><button class="btn hx-b" ${eleg?'':'disabled'} onclick="hxDecMandar()">📨 Mandar a Claude</button></div>`:''}</div>`;
+}
+async function hxDecElegir(id,k){const x=(state.decisiones||{})[id];if(!x)return;const v=x.elegida===k?null:k;
+  try{await fbSet('decisiones/'+id+'/elegida',v);x.elegida=v;}catch(e){toast('⚠️ No se guardó','err');return;}renderHomeExtra();}
+async function hxDecMandar(){
+  const D=Object.entries(state.decisiones||{}).filter(([,x])=>x&&!x.enviada&&x.elegida).sort((a,b)=>(Number(a[1].n)||0)-(Number(b[1].n)||0));if(!D.length)return;
+  const hoy=new Date(),f=hoy.getFullYear()+'-'+_hxP2(hoy.getMonth()+1)+'-'+_hxP2(hoy.getDate());
+  const t='DECISIONES '+f+': '+D.map(([,x])=>x.n+x.elegida).join(' ');const ts=Date.now();
+  try{await fbSet('buzon/'+ts,{t,ts});for(const [id] of D){await fbSet('decisiones/'+id+'/enviada',ts);state.decisiones[id].enviada=ts;}}
+  catch(e){toast('⚠️ No se mandó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+  toast('📨 Mandado a Claude: '+D.map(([,x])=>x.n+x.elegida).join(' '));renderHomeExtra();
+}
+
+// ── 🚚 LO QUE LLEGA (63a) ── todo junto, por fecha: 🔴 para retirar (Via Cargo dice que llegó), HOY (lo que vio el chat de Chrome en ML:
+// compras, retiros y devoluciones con su código), los próximos días (pedidos en camino: Paraguay, listas, Paulvic) y 🟠 lo atrasado.
+function _hxLlegaItems(){
+  const out=[];const hoy0=new Date();hoy0.setHours(0,0,0,0);const H=hoy0.getTime();
+  const fch=f=>{const t=Date.parse(String(f||'')+'T12:00:00-03:00');return t>0?t:null;};
+  const dia=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime();};
+  const add=(cuando,cl,txt)=>out.push({cuando,cl,txt});
+  for(const c of Object.values(state.compraspy||{})){if(!c||c.estado!=='camino')continue;const nom=`Pedido ${c.num?'#'+c.num+' ':''}de Paraguay${c.tipo?' ('+c.tipo+')':''}`;
+    const v=c.via||{};if(v.llego&&!v.retirado){add(H,'retirar',`📍 ${nom} LLEGÓ a Via Cargo: falta retirar${c.guia?' · guía '+c.guia:''}`);continue;}
+    const t0=fch(c.fecha);if(!t0)continue;const e=dia(t0+PY_DIAS_VIAJE*864e5);add(e,e<H?'atrasado':e===H?'hoy':'prox',`🇵🇾 ${nom}${v.t?' · '+String(v.t).slice(0,90):''}`);}
+  for(const c of Object.values(state.comprasLista||{})){if(!c||c.estado!=='camino')continue;const t0=fch(c.fecha);if(!t0)continue;const e=dia(t0+LISTA_DIAS_VIAJE*864e5);
+    add(e,e<H?'atrasado':e===H?'hoy':'prox',`📋 Pedido ${c.num?'#'+c.num+' ':''}a ${String(c.provNom||c.prov||'una lista')}`);}
+  for(const c of Object.values(state.pedidospv||{})){if(!c||c.estado!=='camino')continue;const t0=fch(c.fecha);if(!t0)continue;const e=dia(t0+7*864e5);
+    add(e,e<H?'atrasado':e===H?'hoy':'prox',`🧴 Pedido ${c.num?'#'+c.num+' ':''}a Paulvic`);}
+  // lo que vio hoy el chat de Chrome (HOY LLEGA / MIRAR TODO): sólo lo que llega de verdad (la misma cuenta que el aviso de Telegram)
+  const viejo=l=>/ya lleg[oó]|qued[oó] viejo|estado viejo/i.test(l),esNada=l=>/:\s*nada\b|\b(no (llega|viene|hay) nada|sin nada|nada (para recibir|hoy))\b/i.test(l);
+  const llega=l=>!viejo(l)&&((/^HOY LLEGA/i.test(l)&&(!esNada(l)||/compra|retiro|devoluci|llega (el|entre|ma[ñn]ana|hoy)/i.test(l)))||/llegan hoy\s*[1-9]|retiros en camino\s*[1-9]/i.test(l)||(/⏰/.test(l)&&/lleg|retiro|compra|devoluci|agencia|domicilio/i.test(l)));
+  const msgs=Object.values(state.buzon||{}).filter(m=>m&&m.t&&dia(Number(m.ts)||0)===H&&/^\s*(HOY LLEGA|MIRAR)/i.test(m.t)).sort((a,b)=>b.ts-a.ts);
+  const vistos=new Set();for(const m of msgs)for(const l of String(m.t).split('\n').map(x=>x.trim()).filter(llega)){const k=l.replace(/\s+/g,' ');if(vistos.has(k))continue;vistos.add(k);
+    add(H,'hoy','📦 '+l.replace(/^HOY LLEGA\s*[·:\-]\s*(Adriana|Luciana|Ayelen|Mat[ií]as)\s*:\s*/i,'a $1: ').replace(/^HOY LLEGA\s*[·:\-]\s*/i,''));}
+  return out;
+}
+function _hxLlega(){
+  const I=_hxLlegaItems();if(!I.length)return '';
+  const ret=I.filter(x=>x.cl==='retirar'),hoy=I.filter(x=>x.cl==='hoy'),atr=I.filter(x=>x.cl==='atrasado'),prox=I.filter(x=>x.cl==='prox').sort((a,b)=>a.cuando-b.cuando);
+  const urg=ret.length||atr.length;const ab=_hxAbierta('llega',!!(ret.length||hoy.length));
+  const fila=(x,col)=>`<div class="hx-mini" style="${col?'color:'+col:''}">${_esc(x.txt)}</div>`;
+  const porDia={};for(const x of prox)(porDia[x.cuando]=porDia[x.cuando]||[]).push(x);
+  const sub=[ret.length?`🔴 ${ret.length} para retirar`:'',hoy.length?`${hoy.length} hoy`:'',prox.length?`${prox.length} en camino`:'',atr.length?`🟠 ${atr.length} atrasado${atr.length===1?'':'s'}`:''].filter(Boolean).join(' · ');
+  return `<div class="hx-card" style="border-color:${urg?'rgba(239,68,68,.6)':'rgba(34,197,94,.5)'}">${_hxCab('llega','🚚','Lo que llega',sub,urg?'var(--red)':'var(--green)',!!(ret.length||hoy.length))}
+    ${ab?`${ret.length?`<div class="hx-sec" style="color:var(--red)">🔴 PARA RETIRAR</div>${ret.map(x=>fila(x,'var(--red)')).join('')}`:''}
+    ${hoy.length?`<div class="hx-sec">📅 HOY</div>${hoy.map(x=>fila(x)).join('')}`:''}
+    ${Object.keys(porDia).sort().map(k=>`<div class="hx-sec">${_hxDiaTxt(Number(k))} (en ${Math.round((Number(k)-new Date().setHours(0,0,0,0))/864e5)} día${Math.round((Number(k)-new Date().setHours(0,0,0,0))/864e5)===1?'':'s'})</div>${porDia[k].map(x=>fila(x)).join('')}`).join('')}
+    ${atr.length?`<div class="hx-sec" style="color:var(--amber)">🟠 ATRASADO (tendría que haber llegado)</div>${atr.map(x=>fila({...x,txt:x.txt+' · esperado el '+_hxDiaTxt(x.cuando)},'var(--amber)')).join('')}`:''}`:''}</div>`;
+}
+
+// ── 🔍 ¿QUÉ PASÓ ESTA SEMANA? (65a) ── sólo cuando los últimos 7 días (hasta ayer) dejaron 15%+ menos ganancia que lo normal (el promedio por
+// semana de las 4 semanas de antes). Ventas, ganancia y cuánto deja cada $100 facturados contra lo normal, y una escalera por causa: los
+// productos que más bajaron, agrupados en ⏸️ sin stock · 📈 subió de precio (a propósito, 29/10) · 🥊 caja perdida · ❓ otro; y 🆕 lo nuevo que vendió.
+const HX_SEMANA_UMBRAL=0.85;
+function _hxSemanaDatos(){
+  const ayer=new Date();ayer.setHours(12,0,0,0);ayer.setDate(ayer.getDate()-1);
+  const tot={s:{b:0,g:0,v:0},n:{b:0,g:0,v:0}};const porP={};
+  for(let i=0;i<35;i++){const d=new Date(ayer);d.setDate(d.getDate()-i);const k=dateToKey(d);const w=i<7?'s':'n';
+    const t=_homeDiaTot(k);tot[w].b+=t.bruto;tot[w].g+=t.gan;tot[w].v+=t.ventas;
+    for(const v0 of Object.values((state.ventaprod||{})[k]||{})){if(!v0||v0.cancelada||!v0.prodId)continue;const v={...v0,_dateKey:k};const g=(v.neto||0)-efectivoCostoVP(v);
+      const P=porP[v.prodId]=porP[v.prodId]||{s:0,n:0,us:0,un:0,mlas:new Set()};P[w]+=g;P['u'+w]+=v.qty||0;if(v.mla)P.mlas.add(v.mla);}}
+  const n={b:tot.n.b/4,g:tot.n.g/4,v:tot.n.v/4};
+  return {s:tot.s,n,porP};
+}
+function _hxSemana(){
+  const D=_hxSemanaDatos();if(!(D.n.g>0)||D.s.g>=D.n.g*HX_SEMANA_UMBRAL)return '';
+  const pc=(a,b)=>b>0?Math.round((a/b-1)*100):0;const c100=x=>x.b>0?x.g/x.b*100:0;
+  const prods=state.products||[];const nomDe=id=>{const p=prods.find(pp=>pp.id===id);return p?p.name:id;};
+  const hace21=Date.now()-21*864e5;const cc=Object.values(state.claudecambios||{});
+  const causa=(id,P)=>{const p=prods.find(pp=>pp.id===id);if(p&&stockOf(p)<=0)return 'stock';
+    const ms=[...P.mlas,...Object.entries(state.mllinks||{}).filter(([,e])=>e&&e.prodId===id).map(([m])=>m)];
+    if(cc.some(c=>c&&ms.includes(c.mla)&&Number(c.a)>Number(c.de)&&Number(c.ts)>=hace21))return 'suba';
+    if(ms.some(m=>((state.mllinks||{})[m]||{}).caja==='losing'))return 'caja';return 'otro';};
+  const C={stock:{t:'⏸️ Sin stock',q:'reponer: mirá Pedidos y Armar caja',l:[],d:0},suba:{t:'📈 Subió de precio',q:'es a propósito (29/10): el lugar se llena con productos nuevos',l:[],d:0},caja:{t:'🥊 Caja perdida',q:'Claude mira si conviene la gemela Premium o esperar',l:[],d:0},otro:{t:'❓ Otro',q:'lo mira Claude en la vuelta',l:[],d:0}};
+  const nuevos=[];
+  for(const [id,P] of Object.entries(D.porP)){const nor=P.n/4,dif=P.s-nor;
+    if(P.n<=0&&P.s>0){nuevos.push({id,g:P.s});continue;}
+    if(dif>=-1000)continue;const k=causa(id,P);C[k].l.push({id,dif});C[k].d+=dif;}
+  const filas=Object.values(C).filter(c=>c.l.length).sort((a,b)=>a.d-b.d);
+  const nG=nuevos.reduce((s,x)=>s+x.g,0);const ab=_hxAbierta('sem',true);
+  const kpi=(t,a,b,f)=>`<div class="hx-kpi"><div class="hx-mini" style="color:var(--muted)">${t}</div><b>${f(a)}</b><div class="hx-mini" style="color:${a>=b?'var(--green)':'var(--red)'}">${pc(a,b)>=0?'+':''}${pc(a,b)}% · normal ${f(b)}</div></div>`;
+  return `<div class="hx-card" style="border-color:rgba(245,158,11,.6)">${_hxCab('sem','🔍','¿Qué pasó esta semana?',`la ganancia viene ${pc(D.s.g,D.n.g)}% contra lo normal`,'var(--amber)',true)}
+    ${ab?`<div class="hx-kpis">${kpi('Ventas',D.s.v,D.n.v,x=>fmtN(Math.round(x)))}${kpi('Ganancia',D.s.g,D.n.g,x=>fmt(Math.round(x)))}${kpi('Cada $100',c100(D.s),c100(D.n),x=>'$'+x.toFixed(1))}</div>
+    <div class="hx-mini" style="color:var(--muted);margin:4px 0">Los 7 días hasta ayer contra el promedio por semana de las 4 semanas de antes. Los productos que más bajaron, por causa:</div>
+    ${filas.map(c=>`<div class="hx-sec">${c.t} <span style="color:var(--red)">${fmt(Math.round(c.d))}</span> <span style="color:var(--muted);font-weight:400">→ ${c.q}</span></div>${c.l.sort((a,b)=>a.dif-b.dif).slice(0,4).map(x=>`<div class="hx-mini">· ${_esc(String(nomDe(x.id)).slice(0,60))} <span style="color:var(--red)">${fmt(Math.round(x.dif))}</span></div>`).join('')}`).join('')}
+    ${nuevos.length?`<div class="hx-sec" style="color:var(--green)">🆕 Lo nuevo que vendió <span>+${fmt(Math.round(nG))}</span></div>${nuevos.sort((a,b)=>b.g-a.g).slice(0,3).map(x=>`<div class="hx-mini">· ${_esc(String(nomDe(x.id)).slice(0,60))} <span style="color:var(--green)">+${fmt(Math.round(x.g))}</span></div>`).join('')}`:''}`:''}</div>`;
+}
+
+// ── 🛍️ LA TIENDA Y ABEL VISTAS DESDE EL PANEL (64a) ── cada botón dice cómo está (● N · hoy en verde, ● de ayer en ámbar, ● vieja en rojo),
+// con lo que dejó el robot (`cyc/mlconfig/tiendaEstado`). "👀 Cómo la ve la gente" baja la página PUBLICADA (lo que de verdad ve la gente),
+// la compara con la armada y deja compartir el link de siempre.
+const HX_TIENDA_LINK='https://tiendacyc.github.io/?v=3', HX_ABEL_LINK='https://tiendacyc.github.io/abel/';
+function _hxEstadoTxt(e){if(!e||!e.act)return {t:'',c:'var(--muted)'};const hoy=dateToKey(new Date()).replace(/_/g,'-');const d=Math.round((Date.parse(hoy+'T12:00:00')-Date.parse(e.act+'T12:00:00'))/864e5);
+  if(e.actualizando)return {t:'● actualizando',c:'var(--amber)'};
+  return {t:`● ${fmtN(Number(e.n)||0)} · ${d<=0?'hoy':d===1?'de ayer':'hace '+d+' días'}`,c:d<=0?'var(--green)':d===1?'var(--amber)':'var(--red)'};}
+function _hxTiendaBotones(){const E=((state.mlconfig||{}).tiendaEstado)||{};
+  for(const [id,k] of [['hc-tienda-est','tienda'],['hc-abel-est','abel']]){const el=document.getElementById(id);if(!el)continue;const x=_hxEstadoTxt(E[k]);el.textContent=x.t;el.style.color=x.c;el.style.display=x.t?'':'none';}}
+async function hxTiendaHoja(){
+  let m=document.getElementById('hx-tienda-modal');if(m)m.remove();
+  m=document.createElement('div');m.id='hx-tienda-modal';m.className='tito-modal';m.onclick=e=>{if(e.target===m)m.remove();};
+  m.innerHTML=`<div class="tito-caja"><div class="tito-cab"><b>👀 Cómo la ve la gente</b><button class="btn" onclick="document.getElementById('hx-tienda-modal').remove()">✕</button></div><div id="hx-tienda-cuerpo" class="hx-mini" style="margin-top:8px">Bajando lo publicado…</div></div>`;
+  document.body.appendChild(m);
+  const E=((state.mlconfig||{}).tiendaEstado)||{};
+  const una=async(nom,url,link,e)=>{let pub=null;try{const r=await fetch(url+'?t='+Date.now(),{cache:'no-store'});if(r.ok)pub=await r.json();}catch(_){}
+    const n=pub&&Array.isArray(pub.productos)?pub.productos.length:null;const igual=pub&&e&&pub.act===e.act;
+    const muestra=pub&&pub.productos?pub.productos.slice(0,6):[];
+    return `<div class="hx-item"><div class="hx-q" style="font-style:normal"><b>${nom}</b></div>
+      <div class="hx-mini">La gente ve: ${pub?`<b>${fmtN(n)}</b> productos · lista del <b>${_esc(pub.act||'?')}</b>${pub.actualizando?' · dice "actualizando"':''}`:'<span style="color:var(--red)">no pude bajarla (¿sin internet?)</span>'}</div>
+      <div class="hx-mini">El robot armó: ${e&&e.act?`${fmtN(Number(e.n)||0)} · del ${_esc(e.act)}`:'sin dato todavía'} ${pub&&e&&e.act?(igual?'<b style="color:var(--green)">✓ es la misma</b>':'<b style="color:var(--red)">⚠️ la publicada es otra: no se subió la nueva</b>'):''}</div>
+      ${muestra.length?`<div class="hx-muestra">${muestra.map(p=>`<div>${p.f&&p.f[0]?`<img src="${_esc(p.f[0])}" alt="" loading="lazy">`:''}<div>${_esc(String(p.n).slice(0,40))}</div><b>${fmt(Number(p.p)||0)}</b></div>`).join('')}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><a class="btn hx-b" href="${link}" target="_blank" rel="noopener">Abrir</a><button class="btn hx-b" onclick="hxCompartir('${link}','${nom}')">📤 Compartir el link</button></div></div>`;};
+  const h=(await una('🛍️ Tienda','https://tiendacyc.github.io/productos.json',HX_TIENDA_LINK,E.tienda))+(await una('🌸 ABEL','https://tiendacyc.github.io/abel/productos.json',HX_ABEL_LINK,E.abel));
+  const c=document.getElementById('hx-tienda-cuerpo');if(c)c.innerHTML=h;
+}
+async function hxCompartir(link,nom){try{if(navigator.share){await navigator.share({title:'CYC',url:link});return;}}catch(e){return;}
+  try{await navigator.clipboard.writeText(link);toast('📋 Link copiado: '+link);}catch(e){prompt('Copiá el link',link);}}
+
+// ── 🔴 EL NUMERITO EN EL ÍCONO (21a) ── cuántas ventas BUENAS nuevas (las que dejan $10.000+, las mismas del aviso al teléfono) hay desde que
+// miraste Ventas. Lo pone la app al abrirse y el aviso de venta lo suma en el teléfono (sw.js); al mirar Ventas vuelve a 0.
+function hxBadge(n){try{if('setAppBadge' in navigator){if(n>0)navigator.setAppBadge(n);else navigator.clearAppBadge();}}catch(e){}
+  try{caches.open('badge-cyc').then(c=>c.put('n',new Response(String(Math.max(0,n|0)))));}catch(e){}}
 function cajasVerdes(filas){
   return LOCS.filter(c=>{const v=cajaVeredicto(convieneCaja(filas,c));return v&&v.k==='verde';});
 }
@@ -28383,7 +28607,7 @@ function _vivosDatos(){
   try{const vt=ventaVistoTs();if(vt){const ks=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort().slice(-8);const gr=new Map();
     for(const k of ks)for(const v of Object.values(state.ventaprod[k]||{})){if(!v||v.cancelada||!((Number(v.ts)||0)>vt))continue;const vv={...v,_dateKey:k};const g=vpGrupoKey(vv);
       gr.set(g,(gr.get(g)||0)+(ventaSinCostoVP(vv)?0:(v.neto||0)-efectivoCostoVP(vv)));}
-    d.nuevas=gr.size;d.nuevasGan=[...gr.values()].reduce((x,y)=>x+y,0);}}catch(e){}
+    d.nuevas=gr.size;d.nuevasBuenas=[...gr.values()].filter(x=>x>=10000).length;d.nuevasGan=[...gr.values()].reduce((x,y)=>x+y,0);}}catch(e){}
   // Los números de Pedidos y de Mi oficina son los MISMOS de la PC y de las pantallas: `pedFaltaReponerTodo` (7.2) y
   // `aMandarConCupo` (7.1, con el cupo de Full ya restado).
   try{const peds=[...(state.pedidos||[]),...(state.pedidos_py||[])];d.peds=peds.length;d.rojo=peds.filter(p=>_pedSem(p)==='rojo').length;
@@ -28409,6 +28633,8 @@ function renderHomeVivos(){
   [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
   // DISEÑO 5 DEL 31/10: la tarjeta Pedidos lleva una 🔴 con cuántos pedidos están en rojo (la misma cuenta del semáforo, `_pedSem`).
   try{const r=document.getElementById('hv-ven-nuevas');if(r){const n=_d.nuevas||0;r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
+  try{hxBadge(_d.nuevasBuenas||0);}catch(e){}   // 21a del 14/11: el numerito del ícono = ventas buenas nuevas
+  try{renderHomeExtra();}catch(e){}   // 14/11: 💬 preguntas · 🗳️ decisiones · 🚚 lo que llega · 🔍 la semana
   try{const r=document.getElementById('hv-ped-rojo');if(r){const n=_d.rojo||0;r.textContent=n?String(n):'';r.title=n?`${n} pedido${n===1?'':'s'} en rojo (se cortan en 14 días o menos)`:'';r.style.display=n?'':'none';}}catch(e){}
   return v;
 }

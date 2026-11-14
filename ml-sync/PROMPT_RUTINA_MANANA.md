@@ -1,5 +1,10 @@
 PROMPT · MIRAR TODO (parte de la RUTINA diaria) DEL CHAT DE CHROME DE CYC (06/11/2026, él: "que haga todo eso de los reclamos y mire mensajes… ponelo como rutina de la mañana, y que mire todo. Que por el momento no haga nada. Solo que mire y vea realmente cómo está todo. Que sea bien completo")
 
+> **14/11/2026 (Matías eligió la 12a): este texto ENTERO se hace UNA VEZ POR SEMANA ("MIRAR TODO <fecha>").** Los otros días se hace el
+> **MIRAR CORTO**: sólo las partes 2 (mensajes sin leer), 4 (lo que ML frena o avisa), 7 (Mercado Pago) y 8 (facturas), con el mismo formato,
+> en un mensaje que empiece "MIRAR CORTO <fecha>". Lo demás ya lo lee el robot. La parte 16 (HOY LLEGA) se hace siempre primero (CHAT_LOCAL a00).
+
+
 Cuándo: TODOS LOS DÍAS, dentro de la "rutina" (06/11, él: "hacé una sola rutina que sea completa"), justo después del cupo, Mercado Pago y Nissei. Todo se mira de nuevo cada vez: no te acordás de
 números de otros días.
 
