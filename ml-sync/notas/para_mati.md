@@ -709,3 +709,4 @@ Todo lo abierto de para_mati y de las revisiones, renumerado 1-66 (precios 1-15 
 - Precios sin contestar (6, 9-15): él dijo que los resuelva yo por regla ("¿no se supone que lo hacés vos y me preguntás cuando hay duda?"). Lo 🔐 (Pizarra 9 y Mazo 10) va en UN renglón para su autorizo.
 - 17 Batidores: por regla (a), aviso a Tito en el motivo del pedido.
 - Quedan sin contestar: 32-66 (diseño e ideas).
+- ✅ Diseño (lista grande 32-46, revisión del 10/11): 32a 33a 34a 35a 36b 37a 38a 39a 40a 41a 42a 43a 44a 45a 46a → todo a hacer menos 36 (sin "Para comprar hoy" de Tito). Se hace cuando termine lo de las reglas (los dos tocan la web).
