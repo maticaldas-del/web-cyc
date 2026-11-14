@@ -1175,6 +1175,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🧾 Pedidos: tarjeta básica y unidades sólo por ritmo (14/11/2026, él con la Mentonera)
+- **Qué es:** la tarjeta de Pedidos muestra foto, nombre, hasta cuánto pagar y cuántas comprar (sin barra de stock, motivo, en riesgo, cada $1 salva, máximo repetido ni escalera). Las unidades salen sólo del ritmo de venta (no del ritmo al precio del 35%) y se redondea siempre para arriba.
+- **Dónde vive:** `index.html` tarjeta de Pedidos (v28.206); `decide_pedidos.py` `RITMO_POR_PRECIO=False` y `math.ceil(…-1e-9)`.
+- **Qué chequear:** que ninguna tarjeta quede sin las unidades por color; que lo que pide no salte raro por el cambio (14/11: de 1.071 a 1.178 u. en total, con los datos nuevos del día).
+
 ### 📬 buzonauto: sin descartados y con el precio del listado (14/11/2026, él con el DualSense: "¿y qué hacemos?")
 - **Qué es:** el 57% del DualSense PS5 era el del candidato descartado el 19/09 (medido contra la edición de colección). Ahora `buzonauto` no lista descartados y controla cada % con el precio del listado de más vendidos (costo ≈ US$ × dólar × 1,23 · neto ≈ 80% − envío de Full); lo que no da va contado en "(afuera …)". CHAT_LOCAL: "Pendiente de recepción" = caja en camino, no se reporta como problema.
 - **Dónde vive:** `sync.mjs` bloque `buzonauto` (`rapido`, `noVa`); `CHAT_LOCAL.md` CAJAS LLEGADAS.

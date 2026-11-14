@@ -214,6 +214,7 @@ for gr in ('BSAS','PY','PAULVIC'):
     elif sum(1 for p in prods if p['g']==gr)!=esper[gr]: malo.append(f'{gr} no cierra')
 if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log está cortado o pedidostodo no cerró)')
 if malo: print('⚠️ NO ARMO PEDIDOS: '+' · '.join(malo)); sys.exit(1)
+RITMO_POR_PRECIO=False
 def ritmo(x,dcs=30):
     # 🛒 A PRECIO NORMAL (27/10/2026, él eligió 1a): si pedidostodo trae `NOR u30/d30 u/d@ventana`, el ritmo sale SÓLO de los días con
     # stock a precio normal (sin 🔥 escasez, ⏳ sin reposición, 📦 sobra, liquidando ni remate): lo vendido caro en escasez no achica la
@@ -225,7 +226,10 @@ def ritmo(x,dcs=30):
     _nrH=x.get('nor') or {}
     _escH=[int(d) for d in re.findall(r'⬆️\$\d+→\$\d+ (\d+)d(?:ESC)',x.get('cambios',''))]
     _usaHoy=bool(x.get('_hoy35') and _nrH.get('hoyD') is not None and _nrH['hoyD']>=7 and not (_escH and min(_escH)<=30))
-    if mm and mm['f']!='no' and mm['d']>=7 and not _usaHoy:   # el ritmo A ESE PRECIO (con 7+ días con stock a ese precio o más caro; si no, el de siempre)
+    # 🛒 14/11/2026 (él: "las unidades a pedir dependen del precio, pero no quiero hacerlo así. quiero que sólo mires el ritmo de venta, no al
+    # precio que lo compraría. y si tenés que redondear redondeá para arriba, total es mejor que sobre y no que falte"): las unidades ya no salen
+    # del ritmo A ESE PRECIO (M35); el M35 sólo dice si se repone y el máximo de compra. Queda el ritmo de venta (hoy / normal / 30-60-180 d).
+    if RITMO_POR_PRECIO and mm and mm['f']!='no' and mm['d']>=7 and not _usaHoy:   # el ritmo A ESE PRECIO (con 7+ días con stock a ese precio o más caro; si no, el de siempre)
         tiene=x['full']+x['casa']+x['cam']+x.get('py',0)+x.get('pv',0)+x.get('li',0)
         base=f"a ${mm['p']} ({'el de la competencia' if mm['f']=='comp' else 'la venta más cara de 365 días'}, deja {mm['pct']}%) vendió {mm['u']} en {mm['d']} días con stock"
         # Revisión etapa 3 (08/11/2026): el ritmo a ese precio pasa por los MISMOS frenos que el normal (antes salía directo): con 1-2 ventas
@@ -453,7 +457,7 @@ for p in prods:
         # Total del producto con UN redondeo y reparto por resto mayor (antes cada color redondeaba para arriba y se inflaba).
         # Revisión etapa 3, 29/10/2026: alcanza con que UN color llegue al 35% (los que no llegan ya tienen 0 de necesidad).
         rentable=any(v['rent'] for v in p['vars'])
-        tot=max(0,math.ceil(sum(d[1] for d in dets)-0.25)) if rentable else 0
+        tot=max(0,math.ceil(sum(d[1] for d in dets)-1e-9)) if rentable else 0   # 14/11: siempre para arriba (él)
         qs=reparto(tot,[d[1] for d in dets])
         dets=[(d[0],q,d[2],d[3],d[4],d[5]) for d,q in zip(dets,qs)]
         res.append((p,tot,dets,rentable))
@@ -463,7 +467,7 @@ for p in prods:
         if rentable and p.get('m35') and p['m35']['f']=='no' and not m35_probado(p['m35']) and not m35_compite(p['m35']) and r>0:   # compra de prueba al 35% (sólo lo que se vendía)
             need=max(0,max(2,math.ceil(r*7))-t); p['prueba']=p['m35'].get('p35') or 0; b+=f" · 🧪 prueba al 35%{' ($'+str(p['prueba'])+')' if p['prueba'] else ''}: nunca se probó con stock a un precio que deje 35%"
         if por: b+=f' · {Tp} días porque {por}'
-        q=max(0,math.ceil(need-0.25)) if need>0 else 0
+        q=max(0,math.ceil(need-1e-9)) if need>0 else 0   # 14/11: siempre para arriba (él: mejor que sobre)
         if not rentable: q=0
         res.append((p,q,(r,t,r*Tp,b),rentable))
 with open(out,'w') as f:

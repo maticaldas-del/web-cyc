@@ -3713,7 +3713,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.205';
+const APP_VERSION='28.206';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3726,6 +3726,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.206',f:'14/11',h:'13:55',c:[{n:2,t:'Pedidos: cada tarjeta muestra sólo lo básico (nombre, hasta cuánto pagar y cuántas comprar). Sin barra, motivo largo ni escalera de precios; el motivo sigue en el 🧠.'}]},
   {v:'28.205',f:'14/11',h:'13:25',c:[{n:1,t:'Se sacó el numerito rojo del ícono de la app (él: no le gusta).'}]},
   {v:'28.204',f:'14/11',h:'11:15',c:[{n:1,t:"Inicio: se sacaron las tarjetas 💬 Preguntas y 🚚 Lo que llega (él: eso se resuelve en el chat)"}]},
   {v:'28.203',f:'14/11',h:'05:20',c:[{n:1,t:'🛍️ Revisión de la Tienda: un producto nuevo ya no figura "mirado hoy" con un precio viejo, menos datos del proveedor en el registro, mejores nombres. 8 cosas para elegir (lo urgente: el permiso para subir las páginas).'}]},
@@ -23885,7 +23886,7 @@ function pedVarFila(x,p){
   const lug=(x.ml!=null||x.cam!=null||x.casa!=null)?`📦 ${n(x.ml)} en ML · 🚚 ${n(x.cam)} en camino · 🏠 ${n(x.casa)} en casa${(x.pv||0)-(x.li||0)>0?` · 🧴 ${n((x.pv||0)-(x.li||0))} al Paulvic`:''}${x.li>0?` · 📋 ${n(x.li)} pedidas a la lista`:''}`:'';
   const dTxt=sem==='rojo'?((x.ml!=null&&(x.ml||0)+(x.cam||0)+(x.casa||0)+(x.pv||0)<=0)?'🔴 sin stock en ningún lado':`🔴 escasez${x.dias!=null&&x.dias<999?': alcanza ~'+x.dias+' d':''}`):(x.dias!=null&&x.dias<999?`${sem==='naranja'?'🟠':'🟡'} alcanza ~${x.dias} d`:'');
   return `<div class="ped-var-fila sem-${sem}" style="border-left-color:${col}">
-    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i>${p&&p.prodId?pedEscHTML((state.products||[]).find(z=>z.id===p.prodId),x.v):''}</div>
+    <div class="ped-var-txt"><b>${x.v}</b>${x.hist?' <span style="color:var(--amber);font-size:.8em">· ritmo viejo</span>':''}<i>${[dTxt,lug,pedVarMaxTxt(x,p)].filter(Boolean).join(' · ')}</i></div>
     ${p&&p.prodId?`<span style="display:inline-flex;gap:6px;align-items:center" onclick="event.stopPropagation()">${lineaBtn(p.prodId,'📈',x.v)}${cerebroBtn(p.prodId,{ped:p.id,variante:x.v})}${noConsigoBtn((state.products||[]).find(z=>z.id===p.prodId),x.v)}</span>`:''}
     ${p&&p.prodId?`<span class="ped-var-u" style="color:${q>0?col:'var(--green)'}" onclick="event.stopPropagation()"><input type="number" min="0" step="1" value="${q}" onchange="pedSetVarU('${p.prodId}','${String(x.v).replace(/'/g,"\\'")}',this.value)" title="${x.mano?'Lo cambiaste vos a mano: manda sobre lo que decidí yo hasta que marques el pedido hecho':'Tocá para cambiar cuántas pedir de este color'}" style="width:62px;font:inherit;font-weight:700;font-size:1.3rem;text-align:right;background:transparent;border:1px ${x.mano?'solid':'dashed'} ${x.mano?'var(--amber)':'var(--border)'};border-radius:6px;color:inherit;padding:0 4px"><i>${x.mano?'✋ a mano':q>0?'u. a comprar':_irCajaLink('mandar de casa')}</i></span>`
       :q>0?`<span class="ped-var-u" style="color:${col}"><b>${n(q)}</b><i>u. a comprar</i></span>`:`<span class="ped-var-u" style="color:var(--green)"><b>✓</b><i>${_irCajaLink('mandar de casa')}</i></span>`}
@@ -24456,15 +24457,11 @@ function _pedidoItemHtml(p,opts){
     </summary>
     <div class="ped-body">
       ${varToggle}
-      ${copiarBtn}${hechoBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}${_prod?lineaBtn(_prod.id,'📈 línea',p.variante||''):''}${_prod?noConsigoBtn(_prod):''}
+      ${copiarBtn}${hechoBtn}${_prod?cerebroBtn(_prod.id,{ped:p.id,variante:p.variante||''}):''}${_prod?noConsigoBtn(_prod):''}
       ${varsSorted?'<details class="ped-mas" style="flex-basis:100%"><summary style="cursor:pointer;list-style:none;font-size:.7rem;color:var(--muted)">más datos ▾</summary><div class="ped-body" style="padding:6px 0 0">':''}
       ${fotoBtn}
-      ${_tanque}${(()=>{const n=_tanque?String(p.nota||'').replace(/ · ~\d+d cubiertos/,'').replace(/ · 📦[\s\S]*$/,''):p.nota;return n?`<span class="pi-nota">${n}</span>`:'<span class="pi-nota" style="flex:0"></span>';})()}
-      ${_enCam?'':riesgoBadge+devBadge}
-      ${(()=>{const _r=pedSinSentido(p);return _r?`<span class="pi-var-toggle" style="background:rgba(245,158,11,.14);color:var(--amber);border-color:rgba(245,158,11,.35);cursor:default" title="${_r.det.join(' · ').replace(/"/g,'&quot;')}">⚠️ este renglón no cierra${_r.n>1?' ('+_r.n+')':''}</span>`:'';})()}
+      ${''/* 14/11/2026 (él: "esto está bueno, pero no es útil. quiero que sólo muestre lo básico: hasta qué precio pagar y las unidades a comprar… que no tengan detalle los productos"): afuera la barra del stock, el motivo, lo que está en riesgo, cada $1 salva, el máximo repetido y la escalera de compra. El motivo sigue en el 🧠. */}
       ${varsSorted?origenBtn+_grupoBsasBtn(_prod):''}
-      ${cuentaPedidoHTML(p)}
-      ${opts.verdDet?`<div style="flex-basis:100%;font-size:.62rem;line-height:1.5;color:var(--muted)">🇵🇾 ${opts.verdDet}</div>`:''}${_prod?maxCompraHTML(_prod)+pedEscHTML(_prod):''}
       ${(()=>{
         // Lo que cambia o saca el pedido (origen, solapa, proveedor, estado, fecha y la ✕). Con colores ya va adentro de
         // "más datos"; sin colores va en su propio desplegable para que no se toque sin querer (20/10/2026, etapa 7).
