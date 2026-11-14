@@ -3111,7 +3111,7 @@ async function avisoDenunciasMarca(db, tokensRun, DRY) {
     if (!me || !me.id) { sinRuta.push(label + ' (no leí la cuenta)'); continue; }
     let j = null, err = '';
     for (const ruta of [`/moderations/infractions/${me.id}`, `/users/${me.id}/moderations/infractions`]) {
-      try { j = await mlGet(ruta, tok); break; } catch (e) { err = String(e && e.message || e).slice(0, 60); j = null; }
+      try { j = await mlGet(ruta, tok); break; } catch (e) { err = String(e && e.message || e).replace(/\d{6,}/g, '…').slice(0, 60); j = null; }
     }
     if (j == null) { sinRuta.push(`${label} (${err})`); continue; }
     for (const x of _denunciasDe(j)) {
