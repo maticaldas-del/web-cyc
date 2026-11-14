@@ -64,10 +64,16 @@ Mercado Libre → Full (o "Gestión de stock Full") en cada cuenta:
   (amarilla) anotá sólo cuántas unidades y los 5 productos con más unidades. Un renglón por cuenta: "DESCARTE · <cuenta>: <producto> ×<u> hasta <fecha> · …"
   (si no hay nada: "DESCARTE · <cuenta>: 0").
 
-== 7 · MERCADO PAGO (sin copiar movimientos: traen nombres) ==
-En cada cuenta de Mercado Pago, sólo si aparece un cartel o una sección de: dinero retenido, contracargo, disputa, cuenta
-restringida, pedido de documentación o de validar identidad. Anotá qué dice y qué pide (sin montos de saldo y sin nombres).
-Si no aparece nada, poné "MP sin avisos".
+== 7 · MERCADO PAGO: DEUDAS Y COSAS RARAS (14/11, él: "miro mercadopago para mirar si hay alguna deuda o cosas raras… es super importante") ==
+En CADA una de las 4 cuentas entrá a mercadopago.com.ar/banking/balance (Pesos) y mirá, sin copiar movimientos ni nombres de nadie:
+a) "A pagar" (en Próximos cobros y pagos): si NO es $0, anotá el monto, qué es (tocá "Consultar") y cuándo vence. Eso es una DEUDA.
+b) "Retenido": si aparece, anotá SÓLO "retenido sí" y el motivo que dé MP (tocá el cuadro) · si ayer no había y hoy sí, decilo.
+   El monto del retenido NO lo escribas (es plata de la cuenta y el buzón termina en un registro público).
+c) Créditos (menú de la izquierda): si hay un préstamo o una cuota por pagar, anotá cuánto y cuándo vence.
+d) "Salidas por categoría" (Análisis del mes): anotá SÓLO las categorías que NO sean "Pendiente de categoría" ni cosas de Mercado
+   Libre, con su monto (por ejemplo "Tarjeta de crédito $237.065", "Salud y cuidado personal $233.800"). Sin abrir el detalle.
+e) Cualquier cartel de: contracargo, disputa, cuenta restringida, pedido de documentación o de validar identidad → qué dice y qué pide.
+Si en una cuenta está todo en cero y sin carteles, poné "MP <cuenta>: sin deudas ni avisos".
 
 == 8 · FACTURAS DE ML ==
 Mercado Libre → Facturación (o "Facturas"/"Mis facturas" del facturador): si hay facturas con error, rechazadas por ARCA o
