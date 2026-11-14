@@ -2589,6 +2589,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 4a el 🧠 "Siguiente ›" de Pedidos (14/11/2026, v28.196)
+- **Qué es:** en `cerebroAbrir` con `d.ped`: la navegación sale de la cabecera (el título se partía en una palabra por renglón) y va en `.cer-nav`, barra fija abajo de la pantalla (‹ · N de M · Siguiente ›, botones de 44 px; el cuadro deja 84 px abajo para no taparse). Arriba, `_cerPedCabHTML`: foto (`fotoMiniHTML` 64 px, del color si hay) y "Comprá N · Pagá hasta $X" con los MISMOS números de la tarjeta (`cantidad` o `variantesNec[].q` del pedido y `maxCompraDe` con el color; pesos en Bs As/Paulvic, US$ en Paraguay).
+- **Una nota por producto:** `_cerPedVecinos` saltea un botón cuya nota (mismo texto y hora) ya salió en un paso anterior (un color sin nota propia mostraba la del producto: 5 de cada 8 pasos repetían la de las Sábanas); y adentro, con color, la nota del producto (`siFalta`) sale sólo si el color no tiene la suya.
+- **Qué chequear:** con datos de prueba (Sábanas con 3 colores, 1 con nota propia + otro producto) da "1 de 3" y no repite; a 360 la barra queda abajo y el botón no cambia de lugar entre pasos.
 ### 🎨 Diseño del 10/11 · 12a Ventas (14/11/2026, v28.195)
 - **PC, columnas fijas:** `.vp-cab-num` arma `.vpc-tot` (118 px) · `.vpc-gan` (104) · `.vpc-pct` (118) · `.vpc-ln` (30). Medido a 1200: el % y la ganancia de todas las ventas en el mismo píxel (antes caían en 5-6 lugares).
 - **Teléfono, carteles cortos:** lo largo va en `.vp-l`, que en `.vp-cel` no se ve: "💳 Premium · 6 cuotas s/interés" → "💳 6 cuotas" (tipoLabel), "🔬 analizada · normal" → "🔬 normal" y "🔬 📈 buscando techo · normal" → "🔬 📈 buscando techo" (`analisisVentaHTML`). Los carteles van en `.vp-cel-chips` (flex con salto entre carteles, nunca adentro de uno). En la PC se ven enteros.

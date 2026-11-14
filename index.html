@@ -412,6 +412,13 @@ body.light .mz-pct{color:#fff}
   #vp-perbar #vp-range-wrap>span{display:none}
   #vp-cerebro-btn .vp-l{display:none}
 }
+/* 4a del Diseño 10/11 · 🧠 de Pedidos: foto + "Comprá N · Pagá hasta $X" arriba y la barra ‹ 3 de 6 › fija abajo */
+.cer-ped-cab{display:flex;align-items:center;gap:12px;margin:10px 0 2px}
+.cer-nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100vw);box-sizing:border-box;z-index:9001;display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:8px;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--border2);box-shadow:0 -6px 18px rgba(0,0,0,.35)}
+#cerebro-modal:has(.cer-nav)>div{margin-bottom:84px}
+.cer-nav>span{text-align:center;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.cer-nav>.btn{min-height:44px;font-size:.9rem}
+.cer-nav>.btn:last-child{min-width:130px}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3639,7 +3646,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.195';
+const APP_VERSION='28.196';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3652,6 +3659,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.196',f:'14/11',h:'02:04',c:[{n: 2, t: "🧠 Pedidos (lo que lee Tito): \"‹ 3 de 6 Siguiente ›\" en una barra fija abajo de 44 px que no salta; arriba la foto y \"Comprá N · Pagá hasta $X\"; cada nota sale una sola vez (los colores sin nota propia ya no repiten la del producto) (4a del Diseño 10/11)."}]},
   {v:'28.195',f:'14/11',h:'02:01',c:[{n: 1, t: "🏷️ Ventas en la PC: el total, la ganancia y el % caen siempre en la misma columna (12a del Diseño 10/11)."}, {n: 1, t: "📱 Ventas en el teléfono: carteles cortos (\"💳 6 cuotas\", \"🔬 normal\") que no se parten, y la barra del período en un renglón con flechas de 44 px que no salta al pasar de Día a Mes o Año; el 🧠 \"qué pasó\" está adentro del menú del período (12a)."}]},
   {v:'28.194',f:'14/11',h:'01:56',c:[{n: 1, t: "📈 Línea de tiempo: la cabecera en un solo renglón (nombre, \"🎯 techo X% seguro\", los botones se corren de costado y el ✕ siempre a la vista); los colores van abajo (13a del Diseño 10/11)."}, {n: 1, t: "🏠 Inicio: los botones de las puertas (Pedidos, Arqueo, Rotación) de 32 px y Ventas con un numerito azul de las ventas nuevas; abajo, la ganancia \"sin mirar\" (13a)."}]},
   {v:'28.193',f:'14/11',h:'01:52',c:[{n: 1, t: "🧮 La Mezcla: en el teléfono cada barra va a todo el ancho (arriba el mes y la plata cada $100) y el % adentro se lee (letra oscura sobre los colores claros) (11a del Diseño 10/11)."}, {n: 1, t: "🪜 La escalera de compra de Pedidos es una tablita: Si lo pagás hasta · Traé · Se vende a · ⭐ (11a)."}]},
@@ -14730,8 +14738,24 @@ function _cerPedVecinos(){
     if(!b.offsetParent||b.closest('#cerebro-modal'))continue;
     const k=_cerPedClave(b);if(vistos.has(k))continue;
     const n=_cerNotaCtx('ped',b.dataset.p,'',b.dataset.v||'');if(!n||!n.s)continue;
+    // 4a del Diseño 10/11: UNA NOTA, UNA VEZ. Un color sin nota propia mostraba la del producto: 5 de cada 8 pasos repetían la de las
+    // Sábanas. Si la nota (mismo texto y hora) ya salió en un paso anterior, este botón no es un paso nuevo.
+    const kn=b.dataset.p+'|'+(n.ts||'')+'|'+String(n.s).slice(0,60);if(vistos.has(kn))continue;vistos.add(kn);
     vistos.add(k);out.push(b);}
   return out;
+}
+// 4a del Diseño 10/11: arriba del 🧠 de Pedidos, la foto y "Comprá N · Pagá hasta $X" (los MISMOS números de la tarjeta: `cantidad` /
+// `variantesNec` del pedido y `maxCompraDe`), así Tito lo lee sin volver a la tarjeta.
+function _cerPedCabHTML(p,d){
+  try{
+    let ped=null;for(const c of [d.coll,'pedidos','pedidos_py'].filter(Boolean)){const arr=state[c];if(Array.isArray(arr)){ped=arr.find(x=>x&&x.id===d.ped)||null;if(ped)break;}}
+    let n=null;if(ped){if(d.v){const x=(Array.isArray(ped.variantesNec)?ped.variantesNec:[]).find(y=>y&&String(y.v)===String(d.v));n=x?Math.max(0,parseInt(x.q)||0):null;}else n=Math.max(0,parseInt(ped.cantidad)||0);}
+    const r=maxCompraDe(p,undefined,d.v||undefined);let pg='';
+    if(r&&!r.motivo&&r.usd>0){const enP=!r.esPy||esProductoPaulvic(p),tc=curTC();pg=(enP&&tc>0)?fmt(Math.round(r.usd*tc)):'US$ '+r.usd.toFixed(2).replace('.',',');}
+    const foto=fotoMiniHTML(p,64,d.v||'');
+    const t=[n!=null?`Comprá <b>${fmtN(n)}</b>`:'',pg?`Pagá hasta <b>${pg}</b>`:''].filter(Boolean).join(' · ');
+    return `<div class="cer-ped-cab">${foto}<div style="min-width:0">${d.v?`<div style="font-size:.72rem;color:var(--muted)">🎨 ${_cerEsc(d.v)}</div>`:''}<div style="font-size:.95rem">${t||'<span style="color:var(--muted)">sin decidir</span>'}</div></div></div>`;
+  }catch(e){return '';}
 }
 function _cerPedIr(dir){
   const ls=_cerPedVecinos(),i=ls.findIndex(b=>_cerPedClave(b)===_cerPedActual),nx=ls[i+dir];if(!nx)return;
@@ -14761,7 +14785,7 @@ async function cerebroAbrir(el,ev){
   // Notas de Claude del renglón (pedido o caja), aparte de las de cada publicación.
   const ctxK=[];
   if(modoClaude){
-    if(d.ped){ctxK.push({k:_cerClaveCtx('ped',d.p,'',d.v),cab:''});if(d.v)ctxK.push({k:_cerClaveCtx('ped',d.p,'',''),cab:''});
+    if(d.ped){ctxK.push({k:_cerClaveCtx('ped',d.p,'',d.v),cab:''});if(d.v)ctxK.push({k:_cerClaveCtx('ped',d.p,'',''),cab:'',siFalta:1});
       // EL POR QUÉ DE CADA COLOR (09/10/2026): un pedido con colores decididos color por color tiene la nota en
       // `ped__<id>__v__<color>`. Se listan por color; si ya se sabe qué notas existen, sólo esas.
       else if((p.variantes||[]).length){const S=_cerNotas;
@@ -14777,8 +14801,11 @@ async function cerebroAbrir(el,ev){
   // pedido de la pantalla que tiene motivo escrito (y "‹" al anterior), sin cerrar la ventana.
   let navPed='';
   if(d.ped){const ls=_cerPedVecinos(),ky=_cerPedClave(el),i=ls.findIndex(b=>_cerPedClave(b)===ky);_cerPedActual=ky;
-    if(ls.length>1&&i>=0)navPed=`<span style="color:var(--muted);font-size:.75rem;white-space:nowrap">${i+1} de ${ls.length}</span><button class="btn" ${i>0?'':'disabled '}onclick="_cerPedIr(-1)" aria-label="Pedido anterior">‹</button><button class="btn" ${i<ls.length-1?'':'disabled '}onclick="_cerPedIr(1)" style="font-weight:700">Siguiente ›</button>`;}
-  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><b style="font-size:.95rem;min-width:0;flex:1">${tit}</b><span style="display:flex;gap:6px;align-items:center;flex:none">${navPed}<button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></span></div>`;
+    // 4a del Diseño 10/11: la navegación va en una BARRA FIJA ABAJO (‹ · 3 de 6 · Siguiente ›, de 44 px): arriba quedaba al lado del
+    // título y éste se partía en una palabra por renglón, y el botón saltaba de lugar en cada paso.
+    if(ls.length>1&&i>=0)navPed=`<div class="cer-nav"><button class="btn" ${i>0?'':'disabled '}onclick="_cerPedIr(-1)" aria-label="Pedido anterior">‹</button><span>${i+1} de ${ls.length}</span><button class="btn" ${i<ls.length-1?'':'disabled '}onclick="_cerPedIr(1)" style="font-weight:700">Siguiente ›</button></div>`;}
+  let h=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;z-index:2;background:var(--surface);padding:6px 0;border-bottom:1px solid var(--border)"><b style="font-size:.95rem;min-width:0;flex:1;overflow-wrap:anywhere">${tit}</b><span style="display:flex;gap:6px;align-items:center;flex:none"><button class="btn" onclick="document.getElementById('cerebro-modal').remove()">Cerrar</button></span></div>`;
+  if(d.ped)h+=_cerPedCabHTML(p,d);
   // SÓLO LO QUE ESCRIBIÓ CLAUDE (08/10/2026, él: *"antes de ver uno escrito por el robot automático prefiero que no
   // aparezca nada, solo lo tuyo"*): en modo Claude no sale ningún texto armado solo (ni "la revisé el…", ni el %
   // de hoy, ni la cuenta del pedido): sólo mis notas, con su fecha. Si no escribí nada, lo dice y nada más.
@@ -14794,6 +14821,7 @@ async function cerebroAbrir(el,ev){
     const _decir=t=>{yaDicho.push(_nrm(t));};
     for(const o of ctxK){
       if(o.n===undefined){falla=true;continue;}
+      if(o.siFalta&&nn)continue;   // 4a del Diseño 10/11: la del producto sólo si el color no tiene nota propia
       if(!o.n||!o.n.simple||vistos.has(o.cab))continue;vistos.add(o.cab);nn++;
       if(_repetido(o.n.simple))continue;_decir(o.n.simple);
       h+=par(`${o.cab&&(ctxK.length>2||o.esVar)?`<b>${_cerEsc(o.cab)}:</b> `:''}💭 ${_cerEsc(_cerFecha(o.n.ts))}: ${_cerEsc(_sinSoloTxt(o.n.simple))}`);
@@ -14832,7 +14860,7 @@ async function cerebroAbrir(el,ev){
     else if(!nn)h+=par(`<span style="color:var(--muted)">${soloUnid?'Todavía no escribí por qué van estas unidades.':'Todavía no escribí nada sobre el precio de esto.'}</span>`);
     h+=_rayasBarrasHTML(mlas);
     h+=_fichaBotones(mlas);
-    m.innerHTML=caja(h);
+    m.innerHTML=caja(h+navPed);
     return;
   }
   if(d.ped){
@@ -14864,7 +14892,7 @@ async function cerebroAbrir(el,ev){
   }
   h+=_rayasBarrasHTML(mlas);
   h+=_fichaBotones(mlas);
-  m.innerHTML=caja(h);
+  m.innerHTML=caja(h+navPed);
 }
 // ── LA FICHA MÉDICA DE CADA PUBLICACIÓN (16/10/2026, él: "quiero poder verla, así veo lo que ves vos. y que esté
 // completa que no falte nada. mínimo la info que está en la línea temporal"). La arma el robot cada noche en
