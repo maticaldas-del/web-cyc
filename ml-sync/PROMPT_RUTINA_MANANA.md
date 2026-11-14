@@ -63,6 +63,10 @@ Mercado Libre → Full (o "Gestión de stock Full") en cada cuenta:
   qué fecha lo descarta ML o qué pide (retirar, bajar precio). Es ⏰ siempre (si no se hace nada ML las tira). De "Para impulsar ventas"
   (amarilla) anotá sólo cuántas unidades y los 5 productos con más unidades. Un renglón por cuenta: "DESCARTE · <cuenta>: <producto> ×<u> hasta <fecha> · …"
   (si no hay nada: "DESCARTE · <cuenta>: 0").
+- CARGOS POR STOCK ANTIGUO (14/11, él: "si pago stock o si tengo que retirar"): en la misma pantalla (vendedores.mercadolibre.com.ar/publicaciones/listado/space_management),
+  pestaña "Cargos por stock antiguo" de cada cuenta: los productos que YA pagan o van a pagar este mes, cuántas unidades y cuánto dice ML. Un renglón por
+  cuenta: "ANTIGUO · <cuenta>: <producto> ×<u> $<cargo> desde <fecha> · …" (si no hay: "ANTIGUO · <cuenta>: 0").
+- PUBLICACIONES PAUSADAS CON STOCK EN FULL: si en "Control de stock" ves alguna pausada con unidades, anotala (el robot las activa solo; si sigue pausada, es un motivo que Claude tiene que ver).
 
 == 7 · MERCADO PAGO: DEUDAS Y COSAS RARAS (14/11, él: "miro mercadopago para mirar si hay alguna deuda o cosas raras… es super importante") ==
 En CADA una de las 4 cuentas entrá a mercadopago.com.ar/banking/balance (Pesos) y mirá, sin copiar movimientos ni nombres de nadie:
