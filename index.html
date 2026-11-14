@@ -385,6 +385,33 @@ body.light .mz-pct{color:#fff}
 #linea-modal .ln-vars{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:2px 0 4px}
 #linea-modal .ln-vars>span{margin-left:0!important}
 @media(max-width:640px){#linea-modal .ln-cab1{gap:6px}#linea-modal .ln-nom{font-size:.78rem;flex-basis:60px;min-width:72px}#linea-modal .ln-chip{font-size:.56rem;padding:2px 7px}#linea-modal .ln-chip-l{display:none}#linea-modal .ln-btns1{max-width:34%}}
+/* 12a del Diseño 10/11 · Ventas: columnas fijas en la PC, carteles cortos en el teléfono, barra del período en un renglón */
+.vp-cab-num>.vpc-tot{min-width:118px;text-align:right}
+.vp-cab-num>.vpc-gan{min-width:104px;text-align:right}
+.vp-cab-num>.vpc-pct{min-width:118px;display:inline-flex;align-items:center}
+.vp-cab-num>.vpc-ln{min-width:30px;display:inline-flex;justify-content:flex-end}
+.vp-open .vp-cab-num>span{min-width:0}
+.vp-cel .vp-l{display:none}
+.vp-cel-chips{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+.vp-cel-chips>span{white-space:nowrap}
+@media(max-width:640px){
+  #vp-perbar{flex-wrap:nowrap!important;gap:4px!important;padding:8px 10px}
+  #vp-perbar>span:not(#vp-range-wrap){min-width:0;flex:1 1 auto;gap:4px!important}
+  #vp-perbar .vp-flecha{min-width:44px;min-height:44px;padding:0!important;flex:none}
+  #vp-perbar input.cal-select{min-width:0;width:100%;flex:1 1 auto}
+  #vp-perbar #vp-range-wrap{flex-wrap:nowrap!important;min-width:0;flex:1 1 auto}
+  #vp-perbar #vp-range-wrap input{width:0;flex:1 1 0}
+  #vp-perbar #vp-date-label{display:none}
+  #vp-perbar #vp-cerebro-btn{display:none}
+  .dd-opt.vp-cer-opt{display:block!important}
+  #vp-perbar:has(#vp-range-wrap[style*="inline-flex"]){flex-wrap:wrap!important}
+  #vp-perbar #vp-range-wrap[style*="inline-flex"]{flex:1 1 100%}
+  #vp-perbar #vp-dd-btn{min-height:44px;white-space:nowrap;padding:0 9px;flex:none}
+  #vp-perbar input.cal-select{padding:4px 2px;min-height:44px;box-sizing:border-box;text-align:center;letter-spacing:-.3px}
+  #vp-perbar input.cal-select::-webkit-calendar-picker-indicator{display:none}
+  #vp-perbar #vp-range-wrap>span{display:none}
+  #vp-cerebro-btn .vp-l{display:none}
+}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -2359,7 +2386,7 @@ setTimeout(function _ldVigia(){try{
        Pedidos Paraguay y el renglón de editar una venta. Borrarla de paso era el corte de más -->
   <datalist id="vp-prod-list"></datalist>
 
-  <div class="met-date-bar" style="flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+  <div class="met-date-bar" id="vp-perbar" style="flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
     <!-- ARRIBA DE TODO desde el 01/10/2026 (idea 9 de diseño): el período manda sobre todo lo de
          abajo, así que se elige antes de mirar. Las flechas ‹ › pasan al día, semana, mes o año
          anterior/siguiente. -->
@@ -2383,11 +2410,13 @@ setTimeout(function _ldVigia(){try{
         <button id="vpperiod-anio" class="dd-opt" onclick="setVpPeriod('anio',this)">Año</button>
         <div class="dd-grp">A medida</div>
         <button id="vpperiod-rango" class="dd-opt" onclick="setVpPeriod('rango',this)">📅 Período</button>
+        <!-- 12a del Diseño 10/11: en el teléfono el 🧠 "qué pasó" va acá (la barra del período entra en un renglón) -->
+        <button class="dd-opt vp-cer-opt" style="display:none" onclick="document.getElementById('vp-dd-menu').classList.remove('open');vpCerebroAbrir(event)">🧠 Qué pasó en este período</button>
       </div>
     </div>
     <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap">   <!-- etapa 7: ‹ › juntas y quietas, el campo al lado -->
-    <button id="vp-nav-prev" class="vbtn" onclick="vpNavPrev()" style="display:none;padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
-    <button id="vp-nav-next" class="vbtn" onclick="vpNavNext()" style="display:none;padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
+    <button id="vp-nav-prev" class="vbtn vp-flecha" onclick="vpNavPrev()" style="display:none;padding:3px 13px;font-size:1.1rem;line-height:1">‹</button>
+    <button id="vp-nav-next" class="vbtn vp-flecha" onclick="vpNavNext()" style="display:none;padding:3px 13px;font-size:1.1rem;line-height:1">›</button>
     <input type="date"   id="vp-date"  class="cal-select" style="display:none" onchange="renderVentaProd()">
     <input type="month"  id="vp-month" class="cal-select" style="display:none" onchange="renderVentaProd()">
     <input type="number" id="vp-year"  class="cal-select" style="display:none;width:90px" min="2020" max="2099" onchange="renderVentaProd()">
@@ -2397,7 +2426,7 @@ setTimeout(function _ldVigia(){try{
       <span style="font-size:.8rem;color:var(--muted)">→</span>
       <input type="date" id="vp-range-to" class="cal-select" onchange="renderVentaProd()">
     </span>
-    <button class="btn" id="vp-cerebro-btn" onclick="vpCerebroAbrir(event)" title="🧠 Qué pasó con las ventas de este período, en palabras simples" style="font-size:.72rem;padding:3px 9px">🧠 qué pasó</button>
+    <button class="btn" id="vp-cerebro-btn" onclick="vpCerebroAbrir(event)" title="🧠 Qué pasó con las ventas de este período, en palabras simples" style="font-size:.72rem;padding:3px 9px">🧠<span class="vp-l"> qué pasó</span></button>
     <span id="vp-date-label" style="font-size:.66rem;color:var(--muted)"></span>
   </div>
 
@@ -3610,7 +3639,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.194';
+const APP_VERSION='28.195';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3623,6 +3652,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.195',f:'14/11',h:'02:01',c:[{n: 1, t: "🏷️ Ventas en la PC: el total, la ganancia y el % caen siempre en la misma columna (12a del Diseño 10/11)."}, {n: 1, t: "📱 Ventas en el teléfono: carteles cortos (\"💳 6 cuotas\", \"🔬 normal\") que no se parten, y la barra del período en un renglón con flechas de 44 px que no salta al pasar de Día a Mes o Año; el 🧠 \"qué pasó\" está adentro del menú del período (12a)."}]},
   {v:'28.194',f:'14/11',h:'01:56',c:[{n: 1, t: "📈 Línea de tiempo: la cabecera en un solo renglón (nombre, \"🎯 techo X% seguro\", los botones se corren de costado y el ✕ siempre a la vista); los colores van abajo (13a del Diseño 10/11)."}, {n: 1, t: "🏠 Inicio: los botones de las puertas (Pedidos, Arqueo, Rotación) de 32 px y Ventas con un numerito azul de las ventas nuevas; abajo, la ganancia \"sin mirar\" (13a)."}]},
   {v:'28.193',f:'14/11',h:'01:52',c:[{n: 1, t: "🧮 La Mezcla: en el teléfono cada barra va a todo el ancho (arriba el mes y la plata cada $100) y el % adentro se lee (letra oscura sobre los colores claros) (11a del Diseño 10/11)."}, {n: 1, t: "🪜 La escalera de compra de Pedidos es una tablita: Si lo pagás hasta · Traé · Se vende a · ⭐ (11a)."}]},
   {v:'28.192',f:'14/11',h:'01:49',c:[{n: 1, t: "⚖️ Tope de H de un vistazo: un renglón por cuenta con su barra, la raya del tope de H y \"le quedan / se pasa\"; tocando la cuenta se abre el detalle (10a del Diseño 10/11)."}]},
@@ -15164,7 +15194,8 @@ function analisisVentaHTML(items){const vs=[];const vistos=new Set();
     const nom=items.length>1?String(nombreDeVenta(v)||'').slice(0,40)+': ':'';
     const precio=(a.de&&a.a)?` Precio ${fmt(a.de)} → ${fmt(a.a)}.`:'';
     const tit=(`${nom}Analizada por el robot${cuando?' el '+cuando:''} con esfuerzo ${esf}. `+(a.cambio?`Hubo cambio después de esta venta${u?': '+u[0]+' '+u[1]:''}.${precio} `:`No hizo falta cambiar nada${u?' (estrategia '+u[0]+' '+u[1]+')':''}. `)+(a.m||'')).replace(/"/g,'&quot;');
-    const txt=`🔬 ${a.cambio&&u?u[0]+' ':''}${a.cambio?(u?u[1]:'cambio'):'analizada'} · ${esf}`;
+    // 12a del Diseño 10/11: en el teléfono el cartel corto ("🔬 normal" / "🔬 📈 buscando techo"): lo demás va en `.vp-l`, que ahí no se ve.
+    const txt=a.cambio?`🔬 ${u?u[0]+' ':''}${u?u[1]:'cambio'}<span class="vp-l"> · ${esf}</span>`:`🔬 <span class="vp-l">analizada · </span>${esf}`;
     if(a.cambio){const col=u?u[2]:'#38bdf8';return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,${col} 40%,transparent);background:color-mix(in srgb,${col} 12%,transparent);color:${col};white-space:nowrap;cursor:help" title="${tit}">${txt}</span>`;}
     return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap;cursor:help" title="${tit}">${txt}</span>`;}).join(' ');}
 // 19/10/2026, él: "promo que sea cuando ml también pone plata, si ponemos sólo nosotros es descuento". En la venta manda lo que
@@ -16420,7 +16451,7 @@ function renderVentaProd(){
         // 21/10/2026, él: "las cuotas en transparente sacarlas, solo mostrar las premium como están": la Clásica no se muestra.
         return vs.filter(x=>x.split('|')[1]==='1').map(x=>{const [t,pr,si]=x.split('|');const col=pr==='1'?'#eab308':'var(--muted)';
           const tt=(pr==='1'?'Se vendió por la publicación PREMIUM (con cuotas). ':t.startsWith('Clásica')?'Se vendió por la publicación CLÁSICA. ':'')+(si==='1'?'El interés de las cuotas lo pagamos nosotros (cuotas sin interés).':/cuotas/.test(t)?'Pagó en cuotas con interés: el interés lo pagó el comprador.':'');
-          return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${t}</span>`;}).join(' ');})();
+          return `<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid ${pr==='1'?'rgba(234,179,8,.5)':'var(--border2)'};color:${col};white-space:nowrap" title="${tt}">💳 ${/cuotas|pago/.test(t)?t.replace(/^(Premium|Clásica) · /,'<span class="vp-l">$1 · </span>').replace(/ s\/interés$/,'<span class="vp-l"> s/interés</span>'):t}</span>`;}).join(' ');})();   // 12a del Diseño 10/11: en el teléfono "💳 6 cuotas" (lo demás en `.vp-l`)
       // 📦 ENVÍO GRATIS (22/10/2026, pedido suyo: "cuando se venden con envío gratis (solo las que no hubieran tenido) aparece un
       // mensaje como premium en color?"): la venta salió por una gemela Clásica con envío gratis (`mllinks.gemelaTipo==='envio'`).
       if(grp.items.some(v=>((state.mllinks||{})[v.mla]||{}).gemelaTipo==='envio')){const _eg=`<span style="font-size:.62rem;padding:1px 6px;border-radius:4px;border:1px solid rgba(56,189,248,.5);color:#38bdf8;white-space:nowrap" title="Se vendió por la publicación gemela CON ENVÍO GRATIS (Clásica, precio más alto con el envío adentro). Sin esa publicación esta venta no habría tenido envío gratis.">📦 envío gratis</span>`;tipoLabel=tipoLabel?tipoLabel+' '+_eg:_eg;}
@@ -16439,10 +16470,7 @@ function renderVentaProd(){
           ${analisisLabel}
           ${entLabel}
           ${rescLabel}</span>
-          <span class="vp-cab-num">${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}
-          ${ganLabel}
-          ${pctBox}
-          ${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}</span>
+          <span class="vp-cab-num"><span class="vpc-tot">${(!isCancelled&&_tot>0)?`<span style="font-size:.66rem;color:var(--muted)">total <b style="color:var(--text);font-weight:600">${fmt(_tot)}</b></span>`:''}</span><span class="vpc-gan">${ganLabel}</span><span class="vpc-pct">${pctBox}</span><span class="vpc-ln">${(()=>{if(_varios)return'';const _pp=prodDeVenta(grp.items[0]);return _pp?lineaBtn(_pp.id,null,_lineaVarDeVentas(grp.items,_pp.id)):'';})()}</span></span>
         </div>
         ${lines}
         ${_hechoV}
@@ -16458,7 +16486,7 @@ function renderVentaProd(){
         </div>
         ${_items}
         ${_hechoV}
-        ${(tipoLabel||nroLabel||analisisLabel)?`<div>${[tipoLabel,nroLabel,analisisLabel].filter(Boolean).join(' ')}</div>`:''}
+        ${(tipoLabel||nroLabel||analisisLabel)?`<div class="vp-cel-chips">${[tipoLabel,nroLabel,analisisLabel].filter(Boolean).join(' ')}</div>`:''}
         ${promoLabel?`<div>${promoLabel}</div>`:''}
         <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
           ${isCancelled?'':(gc>0?`<span style="font-size:.8rem;font-weight:600;color:${gg>=0?'var(--green)':'var(--red)'}">${gg>=0?'+'+fmt(gg):'−'+fmt(-gg)}</span>`:'')}

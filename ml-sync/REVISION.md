@@ -2589,6 +2589,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 12a Ventas (14/11/2026, v28.195)
+- **PC, columnas fijas:** `.vp-cab-num` arma `.vpc-tot` (118 px) · `.vpc-gan` (104) · `.vpc-pct` (118) · `.vpc-ln` (30). Medido a 1200: el % y la ganancia de todas las ventas en el mismo píxel (antes caían en 5-6 lugares).
+- **Teléfono, carteles cortos:** lo largo va en `.vp-l`, que en `.vp-cel` no se ve: "💳 Premium · 6 cuotas s/interés" → "💳 6 cuotas" (tipoLabel), "🔬 analizada · normal" → "🔬 normal" y "🔬 📈 buscando techo · normal" → "🔬 📈 buscando techo" (`analisisVentaHTML`). Los carteles van en `.vp-cel-chips` (flex con salto entre carteles, nunca adentro de uno). En la PC se ven enteros.
+- **Barra del período (`#vp-perbar`):** ≤640 px en un renglón: Día/Mes/Año ▾ · ‹ › de 44 px (`.vp-flecha`) · la fecha (sin el iconito del calendario, se toca igual) . El 🧠 "qué pasó" en el teléfono pasa al menú del período (`.vp-cer-opt`). Medido: 62 px en Día, Mes y Año (antes saltaba hasta 132). El 📅 Período (dos fechas) usa dos renglones a propósito.
+- **Qué chequear:** en el iPhone la fecha se lee entera; tocarla abre el calendario.
 ### 🎨 Diseño del 10/11 · 13a línea de tiempo y puertas de Inicio (14/11/2026, v28.194)
 - **Cabecera de la línea (`lineaRepintar`, el template de `m.innerHTML`):** `.ln-cab1` en un renglón: `.ln-nom` (nombre con "…", entero en el título) · `.ln-chip` "🎯 techo X% seguro" (`_lnChip`: del 🔴 que no vende con su % de `_segTecho`, o de la prueba en curso/lanzamiento de `cyc/techo95pct`; en el teléfono sin el precio, `.ln-chip-l`) · `.ln-btns1` (Ficha, Todos, 365/90/30, de costado: se corren de costado, sin barra) · ✕ fuera de la tira, siempre visible. Los colores (variantes) pasaron abajo (`.ln-vars`), fuera de la cabecera fija. Medido: 48 px a 360 y a 1200 (antes ~100 en el teléfono).
 - **Puertas de Inicio:** `.ht-grid .ht-ped-b` min 32 px (antes 23-25), las tarjetas siguen de 108/164 px sin desbordar (medido). Ventas lleva `#hv-ven-nuevas` (`.ht-rojo.ht-azul`) con cuántas ventas nuevas; el texto dice "+$X / sin mirar" (antes "desde que miraste" quedaba tapado).
