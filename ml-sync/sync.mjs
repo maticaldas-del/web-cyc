@@ -12149,7 +12149,7 @@ async function aplicarCostosPedido(db, idPedido, c, GO) {
   const vp = (await db.get('cyc/ventaprod')) || {}; setDevLive(vp);
   const php = (await db.get('cyc/precios_hist_prod')) || {};
   const tc = parseFloat(c.tcPedido) || parseFloat(c.tcPanel) || 0;
-  const cambios = [], iguales = [], sinFicha = [];
+  const cambios = [], iguales = [], sinFicha = [], tiendaNo = [];
   // ¿LA FICHA YA VENDÍA ANTES DE ESTE PEDIDO? (revisión etapa 3, 29/10/2026). "Primera compra" era "el renglón tiene candidato" (`it.id`), y
   // un renglón con candidato puede ser de una ficha que ya existía (un agregado que el ticket empareja con un candidato viejo que ya era
   // ficha, o uno enganchado al llegar a la misma ficha): ahí NO se congelaba el costo viejo y las ventas de meses cerrados cambiaban.
@@ -12166,6 +12166,10 @@ async function aplicarCostosPedido(db, idPedido, c, GO) {
     if (!pid || !products[pid]) { sinFicha.push(it.nom || it.cod || '?'); continue; }
     if (!(usd > 0)) { sinFicha.push((it.nom || '?') + ' (sin precio)'); continue; }
     const p = products[pid];
+    // 🏬 27a del 14/11/2026 (él: "a"): un renglón de 🏬 Tienda (`tienda`) o del local (`paraLocal`/`sololocal`) NO cambia el costo de la ficha
+    // de ML que tiene el mismo código (la recompra más barata baja el costo sólo con mercadería que va a ML). Sí se aplica si la ficha misma
+    // es sólo del local (`soloLocal`): es su propio costo.
+    if ((it.tienda || it.paraLocal || it.sololocal || it.soloLocal) && !(p.soloLocal || p.sololocal)) { tiendaNo.push(p.name || it.nom || '?'); continue; }
     const antes = parseFloat(p.costUSD) || 0;
     const nuevo = Math.round(usd * r * 100) / 100;
     // `primera`: el renglón es un producto NUEVO de este mismo pedido (la ficha nació de él con el recargo estimado).
@@ -12181,6 +12185,7 @@ async function aplicarCostosPedido(db, idPedido, c, GO) {
   for (const x of cambios) console.log(x.primera ? `  · ${x.p.name}: primera compra, costo ajustado del estimado al real → US$ ${x.nuevo.toFixed(2)} (estaba US$ ${x.antes.toFixed(2)})` : `  ${x.bajo ? '⬇️' : '⬆️'} ${x.p.name}: US$ ${x.antes.toFixed(2)} → US$ ${x.nuevo.toFixed(2)}${x.bajo ? ' (esta compra salió más barata: baja al que se pagó; lo ya vendido queda con el viejo)' : ''}`);
   for (const x of iguales) console.log(`  = ${x.nom}: tiene US$ ${x.antes.toFixed(2)}, este pedido sale US$ ${x.nuevo.toFixed(2)} · ${x.primera ? 'ya está en el real' : 'igual: no se toca'}`);
   if (sinFicha.length) console.log(`  · sin ficha todavía (se crea al llegar con este recargo): ${sinFicha.join(', ')}`);
+  if (tiendaNo.length) console.log(`  · 🏬 renglones de Tienda/local: no tocan el costo de la ficha de ML del mismo código (27a del 14/11): ${tiendaNo.join(', ')}`);
   if (!GO) { console.log(`  (prueba: no se tocó ninguna ficha)`); return { r, cambios, iguales }; }
   for (const x of cambios) {
     // Primera compra: las ventas que ya hubo salieron de ESTA mercadería, así que van con el costo real (no se congela la estimación).
