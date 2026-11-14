@@ -44447,6 +44447,18 @@ async function main() {
       if (!cuerpo) { console.log('=== DEUDAS A CYC ==='); for (const [id, d] of lista) { const sd = Math.round(saldo(d)); console.log(`  ${id} · ${_tapaNom(d)} · ${sd < 0 ? 'le debemos ' + money(-sd) : 'falta ' + money(sd)} · ${Object.keys(d.movs || {}).length} movimiento(s)`); } return; }
       const i = cuerpo.indexOf('='); if (i < 1) { console.log('Usá: debenmov:<deuda>=<+N|-N>[@AAAA-MM-DD]|<nota>;go'); return; }
       const quien = cuerpo.slice(0, i).trim(), resto = cuerpo.slice(i + 1); const [numF, ...partesP] = resto.split('|');
+      // 🔁 24a del 14/11/2026 (él: "a"): el MISMO movimiento (misma deuda, mismo monto, misma nota = el mismo texto) dos veces en 10 minutos no
+      // se carga dos veces (un comando mandado de nuevo duplicaba el pago o la venta). Si de verdad es otro igual, va con "otra" en el texto.
+      // La huella del texto queda en `cyc/debenmovult/<hash>` = cuándo (sin el texto: el registro es público); lo de más de 1 día se borra.
+      if (GO && !/\botra\b/i.test(cuerpo)) {
+        const hDM = createHash('sha256').update(cuerpo.toLowerCase().replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 24);
+        let ultDM = null; try { ultDM = (await db.get('cyc/debenmovult')) || {}; } catch { ultDM = null; }
+        if (ultDM === null) { console.log('❌ no pude leer cyc/debenmovult (para no cargar dos veces el mismo movimiento): no escribo nada. Volvé a mandarlo.'); return; }
+        const tU = Number(ultDM[hDM]) || 0;
+        if (tU && Date.now() - tU < 10 * 60e3) { console.log(`❌ Este mismo movimiento (misma deuda, mismo monto, misma nota) ya se cargó hace ${Math.max(1, Math.round((Date.now() - tU) / 60e3))} min: no lo cargo dos veces (24a del 14/11). Si de verdad es OTRO igual, mandalo con la palabra "otra" en la nota. No escribo nada ni mando Telegram.`); return; }
+        const updDM = { [hDM]: Date.now() }; for (const [k, t] of Object.entries(ultDM)) if (Date.now() - (Number(t) || 0) > 864e5) updDM[k] = null;
+        await db.patch('cyc/debenmovult', updDM);
+      }
       // DEUDA NUEVA CON CUOTAS (29/10/2026, él: "agregar una deuda nueva… Germán. Le vendimos una Play 5 y un joystick… 24 cuotas semanales,
       // la primera el 15, la segunda el 22, paga 74 mil por cuota"): `debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>
       // |frec=<sem|men|quin|dias:N>|vence1=AAAA-MM-DD|pagos=AAAA-MM-DD,…|costo=<pesos>;go`. Las fechas de `pagos` = cuotas ya pagadas.
