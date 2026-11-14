@@ -423,6 +423,21 @@ body.light .mz-pct{color:#fff}
 .cer-col{margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2)}
 .cer-col-h{font-weight:700;font-size:.82rem}
 .cer-col>p:first-of-type{margin-top:4px}
+/* 7a del Diseño 10/11 · tablas del teléfono en TARJETAS con columnas fijas (Inventario, Rotación → Local; Rotación ML ya lo era) */
+@media(max-width:640px){
+  .tbl-outer:has(table.tcard){border:none;background:transparent;overflow:visible}
+  table.tcard thead{display:none}
+  table.tcard,table.tcard tbody{display:block;width:100%}
+  table.tcard tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--surface)!important}
+  table.tcard tr.tc-var{margin-left:14px;border-style:dashed}
+  table.tcard td{display:block;border:none!important;padding:0!important;text-align:left!important;max-width:none!important;white-space:normal!important;min-width:0;font-family:'DM Mono',monospace;font-size:.76rem}
+  table.tcard td[data-l]::before{content:attr(data-l);display:block;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px;font-family:'DM Mono',monospace;font-weight:400}
+  table.tcard td.tc-n{grid-column:1/-1;font-size:.84rem;font-weight:600;font-family:inherit}
+  table.tcard td.tc-n span,table.tcard td.tc-n strong{overflow:visible!important;white-space:normal!important;overflow-wrap:anywhere}
+  table.tcard td.tc-vacia{visibility:hidden}
+  table.tcard tr.total-row{border-color:var(--border2)}
+  #inv-tbl.tcard tbody td.tc-n{max-width:none;overflow:visible;white-space:normal}
+}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -1762,7 +1777,7 @@ setTimeout(function _ldVigia(){try{
       <div class="stitle" style="margin:0">Unidades por cuenta / ubicación</div>
     </div>
     <div class="tbl-outer">
-      <table id="inv-tbl">
+      <table id="inv-tbl" class="tcard">
         <thead><tr>
           <th style="text-align:left;min-width:120px">Producto</th>
           <th style="min-width:80px">Costo US$</th>
@@ -3650,7 +3665,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.197';
+const APP_VERSION='28.198';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3663,6 +3678,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.198',f:'14/11',h:'02:08',c:[{n: 1, t: "📦 En el teléfono, Inventario y Rotación → Local van en tarjetas: arriba el nombre entero y abajo cada dato con su nombre, siempre en el mismo lugar (7a del Diseño 10/11)."}]},
   {v:'28.197',f:'14/11',h:'02:05',c:[{n: 1, t: "🧠 de un producto con colores: un bloque por color con su nota, su último cambio de precio (con el motivo), su barrita y su 📋 Ficha (14a del Diseño 10/11)."}]},
   {v:'28.196',f:'14/11',h:'02:04',c:[{n: 2, t: "🧠 Pedidos (lo que lee Tito): \"‹ 3 de 6 Siguiente ›\" en una barra fija abajo de 44 px que no salta; arriba la foto y \"Comprá N · Pagá hasta $X\"; cada nota sale una sola vez (los colores sin nota propia ya no repiten la del producto) (4a del Diseño 10/11)."}]},
   {v:'28.195',f:'14/11',h:'02:01',c:[{n: 1, t: "🏷️ Ventas en la PC: el total, la ganancia y el % caen siempre en la misma columna (12a del Diseño 10/11)."}, {n: 1, t: "📱 Ventas en el teléfono: carteles cortos (\"💳 6 cuotas\", \"🔬 normal\") que no se parten, y la barra del período en un renglón con flechas de 44 px que no salta al pasar de Día a Mes o Año; el 🧠 \"qué pasó\" está adentro del menú del período (12a)."}]},
@@ -6274,11 +6290,11 @@ function renderInv(){
     const _negStyle=n=>n<0?'color:var(--red);font-weight:700':'';
     if(!hasVars){
       return`<tr>
-        <td title="${p.name.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:6px;min-width:0">${fotoMiniHTML(p,24)}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div></td><td>${costCell}</td>
-        ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
-        <td class="ac" id="st_${p.id}" style="${_negStyle(sub)}">${fmtN(sub)}</td>
-        <td class="ac" id="vt_${p.id}">${fmtUS(val)}</td>
-        <td style="text-align:right">${badge}</td>
+        <td class="tc-n" title="${p.name.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:6px;min-width:0">${fotoMiniHTML(p,24)}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div></td><td data-l="Costo">${costCell}</td>
+        ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" data-l="${l}" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
+        <td class="ac" data-l="Total" id="st_${p.id}" style="${_negStyle(sub)}">${fmtN(sub)}</td>
+        <td class="ac" data-l="Valor" id="vt_${p.id}">${fmtUS(val)}</td>
+        <td data-l="vs ant." style="text-align:right">${badge}</td>
       </tr>`;
     }
     // Si la búsqueda nombra un color, sólo ese color; si coincidió por otra cosa (nombre, publicación), todos.
@@ -6286,20 +6302,20 @@ function renderInv(){
     const varsFiltered=(!q||!_vq.length)?(p.variantes||[]):_vq;
     const varRows=[...varsFiltered].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).map(v=>{
       let vSub=0;
-      const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td class="ac" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('');
-      return`<tr class="inv-var-row"><td><div style="display:flex;align-items:center;gap:6px;min-width:0">↳ ${fotoMiniHTML(p,22,v)}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${v}</span></div></td><td></td>${locCells}<td class="ac" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac">${fmtUS(vSub*cp)}</td><td></td></tr>`;
+      const locCells=LOCS.map(l=>{const q=getQV(p.id,l,v);vSub+=q;return`<td class="ac" data-l="${l}" style="${_negStyle(q)}">${fmtN(q)}</td>`;}).join('');
+      return`<tr class="inv-var-row tc-var"><td class="tc-n"><div style="display:flex;align-items:center;gap:6px;min-width:0">↳ ${fotoMiniHTML(p,22,v)}<span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${v}</span></div></td><td class="tc-vacia"></td>${locCells}<td class="ac" data-l="Total" style="${_negStyle(vSub)}">${fmtN(vSub)}</td><td class="ac" data-l="Valor">${fmtUS(vSub*cp)}</td><td class="tc-vacia"></td></tr>`;
     }).join('');
     return`<tr style="background:rgba(124,58,237,.06)">
-      <td title="${p.name.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:6px;min-width:0">${fotoMiniHTML(p,24)}<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis">${p.name}</strong></div></td><td>${costCell}</td>
-      ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" style="font-size:.72rem;${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
-      <td class="ac" id="st_${p.id}">${fmtN(sub)}</td>
-      <td class="ac" id="vt_${p.id}">${fmtUS(val)}</td>
-      <td style="text-align:right">${badge}</td>
+      <td class="tc-n" title="${p.name.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:6px;min-width:0">${fotoMiniHTML(p,24)}<strong style="min-width:0;overflow:hidden;text-overflow:ellipsis">${p.name}</strong></div></td><td data-l="Costo">${costCell}</td>
+      ${LOCS.map(l=>{const q=getQ(p.id,l);return`<td class="ac" data-l="${l}" style="font-size:.72rem;${_negStyle(q)}">${fmtN(q)}</td>`;}).join('')}
+      <td class="ac" data-l="Total" id="st_${p.id}">${fmtN(sub)}</td>
+      <td class="ac" data-l="Valor" id="vt_${p.id}">${fmtUS(val)}</td>
+      <td data-l="vs ant." style="text-align:right">${badge}</td>
     </tr>${varRows}`;
   }).join('')
-  +`<tr class="total-row"><td>TOTAL</td><td></td>
-    ${LOCS.map(l=>`<td class="ac" id="lu_${sid(l)}">—</td>`).join('')}
-    <td class="ac" id="tot_u">—</td><td class="ac" id="tot_v">—</td><td></td>
+  +`<tr class="total-row"><td class="tc-n">TOTAL</td><td class="tc-vacia"></td>
+    ${LOCS.map(l=>`<td class="ac" data-l="${l}" id="lu_${sid(l)}">—</td>`).join('')}
+    <td class="ac" data-l="Total" id="tot_u">—</td><td class="ac" data-l="Valor" id="tot_v">—</td><td class="tc-vacia"></td>
   </tr>`;
 }
 
@@ -23127,8 +23143,8 @@ function renderRotLocal(){
       <b>🏪 Oficina Local: ${usd(tot)}</b> <span style="color:var(--muted)">${ars(tot)}</span> en ${rows.length} productos (${rows.reduce((a,r)=>a+r.u,0)} u.) al costo<br>
       <span style="color:var(--red)">🔴 Parado (nada en 60 días): <b>${usd(capM)}</b> · ${tot>0?Math.round(capM/tot*100):0}%</span>
       <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Acá no se paga stock antiguo (no es Full): lo que cuesta tenerlo parado es la plata quieta. "Salió" = lo que se le dejó a una perfumería o se vendió por la Tienda (los movimientos de Ver deudas con el producto). Ordenado: lo parado primero, de más plata a menos.</div></div>
-    <div class="tbl-outer"><table><thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Capital</th><th>📅 En stock</th><th>Salieron 60 d</th><th>⏳ Última salida</th><th>Estado</th></tr></thead><tbody>
-    ${vis.map(r=>{const e=EST[r.est];return `<tr><td style="text-align:left;max-width:220px">${_esc(r.nom)}</td><td>${r.u}</td><td>${usd(r.cap)}<br><span style="font-size:.6rem;color:var(--muted)">${ars(r.cap)}${r.cu>0?'':' · ⚠️ sin costo'}</span></td><td title="${r.dAprox?'Se empezó a contar la Oficina Local el 29/10: lo de antes no tiene fecha de entrada, está desde ese día o antes':'Desde el día en que entró a la Oficina Local'}">${r.dAprox?r.dSt+'+ d':r.dSt+' d'}<br><span style="font-size:.6rem;color:var(--muted)">${r.dAprox?'desde antes del 29/10':'sin pagar stock'}</span></td><td>${r.u60}</td><td>${r.dSin==null?'nunca':'hace '+r.dSin+' d'}</td><td title="${e[2]}">${e[0]} ${e[1]}</td></tr>`;}).join('')}
+    <div class="tbl-outer"><table class="tcard"><thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Capital</th><th>📅 En stock</th><th>Salieron 60 d</th><th>⏳ Última salida</th><th>Estado</th></tr></thead><tbody>
+    ${vis.map(r=>{const e=EST[r.est];return `<tr><td class="tc-n" style="text-align:left;max-width:220px">${_esc(r.nom)}</td><td data-l="Unidades">${r.u}</td><td data-l="Capital">${usd(r.cap)}<br><span style="font-size:.6rem;color:var(--muted)">${ars(r.cap)}${r.cu>0?'':' · ⚠️ sin costo'}</span></td><td data-l="📅 En stock" title="${r.dAprox?'Se empezó a contar la Oficina Local el 29/10: lo de antes no tiene fecha de entrada, está desde ese día o antes':'Desde el día en que entró a la Oficina Local'}">${r.dAprox?r.dSt+'+ d':r.dSt+' d'}<br><span style="font-size:.6rem;color:var(--muted)">${r.dAprox?'desde antes del 29/10':'sin pagar stock'}</span></td><td data-l="Salieron 60 d">${r.u60}</td><td data-l="⏳ Última salida">${r.dSin==null?'nunca':'hace '+r.dSin+' d'}</td><td data-l="Estado" title="${e[2]}">${e[0]} ${e[1]}</td></tr>`;}).join('')}
     </tbody></table></div>`;
 }
 function renderRotacionStock(){

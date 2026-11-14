@@ -2589,6 +2589,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 7a tablas del teléfono en tarjetas (14/11/2026, v28.198)
+- **Qué es:** clase `table.tcard` (≤640 px): cada renglón es una tarjeta con el nombre entero arriba (`td.tc-n`) y los datos en 3 columnas fijas con su nombre (`data-l`). Aplicada a 📦 Inventario (`renderInv`, `#inv-tbl`: Costo · Adriana · Luciana / Ayelen · Matias · Total / Valor · vs ant.; los colores en tarjeta punteada con la celda del costo vacía pero ocupando su lugar, `tc-vacia`) y a 🏪 Rotación → Local (`renderRotLocal`: Unidades · Capital · En stock / Salieron · Última salida · Estado). Rotación ML ya era tarjeta (`#rot-tbl`, 📈 y 🧠 fijos arriba a la derecha): no se tocó. En la PC siguen siendo tablas.
+- **Qué chequear:** a 360 las columnas caen en el mismo píxel en todos los renglones (medido: 48/139/231) y no se corta ningún nombre.
 ### 🎨 Diseño del 10/11 · 14a el 🧠 por color (14/11/2026, v28.197)
 - **Qué es:** `cerebroAbrir` (camino de Claude, fuera de Pedidos y Armar caja): si las publicaciones del producto son de 2+ colores (`_lineaColorDe`), arma un `.cer-col` por color con: su nota 💭 (con la cuenta si hay más de una publicación de ese color; "la misma nota de arriba" si se repite), "Último cambio" de ese color (`cyc/claudecambios` + `cyc/autoprecio`, con flecha y motivo), `_rayasBarrasHTML` y `_fichaBotones` de ese color. Sin colores sigue igual que antes ("Por qué cambió el precio" con los últimos 3, barras y fichas al final).
 - **Qué chequear:** un producto con colores (Sábanas, Paulvic) muestra cada color en su cuadro y ningún 📋 suelto al final.
