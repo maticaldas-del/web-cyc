@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 📅 Rayas: el pico de la fecha especial se mide al mismo precio (16.2a del 14/11/2026)
+- **Qué es:** antes, si en los días de fecha especial vendía el doble que en el resto (a cualquier precio), salían TODOS de las rayas. Ahora cada día de fecha se compara contra los días fuera de fecha AL MISMO precio (±2%, el que vio el comprador: pV, si no p, si no pLista): sale sólo si a ese precio hay días fuera de fecha y en la fecha vendió el doble o más por día; si a ese precio no hay días fuera de fecha, se queda.
+- **Dónde vive:** `sync.mjs` `diasFechaPico` (lo usan `rayasPrecioLinea`, `vendiocaro` y la cuenta de la línea 22278) · `index.html` `_fueraR` dentro de `_rayas`. Web y robot iguales.
+- **Qué chequear:** en un producto con el Día de la Madre a un precio que sólo se vendió en la fecha, que ese precio ahora aparezca en las rayas; y que la web y `ficha:<MLA>` (línea RAYAS) den el mismo 💰/🔴.
+
 ### 🛍️ Las ventas del Black Friday no confirman subas ni aceleran la escasez (15a del 14/11/2026)
 - **Qué es:** del 25 al 30/11 (`bfVentana`) las ventas y las horas no cuentan para confirmar una suba (`subaConfirmada`: horas sin las del evento, ritmo de antes sin esos días, ventas del evento afuera), para "vendió a este precio" (`vendioAEstePrecio`) ni para la lista 📈/🔥/⏳ "vendió y no subió" de `errores`. En `decido`, un `!vendio#escasez/#sinrepo` que sólo vendió en el evento se frena (salida `!chico` + EXCEPCIÓN). La 🔥 de `escasez` mide el ritmo sin los días ni las ventas del evento (línea, respaldo y el ⚡ de 7 días); la web igual en `ventas7De` (`_enBFW`, `_horasBFW`, copia de `bfVentana`/`horasBF`).
 - **Dónde vive:** `sync.mjs` (`subaConfirmada`, `vendioAEstePrecio`, el bucle de `errores` que arma `lanza`, el freno nuevo en `decido` antes del 9a, `escasez`: `RIT`/`ritmo14`/⚡) · `index.html` (`ventas7De`).

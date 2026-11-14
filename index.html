@@ -3554,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.185';
+const APP_VERSION='28.186';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3567,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.186',f:'14/11',h:'01:26',c:[{n:2,t:'📅 Rayas: un día de fecha especial sale sólo si al MISMO precio (±2%) hay días fuera de fecha para comparar y vendió el doble; si no, se queda (16.2a del 14/11).'}]},
   {v:'28.185',f:'14/11',h:'01:25',c:[{n:1,t:'🛍️ Black Friday (25-30/11): sus ventas no confirman una suba ni aceleran la escasez (15a del 14/11).'}]},
   {v:'28.184',f:'13/11',h:'19:10',c:[{n:2,t:'📥 Deudas en cuotas semanales: pueden vencer un día fijo de la semana (Germán: los lunes). El pago del domingo cubre el lunes y la próxima vence el lunes siguiente.'}]},
   {v:'28.183',f:'13/11',h:'18:40',c:[{n:1,t:'💰 Gastos del mes: lo que rindió Mercado Pago dice "sin dato" en vez de $0 cuando el extracto de ese mes no trae la línea de rendimientos.'}]},
@@ -13798,8 +13799,11 @@ function lineaPintar(prodId){
     // 24/10/2026 (Infusor cajita): el 💰 y el 🔴 se miden con los últimos RAYAS_DIAS días (un 💰 de hace 3 meses hacía "perder" a todo).
     const _kDesdeR=(()=>{const d=new Date(Date.now()-RAYAS_DIAS*864e5);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0')+'_'+String(d.getDate()).padStart(2,'0');})();
     // Los días de fecha especial salen SÓLO si este producto tuvo un pico ahí (el doble o más por día con stock): copia de `diasFechaPico`.
+    // 16.2a del 14/11/2026: el pico se mide AL MISMO PRECIO (±2%): sale sólo si a ese precio hay días fuera de fecha y en la fecha vendió el doble o más; si no hay, se queda.
     const _fueraR=(()=>{const o=new Set();const kk=ksR.filter(k=>k>=_kDesdeR&&_rayasDias[k]&&Number(_rayasDias[k].st)>0);const enF=kk.filter(k=>_diaFechaRaya(k));if(!enF.length)return o;
-      const r=L0=>L0.length?L0.reduce((a,k)=>a+(Number(_rayasDias[k].u)||0),0)/L0.length:0;const rF=r(enF),rN=r(kk.filter(k=>!_diaFechaRaya(k)));if(rF>0&&rF>=2*rN)enF.forEach(k=>o.add(k));return o;})();
+      const r=L0=>L0.length?L0.reduce((a,k)=>a+(Number(_rayasDias[k].u)||0),0)/L0.length:0;
+      const pD=k=>{const x=_rayasDias[k];return Number(x.pV)>0?Number(x.pV):Number(x.p)>0?Number(x.p):Number(x.pLista)>0?Number(x.pLista):0;};const noF=kk.filter(k=>!_diaFechaRaya(k));
+      enF.forEach(k=>{const pk=pD(k);if(!(pk>0))return;const cerca=j=>Math.abs(pD(j)-pk)<=pk*0.02;const N=noF.filter(cerca);if(!N.length)return;const rF=r(enF.filter(cerca)),rN=r(N);if(rF>0&&rF>=2*rN)o.add(k);});return o;})();
     const _plR={};{let pA=null;ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;/* 1a del 03/11: con mi descuento ese día, el precio que vio el comprador (pV), igual que el robot */const pN=Number(d.pV||d.pLista||d.p)>0?Number(d.pV||d.pLista||d.p):pA;let pl=pN||0;
       if((d.u||0)>0&&Number(d.tot)>0&&pA&&pN&&pA!==pN){const pu=Number(d.uOwn)>0&&Number(d.totOwn)>0?Number(d.totOwn)/Number(d.uOwn):Number(d.uEq)>0&&Number(d.totEq)>0?Number(d.totEq)/Number(d.uEq):Number(d.tot)/Number(d.u);if(Math.abs(pu-pA)<Math.abs(pu-pN))pl=pA;}_plR[k]=Number(d.pLista||d.p)>0?pl:0;pA=pN;});}
     const G={};ksR.forEach(k=>{const d=_rayasDias[k];if(!d)return;if(d.est!=null&&d.est!=='active')return;if(!(d.st!=null&&d.st>=3&&Number(d.vis)>0))return;/* revisión etapa 8 (28/10): un día con 0 visitas no mide el precio, igual que `rayasPrecioLinea` */if(k<_kDesdeR||_fueraR.has(k))return;const pl=_plR[k]||0;if(!(pl>0))return;

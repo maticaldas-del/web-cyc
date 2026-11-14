@@ -4850,8 +4850,14 @@ function diasFechaPico(d, kDesde, hoyK) {
   const out = new Set(); const ks = Object.keys(d || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k >= kDesde && (!hoyK || k < hoyK) && d[k] && Number(d[k].st) > 0);
   const enF = ks.filter((k) => diaFechaRaya(k)); if (!enF.length) return out;
   const r = (L) => (L.length ? L.reduce((a, k) => a + (Number(d[k].u) || 0), 0) / L.length : 0);
-  const rF = r(enF), rN = r(ks.filter((k) => !diaFechaRaya(k)));
-  if (rF > 0 && rF >= 2 * rN) for (const k of enF) out.add(k);
+  // 16.2a del 14/11/2026 (él: "a"): el pico se mide AL MISMO PRECIO (±2%). Un día de fecha especial sale sólo si a ese precio hay días fuera
+  // de fecha para comparar y en la fecha vendió el doble o más por día; si a ese precio no hay días fuera de fecha, se queda (es lo único
+  // medido a ese precio). Antes salían todos contra el promedio de cualquier precio. Copia en la web (`_fueraR` de `_rayas`): si se toca una, la otra.
+  const pD = (k) => { const x = d[k]; return Number(x.pV) > 0 ? Number(x.pV) : Number(x.p) > 0 ? Number(x.p) : Number(x.pLista) > 0 ? Number(x.pLista) : 0; };
+  const noF = ks.filter((k) => !diaFechaRaya(k));
+  for (const k of enF) { const pk = pD(k); if (!(pk > 0)) continue; const cerca = (j) => Math.abs(pD(j) - pk) <= pk * 0.02;
+    const N = noF.filter(cerca); if (!N.length) continue;
+    const rF = r(enF.filter(cerca)), rN = r(N); if (rF > 0 && rF >= 2 * rN) out.add(k); }
   return out;
 }
 // 🔙 EL PRECIO MÁS CARO QUE VENDIÓ (27/10/2026 a la noche, él: "puede haber productos que buscando el mejor precio bajaron de precio de la
