@@ -323,17 +323,22 @@ def ritmo(x,dcs=30):
 # vende medio por día o más y deja 25%+ se compra para 45 días (con ~14 días de compra a Full, 30 no alcanzaba y se volvía a
 # cortar). Y lo nuevo que vuela (1+ por día en su primera semana con stock) también. El resto sigue en 30.
 def Tde(p,x,r,m=None):
-    # 🎄 PICO DE NAVIDAD EN PARAGUAY (9a del 08/11/2026, él: "a"): hasta el 24/12 cada pedido de Paraguay lleva el pico de Navidad del
-    # producto (`NAV x` de pedidostodo = cuánto más vendió del 03/12 al 24/12 del año pasado, sólo regalable, ×1,3 a ×5). Lo que llega
-    # (~16 días de viaje) y se vende en los 30 días del pedido dentro de esa ventana cuenta x veces: se suman (x-1) × esos días.
-    if p['g']=='PY' and r>0 and p.get('nav',0)>1:
+    # 🎄 PICO DE NAVIDAD (9a del 08/11/2026 en Paraguay; 18a del 14/11/2026, él: "a" = también Bs As (con Dai Nippon y las listas) y
+    # Paulvic): hasta el 24/12 cada pedido lleva el pico de Navidad del producto (`NAV x` de pedidostodo = cuánto más vendió del 03/12 al
+    # 24/12 del año pasado, sólo regalable, ×1,3 a ×5). Lo que llega (Paraguay ~16 días de viaje, Bs As y Paulvic ~7) y se vende en los días
+    # del pedido (30 · 60 · 45) dentro de esa ventana cuenta x veces: se suman (x-1) × esos días a los días del pedido.
+    Tb,por=_TdeBase(p,x,r,m)
+    if p['g'] in('PY','BSAS','PAULVIC') and r>0 and p.get('nav',0)>1:
         import datetime as _dt
         hoyD=_dt.date.today(); a=_dt.date(hoyD.year,12,3); b=_dt.date(hoyD.year,12,24)
-        ini=hoyD+_dt.timedelta(days=16); fin=ini+_dt.timedelta(days=T)
+        ini=hoyD+_dt.timedelta(days={'PY':16,'BSAS':7,'PAULVIC':7}[p['g']]); fin=ini+_dt.timedelta(days=Tb)
         sol=max(0,(min(fin,b)-max(ini,a)).days+1) if hoyD<=b else 0
         if sol>0:
             extra=round((p['nav']-1)*sol)
-            return T+extra,f"🎄 pico de Navidad ×{p['nav']:.1f}: {sol} días del pedido caen del 03/12 al 24/12".replace('.',',')
+            nt=f"🎄 pico de Navidad ×{p['nav']:.1f}: {sol} días del pedido caen del 03/12 al 24/12".replace('.',',')
+            return Tb+extra,(por+' · '+nt if por else nt)
+    return Tb,por
+def _TdeBase(p,x,r,m=None):
     # PAULVIC: pedido cada 15 días para 45 días de su ritmo (análisis a fondo, 16/10/2026, idea 3 · CEREBRO.md).
     if p['g']=='PAULVIC' and r>0: return 45,'el Paulvic se pide cada 15 días'
     # 🏬 BS AS A 60 DÍAS (03/11/2026, él: "Paulvic hay siempre. Nissei también y Bs As la mitad de las veces" → eligió 60 días): como en Bs

@@ -1150,6 +1150,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🎄 El pico de Navidad también en Bs As y Paulvic (18a del 14/11/2026)
+- **Qué es:** hasta el 24/12, los pedidos de Bs As (con Dai Nippon y las listas) y del Paulvic suman, como Paraguay desde el 08/11, (x−1) × los días del pedido que caen del 03/12 al 24/12 (`NAV x` = pico de la Navidad pasada, sólo regalable). El viaje: Paraguay 16 días, Bs As y Paulvic 7. El motivo dice "🎄 pico de Navidad ×x: N días…" al lado del motivo de siempre ("se pide para 60 días").
+- **Dónde vive:** `ml-sync/notas/decide_pedidos.py` (`Tde` envuelve a `_TdeBase`, que es la cuenta de antes). `pedidostodo` ya imprimía `NAV` en todos los grupos.
+- **Qué chequear:** en la próxima completa, un regalable de Bs As con `NAV` (ej. un perfume o un reloj) que pida más que antes y el motivo con 🎄; lo que no tiene `NAV` igual que antes.
+
 
 - **14/11 · HOY LLEGA primero en la run** (CHAT_LOCAL a00): código del día + lo que llega, mensaje "HOY LLEGA" al buzón antes de todo → Telegram en 2 min. Qué chequear: que el robot lo mande una sola vez y que el MIRAR TODO no lo repita.
 
