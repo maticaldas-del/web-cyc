@@ -496,6 +496,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   más** (9a del 08/11: antes $10.000 → $29.990 → $44.990 → $67.490 con la caja a 8 días): es "🚚 cubierto" (`escasezCubierta`: la caja más
   próxima que no llegó, sale con `envSalidaTs` + ~8 días). Freno en `decido` (#escasez) y la lista 📈🔥 de `errores` no la pide. La vuelta
   del punto medio en 🔥/⏳ va sólo con 10 días sin vender.
+- 🎁☀️ **Pico por rubro** (14/11, él: *"elegí vos los productos de regalo y de verano"*): sin pico medido, regalo ×2 (perfumes, tecnología de regalo) y verano ×1,5 (cartas, mazos, enchufe viajero, pava de auto) en Pedidos, cajas y escasez (`temporadaDe`); liquidación y sobra sólo con lo medido.
 - 🎄 **Navidad** (2a del 03/11): lo regalable con pico en la Navidad pasada (×1,3+, `picosNavidad`) cuenta en `escasez` su ritmo × ese
   pico del 03/12 al 24/12, para que se vea antes.
 - Si ML la pausa por el precio → **se le avisa en el chat y lo arregla él** (28/10, 3b: *"avisarme y lo arreglo"*); no se toca solo.

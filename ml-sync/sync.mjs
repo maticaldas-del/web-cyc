@@ -4742,6 +4742,26 @@ function picosNavidad(vp, prodById, ahora = Date.now()) {
     const f = (x.w / dW) / (x.b / dB); if (f >= 1.3) out[pid] = Math.round(Math.min(5, f) * 100) / 100; }
   return out;
 }
+// 🎁☀️ PICO DE TEMPORADA POR RUBRO (14/11/2026, él: "la navidad pasada teníamos poco o ningún producto de lo que manejamos hoy. pero elegí vos
+// los productos de regalo y de verano. regalo por ejemplo perfumes, tecnología etc y de verano cartas casino etc. miralo vos"): `picosNavidad`
+// no encontró pico en ninguno de los 252 (el año pasado casi no estaban). Lo que no tiene pico MEDIDO toma el de su rubro: 🎁 regalo ×2
+// (perfumes y tecnología de regalo: auriculares, relojes, joysticks, parlantes, mouse gamer…; lo regalable midió +142% en la Navidad de ML)
+// y ☀️ verano ×1,5 (cartas, mazos, enchufe viajero, pava de auto: arrancan las vacaciones). Lo medido manda. Pendrives, memorias, routers,
+// cables y lo de casa no llevan pico. Lo usan Pedidos y las cajas (`NAV x` de `pedidostodo`) y la escasez; la liquidación de 30 días y la
+// sobra (4a) siguen sólo con lo MEDIDO (no se frena una liquidación por una suposición).
+const TEMP_REGALO_X = 2, TEMP_VERANO_X = 1.5;
+const RE_TEMP_VERANO = /\bcartas?\b|naipes|\bmazo\b|enchufe viajero|pava de auto/i;
+const RE_TEMP_REGALO = /perfum|parfum|\bedp\b|\bedt\b|eau de|body (splash|mist)|victoria'?s? secret|paulvic|persea|ferrari (rojo|negro)|cabotine|halloween|lapidus|animale|\bcuba\b|de la patagonia|pret a porter|eclat|ocelot|lattafa|muserose|calvin klein|tommy|carolina herrera|azzaro|mercedes|cool water|adyan|auricular|aud[ií]fono|\bbuds\b|smartwatch|\bwatch\b|joystick|\bmando\b|mouse gamer|mouse de juego|teclado mec|parlante|altavoz|\bjbl\b|powerbank|reproductor de m|redmi pad|galaxy a|play 5|babyliss|cortapelo|licuadora|waflera|gua ?sha|kit jade|masajeador|estimulador muscular|sacapelusas|gravastar/i;
+function temporadaDe(nom) { const n = String(nom || ''); if (RE_TEMP_VERANO.test(n)) return 'verano'; if (RE_TEMP_REGALO.test(n)) return 'regalo'; return ''; }
+// → { x: {<prodId>: x}, tipo: {<prodId>: 'medido'|'regalo'|'verano'} }
+function picosNavidadTemp(vp, prodById, ahora = Date.now()) {
+  const med = picosNavidad(vp, prodById, ahora) || {}, x = {}, tipo = {};
+  for (const [pid, pr] of Object.entries(prodById || {})) {
+    if (med[pid] > 1) { x[pid] = med[pid]; tipo[pid] = 'medido'; continue; }
+    const t = temporadaDe(pr && pr.name); if (t) { x[pid] = t === 'verano' ? TEMP_VERANO_X : TEMP_REGALO_X; tipo[pid] = t; }
+  }
+  return { x, tipo };
+}
 // Días que alcanza `st` al ritmo `r`, con el ritmo × `x` del 03/12 al 24/12 de este año (el pico de Navidad). Sin pico, st/r.
 function alcanzaConPicoNav(st, r, x, ahora = Date.now()) {
   if (!(r > 0)) return Infinity; if (!(x > 1)) return st / r;
@@ -51327,7 +51347,7 @@ async function main() {
       setDevLive(vp);
       const _monoEs = await leerMonoPct(db);
       const pName = {}, pById = {}; for (const pp of Object.values(prods)) if (pp && pp.id) { pName[pp.id] = pp.name; pById[pp.id] = pp; }
-      const PICO_NAV = picosNavidad(vp, pById, ahora);   // 🎄 2a del 03/11
+      const PICO_NAV = picosNavidadTemp(vp, pById, ahora).x;   // 🎄 2a del 03/11 (+ 🎁☀️ rubro, 14/11)
       const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       // El color de una venta: el de la venta, si no el de su publicación (`mllinks.variant` o el título). Misma regla
       // que `varDe` de `pedidostodo` (revisión 9: "cada variante se juzga sola", regla suya del 12/10).
@@ -52812,7 +52832,7 @@ async function main() {
       const prods = Object.values(PR).filter((p) => p && p.id);
       const byId = {}; prods.forEach((p) => { byId[p.id] = p; });
       // 🎄 9a del 08/11/2026 (él): hasta el 24/12 cada pedido de Paraguay lleva el pico de Navidad de cada producto → ` · NAV <x>` en el renglón.
-      let PNAV = {}; try { PNAV = picosNavidad(VP, byId, hoy) || {}; } catch { PNAV = {}; }
+      let PNAV = {}, PNAVT = {}; try { const _pt = picosNavidadTemp(VP, byId, hoy); PNAV = _pt.x || {}; PNAVT = _pt.tipo || {}; } catch { PNAV = {}; PNAVT = {}; }   // 🎁☀️ 14/11: sin pico medido, el de su rubro
       const varDe = (v) => {
         if (v.variante) return String(v.variante);
         const e = L[v.mla]; const p = byId[v.prodId]; if (!e || !p) return '';
@@ -53066,7 +53086,7 @@ async function main() {
         const uv = uvC.length ? Math.min(...uvC) : ultV(p.id);
         const dec = dec0 + (m60 ? ` · med60 $${m60}` : '') + (uv ? ` · ultv $${uv}` : '') + ` · ctas [${ctasDe(p.id).map((c) => c.slice(0, 2)).join(' ')}]` + (CD[p.id] ? ` · YA DECIDÍ ${CD[p.id].u != null ? CD[p.id].u : JSON.stringify(CD[p.id].vars || {})}` : '') + (_grandePT && _grandePT(p) ? ' · GRANDE' + (porCajaBot(p) > 0 ? ' porcaja ' + porCajaBot(p) : '') : '')
           + ` · pub [${C4.filter((c) => (pubR[p.id] || []).some((e) => e.cuenta === c)).map(ab2).join(' ')}] · camcta [${brN((cam[p.id] || {}).cta)}] · cajadec [${cajaDecTxt(p.id, '')}]` + mlsugTxt(p, '');   // revisión etapa 3, 29/10/2026 (ver `pubR`) · 55a: MLSUG
-        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${Math.round(s.t30)} v60 ${Math.round(s.t60)} v180 ${Math.round(s.t180)} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''} · CONS ${conseguirDe(p, _CONS).nivel}${dec}`);
+        console.log(`\n${p.id} · ${String(p.name).slice(0, 55)} · v30 ${Math.round(s.t30)} v60 ${Math.round(s.t60)} v180 ${Math.round(s.t180)} · últ ${s.ult ? s.ult.slice(8, 10) + '/' + s.ult.slice(5, 7) : '—'}${s.rem ? ' · REMATE ' + s.rem : ''}${s.barata ? ' · BARATA ' + s.barata : ''} · dCS ${dCS(p.id)}${cortes60(p.id) ? ' · cortes ' + cortes60(p.id) : ''} · Full ${ft} [${C4.map((c, i) => full[i] ? c.slice(0, 2) + full[i] : '').filter(Boolean).join(' ')}] · casa ${casa} · camino ${cm}${py ? ' · PYviaja ' + py : ''}${pvv ? ' · PVviaja ' + pvv : ''}${liv ? ' · LIviaja ' + liv : ''} ${(p.variantes || []).length ? ' · colores ' + p.variantes.length : ''} · neto $${Math.round(Number(p.netoCalc) || 0)} costo $${cost} · envFull $${Math.round(Number(p.netoCalcEnvio) || 0)}${p.nisseiUSD ? ' · PY US$' + p.nisseiUSD : ''}${PNAV[p.id] ? ' · NAV ' + PNAV[p.id] + ' · NAVT ' + (PNAVT[p.id] || 'medido') : ''}${hP ? ' · hist ' + hP + 'd' : ''}${NORM[p.id] || ''}${M35[p.id] || ''}${ESC[p.id] || ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 ? ' · PERF ' + Math.round(Number(PERFT[p.id].u)) + (PERFT[p.id].va ? '@' + String(PERFT[p.id].va).replace(/\s+/g, '_') : '') : ''}${PERFT[p.id] && Number(PERFT[p.id].u) > 0 && ocyU(p.id, PERFT[p.id].va) > 0 ? ' · OFICYC ' + ocyU(p.id, PERFT[p.id].va) : ''}${soloPerfDe(p) ? ' · SOLOPERF ' + soloPerfDe(p) : ''} · CONS ${conseguirDe(p, _CONS).nivel}${dec}`);
         // Los colores de la FICHA (etapa 3, 20/10/2026): un color sin ventas ni mercadería no tiene renglón, y un juicio de ese color
         // (ej. Pizarra 12" Rojo=4) se perdía sin aviso. Con esta lista `decide_pedidos.py` lo aplica igual y avisa si el color no existe.
         if ((p.variantes || []).length) console.log(`   ## colores ${JSON.stringify((p.variantes || []).map(String))}`);

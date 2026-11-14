@@ -180,7 +180,7 @@ for l in L:
         cur=dict(id=m.group(1),n=m.group(2),g=grupo,v30=int(m.group(3)),v60=int(m.group(4)),v180=int(m.group(5)),ult=m.group(6),rem=int(m.group(7) or 0),barata=int(m.group(8) or 0),dcs=int(m.group(9)),cortes=int(m.group(10) or 0),full=int(m.group(11)),casa=int(m.group(12)),cam=int(m.group(13)),
           py=g(r'PYviaja (\d+)'),pv=g(r'PVviaja (\d+)'),li=g(r'LIviaja (\d+)'),colores=g(r'colores (\d+)'),neto=g(r'neto \$(\d+)'),costo=g(r'costo \$(\d+)'),precio=g(r'precio \$(\d+)'),med60=g(r'med60 \$(\d+)'),ultv=g(r'ultv \$(\d+)'),
           env=g(r' · envFull \$(\d+)'),
-          nav=(float(re.search(r' · NAV ([\d.]+)',rest).group(1)) if re.search(r' · NAV ([\d.]+)',rest) else 0),   # 🎄 9a del 08/11/2026   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
+          nav=(float(re.search(r' · NAV ([\d.]+)',rest).group(1)) if re.search(r' · NAV ([\d.]+)',rest) else 0),navt=(re.search(r' · NAVT (\w+)',rest).group(1) if re.search(r' · NAVT (\w+)',rest) else ''),   # 🎄 9a del 08/11/2026   # revisión etapa 3, 29/10/2026: el envío de Full del neto (`netoCalcEnvio`), va al divisor del %
           cambios=(cm.group(1) if cm else ''),decidido=(' YA DECIDÍ ' in rest),vars=[],hist=hist_de(rest),colFicha=None,nor=nor_de(rest),m35=m35_de(rest),perf=perf_de(rest),soloPerf=soloperf_de(rest),esc=esc_de(rest),ocy=(int(re.search(r' · OFICYC (\d+)',rest).group(1)) if re.search(r' · OFICYC (\d+)',rest) else 0))
         prods.append(cur); continue
     # Un renglón de producto que NO se entiende (un dato nuevo en el medio): sus colores NO pueden ir al producto de arriba.
@@ -335,7 +335,7 @@ def Tde(p,x,r,m=None):
         sol=max(0,(min(fin,b)-max(ini,a)).days+1) if hoyD<=b else 0
         if sol>0:
             extra=round((p['nav']-1)*sol)
-            nt=f"🎄 pico de Navidad ×{p['nav']:.1f}: {sol} días del pedido caen del 03/12 al 24/12".replace('.',',')
+            nt=f"🎄 pico de Navidad ×{p['nav']:.1f}{({'regalo':' (🎁 regalo)','verano':' (☀️ verano)'}).get(p.get('navt',''),'')}: {sol} días del pedido caen del 03/12 al 24/12".replace('.',',')
             return Tb+extra,(por+' · '+nt if por else nt)
     return Tb,por
 def _TdeBase(p,x,r,m=None):
