@@ -2589,6 +2589,9 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 8a 9a (14/11/2026, v28.190)
+- **Ver deudas en dos pisos (8a):** `renderCuotas` → `fila` y la tarjeta 🛍️ PERFUMERÍA usan `.deu-f` (nombre en un renglón con "…", abajo `.deu-2` con avisos ✏️/⚠️, % y lo que falta `.deu-m`). Medido a 360 y 1200: todos los renglones de 56/60 px. **Chequear:** un nombre largo queda en un renglón con "…" (el nombre entero en el título al dejar el dedo/mouse).
+- **Gastos del mes (9a):** `renderComprasChecklist`: barra `.gm-barra` debajo de "Faltan N de M", "Gastos del mes $X" en su renglón, botones `.gm-b` de 40 px, la nota de cada gasto detrás de una ⓘ (`tt-i`, en el teléfono se toca), el nombre arriba y "falta/casilla" abajo. `renderComprasRetiro` ya no muestra la tarjeta del retiro (ni su título) cuando el retiro es automático: está en la lista, renglón por socio. **Chequear:** a principio de mes, el retiro aparece una sola vez.
 ### 🎨 Diseño del 10/11 · 2a 3a 15a (14/11/2026, v28.189)
 - **Comparar meses (2a):** `buildCompHTML(...,bNuevo)` — toda flecha, color, "Diferencia" y barra es NUEVO menos VIEJO (mes: B vacío = actual = nuevo, o `keyB>keyA`; año: el año mayor). El dólar del cierre dice "dólar a $X" (antes "USD $X", parte del 1a). **Chequear:** cierre con patrimonio que bajó → ▼ rojo.
 - **"A esta hora" (3a):** `_vpHoyVacioHTML` (Ventas sin ventas hoy) usa `_homeCurvaPrev`/`_homeCurva`, el mismo promedio de los últimos 5 días iguales que Inicio. **Chequear:** el número coincide con el de Inicio a la misma hora.
