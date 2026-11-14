@@ -101,3 +101,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 - (13/11) Después de cargar un número, ¿el que quedó guardado es el que quería (mismo orden de magnitud)? Dólares con decimales: escribirlos con coma.
 - (14/11) Cuando entra plata de un lado (un cobro), ¿dónde quedó? Si cambia una deuda, también cambia una caja (Binance, MP, efectivo): las dos patas.
 - (14/11) Antes de pasarle una decisión de PRECIO: ¿alguna regla del CEREBRO ya la resuelve (punto medio, liquidación, stock antiguo, lanzamiento, sobra)? Si sí, la aplico y le cuento en un renglón. Si es 🔐 (sólo suya), un renglón con el código para que diga "autorizo". Nunca una a/b larga de precio.
+- (14/11) ¿Lo que le paso como "para hacer vos" es de verdad un problema, o es el estado normal de algo en camino? ¿Un % que viene de un dato guardado sigue valiendo con el precio de HOY y no es de un candidato ya descartado?

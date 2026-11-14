@@ -1175,6 +1175,11 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 📬 buzonauto: sin descartados y con el precio del listado (14/11/2026, él con el DualSense: "¿y qué hacemos?")
+- **Qué es:** el 57% del DualSense PS5 era el del candidato descartado el 19/09 (medido contra la edición de colección). Ahora `buzonauto` no lista descartados y controla cada % con el precio del listado de más vendidos (costo ≈ US$ × dólar × 1,23 · neto ≈ 80% − envío de Full); lo que no da va contado en "(afuera …)". CHAT_LOCAL: "Pendiente de recepción" = caja en camino, no se reporta como problema.
+- **Dónde vive:** `sync.mjs` bloque `buzonauto` (`rapido`, `noVa`); `CHAT_LOCAL.md` CAJAS LLEGADAS.
+- **Qué chequear:** que lo de 35%+ que queda en la lista de las 12:30 dé de verdad contra ML.
+
 ### 🎁☀️ Pico de Navidad por rubro (14/11/2026; él: "elegí vos los productos de regalo y de verano… miralo vos")
 - **Qué es:** el pico medido de la Navidad pasada dio 0 en los 252 (el año pasado no estaban). Lo que no tiene pico medido toma el de su rubro: 🎁 regalo ×2 (92 hoy: perfumes, auriculares, relojes, joysticks, parlantes, mouse gamer, cortapelo, waflera…) · ☀️ verano ×1,5 (6: Cartas Casino/Poker/Españolas, Mazo x12, Enchufe viajero, Pava de auto) · el resto (154) sin pico.
 - **Dónde vive:** `sync.mjs` `temporadaDe`/`picosNavidadTemp` (`TEMP_REGALO_X`, `TEMP_VERANO_X`); `pedidostodo` imprime ` · NAV x · NAVT <tipo>`; `escasez` (PICO_NAV); `decide_pedidos.py` (`navt` en la nota). La liquidación de 30 días y la sobra (`_picoNavFB`) siguen sólo con lo medido.

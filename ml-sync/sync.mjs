@@ -28318,10 +28318,16 @@ async function main() {
       const B = (await db.get('cyc/buzonauto')) || {}; const pc = (await db.get('mlapi/pycat')) || {}; const cands = (await db.get('cyc/candidatos_py')) || {};
       const mv = Object.entries(B.masvend || {}).filter(([, x]) => x && x.dia >= desde);
       const medido = (cod) => { const c = Object.values(cands).find((y) => y && _pyDg(y.cod) === cod); if (c && c.margen != null) return { m: Number(c.margen), de: c.no ? 'candidato descartado' : 'candidato' }; const e = pc[cod]; return e && e.m != null ? { m: Number(e.m), de: 'catálogo' } : null; };
-      const da = mv.filter(([cod]) => (medido(cod) || {}).m >= CAND_VARA_COMPRA), sinMed = mv.filter(([cod]) => !medido(cod));
+      // 14/11 (él con el DualSense PS5: "¿y qué hacemos?"): el 57% era el del candidato DESCARTADO (medido el 19/09 contra la edición de
+      // colección de $349.999). Un descartado no va a la lista, y todo % se controla con el precio del listado de más vendidos que vio el chat:
+      // costo ≈ US$ × dólar × 1,23 y neto ≈ 80% del precio − el envío de Full arriba de la barrera; si así no da 35%, no va (se cuenta).
+      const _tcB = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0;
+      const rapido = (x) => { const P = Number(x.ml) || 0, u = Number(x.usd) || 0; if (!(P > 0) || !(u > 0) || !(_tcB > 0)) return null; const cu = u * _tcB * 1.23; const ne = P * 0.8 - (P >= UMBRAL_ENVIO_GRATIS ? CAND_ENVIO_ARRIBA : 0); return (ne - cu) / cu * 100; };
+      const noVa = []; const da = mv.filter(([cod, x]) => { const md = medido(cod) || {}; if (!(md.m >= CAND_VARA_COMPRA)) return false; if (md.de === 'candidato descartado') { noVa.push([x, 'candidato descartado']); return false; } const r = rapido(x); if (r != null && r < CAND_VARA_COMPRA) { noVa.push([x, `al precio del listado da ~${r.toFixed(0)}%`]); return false; } return true; }), sinMed = mv.filter(([cod]) => !medido(cod));
       console.log(`=== 📬 LO DEL BUZÓN QUE SE CARGÓ SOLO (desde ${desde}) ===`);
       console.log(`\n🔥 MÁS VENDIDOS que dan 35%+ (${da.length} de ${mv.length}; ${sinMed.length} todavía sin medir, el robot de Paraguay los mide cada 3 h):`);
       for (const [cod, x] of da) { const md = medido(cod); console.log(`  ✅ ${md.m.toFixed(0)}% · ${x.cat} #${x.puesto || '?'} · ${x.nom} · ML ${x.ml ? money(x.ml) : '?'} · Nissei ${cod} US$ ${x.usd} (${md.de})`); }
+      if (noVa.length) console.log(`  (afuera ${noVa.length}: ${noVa.map(([x, w]) => `${String(x.nom).slice(0, 40)} → ${w}`).join(' · ')})`);
       // competencia
       const C = (await db.get('cyc/competencia')) || {}; const np = (await db.get('cyc/netopub')) || {}; const links = (await db.get('cyc/mllinks')) || {}; const prods = (await db.get('cyc/products')) || {};
       const tc = parseFloat(((await db.get('cyc/finanzas')) || {}).tipo_cambio) || 0; const mono = parseFloat(((await db.get('cyc/monotributo')) || {}).pct) || 0;

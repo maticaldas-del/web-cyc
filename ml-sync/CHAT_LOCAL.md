@@ -106,6 +106,8 @@ CAJAS LLEGADAS (la tarea a2; 03/11/2026, él: "que mire las cajas llegadas, si t
 - Si dice "ninguna": dejá en el buzón "CAJAS LLEGADAS <AAAA-MM-DD> · nada para mirar" y listo.
 - Si lista alguna: en ESA cuenta de Mercado Libre → Full (Ventas → Envíos a Full / Planificación de envíos) abrí ese envío y fijate qué
   dice ML de lo que falta: todavía en camino o sin recibir · en proceso · faltante · rechazada · dañada · "no apta" · en revisión · sin etiqueta.
+- "Pendiente de recepción" (aunque diga sin turno o muestre "Completar envío") = la caja YA ESTÁ EN CAMINO: es normal, no es un problema ni
+  algo que tenga que hacer Matías (14/11, él: "cuando aparece así es porque está en camino la caja ya"). Va como EN CAMINO y nada más.
 - Dejá UN mensaje en el buzón que EMPIECE con "CAJAS LLEGADAS <AAAA-MM-DD>", un renglón por envío de la lista:
   `<cuenta> · envío …<últimos 4> · <EN CAMINO | EN PROCESO | CON PROBLEMAS> · <lo que dice ML de lo que falta, producto por producto>`
 - No toques nada, no confirmes ni respondas nada en ML: sólo mirás y anotás. Con eso Claude cierra la caja o arma el reclamo.
