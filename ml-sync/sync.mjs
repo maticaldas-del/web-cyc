@@ -124,7 +124,8 @@ if (_FISCAL_CMD) {
 // 🛍️ LA TIENDA NO DICE DE DÓNDE VIENE NI EN EL REGISTRO (revisión etapa 10, 07/11/2026): el registro de GitHub es público y `tienda`
 // imprimía "ya no está en Nissei", la fórmula de ABEL (de ahí se saca el costo en dólares) y, en `tienda:id=`/`fuera=`, el código del proveedor
 // y el US$. En todo comando `tienda…` el nombre del proveedor sale como "proveedor", los códigos y los US$ tapados.
-if (/^tienda(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+// Revisión etapa 10 (14/11): TODO comando que empieza con `tienda` (también `tiendarevisa`, `tiendacaros`, `tienda:cod=`).
+if (/^tienda/.test(String(process.env.BILLING_PROBE || ''))) {
   const _olT = console.log.bind(console);
   const _tapaT = (t) => t.replace(/\ben (nissei|paraguay)\b/gi, 'en el proveedor').replace(/comprasparaguay(\.com\.ar)?|nissei|paraguay/gi, 'proveedor')
     .replace(/US\$\s?-?\d[\d.,]*/g, 'US$ •••')
@@ -33980,7 +33981,7 @@ async function main() {
           .sort((a, b) => b.f.localeCompare(a.f)).slice(0, 3);
         if (rr.length) RECT = Math.max(RECARGO_PAR, ...rr.map((x) => x.r));
       } catch { /* queda el recargo de compras */ }
-      det(`recargo que usa la tienda: ${((RECT - 1) * 100).toFixed(1)}% (el más alto de los últimos pedidos) + ${Math.round(GAN * 100)}% de ganancia`);
+      det(`recargo que usa la tienda: ••• (el más alto de los últimos pedidos) + ••• de ganancia`);   // etapa 10 (14/11): el registro es público
       const precioDe = (usd) => lindo(usd * RECT * tc * (1 + GAN));
       // Lo que NUNCA puede salir en la tienda (nombre de ML o foto). Se chequea producto por producto y otra vez sobre el archivo entero.
       // 30/10/2026: también las palabras en portugués (`TIENDA_PT`).

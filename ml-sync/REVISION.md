@@ -4883,6 +4883,7 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 ### 🔍 Tercera revisión de la etapa 10 (14/11/2026, 4 revisores en máximo: secreto · producto exacto · precios · página y publicación)
 - **El candidato nacía "mirado hoy"** (`sync.mjs`, paso de Para probar de la noche): se creaba con `ts: Date.now()` y el US$ de la copia del proveedor, que podía ser de días atrás; pasaba la regla de 24 h de Pedidos, la Tienda y ABEL. Ahora lleva `ts`/`visto` = cuándo se miró (`x.e.ts`) y `alta` = cuándo pasó a Para probar. **Chequear:** un candidato nuevo de una copia vieja sale en "⏳ ocultos" y no con precio.
 - **Portugués:** "Espanhol" → español y "Fonte" → fuente (16 nombres publicados).
+- **Registro público:** el tapado del proveedor (`_tapaT`) ahora cubre TODO comando que empieza con `tienda` (antes `tiendarevisa`, `tiendacaros` y `tienda:cod=` quedaban afuera) y `tienda` ya no imprime el recargo ni el 25%.
 
 ### ✅ Tienda y ABEL · decisiones del 08/11
 Él contestó la revisión de la Tienda del 07/11 y 3 puntos de la del Local del 06/11. Todo en `tienda` (sync.mjs), `tienda/index.html` (`tienda-v20`), `ml-sync/notas/hacer_abel.py` (ABEL rehecho) y los pasos nuevos de ml-daily/ml-tienda.
