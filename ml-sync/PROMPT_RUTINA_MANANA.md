@@ -46,6 +46,10 @@ Las más viejas sólo contalas.
   cambiar el título, marca). Para cada una: MLA o nombre + el motivo que da ML + qué pide + hasta cuándo. Las que pausamos nosotros
   (dice "pausada por vos") no hace falta anotarlas una por una: contalas.
 - Pedidos de documentación o de facturas de compra (pasa mucho en Adriana): qué pide, de qué producto, hasta cuándo.
+- "PARA REVISAR" (14/11, él: "para ver si hay alguna publicación con reclamo nuevo de parte de ML"): en las 4 cuentas abrí
+  https://vendedores.mercadolibre.com.ar/publicaciones?filters=OMNI_UNDER_REVIEW&page=1&sort=DEFAULT&task=GROUPED_MODERATE y anotá cada una:
+  MLA o nombre + "Finalizada/En revisión por Mercado Libre" + el motivo TAL CUAL lo resume ML (precio muy bajo / posible falsificación /
+  igual a otra de una cuenta asociada / datos del producto no coinciden / marca) + si es una sola variante. Lo NUEVO (que ayer no estaba) va con ⏰.
 
 == 5 · REPUTACIÓN DE CADA CUENTA ==
 Mercado Libre → Reputación (o "Métricas"/"Tu reputación"). Por cuenta: color del termómetro, MercadoLíder sí/no y cuál, y los 3
