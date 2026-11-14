@@ -18,7 +18,7 @@ Hacé TODO lo de abajo en las 4 cuentas, una por una (Adriana, Luciana, Ayelen, 
 elegís la cuenta.
 
 == 1 · RECLAMOS, MEDIACIONES, DEVOLUCIONES Y CANCELACIONES ==
-Mercado Libre → Ventas → Reclamos (puede decir "Reclamos y devoluciones", "Postventa" o estar adentro de cada venta; si el menú
+EN LAS 4 CUENTAS, empezá por https://vendedores.mercadolibre.com.ar/post-purchase/post-sales (Posventa: pestañas "Reclamos y mediaciones" y "Devoluciones"; 14/11, él: "miro si hay algo para responder o resolver"). También: Mercado Libre → Ventas → Reclamos (puede decir "Reclamos y devoluciones", "Postventa" o estar adentro de cada venta; si el menú
 cambió de nombre, buscá "reclamo" o "mediación" en la ayuda de la pantalla). Mirá TODOS los abiertos, también los que esperan al
 comprador o a ML. Para cada uno anotá:
 - cuenta · producto o MLA · tipo (reclamo / mediación de ML / devolución / cancelación / contracargo) · últimas 4 cifras
@@ -30,7 +30,7 @@ Marcalo con ⏰ URGENTE si espera nuestra respuesta, si vence en 2 días o menos
 Mirá también los cerrados de los últimos 3 días: a favor o en contra, y si se devolvió plata.
 
 == 2 · MENSAJES DE COMPRADORES SIN LEER (después de la venta) ==
-Mercado Libre → Ventas → Mensajes (o el sobre/burbuja de cada venta). Por cuenta: cuántos sin leer y, para cada uno, producto o MLA
+EN LAS 4 CUENTAS: https://vendedores.mercadolibre.com.ar/post-purchase/post-sales?main.filter=messages (Posventa → Mensajes; 14/11, él: "es por si no hubo reclamo aún pero sí mandaron mensaje"). Además de los sin leer, mirá los LEÍDOS de los últimos 3 días que nadie contestó: si el comprador escribió y no hay respuesta nuestra, va igual. También Mercado Libre → Ventas → Mensajes (o el sobre/burbuja de cada venta). Por cuenta: cuántos sin leer y, para cada uno, producto o MLA
 + de qué se trata en pocas palabras + hace cuánto llegó. Si alguno es un problema (no le llegó, llegó roto, quiere devolver, pide
 factura), marcalo con ⏰.
 

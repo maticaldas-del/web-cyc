@@ -3036,6 +3036,39 @@ async function reputacionML(db, accounts, labels, DRY) {
 }
 
 let _gemBarrera;   // cyc/gemelabarrera, leído una vez por corrida (6a del 28/10)
+// 🚨 VENTA QUE NO SALE POR FULL (14/11/2026, él: "abro [Ventas → Envíos de hoy] para mirar si por error quedó una publicación activa en
+// 'depósito' y se vendió, entonces miro por si tengo que mandar manualmente una venta"). Cada hora, en las 4 cuentas: las ventas pagadas de las
+// últimas 48 h cuyo envío NO es de Full y todavía no salió → UN aviso URGENTE al canal privado (una vez por venta, `mlapi/ventafuerafull`).
+// Sólo título, cuenta y estado: nada del comprador (el registro es público).
+async function avisoVentaFueraFull(db, tokensRun, DRY) {
+  let mem = {}; try { mem = (await db.get('mlapi/ventafuerafull')) || {}; } catch { mem = {}; }
+  const nuevo = {}; const hace48 = Date.now() - 48 * 3600e3; let vistas = 0, fuera = 0;
+  for (const [label, tok] of Object.entries(tokensRun || {})) {
+    if (!tok) continue;
+    let me = null; try { me = await mlGet('/users/me', tok); } catch { me = null; }
+    if (!me || !me.id) { console.log(`   🚨 ventas fuera de Full: no pude leer la cuenta ${label}`); continue; }
+    let res = []; try { res = ((await mlGet(`/orders/search?seller=${me.id}&order.status=paid&sort=date_desc&limit=30`, tok)) || {}).results || []; } catch { res = []; }
+    for (const o of res) {
+      const t = Date.parse(o && o.date_created); if (!(t >= hace48)) continue;
+      const sid = o.shipping && o.shipping.id; if (!sid) continue; vistas++;
+      const k = String(o.id); if (mem[k]) continue;
+      let sh = null; try { sh = await mlGet('/shipments/' + sid, tok); } catch { sh = null; }
+      if (!sh) continue;
+      const lt = String(sh.logistic_type || ''); const st = String(sh.status || '');
+      if (!lt || lt === 'fulfillment') continue;
+      if (!['ready_to_ship', 'pending', 'handling'].includes(st)) continue;
+      fuera++;
+      const tit = String(((o.order_items || [])[0] || {}).item?.title || 'producto').slice(0, 60);
+      const mla = String(((o.order_items || [])[0] || {}).item?.id || '');
+      const txt = `🚨 URGENTE: venta que NO sale por Full en ${label} · ${tit} (${mla}) · hay que despacharla a mano · estado ${st}${sh.substatus ? '/' + sh.substatus : ''}`;
+      console.log('   ' + txt);
+      if (!DRY) { try { await sendAlerta(txt); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = Date.now(); }
+    }
+  }
+  for (const [k, t] of Object.entries(mem)) if (Date.now() - (Number(t) || 0) > 10 * 864e5) nuevo[k] = null;
+  if (!DRY && Object.keys(nuevo).length) { try { await db.patch('mlapi/ventafuerafull', nuevo); } catch { /* el log lo dice */ } }
+  console.log(`   🚨 ventas de 48 h miradas: ${vistas} · fuera de Full sin despachar: ${fuera}`);
+}
 async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, opt = {}) {
   const PISO = piso != null ? piso : 0.35;   // revisión etapa 8, 28/10/2026: 35% sin piso pasado (antes 30%)
   const fin = (await db.get('cyc/finanzas')) || {};
@@ -3417,6 +3450,7 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
       if (ok) { try { await db.patch('cyc/mllinks/' + x.mla, { pausaFueraFull: Date.now() }); } catch { /* */ } }
     }
   }
+  if (opt.pausarFuera) { try { await avisoVentaFueraFull(db, tokensRun, DRY); } catch (e) { console.log("   ⚠️ ventas fuera de Full: " + (e && e.message || e)); } }
   if (conteo.sinLeer || conteo.lotesFallidos) console.log(`   ⚠️ Sin leer esta vuelta: ${conteo.sinLeer} pausada(s) de Full cuyo stock ML no contestó${sinLeerStock.length ? ' (' + sinLeerStock.slice(0, 10).join(' · ') + ')' : ''}${conteo.lotesFallidos ? ` · ${conteo.lotesFallidos} tanda(s) de 20 publicaciones que ML no devolvió` : ''}. Se miran en la vuelta siguiente.`);
   // Chequeo duro: toda pausada con stock termina activada o avisada. Si esto no cierra, hay un
   // `continue` nuevo saliendo callado — que es exactamente el bug del 16/09 y el de los P47.
