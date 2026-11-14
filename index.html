@@ -3713,7 +3713,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.206';
+const APP_VERSION='28.207';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3726,6 +3726,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.207',f:'14/11',h:'14:20',c:[{n:2,t:'Pedidos: si los colores tienen distinto precio máximo de compra, arriba dice «👉 mirá cada color» en vez de un solo número (para no comprar todos al mismo precio).'}]},
   {v:'28.206',f:'14/11',h:'13:55',c:[{n:2,t:'Pedidos: cada tarjeta muestra sólo lo básico (nombre, hasta cuánto pagar y cuántas comprar). Sin barra, motivo largo ni escalera de precios; el motivo sigue en el 🧠.'}]},
   {v:'28.205',f:'14/11',h:'13:25',c:[{n:1,t:'Se sacó el numerito rojo del ícono de la app (él: no le gusta).'}]},
   {v:'28.204',f:'14/11',h:'11:15',c:[{n:1,t:"Inicio: se sacaron las tarjetas 💬 Preguntas y 🚚 Lo que llega (él: eso se resuelve en el chat)"}]},
@@ -24264,6 +24265,21 @@ function maxCompraHTML(p){
 // El máximo de compra A LA VISTA en la cabecera de la tarjeta, en dólares y pesos (24/09/2026,
 // pedido suyo: "que aparezca en dólares y pesos, sin tener que abrir el detalle"). Es la MISMA
 // cuenta de `maxCompraDe`: el renglón de adentro sigue explicando de dónde sale.
+// 14/11/2026 (él con las Sábanas 1 ½ plaza: "cuando hay variantes que el precio máx de compra varíe, que diga para mirar cada variante y no
+// un monto, porque quizás mi viejo ve ese precio y compra cualquier color a ese precio"): con 2+ colores a comprar y máximos distintos (más de
+// 2% de diferencia), arriba dice "mirá cada color" y el número va sólo adentro, en cada color (`pedVarMaxTxt`).
+function maxCompraChipPed(pr,ped){
+  try{
+    const cols=(ped&&ped.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>x.v);
+    if(cols.length>=2){
+      const vs=cols.map(c=>{const r=maxCompraDe(pr,pr.origen==='py'?PY_PROB_PISO:undefined,c);return r&&!r.motivo&&r.usd>0?r.usd:null;});
+      const ok=vs.filter(v=>v!=null);
+      if(ok.length!==vs.length||(ok.length&&Math.max(...ok)>Math.min(...ok)*1.02))
+        return `<span class="ped-max" style="color:var(--amber)" title="Cada color tiene su propio precio máximo: miralo adentro, color por color, antes de comprar."><b style="font-size:.95rem">👉 mirá cada color</b><i>máx. compra distinto por color</i></span>`;
+    }
+  }catch(e){}
+  return maxCompraChip(pr);
+}
 function maxCompraChip(p){
   const r=maxCompraDe(p); if(!r||r.motivo)return'';
   if(!(r.merc>0)||!(r.usd>0))return `<span class="ped-max" style="color:var(--red)" title="Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%."><b>no llega</b><i>máx. compra</i></span>`;
@@ -24449,7 +24465,7 @@ function _pedidoItemHtml(p,opts){
     <summary class="ped-head"${_esProb?' style="display:none"':''}>
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}${pedCambioChip(p)}${_prod?pedPerfChip(_prod.id):''}</span>
-      ${_prod?maxCompraChip(_prod):''}
+      ${_prod?maxCompraChipPed(_prod,p):''}
       <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${(()=>{/* 💵 lo que cuesta el pedido (02/11/2026, él: "poner costo del pedido, respectivamente las unidades pedidas"): unidades × lo que costó la última vez */
         const q=Number(_cantShow)||0;if(!(q>0)||!_prod)return'';const tcC=curTC();const cu=_prod.costoPesos&&Number(_prod.cost)>0?Number(_prod.cost):(costUSDof(_prod)||0)*tcC;
         return cu>0?`<i style="color:var(--text)" title="${fmtN(q)} u. × ${fmt(Math.round(cu))} (lo que costó cada una la última vez)">💵 ${fmt(Math.round(q*cu))} el pedido</i>`:'';})()}${p._pediste?`<i style="color:var(--green)" title="Ya cargaste ${p._pediste} u. en el 🧾 Pedido: arriba queda lo que falta para llegar a lo recomendado.">🧾 pediste ${p._pediste}</i>`:''}${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
