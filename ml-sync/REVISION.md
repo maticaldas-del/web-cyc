@@ -78,6 +78,11 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🛍️ Las ventas del Black Friday no confirman subas ni aceleran la escasez (15a del 14/11/2026)
+- **Qué es:** del 25 al 30/11 (`bfVentana`) las ventas y las horas no cuentan para confirmar una suba (`subaConfirmada`: horas sin las del evento, ritmo de antes sin esos días, ventas del evento afuera), para "vendió a este precio" (`vendioAEstePrecio`) ni para la lista 📈/🔥/⏳ "vendió y no subió" de `errores`. En `decido`, un `!vendio#escasez/#sinrepo` que sólo vendió en el evento se frena (salida `!chico` + EXCEPCIÓN). La 🔥 de `escasez` mide el ritmo sin los días ni las ventas del evento (línea, respaldo y el ⚡ de 7 días); la web igual en `ventas7De` (`_enBFW`, `_horasBFW`, copia de `bfVentana`/`horasBF`).
+- **Dónde vive:** `sync.mjs` (`subaConfirmada`, `vendioAEstePrecio`, el bucle de `errores` que arma `lanza`, el freno nuevo en `decido` antes del 9a, `escasez`: `RIT`/`ritmo14`/⚡) · `index.html` (`ventas7De`).
+- **Qué chequear:** el 01/12, que `errores` no pida +50% por ventas del 25-30/11 y que la 🔥 no tenga ⚡ por el evento. Los días del Black Friday se restan aunque la publicación no tuviera stock (aproximado: puede achicar un poco los días con stock).
+
 ### 📅 Ventas y ganancia del mes/año hasta ayer (09/11/2026, etapa 7; él: "que mire hasta ayer, o sea hasta el día cerrado")
 - Inicio · Mes y Año: el renglón 🧾/💰 de arriba del calendario suma sólo días cerrados (`_hcalTotHTML(…,hastaAyer)`); el cuadrito de hoy sigue. Chequear: a la mañana el "por día" no baja.
 ### 🪙 Binance en el Arqueo (09/11/2026, etapa 2; él: "tipo mercado pago con cada cuenta. hoy tenemos una sola cuenta de binance de tito")
