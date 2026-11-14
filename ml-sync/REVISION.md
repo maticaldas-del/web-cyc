@@ -1024,6 +1024,9 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 - **12/11 · 🧲 Fácil o difícil de conseguir** (él eligió la a). Qué es: `cyc/conseguir/py/<prod>/<día>` una marca por vuelta completa de Nissei (en `marcarAgotadosVuelta`) · `cyc/conseguir/bsas/<prod>` {trajo, no} por cada pedido de Pedidos (en el `desde` de `decido`) · `conseguirDe` lo clasifica · `conseguir[:palabra]` · `CONS` en `pedidostodo`. Dónde: `sync.mjs`, CEREBRO §7b. Qué chequear: que en ~5 días haya vueltas suficientes; que lo de Bs As no pedido quede ⚪; que un "no" seguido de "trajo" en el mismo pedido no confunda.
 
 ## 2 · PLATA (martes)
+### 📊 Gastos del mes contra el mes anterior (14/11/2026, él)
+- **Qué es:** en "¿Falta cargar algún gasto?" cada renglón y el total dicen cuánto fue el mes anterior y la diferencia (rojo si sube, verde si baja). **Dónde:** `index.html` `renderComprasChecklist` (`_vsAnt`, v28.209). **Chequear:** que el mes anterior salga bien en enero (cambio de año).
+
 ### 📅 Lo dejado o devuelto con fecha de un mes cerrado va a "lo viejo cargado tarde" (30a del 14/11/2026)
 - **Qué es:** en `debenmov`, un dejado (`+N|prod=…` o `+25%|prod=…`) o un `=devuelve` con `@AAAA-MM-DD` de un mes que ya tiene cierre (`cyc/snapshots/<mes>.total`) no entra al cobro del mes en que se carga: lo que mueve el patrimonio se suma solo a `cyc/cobro_corr/<próximo cierre>` (`_corrCobro`, lo mismo que `cobrocorr`). Dejado: la ganancia (montoU − costoU) × u si salió de una oficina; el monto entero con `de=ninguna` o sin costo. Devuelto: −la ganancia que sale. Sin poder leer el cierre, avisa para cargarlo a mano.
 - **Dónde vive:** `sync.mjs`, `debenmov` (`_mesCerrado`; rama `devuelve` y la rama general de `+N`). Pagos y deudas sin producto no cambian.
