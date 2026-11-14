@@ -1025,6 +1025,7 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 
 ## 2 · PLATA (martes)
 ### 📊 Gastos del mes contra el mes anterior (14/11/2026, él)
+- **14/11 (él):** lo que todavía no se cargó (y no es "este mes no va") no cuenta como baja: el renglón dice "todavía no se pagó" y el total compara sin eso (v28.211).
 - **Qué es:** en "¿Falta cargar algún gasto?" cada renglón y el total dicen cuánto fue el mes anterior y la diferencia (rojo si sube, verde si baja). **Dónde:** `index.html` `renderComprasChecklist` (`_vsAnt`, v28.209). **Chequear:** que el mes anterior salga bien en enero (cambio de año).
 
 ### 📅 Lo dejado o devuelto con fecha de un mes cerrado va a "lo viejo cargado tarde" (30a del 14/11/2026)

@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.210';
+const APP_VERSION='28.211';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.211',f:'14/11',h:'15:20',c:[{n:1,t:'Gastos contra el mes anterior: lo que todavía no se pagó no cuenta como baja (salvo "este mes no va").'}]},
   {v:'28.210',f:'14/11',h:'15:05',c:[{n:1,t:'Gastos: se sacó "Nuevo movimiento a mano" (los carga Claude).'}]},
   {v:'28.209',f:'14/11',h:'14:30',c:[{n:2,t:'Gastos del mes: cada gasto y el total muestran cuánto fue el mes anterior y la diferencia.'}]},
   {v:'28.208',f:'14/11',h:'14:45',c:[{n:2,t:'Pedidos: la tarjeta ya no se abre ni tiene desplegable; sólo nombre, máximo, unidades y los colores a comprar.'}]},
@@ -29369,6 +29370,8 @@ function renderComprasChecklist(){
   const _ymAnt=(()=>{const [y,m]=ymL.split('_').map(Number);const d=new Date(y,m-2,1);return d.getFullYear()+'_'+String(d.getMonth()+1).padStart(2,'0');})();
   let _filasAnt=[];try{_filasAnt=gastosChecklistMes(_ymAnt);}catch(e){}
   const _totAnt=getComprasByPrefix(_ymAnt).filter(x=>getCompraTipo(x)==='gasto').reduce((a,x)=>a+(Number(x.monto)||0),0);
+  // 14/11 (él): lo que este mes todavía no se cargó no cuenta como baja: se saca del total del mes anterior para comparar
+  const _totAntCmp=_totAnt-filas.filter(f=>!f.hay&&!f.noVa).reduce((a,f)=>{const x=_filasAnt.find(y=>y.g.n===f.g.n);return a+(x?x.monto:0);},0);
   const _vsAnt=(hoy,ant)=>{if(!(ant>0))return '<span style="color:var(--muted)">el mes anterior: nada</span>';const d=hoy-ant;const c=d>0?'var(--red)':d<0?'var(--green)':'var(--muted)';return `<span style="color:var(--muted)">el mes anterior ${fmt(Math.round(ant))}</span>${d?` <span style="color:${c}">(${d>0?'+':'−'}${fmt(Math.abs(Math.round(d)))})</span>`:''}`;};
   // EL RETIRO ADENTRO DE GASTOS (01/11/2026, él: "el retiro que sea parte de gastos. así no nos olvidamos de cobrarlo"): un renglón por socio con
   // lo que dice el cobro del cierre anterior (lo carga solo el robot el día 1, `retiroauto`). ✅ cuando lo cobró (`cyc/retiro_cobrado/<mes>/<socio>`).
@@ -29403,7 +29406,7 @@ function renderComprasChecklist(){
       ${(()=>{/* 9a del Diseño 10/11: barra de lo que ya está */const T=filas.length+filasRet.length+1,w=Math.round((T-faltan)/T*100);return `<span class="gm-barra" title="${T-faltan} de ${T} listos"><i style="width:${w}%;background:${faltan?'var(--amber)':'var(--green)'}"></i></span>`;})()}
       ${(()=>{/* 21/10/2026, él: "que el total gastado del mes aparezca ahí también": TODOS los gastos cargados del mes (no sólo los de la lista). 06/11/2026 (él: "solo los gastos reales, no el retiro"): sin el retiro de los socios */
         const gm=getComprasByPrefix(ymL).filter(x=>getCompraTipo(x)==='gasto');const t=gm.reduce((a,x)=>a+(Number(x.monto)||0),0);
-        return `<span style="display:block;margin-top:4px;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Gastos del mes <b>${fmt(t)}</b> <span style="font-weight:400;font-size:.7rem">· ${_vsAnt(t,_totAnt)}</span> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}</span></span>`;})()}
+        return `<span style="display:block;margin-top:4px;font-size:.82rem;color:var(--text)" title="Todos los gastos cargados este mes (${gm.length} renglones), estén o no en esta lista.">Gastos del mes <b>${fmt(t)}</b> <span style="font-weight:400;font-size:.7rem">· ${_vsAnt(t,_totAntCmp)}${_totAntCmp!==_totAnt?' <span style="color:var(--muted)">(sin contar lo que falta pagar)</span>':''}</span> <span style="font-weight:400;font-size:.66rem;color:var(--muted)">· ${gm.length} gasto${gm.length===1?'':'s'}</span></span>`;})()}
     </div>
     ${filas.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.noVa?'➖':(f.hay?'✅':(f.parcial?'⚠️':'❌'))}</span>
@@ -29414,7 +29417,7 @@ function renderComprasChecklist(){
              :(f.parcial?`${fmt(f.monto)} · ${f.n} de ${f.min} · falta ${f.min-f.n}`
                :`falta${f.n?'':` <button class="vbtn gm-b" style=";color:var(--muted)" title="Marcalo si este mes este gasto no existe. Vale SÓLO para este mes: el que viene lo vuelve a pedir." onclick="setGastoNoVa('${ymL}',${JSON.stringify(f.g.n).replace(/"/g,'&quot;')},true)">este mes no va</button>`}`)}</span>
       ${f.hay||!f.g.interesPapa?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${(()=>{const ip=_interesPapa(ymL);return ip?`<b>${fmt(ip.monto)}</b> (1% de US$ ${fmtN(Math.round(ip.usd))} × $${fmtN(Math.round(ip.tc))}, ${ip.de})`:'falta cargar "Dólares Tito" en el Arqueo';})()}</span>`}
-      <span style="font-size:.62rem;flex-basis:100%;padding-left:28px">${(()=>{const a=_filasAnt.find(x=>x.g.n===f.g.n);return _vsAnt(f.monto||0,a?a.monto:0);})()}</span>
+      <span style="font-size:.62rem;flex-basis:100%;padding-left:28px">${(()=>{const a=_filasAnt.find(x=>x.g.n===f.g.n);const am=a?a.monto:0;/* 14/11 (él): si todavía no se cargó (y no es 'este mes no va') no se descuenta: sólo se muestra el del mes anterior */return (!f.hay&&!f.noVa)?(am>0?`<span style="color:var(--muted)">el mes anterior ${fmt(Math.round(am))} · todavía no se pagó</span>`:''):_vsAnt(f.monto||0,am);})()}</span>
       ${_mpPagadoHTML(ymL,f.g)}
       ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}"${(()=>{const ip=f.g.interesPapa&&_interesPapa(ymL);return ip?` value="${fmtN(ip.monto)}" title="1% de US$ ${fmtN(Math.round(ip.usd))} × $${fmtN(Math.round(ip.tc))} (${ip.de})"`:'';})()} style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn gm-b" style="" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
     </div>`).join('')}
