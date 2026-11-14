@@ -3554,7 +3554,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.188';
+const APP_VERSION='28.189';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3567,6 +3567,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.189',f:'14/11',h:'01:40',c:[{n: 2, t: "📅 Comparar meses cuenta nuevo menos viejo: si el patrimonio bajó dice ▼ en rojo, si el stock subió ▲ en verde; el dólar del cierre dice \"dólar a $X\" (2a y 1a del Diseño 10/11)."}, {n: 1, t: "⏱️ Ventas sin ventas hoy compara con el promedio de los últimos 5 días iguales a esta hora, igual que Inicio (3a)."}, {n: 1, t: "🇵🇾/🇦🇷 de la ficha: ahora está adentro de la ficha (al lado de 🗑️) y pregunta antes de cambiar (15a)."}]},
   {v:'28.188',f:'14/11',h:'01:35',c:[{n:1,t:'🔤 Ventas a personas: el robot las carga con la inicial y la deuda dice "✏️ completá el nombre" hasta que lo completás en ✏️ Editar (28a del 14/11).'}]},
   {v:'28.187',f:'14/11',h:'01:33',c:[{n:2,t:'🪙 Saldo de Binance cerrado: en Mi oficina → 🔒 Archivo para Claude → "Saldo de Binance" (ej. tito=19,72). El robot lo carga solo y el número no aparece en ningún registro (25a del 14/11).'}]},
   {v:'28.186',f:'14/11',h:'01:26',c:[{n:2,t:'📅 Rayas: un día de fecha especial sale sólo si al MISMO precio (±2%) hay días fuera de fecha para comparar y vendió el doble; si no, se queda (16.2a del 14/11).'}]},
@@ -6892,7 +6893,7 @@ function renderProds(){
         <span class="prod-top-f">${fotoChipHTML(p,48)}</span>
         <span style="min-width:0;font-weight:700;font-size:.86rem;line-height:1.3;overflow-wrap:anywhere">${_esc(p.name||'')}</span>
         <span class="prod-top-b" onclick="event.preventDefault()" style="display:inline-flex;gap:6px;flex-wrap:nowrap;align-items:center;justify-content:flex-end">
-        <button class="btn" style="white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.15)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾':'🇦🇷'}</button>
+        <span title="De dónde se compra (se cambia adentro de la ficha)" style="font-size:1.05rem;line-height:1">${p.origen==='py'?'🇵🇾':'🇦🇷'}</span>
         ${lineaBtn(p.id,'📈 línea')}${cerebroBtn(p.id)||'<span class="prod-cer-hueco" aria-hidden="true"></span>'}
         </span>
       </div>
@@ -6933,7 +6934,7 @@ function renderProds(){
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${(p.variantes&&p.variantes.length)?(p.variantes||[]).map(v=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:5px;background:rgba(124,58,237,.1);color:#a78bfa;font-size:.68rem">${v}${_varEstrChip(p,v)}<button onclick="removeVariante('${p.id}','${v.replace(/'/g,"\\'")}')" style="background:none;border:none;color:#a78bfa;cursor:pointer;padding:0 0 0 3px;font-size:.75rem;line-height:1" title="Eliminar variante">✕</button></span>`).join(''):'<span style="font-size:.65rem;color:var(--muted);font-style:italic">sin variantes</span>'}</div>
         <input type="text" placeholder="+ Nueva variante" style="font-size:.68rem;padding:3px 8px;border-radius:5px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);outline:none;width:130px" onkeydown="if(event.key==='Enter'&&this.value.trim()){addVariante('${p.id}',this.value);this.value='';}">
       </div>
-      <div style="display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border)"><button class="btn btn-del" onclick="delProd('${p.id}')" style="font-size:.68rem">🗑️ Borrar esta ficha</button></div>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-top:8px;border-top:1px solid var(--border)"><button class="btn" style="font-size:.68rem;min-height:40px;white-space:nowrap;background:${p.origen==='py'?'rgba(239,68,68,.12)':'rgba(59,130,246,.12)'};color:${p.origen==='py'?'#f87171':'#60a5fa'};border:1px solid ${p.origen==='py'?'rgba(239,68,68,.3)':'rgba(59,130,246,.3)'}" onclick="toggleProdOrigen('${p.id}')" title="Origen del producto: define en qué sección de Pedidos aparece (BS AS o Paraguay)">${p.origen==='py'?'🇵🇾 Paraguay · pasar a Bs As':'🇦🇷 Bs As · pasar a Paraguay'}</button><button class="btn btn-del" onclick="delProd('${p.id}')" style="font-size:.68rem;min-height:40px">🗑️ Borrar esta ficha</button></div>
       </div>
     </details>`;
   }).join('');
@@ -7065,8 +7066,10 @@ async function updProdName(id,val){
   toast(_nfMal?'Renombrado, pero no pude dejarlo fijo: esta noche puede volver al nombre de ML. Escribilo de nuevo.':'Renombrado ✓',_nfMal?'err':'ok',_nfMal?7000:undefined);
 }
 // Alterna el origen del producto: define en qué sección de Pedidos aparece (BS AS / Paraguay)
+// 15a del Diseño 10/11: el botón vive ADENTRO de la ficha (a 6 px del 📈 se tocaba sin querer) y pregunta antes, como el 🗑️.
 async function toggleProdOrigen(id){
   const p=state.products.find(x=>x.id===id);if(!p)return;
+  if(!confirm(`¿Pasar "${p.name}" de ${p.origen==='py'?'🇵🇾 Paraguay a 🇦🇷 Bs As':'🇦🇷 Bs As a 🇵🇾 Paraguay'}?\n\nCambia en qué sección de Pedidos aparece.`))return;
   p.origen=p.origen==='py'?'bsas':'py';
   await fbSet('products/'+id+'/origen',p.origen);
   await log('Origen '+p.name+': '+(p.origen==='py'?'Paraguay':'BS AS'));
@@ -12854,7 +12857,8 @@ function renderCompMes(el){
       locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),prodValues};
     labelB='Mes actual';
   }
-  el.innerHTML=buildCompHTML(snapA,dataB,labelB);
+  // Comparar cuenta NUEVO menos VIEJO (2a del Diseño 10/11): con "Mes B" vacío (lo actual) o más nuevo, B es el nuevo.
+  el.innerHTML=buildCompHTML(snapA,dataB,labelB,false,!keyB||keyB>keyA);
 }
 
 function renderCompAnio(el){
@@ -12881,21 +12885,24 @@ function renderCompAnio(el){
   const aggA=aggregateYear(yearA);if(!aggA){el.innerHTML='<div class="empty-msg">No hay cierres para '+yearA+'.</div>';return;}
   let aggB=yearB?aggregateYear(yearB):aggregateYear(String(parseInt(yearA)-1));
   if(!aggB){el.innerHTML='<div class="empty-msg">No hay datos del año de comparación.</div>';el.innerHTML+=buildCompHTML(aggA,null,'—',true);return;}
-  el.innerHTML=buildCompHTML(aggA,aggB,aggB.label||yearB,true);
+  el.innerHTML=buildCompHTML(aggA,aggB,aggB.label||yearB,true,String(aggB.label||yearB)>String(yearA));
 }
 
-function buildCompHTML(dataA,dataB,labelB,isYearly=false){
-  const la=dataA.label+(dataA.tipoCambio?' (USD $'+dataA.tipoCambio.toLocaleString('es-AR')+')':'');
+function buildCompHTML(dataA,dataB,labelB,isYearly=false,bNuevo=false){
+  // Los dólares van con US$; el dólar del cierre se dice "dólar a $X" (1a del Diseño 10/11: decía "USD $1.535").
+  const la=dataA.label+(dataA.tipoCambio?' (dólar a $'+dataA.tipoCambio.toLocaleString('es-AR')+')':'');
+  // Toda variación es NUEVO menos VIEJO (2a del Diseño 10/11: el patrimonio que bajaba salía ▲ en verde).
+  const _nv=(a,b)=>bNuevo?[b,a]:[a,b];
   const hasB=!!dataB;
   const getDeltaCls=(a,b)=>{if(b===null||b===undefined)return'nc';if(b===0&&a===0)return'nc';if(b===0)return a>0?'up':'dn';const p=(a-b)/Math.abs(b)*100;return p>0?'up':p<0?'dn':'nc';};
   const getDeltaTxt=(a,b)=>{if(b===null||b===undefined)return'—';if(b===0&&a===0)return'—';if(b===0)return a>0?'▲ nuevo':'▼';const p=(a-b)/Math.abs(b)*100;if(Math.abs(p)<0.1)return'= 0%';return(p>0?'▲ +':'▼ ')+Math.abs(p).toFixed(1).replace('.',',')+'%';};
   const dRow=(label,va,vb,isNeg=false)=>{
     const dv=isNeg?-Math.abs(va):(va||0);const dp=hasB?(isNeg?-Math.abs(vb||0):(vb||0)):null;
-    const badge=hasB?`<span class="delta ${getDeltaCls(dv,dp)}">${getDeltaTxt(dv,dp)}</span>`:'—';
+    const [_n,_v]=_nv(dv,dp);const badge=hasB?`<span class="delta ${getDeltaCls(_n,_v)}">${getDeltaTxt(_n,_v)}</span>`:'—';
     return`<tr><td>${label}</td><td>${hasB?fmtUS(dp):'—'}</td><td style="color:${isNeg?'var(--red)':'var(--green)'}">${fmtUS(dv)}</td><td>${badge}</td></tr>`;
   };
-  const totA=dataA.total||0;const totB=hasB?(dataB.total||0):null;const diff=hasB?totA-totB:0;
-  const lbDisplay=hasB&&dataB.tipoCambio?labelB+' (USD $'+dataB.tipoCambio.toLocaleString('es-AR')+')':labelB;
+  const totA=dataA.total||0;const totB=hasB?(dataB.total||0):null;const diff=hasB?(bNuevo?totB-totA:totA-totB):0;
+  const lbDisplay=hasB&&dataB.tipoCambio?labelB+' (dólar a $'+dataB.tipoCambio.toLocaleString('es-AR')+')':labelB;
   const summaryHTML=`<div class="summary-cards">
     <div class="sc"><div class="sc-lbl">${hasB?lbDisplay:'—'}</div><div class="sc-val neu">${hasB?fmtUS(totB):'—'}</div>${isYearly&&hasB?`<div class="sc-sub">${dataB.months||'?'} meses · al último cierre</div>`:''}</div>
     <div class="sc"><div class="sc-lbl">${la}</div><div class="sc-val ${totA>=0?'pos':'neg'}">${fmtUS(totA)}</div>${isYearly?`<div class="sc-sub">${dataA.months||'?'} meses · al último cierre</div>`:''}</div>
@@ -12917,7 +12924,7 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
   const mets=[{l:'Patrimonio',a:totA,b:totB||0},{l:'Stock',a:stockA,b:stockB},{l:'Activos',a:sumPos(dataA),b:hasB?sumPos(dataB):0},{l:'Deudas',a:sumNeg(dataA),b:hasB?sumNeg(dataB):0}];
   const bar=(val,max,color)=>{const w=max>0?Math.max(2,Math.abs(val)/max*100):0;return`<div style="flex:1;height:11px;border-radius:6px;background:var(--surface2);overflow:hidden"><div style="height:100%;width:${w}%;background:${color};border-radius:6px"></div></div>`;};
   const metricsHTML=hasB?`<div class="stitle">Comparación visual</div><div style="display:flex;flex-direction:column;gap:15px;margin-bottom:20px">`+
-    mets.map(m=>{const max=Math.max(Math.abs(m.a),Math.abs(m.b),1);const d=m.a-m.b;const dc=d>=0?'var(--green)':'var(--red)';
+    mets.map(m=>{const max=Math.max(Math.abs(m.a),Math.abs(m.b),1);const d=bNuevo?m.b-m.a:m.a-m.b;const dc=d>=0?'var(--green)':'var(--red)';
       return`<div>
         <div style="display:flex;justify-content:space-between;font-size:.68rem;margin-bottom:6px"><span style="color:var(--text);font-weight:600">${m.l}</span><span style="color:${dc}">${(d>=0?'▲ +':'▼ ')+fmtUS(Math.abs(d))}</span></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="width:110px;font-size:.6rem;color:var(--muted)">${labelB}</span>${bar(m.b,max,'#3a3a42')}<span style="width:110px;text-align:right;font-size:.64rem;color:var(--muted)">${fmtUS(m.b)}</span></div>
@@ -12936,7 +12943,7 @@ function buildCompHTML(dataA,dataB,labelB,isYearly=false){
       <tr class="sep-row"><td colspan="4">Stock por cuenta</td></tr>${locRows}
       <tr class="sep-row"><td colspan="4">Activos financieros</td></tr>${finRows}
       <tr class="sep-row"><td colspan="4">Productos</td></tr>${prodRows}
-      <tr class="total-row"><td>PATRIMONIO TOTAL</td><td>${hasB?fmtUS(totB):'—'}</td><td>${fmtUS(totA)}</td><td><span class="delta ${getDeltaCls(totA,totB)}">${getDeltaTxt(totA,totB)}</span></td></tr>
+      <tr class="total-row"><td>PATRIMONIO TOTAL</td><td>${hasB?fmtUS(totB):'—'}</td><td>${fmtUS(totA)}</td><td><span class="delta ${getDeltaCls(..._nv(totA,totB))}">${getDeltaTxt(..._nv(totA,totB))}</span></td></tr>
     </tbody>
   </table></div>`;
 }
@@ -15989,16 +15996,18 @@ function _vpDiaCabHTML(k,S){
   const w=S.max>0&&d.gan>0?Math.max(2,Math.round(d.gan/S.max*100)):0;
   return `<div class="vp-dia-cab"><span class="vp-dia-f">📅 ${nom} ${String(dd).padStart(2,'0')}/${String(m).padStart(2,'0')}</span><span class="vp-dia-n">${d.ventas} venta${d.ventas===1?'':'s'}${d.canc?` · ${d.canc} cancelada${d.canc===1?'':'s'}`:''}</span><span class="vp-dia-g" style="color:${col}">${fmt(Math.round(d.gan))}${d.pct!=null&&isFinite(d.pct)?` · ${d.pct>=0?'+':''}${d.pct.toFixed(0)}%`:''}</span><span class="vp-dia-r" title="Contra el mejor día del período"><i style="width:${w}%;background:${col}"></i></span></div>`;
 }
-// Hoy todavía sin ventas: en vez de "Sin ventas cargadas", cómo iba el mismo día de la semana pasada a esta misma hora.
+// Hoy todavía sin ventas: en vez de "Sin ventas cargadas", cómo iban a esta misma hora los últimos días iguales.
+// Con el MISMO promedio de los últimos 5 que usa Inicio (`_homeCurvaPrev`/`_homeCurva`; 3a del Diseño 10/11: antes era el día de la semana pasada solo).
 function _vpHoyVacioHTML(){
-  const ahora=new Date(),hace=new Date();hace.setDate(hace.getDate()-7);
-  const k=dateToKey(hace),ini=new Date(hace.getFullYear(),hace.getMonth(),hace.getDate()).getTime();
-  const corte=ini+(ahora.getTime()-new Date(ahora.getFullYear(),ahora.getMonth(),ahora.getDate()).getTime());
-  const ents=Object.values((state.ventaprod||{})[k]||{}).filter(v=>v&&!v.cancelada&&Number(v.ts)>0&&Number(v.ts)<=corte).map(v=>({...v,_dateKey:k}));
-  const n=new Set(ents.map(vpGrupoKey)).size;let gan=0;ents.forEach(v=>{gan+=(v.neto||0)-efectivoCostoVP(v);});
+  const ahora=new Date(),prev=_homeCurvaPrev(ahora);
   const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const hh=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
-  const comp=state.ventaprod&&state.ventaprod[k]?(n?`El ${DIAS[hace.getDay()]} pasado a esta hora (${hh}) iban <b>${n} venta${n===1?'':'s'}</b> · ${fmt(Math.round(gan))} de ganancia.`:`El ${DIAS[hace.getDay()]} pasado a esta hora (${hh}) tampoco había ninguna.`):'';
+  const lim=ahora.getHours()*60+ahora.getMinutes();let comp='';
+  if(prev.length){const Bs=prev.map(d=>_homeCurva(dateToKey(d))),nP=Bs.length;
+    const n=Bs.reduce((t,b)=>t+b.compras(lim),0)/nP,gan=Bs.reduce((t,b)=>t+b.hasta(lim),0)/nP;
+    const dn=DIAS[ahora.getDay()],quien=nP===1?`El ${dn} pasado`:`El promedio de los últimos ${nP} ${_diaPl(dn)}`;
+    const nTxt=n>=0.95?Math.round(n):String(Math.round(n*10)/10).replace('.',',');
+    comp=n>0?`${quien} a esta hora (${hh}) llevaba <b>${nTxt} venta${nTxt==1?'':'s'}</b> · ${fmt(Math.round(gan))} de ganancia.`:`${quien} a esta hora (${hh}) tampoco tenía ninguna.`;}
   return `<div class="empty-msg" style="line-height:1.6">☕ <b>Todavía no hay ventas hoy.</b>${comp?'<br>'+comp:''}<br><span style="color:var(--muted)">La primera de hoy va a aparecer acá sola.</span></div>`;
 }
 // 7.20 · LA VENTA DEL AVISO TE ESPERA MARCADA (21/10/2026, eligió la a). Tocar el aviso del teléfono abre Ventas en el día; la
