@@ -140,7 +140,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['decisiones', 'cajafijo', 'pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['decisiones', 'debenfix', 'cajafijo', 'pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -57903,6 +57903,29 @@ async function main() {
       const desp = (await db.get('cyc/products')) || {}; let ok = 0;
       for (const x of plan) { const p2 = Object.values(desp).find((z) => z && z.id === x.p.id) || {}; if (Math.abs((parseFloat(p2.shipUSD) || 0) - x.shipNew) < 0.005) ok++; }
       console.log(`✓ releído: ${ok} de ${plan.length} quedaron como pedí`); return;
+    }
+    // BILLING_PROBE=debenfix:<id>[|monto=<pesos>][|n=<cuotas>][|pagadas=<n>][|sacar=<ts>,<ts>…][;go] (14/11/2026, él con Mari: "falta una cuota de 35.000 y listo,
+    // tanto lío?") → arregla una deuda mal cargada: el total, la cantidad de cuotas y saca movimientos que cargué mal. Sin ;go muestra los
+    // movimientos (con su ts, monto y nota) y cómo quedaría. Sólo montos y notas: nunca nombres completos.
+    if (/^debenfix:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('debenfix:'.length); const GOx = /;go$/.test(raw) && !DRY;
+      const P = raw.replace(/;go$/, '').split('|').map((x) => x.trim()); const id = P[0]; const kv = {}; for (const x of P.slice(1)) { const i = x.indexOf('='); if (i > 0) kv[x.slice(0, i)] = x.slice(i + 1); }
+      const d = await db.get('cyc/debencuotas/' + id); if (!d) { console.log('❌ no existe esa deuda'); return; }
+      const movs = d.movs || {}; const sacar = String(kv.sacar || '').split(',').map((x) => x.trim()).filter(Boolean);
+      const malos = sacar.filter((t) => !movs[t]); if (malos.length) { console.log('❌ no existen esos movimientos: ' + malos.join(', ')); return; }
+      const monto = kv.monto != null ? Math.round(Number(kv.monto)) : Number(d.monto) || 0, n = kv.n != null ? parseInt(kv.n, 10) : Number(d.n) || 1;
+      const pag = kv.pagadas != null ? parseInt(kv.pagadas, 10) : Number(d.pagadas) || 0;
+      if (!(monto >= 0) || !(n >= 1)) { console.log('❌ monto o cuotas inválidos'); return; }
+      console.log(`=== ARREGLO DE LA DEUDA ${id} (${String(d.nom || '?').slice(0, 1)}···) ${GOx ? '· APLICANDO' : '· PRUEBA (agregá ;go)'} ===`);
+      console.log(`  total ${money(Number(d.monto) || 0)} → ${money(monto)} · cuotas ${Number(d.n) || 1} → ${n} · marcadas pagadas ${Number(d.pagadas) || 0} → ${pag}`);
+      let sm = 0; for (const [t, x] of Object.entries(movs).sort()) { const fuera = sacar.includes(t); if (!fuera) sm += Number(x && x.m) || 0; console.log(`  ${fuera ? '✂️ SALE ' : '   '}${t} · ${(Number(x && x.m) || 0) > 0 ? '+' : ''}${money(Number(x && x.m) || 0)} · ${String((x && x.f) || '')} · ${String((x && x.nota) || '').slice(0, 80)}`); }
+      console.log(`  queda debiendo: ${money(monto - Math.min(n, pag) * (monto / n) + sm)}${n > 1 ? ` · cuota de ${money(Math.round(monto / n))}` : ''}`);
+      if (!GOx) return;
+      const upd = { monto, n, pagadas: pag }; for (const t of sacar) upd['movs/' + t] = null;
+      await db.patch('cyc/debencuotas/' + id, upd);
+      const r = await db.get('cyc/debencuotas/' + id);
+      console.log(Number(r.monto) === monto && Number(r.n) === n && (Number(r.pagadas) || 0) === pag && sacar.every((t) => !(r.movs || {})[t]) ? '✓ guardado y releído' : '✗ no quedó');
+      return;
     }
     // BILLING_PROBE=debendia:<id de la deuda>=<0 dom|1 lun|…|6 sáb|->;go (13/11/2026, él con Germán: "el pago de él vence el lunes… paga siempre
     // el domingo") → la cuota semanal vence ese día de la semana (`cyc/debencuotas/<id>/diaVence`); la web cuenta la próxima desde el último pago.
