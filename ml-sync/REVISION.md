@@ -4883,6 +4883,7 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 ### 🔍 Tercera revisión de la etapa 10 (14/11/2026, 4 revisores en máximo: secreto · producto exacto · precios · página y publicación)
 - **El candidato nacía "mirado hoy"** (`sync.mjs`, paso de Para probar de la noche): se creaba con `ts: Date.now()` y el US$ de la copia del proveedor, que podía ser de días atrás; pasaba la regla de 24 h de Pedidos, la Tienda y ABEL. Ahora lleva `ts`/`visto` = cuándo se miró (`x.e.ts`) y `alta` = cuándo pasó a Para probar. **Chequear:** un candidato nuevo de una copia vieja sale en "⏳ ocultos" y no con precio.
 - **Portugués:** "Espanhol" → español y "Fonte" → fuente (16 nombres publicados).
+- **Producto exacto:** "Active", "Play", "Power", "Note", "Classic" y "Essential" cuentan como versión distinta (`_TM_VARIANTE`: un Watch 5 Active ya no se empareja con el Watch 5) · la pre-venta queda afuera (`TIENDA_USADO`) · "Ryzen 7 5700G" ya no se vuelve "5700 g" (probado: el café de 500G sigue en gramos) · "Pó" con mayúscula → "Polvo".
 - **Registro público:** el tapado del proveedor (`_tapaT`) ahora cubre TODO comando que empieza con `tienda` (antes `tiendarevisa`, `tiendacaros` y `tienda:cod=` quedaban afuera) y `tienda` ya no imprime el recargo ni el 25%.
 
 ### ✅ Tienda y ABEL · decisiones del 08/11
