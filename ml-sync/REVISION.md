@@ -2589,6 +2589,10 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
     decisión de compra, no código. 11 (dinero que rinde en MP) lo mira él en la app.
 
 ## 7 · DISEÑO (domingo)
+### 🎨 Diseño del 10/11 · 6a Contar lo que hay en dos pisos (14/11/2026, v28.191)
+- **Qué es:** `renderOfiContar`: cada renglón (`.oc-row`, variantes `.oc-var`) con `.oc-top` (foto + nombre entero, `overflow-wrap:anywhere`) y `.oc-bot` (− casilla + de 44 px · la casilla punteada de lo que llegó y "+ llegó"). `ofiPaso(pid,variante,±1)` suma o resta una unidad por el MISMO camino que escribir el número (`setQ`/`setOfiVar`).
+- **No salta (parte del 1a):** al tocar un renglón se guarda dónde estaba en la pantalla (`window._ocAncla`, vale 4 s) y cada redibujo lo vuelve a poner en el mismo lugar. Medido con pantalla de 700 px: escribir 7 y tocar + deja el renglón en el mismo píxel (antes saltaba 90-120 px).
+- **Qué chequear:** 360/390/1200: nada sale de la tarjeta (medido, 0); en el teléfono escribir un número y que la casilla siga bajo el dedo.
 ### 🎨 Diseño del 10/11 · 8a 9a (14/11/2026, v28.190)
 - **Ver deudas en dos pisos (8a):** `renderCuotas` → `fila` y la tarjeta 🛍️ PERFUMERÍA usan `.deu-f` (nombre en un renglón con "…", abajo `.deu-2` con avisos ✏️/⚠️, % y lo que falta `.deu-m`). Medido a 360 y 1200: todos los renglones de 56/60 px. **Chequear:** un nombre largo queda en un renglón con "…" (el nombre entero en el título al dejar el dedo/mouse).
 - **Gastos del mes (9a):** `renderComprasChecklist`: barra `.gm-barra` debajo de "Faltan N de M", "Gastos del mes $X" en su renglón, botones `.gm-b` de 40 px, la nota de cada gasto detrás de una ⓘ (`tt-i`, en el teléfono se toca), el nombre arriba y "falta/casilla" abajo. `renderComprasRetiro` ya no muestra la tarjeta del retiro (ni su título) cuando el retiro es automático: está en la lista, renglón por socio. **Chequear:** a principio de mes, el retiro aparece una sola vez.

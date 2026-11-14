@@ -340,6 +340,13 @@ html,body{overflow-x:hidden;max-width:100%}html{overflow-x:clip}body{overscroll-
 .gm-barra{display:block;height:8px;border-radius:5px;background:var(--surface2);overflow:hidden;margin-top:8px}
 .gm-barra>i{display:block;height:100%;border-radius:5px}
 .vbtn.gm-b{font-size:.66rem;padding:6px 12px;min-height:40px}
+/* 6a del Diseño 10/11 · Contar lo que hay en dos pisos */
+.oc-row{padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;display:flex;flex-direction:column;gap:8px}
+.oc-row.oc-var{padding:8px 0;border:0;border-top:1px solid var(--border);border-radius:0;margin:0}
+.oc-top{display:flex;align-items:flex-start;gap:8px}
+.oc-bot{display:flex;align-items:center;gap:6px}
+.oc-sep{flex:1}
+.btn.oc-pm{flex:none;width:44px;height:44px;padding:0;font-size:1.2rem;line-height:1;display:inline-flex;align-items:center;justify-content:center}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3564,7 +3571,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.190';
+const APP_VERSION='28.191';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3577,6 +3584,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.191',f:'14/11',h:'01:46',c:[{n: 2, t: "🔢 Contar lo que hay en dos pisos: arriba la foto y el nombre entero; abajo − casilla + (de 44 px, de a una unidad) y \"+ llegó\". Al anotar un número la pantalla ya no salta (6a y parte del 1a del Diseño 10/11)."}]},
   {v:'28.190',f:'14/11',h:'01:43',c:[{n: 1, t: "💵 Ver deudas en dos pisos: arriba el nombre entero, abajo los avisos, el % y lo que falta; todos los renglones del mismo alto (8a del Diseño 10/11)."}, {n: 1, t: "🧾 Gastos del mes: \"Faltan N de 11\" con barra, botones de 40 px, las notas largas detrás de una ⓘ y el retiro una sola vez (9a)."}]},
   {v:'28.189',f:'14/11',h:'01:40',c:[{n: 2, t: "📅 Comparar meses cuenta nuevo menos viejo: si el patrimonio bajó dice ▼ en rojo, si el stock subió ▲ en verde; el dólar del cierre dice \"dólar a $X\" (2a y 1a del Diseño 10/11)."}, {n: 1, t: "⏱️ Ventas sin ventas hoy compara con el promedio de los últimos 5 días iguales a esta hora, igual que Inicio (3a)."}, {n: 1, t: "🇵🇾/🇦🇷 de la ficha: ahora está adentro de la ficha (al lado de 🗑️) y pregunta antes de cambiar (15a)."}]},
   {v:'28.188',f:'14/11',h:'01:35',c:[{n:1,t:'🔤 Ventas a personas: el robot las carga con la inicial y la deuda dice "✏️ completá el nombre" hasta que lo completás en ✏️ Editar (28a del 14/11).'}]},
@@ -9484,8 +9492,10 @@ function renderOfiContar(){
     return propias.map(l=>pinta(l,false)).join('')+cola;
   };
   const casilla=(val,hay,onch)=>`<input type="number" inputmode="numeric" value="${val||''}" placeholder="0"
-        style="flex:none;width:72px;text-align:center;background:var(--bg);border:1px solid ${hay?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:1rem;padding:10px 4px;outline:none"
+        style="flex:none;width:72px;height:44px;box-sizing:border-box;text-align:center;background:var(--bg);border:1px solid ${hay?'var(--accent2)':'var(--border2)'};border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:1rem;padding:6px 4px;outline:none"
         onchange="${onch}">`;
+  // 6a del Diseño 10/11: − / + de 44 px al lado de la casilla (de a una unidad, sobre el total contado).
+  const pasos=(id,v)=>{const a=`ofiPaso('${id}',${v==null?'null':JSON.stringify(v).replace(/"/g,'&quot;')},`;return [`<button class="btn oc-pm" title="Una menos" onclick="${a}-1)">−</button>`,`<button class="btn oc-pm" title="Una más" onclick="${a}1)">+</button>`];};
   // ── SUMAR LO QUE LLEGÓ, EN VEZ DE HACER LA CUENTA A MANO (17/09/2026) ────────────────
   // Pedido suyo, con las Cartas Casino en 228: *"agregar otro cuadradito para seleccionar cuántas
   // unidades nuevas ingresaron, así no tengo que sumarlas (…) en TODOS los productos, no solo el
@@ -9499,9 +9509,9 @@ function renderOfiContar(){
   const sumaCasilla=(id,accion)=>`<div style="flex:none;display:flex;align-items:center;gap:4px">
         <input type="number" inputmode="numeric" id="${id}" placeholder="+"
           title="Cuántas unidades NUEVAS llegaron. Se suman a las que ya tenías: no es el total."
-          style="width:54px;text-align:center;background:var(--bg);border:1px dashed var(--border2);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.88rem;padding:9px 3px;outline:none"
+          style="width:50px;height:44px;box-sizing:border-box;text-align:center;background:var(--bg);border:1px dashed var(--border2);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:.88rem;padding:6px 3px;outline:none"
           onkeydown="if(event.key==='Enter'){event.preventDefault();${accion}}">
-        <button class="btn" title="Sumarlas a lo que ya había" style="flex:none;padding:8px 9px;font-size:.9rem;line-height:1" onclick="${accion}">+</button>
+        <button class="btn" title="Sumarlas a lo que ya había" style="flex:none;min-width:52px;height:44px;padding:0 6px;font-size:.7rem;line-height:1.1" onclick="${accion}">+ llegó</button>
       </div>`;
   let _sumN=0;
   const html=prods.map(p=>{
@@ -9525,21 +9535,22 @@ function renderOfiContar(){
       const filas=visibles.map(v=>{
         const hay=getQV(p.id,OFI,v);
         const enFull=cta?getQV(p.id,cta,v):stockOfVar(p,v);
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0 7px 12px;border-top:1px solid var(--border)">
-          ${fotoMiniHTML(p,30,v,cta)}
+        const [_m,_p]=pasos(p.id,v);
+        return `<div class="oc-row oc-var" data-ok="${_esc(p.id+'|'+v)}">
+          <div class="oc-top">${fotoMiniHTML(p,30,v,cta)}
           <div style="flex:1;min-width:0">
-            <div style="font-size:.75rem;line-height:1.3;word-break:break-word">${v}${_sinEtiqChip(sinEtiq(p.id,v),hay)}</div>
+            <div style="font-size:.75rem;line-height:1.3;overflow-wrap:anywhere">${v}${_sinEtiqChip(sinEtiq(p.id,v),hay)}</div>
             <div style="font-size:.6rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(enFull)}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,v))}`:`en Full · ${porCuenta(p,v)}`}</div>
-          </div>
-          ${casilla(hay,hay>0,`setOfiVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},this.value)`)}
-          ${sumaCasilla('ofisum'+(++_sumN),`ofiSumarVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},'ofisum${_sumN}')`)}
+          </div></div>
+          <div class="oc-bot">${_m}${casilla(hay,hay>0,`setOfiVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},this.value)`)}${_p}<span class="oc-sep"></span>
+          ${sumaCasilla('ofisum'+(++_sumN),`ofiSumarVar('${p.id}',${JSON.stringify(v).replace(/"/g,'&quot;')},'ofisum${_sumN}')`)}</div>
         </div>`;
       }).join('');
       return `<div style="padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px">
           ${fotoMiniHTML(p,34,'',cta)}
           <div style="flex:1;min-width:0">
-            <div style="font-size:.8rem;font-weight:700;line-height:1.3;word-break:break-word">${p.name}</div>
+            <div style="font-size:.8rem;font-weight:700;line-height:1.3;overflow-wrap:anywhere">${p.name}</div>
             <div style="font-size:.62rem;color:var(--muted);margin-top:2px">en Full${cta?' de '+cta:''}: ${fmtN(cta?getQ(p.id,cta):stockOf(p))} · ${visibles.length<(p.variantes||[]).length?`${visibles.length} de ${(p.variantes||[]).length}`:(p.variantes||[]).length} variantes</div>
           </div>
           <div style="flex:none;width:72px;text-align:center;font-family:'DM Mono',monospace;font-size:1rem;color:${enCasa>0?'var(--accent2)':'var(--muted)'}">${enCasa||0}</div>
@@ -9547,18 +9558,34 @@ function renderOfiContar(){
         ${filas||'<div style="font-size:.65rem;color:var(--muted);padding-top:8px">Ninguna variante coincide con la búsqueda.</div>'}
       </div>`;
     }
-    return `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:${enCasa>0?'var(--surface2)':'var(--surface)'};border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
-      ${fotoMiniHTML(p,34,'',cta)}
+    // 6a del Diseño 10/11: DOS PISOS. Arriba la foto y el nombre ENTERO (antes tenía 77 px y uno de 90 letras ocupaba 10 renglones);
+    // abajo − casilla + y lo que llegó, de 44 px.
+    const [_m,_p]=pasos(p.id,null);
+    return `<div class="oc-row" data-ok="${_esc(p.id+'|')}" style="background:${enCasa>0?'var(--surface2)':'var(--surface)'}">
+      <div class="oc-top">${fotoMiniHTML(p,34,'',cta)}
       <div style="flex:1;min-width:0">
-        <div style="font-size:.8rem;line-height:1.3;word-break:break-word">${p.name}${_sinEtiqChip(sinEtiq(p.id,''),enCasa)}</div>
+        <div style="font-size:.8rem;line-height:1.3;overflow-wrap:anywhere">${p.name}${_sinEtiqChip(sinEtiq(p.id,''),enCasa)}</div>
         <div style="font-size:.62rem;color:var(--muted);margin-top:2px">${cta?`en Full de ${cta}: ${fmtN(getQ(p.id,cta))}${(c=>c?` · <span style="font-family:monospace;color:var(--blue,#38bdf8)">${String(c).replace(/[^A-Za-z0-9]/g,"")}</span>`:'')(etiquetaFullDe(p.id,cta,''))}`:`en Full · ${porCuenta(p,'')}`}</div>
-      </div>
-      ${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}
-      ${sumaCasilla('ofisum'+(++_sumN),`ofiSumar('${p.id}','ofisum${_sumN}')`)}
+      </div></div>
+      <div class="oc-bot">${_m}${casilla(enCasa,enCasa>0,`setQ('${p.id}','${OFI}',this.value);syncOfiMati();renderOfiContar()`)}${_p}<span class="oc-sep"></span>
+      ${sumaCasilla('ofisum'+(++_sumN),`ofiSumar('${p.id}','ofisum${_sumN}')`)}</div>
     </div>`;
   }).join('');
   // Si el filtro dejó todo afuera, decirlo. Antes quedaba la lista en blanco, que parece un error.
+  // 1a/6a del Diseño 10/11: al anotar un número la lista se redibuja (y la tarjeta 🏷️ de arriba crece): la pantalla saltaba 90-120 px.
+  // Se recuerda dónde estaba el renglón tocado y, después de redibujar, se lo deja en el mismo lugar de la pantalla.
+  // El ancla se toma al TOCAR el renglón (`_ocAncla`) y vale 4 s: el número entra a la base y vuelven a llegar redibujos un rato después.
+  if(!cont._ocAnc){cont._ocAnc=1;const f=e=>{const r=e.target&&e.target.closest&&e.target.closest('[data-ok]');if(r)window._ocAncla={k:r.getAttribute('data-ok'),top:r.getBoundingClientRect().top,t:Date.now()};};cont.addEventListener('focusin',f);cont.addEventListener('pointerdown',f);}
+  const _A=window._ocAncla&&Date.now()-window._ocAncla.t<4000?window._ocAncla:null,_okA=_A&&_A.k,_topA=_A&&_A.top;
   cont.innerHTML=html||`<div class="empty-msg">${solo?'No hay nada con unidades cargadas'+(ofiContarCuenta?' de '+ofiContarCuenta:'')+'.':'Nada con esa búsqueda.'}</div>`;
+  if(_okA!=null){const r=cont.querySelector(`[data-ok="${CSS.escape(_okA)}"]`);if(r){const d=r.getBoundingClientRect().top-_topA;if(Math.abs(d)>1)window.scrollBy(0,d);}}
+}
+// − / + de Contar lo que hay (6a del Diseño 10/11): una unidad sobre lo contado, por el MISMO camino que escribir el número en la casilla.
+function ofiPaso(pid,variante,d){
+  const p=(state.products||[]).find(x=>x.id===pid);if(!p)return;
+  {const r=document.querySelector(`#ofi-contar-list [data-ok="${CSS.escape(pid+'|'+(variante||''))}"]`);if(r)window._ocAncla={k:pid+'|'+(variante||''),top:r.getBoundingClientRect().top,t:Date.now()};}
+  if(variante!=null){const n=Math.max(0,getQV(pid,OFI,variante)+d);setOfiVar(pid,variante,String(n));return;}
+  const n=Math.max(0,stockOficina(p)+d);setQ(pid,OFI,n);syncOfiMati();renderOfiContar();
 }
 // Guarda las unidades de UNA variante en la oficina y recalcula el total del producto como la
 // suma de sus variantes. La clave de producto tiene que quedar siempre igual a esa suma: es la
