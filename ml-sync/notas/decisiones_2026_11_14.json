@@ -1,0 +1,122 @@
+[
+ {
+  "n": 1,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda: subir las páginas nuevas sin esperar el permiso",
+  "txt": "Las páginas que ve la gente son las del 05/11: en Navidad piden seña de la mitad (la regla dice pagar completo), un pedido sólo de Apple dice Total $0 y ABEL no tiene el cartel de Navidad. Puedo subirlas hoy desde una sesión, limpias.",
+  "a": {
+   "t": "Sí, subirlas hoy"
+  },
+  "b": {
+   "t": "Esperar al permiso"
+  }
+ },
+ {
+  "n": 2,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda: rastro que lleva al panel y a Paraguay",
+  "txt": "El repositorio de la Tienda es público: un archivo nombra la dirección del panel y su primer cambio tiene tu usuario y correo. Desde la Tienda se llega en 2-3 clics a que todo viene de Paraguay.",
+  "a": {
+   "t": "Rehacer el repositorio limpio (mismo link) y sacar la dirección de los textos del panel"
+  },
+  "b": {
+   "t": "Sólo borrar ese archivo (queda en la historia)"
+  }
+ },
+ {
+  "n": 3,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda: fotos del proveedor",
+  "txt": "Con el permiso, las ~6.900 fotos del proveedor se copian con nombre nuestro; igual una búsqueda por imagen puede encontrar la original.",
+  "a": {
+   "t": "Aceptarlo"
+  },
+  "b": {
+   "t": "Sólo fotos de ML (se pierde ~84% de los productos)"
+  }
+ },
+ {
+  "n": 4,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda: los 40 estados viejos (01 al 07/11)",
+  "txt": "Siguen publicados con los precios de esos días.",
+  "a": {
+   "t": "Borrarlos"
+  },
+  "b": {
+   "t": "Dejarlos"
+  }
+ },
+ {
+  "n": 5,
+  "grupo": "noche",
+  "tit": "🌸 ABEL: 6 perfumes sin tamaño",
+  "txt": "Ni el proveedor dice si son de 50 o 100 ml.",
+  "a": {
+   "t": "Sacarlos"
+  },
+  "b": {
+   "t": "Que queden"
+  }
+ },
+ {
+  "n": 6,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda: 13 teclados en portugués y 3 de comida/bebida",
+  "txt": "Los teclados no tienen ñ.",
+  "a": {
+   "t": "Sacarlos"
+  },
+  "b": {
+   "t": "Que queden"
+  }
+ },
+ {
+  "n": 7,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda: el 'En Mercado Libre $X' está viejo",
+  "txt": "Usa un precio de ML de hasta 18 días y no siempre el más barato: 70 productos dicen estar 40-50% abajo de ML.",
+  "a": {
+   "t": "Mostrarlo sólo con el más barato de hasta 7 días"
+  },
+  "b": {
+   "t": "Como hoy"
+  }
+ },
+ {
+  "n": 8,
+  "grupo": "noche",
+  "tit": "🛍️ Tienda y ABEL: si el dólar no se actualiza",
+  "txt": "Hoy usan el último que haya. Con una devaluación de 20%, la Tienda quedaría ganando ~4% y ABEL abajo del costo.",
+  "a": {
+   "t": "Si el dólar tiene más de 1 día o difiere más de 1,5%, no cambia el precio y te aviso"
+  },
+  "b": {
+   "t": "Como hoy"
+  }
+ },
+ {
+  "n": 9,
+  "grupo": "noche",
+  "tit": "🌸 Paulvic Indigo y Silver (1 unidad cada uno, stock viejo)",
+  "txt": "Indigo tiene 228 días y no vende a $21.990 desde el 16/10 (28 días: ya es techo); para ganar la caja ML pide $16.041. Silver tiene 171 días, vendió 1 a $21.990 hace 9 días y cumple 180 el 23/11. Desde los 180 días el stock viejo cuesta ~$3.250 por unidad por mes (antes ~$350).",
+  "a": {
+   "t": "Silver queda a $21.990; Indigo baja a $15.990 (gana la caja) para que salga antes del 10/12"
+  },
+  "b": {
+   "t": "Los dos se retiran a la perfumería antes del 10/12"
+  }
+ },
+ {
+  "n": 10,
+  "grupo": "noche",
+  "tit": "🌸 Paulvic Luna (11 en Full)",
+  "txt": "Tienen 142 días y venden 1 por mes a $14.990. Cerca del 22/12 cumplen 180 días: pasarían a costar ~$35.000 por mes las 11. Ganar la caja pide $10.315, abajo del costo.",
+  "a": {
+   "t": "Retirar 9 a la perfumería antes del 10/12 y dejar 2 en Full para Navidad"
+  },
+  "b": {
+   "t": "Dejarlas todas y decidir el 07/12"
+  }
+ }
+]
