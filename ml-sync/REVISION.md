@@ -1175,6 +1175,9 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🧾 Pedidos sin desplegable (14/11/2026, él: "esto del detalle sacar. que no haya un desplegable")
+- **Qué es:** la tarjeta de Pedidos no se abre: nombre, máximo, unidades y, si tiene, los colores a comprar (y el copiar para WhatsApp). Afuera 🧠, No lo consigo, Foto, origen, solapa, proveedor y la ✕ (el origen lo controlo yo). **Dónde:** `index.html` (v28.208). **Chequear:** que los colores se sigan viendo y que Paraguay Probados no cambió.
+
 ### 👉 Pedidos: "mirá cada color" cuando el máximo cambia por color (14/11/2026, él con las Sábanas)
 - **Qué es:** con 2+ colores a comprar y máximos distintos (>2%), el encabezado no muestra un número sino "👉 mirá cada color"; cada color dice el suyo adentro. **Dónde:** `index.html` `maxCompraChipPed` (v28.207). **Chequear:** que con un solo color o máximos iguales siga el número.
 
