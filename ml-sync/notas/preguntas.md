@@ -99,3 +99,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 - (12/11) Antes de mandar algo a Full: ¿a qué % se VENDIÓ las últimas veces (no sólo el precio de hoy, y de ESA cuenta)? ¿Y la caja entera, pagando el envío completo, deja 35%+?
 - (13/11) Cuando abro un canal nuevo para hablar con él (o él queda sin su canal de siempre), ¿quién lo mira y cada cuánto? Dejarlo mirando en el momento, no esperar la próxima vuelta.
 - (13/11) Después de cargar un número, ¿el que quedó guardado es el que quería (mismo orden de magnitud)? Dólares con decimales: escribirlos con coma.
+- (14/11) Cuando entra plata de un lado (un cobro), ¿dónde quedó? Si cambia una deuda, también cambia una caja (Binance, MP, efectivo): las dos patas.
