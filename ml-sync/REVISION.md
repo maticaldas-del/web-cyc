@@ -5205,3 +5205,5 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - Verificado: Playwright 360 y 1200 px con datos de prueba (preguntas, decisiones, lo que llega, la semana, la hoja de la Tienda): nada se sale del ancho; en el teléfono el botón "👀 Cómo la ve la gente" va en su propio renglón.
 
 - **14/11 · Tienda: "Reprodutor" → "reproductor"** (control diario de ABEL y la Tienda: 35 al azar, todos bien emparejados; el Fiio Snowsky Echo salía con el nombre en portugués). Diccionario de `traducirPyNombre` en sync.mjs. Qué chequear: la próxima tienda;go muestra "Reproductor de Música Portátil Fiio…".
+
+- **14/11 · Inicio sin 💬 Preguntas ni 🚚 Lo que llega (v28.204)** (él: *"eso de las preguntas sacalo. sólo pasame por acá y resolvemos, y las cajas a llegar y eso sacalo también"*): `_hxPreguntas` y `_hxLlega` quedan en el código pero no se dibujan; el robot ya no llama a `preguntasPanel` (no escribe `cyc/pregpend`). El aviso de lo que llega por Telegram sigue. Qué chequear: Inicio sin esas dos tarjetas.

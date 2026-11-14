@@ -63029,7 +63029,7 @@ async function main() {
 
   // 💬 Preguntas desde el panel (62a del 14/11/2026): cada vuelta del ciclo manda lo que contestó en la web; la lista se rehace cada 10 min.
   if (parseInt(process.env.BACKFILL_DAYS || '0', 10) === 0 && !onlyAcc && !DRY) {
-    try { const pp = await preguntasPanel(db, tokensRun, accounts); if (pp.mandadas || pp.mal || pp.pend != null) console.log(`💬 Preguntas del panel · ${pp.mandadas} contestada(s) desde la web${pp.mal ? ' · ' + pp.mal + ' con problema' : ''}${pp.pend != null ? ' · ' + pp.pend + ' esperando' : ''}`); }
+    try { const pp = { mandadas: 0, mal: 0, pend: null }; /* 14/11 (él): las preguntas NO van al panel, se resuelven en el chat (antes: await preguntasPanel(db, tokensRun, accounts)) */ if (pp.mandadas || pp.mal || pp.pend != null) console.log(`💬 Preguntas del panel · ${pp.mandadas} contestada(s) desde la web${pp.mal ? ' · ' + pp.mal + ' con problema' : ''}${pp.pend != null ? ' · ' + pp.pend + ' esperando' : ''}`); }
     catch (e) { console.log('No pude mirar las preguntas del panel: ' + String(e.message || e).slice(0, 100)); }
   }
   // 📦 El código de las devoluciones que vienen a la oficina, a Telegram (26/10/2026, pedido suyo). Cada 2 h, sólo lee ML.
