@@ -466,6 +466,8 @@ for cta in set(o['cta'] for o in out):
 # Cada unidad paga COSTO_CAJA ÷ las unidades que lleva ESA caja (en vez del envío+embalaje de la ficha, que supone una caja llena de ese solo
 # producto). Con `PC gan:div:ship` de pedidostodo (el peor caso al precio del PH): % = (gan + ship − e) ÷ (div − ship + e). El que no llega
 # al 35% sale de la caja (queda en la oficina) y se vuelve a contar con las unidades que quedan, hasta que todos den. Lo FIJO de él no sale.
+RELLENO_DIAS=60     # con lo de más, ningún producto pasa 60 días de stock (lo que vende parejo ya se estira a 60)
+RELLENO_MAX=20      # como mucho 20 unidades de más por caja
 COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); si cambia, cambiarlo acá también
 _PCX={}
 for p in P:
@@ -491,13 +493,73 @@ for c in sorted(set(o['cta'] for o in out)):
         malos=[min(malos,key=lambda o:o['_pct'])]
         for o in malos:
             sacados.append(f"{o['nom']} ({o['q']} u. → {o['_pct']:.0f}%)")
-            o['cola']=f"🟥 no va en esta caja: con su parte del envío (${COSTO_CAJA:,} ÷ {U} u. = ${e:,.0f} c/u) deja {o['_pct']:.0f}% en el peor caso, abajo del 35% (él, 12/11) · ".replace(f"{COSTO_CAJA:,}",f"{COSTO_CAJA:,}".replace(',','.')).replace(f"{e:,.0f}",f"{e:,.0f}".replace(',','.'))+o['cola']; o['q']=0
+            o['_q0']=o['q']; o['_cola0']=o['cola']; o['cola']=f"🟥 no va en esta caja: con su parte del envío (${COSTO_CAJA:,} ÷ {U} u. = ${e:,.0f} c/u) deja {o['_pct']:.0f}% en el peor caso, abajo del 35% (él, 12/11) · ".replace(f"{COSTO_CAJA:,}",f"{COSTO_CAJA:,}".replace(',','.')).replace(f"{e:,.0f}",f"{e:,.0f}".replace(',','.'))+o['cola']; o['q']=0
+    # ➕ RELLENO (14/11/2026, él: "al cargar más unidades se divide en más… podés hacerlo para que un producto llegue al 35% o mejore su
+    # condición. obvio sin mandar pavadas. quizás vende 10 al mes y si mandamos 13 es mejor… analizarlo extremadamente bien"). Sólo si algo
+    # SALIÓ por el envío: se suman unidades de más a lo que ya va en la caja y vende seguido, para que el envío por unidad baje y lo que salió
+    # vuelva con 35%+. Frenos: sólo lo que ya da 35%+ con el envío de hoy, vende (ritmo medido) y no es grande ni fijo · con lo de más no pasa
+    # RELLENO_DIAS de stock (Full + camino + caja) al ritmo de hoy · lo que hay en la oficina · el cupo de Full · como mucho RELLENO_MAX u. de
+    # más por caja. Si con eso no llega al 35%, no se agrega nada (no se manda de más "por las dudas"). Lo que vuelve, entra con TODAS sus
+    # unidades. Primero el que necesita menos relleno.
+    rellenoTxt=[]
+    if sacados:
+        cuR=CUPO.get(c) or {}
+        def _libre():
+            if cuR.get('peq') is None: return float('inf')
+            return cuR['peq']-sum(o['q'] for o in out if o['cta']==c and o['q']>0 and not o['grande'])
+        def _pcOf(o): return _PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
+        # Se prueba con GRUPOS de lo que salió (el más fácil primero: el que aguanta más envío por unidad), porque dos que salieron
+        # juntos pueden llenarse entre sí. Para cada grupo: envío máximo por unidad = el del más exigente; unidades que hacen falta =
+        # 17.500 ÷ ese envío; se completan con unidades de más (de lo que va en la caja o de los mismos del grupo) sin pasar los tapes.
+        # Gana el grupo que más plata deja (ganancia de todo lo que va − el envío entero).
+        V0=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]; U0=sum(o['q'] for o in V0)
+        def _emax(o):
+            g,d,sh=_pcOf(o); return (g+sh-0.35*(d-sh))/1.35
+        def _gan(o): g,d,sh=_pcOf(o); return g+sh
+        S=[o for o in out if o['cta']==c and o.get('_q0') and not o['q'] and _pcOf(o) and not o['grande'] and _emax(o)>0]
+        S.sort(key=lambda o:-_emax(o))
+        def _mx(o,base):
+            if o.get('fijo') or o['grande'] or not (o.get('r') or 0)>0 or o.get('baja') or not _pcOf(o): return 0
+            return max(0,min(o['casa']-base,math.floor(RELLENO_DIAS*o['r']-(o.get('dias') or 0)*o['r']-base+1e-9)))
+        mejor=None
+        for k in range(1,len(S)+1):
+            G=S[:k]; em=min(_emax(o) for o in G)
+            need=math.ceil(COSTO_CAJA/em-1e-9); base=U0+sum(o['_q0'] for o in G); falta=max(0,need-base)
+            if falta>RELLENO_MAX or need>_libre()+U0: continue
+            fuentes=[(o,_mx(o,o['q'])) for o in V0 if not o.get('fijo')]+[(o,_mx(o,o['_q0'])) for o in G]
+            fuentes=[(o,m) for o,m in fuentes if m>0 and (o in G or (_pcOf(o) and (_pcOf(o)[0]+_pcOf(o)[2]-em)/max(1,_pcOf(o)[1]-_pcOf(o)[2]+em)>=0.35))]
+            fuentes.sort(key=lambda x:1/x[0]['r'])
+            plan=[];n=falta
+            for o,m in fuentes:
+                if n<=0: break
+                t=min(m,n); plan.append((o,t)); n-=t
+            if n>0: continue
+            e2=COSTO_CAJA/need
+            plata=sum(_gan(o)*o['q'] for o in V0 if _pcOf(o))+sum(_gan(o)*o['_q0'] for o in G)+sum(_gan(o)*t for o,t in plan)-COSTO_CAJA
+            if mejor is None or plata>mejor[0]: mejor=(plata,G,plan,e2)
+        if mejor:
+            plata0=sum(_gan(o)*o['q'] for o in V0 if _pcOf(o))-(COSTO_CAJA if U0 else 0)
+            _,G,plan,e2=mejor
+            for so in G: so['q']=so['_q0']; so['cola']=so['_cola0']
+            for o,t in plan: o['q']+=t; o['_rel']=o.get('_rel',0)+t
+            nombres={so['nom'] for so in G}
+            sacados[:]=[x for x in sacados if not any(x.startswith(nn) for nn in nombres)]
+            rellenoTxt.append(f"vuelven {' · '.join(so['nom']+' ('+str(so['_q0'])+' u.)' for so in G)}"+(f" agregando {' · '.join('+'+str(t)+' '+o['nom'][:34] for o,t in plan)}" if plan else '')+
+                              f" · envío ${e2:,.0f} c/u · la caja deja ${mejor[0]:,.0f} contra ${plata0:,.0f} sin relleno".replace(',','.'))
+        for o in out:
+            if o['cta']==c and o.get('_rel'):
+                dd=(o.get('dias') or 0)+o['q']/o['r']
+                o['cola']=f"➕ relleno: {o['_rel']} de más para que el envío por unidad baje y entre lo que no llegaba al 35% (queda para {dd:.0f} días, tope {RELLENO_DIAS}) · "+o['cola']
     V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]; U=sum(o['q'] for o in V)
+    for o in V:   # el % con el envío que queda al final (después del relleno)
+        pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
+        o['_pct']=((pc[0]+pc[2]-COSTO_CAJA/U)/max(1,(pc[1]-pc[2]+COSTO_CAJA/U))*100) if (pc and U) else None
     if U or sacados:
         pcts=[o.get('_pct') for o in V if o.get('_pct') is not None]
         cajaPct.append(f"📦 caja de {c}: {U} u. · envío ${COSTO_CAJA/U if U else 0:,.0f} por unidad".replace(',','.')+(f" · el que menos deja: {min(pcts):.0f}%" if pcts else '')+
                        (f" · sin dato de % (van igual): {sum(1 for o in V if o.get('_pct') is None)}" if any(o.get('_pct') is None for o in V) else '')+
-                       (f"\n    🟥 SALIERON por no llegar al 35% con el envío: "+' · '.join(sacados) if sacados else ''))
+                       (f"\n    🟥 SALIERON por no llegar al 35% con el envío: "+' · '.join(sacados) if sacados else '')+
+                       (f"\n    ➕ RELLENO: "+' · '.join(rellenoTxt) if rellenoTxt else ''))
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
