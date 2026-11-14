@@ -3078,12 +3078,63 @@ async function avisoVentaFueraFull(db, tokensRun, DRY) {
       const mla = String(((o.order_items || [])[0] || {}).item?.id || '');
       const txt = `🚨 URGENTE: venta que NO sale por Full en ${label} · ${tit} (${mla}) · hay que despacharla a mano · estado ${st}${sh.substatus ? '/' + sh.substatus : ''}`;
       console.log('   ' + txt);
-      if (!DRY) { try { await sendAlerta(txt); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = Date.now(); }
+      if (!DRY) { try { await sendAlerta(txt, { directo: true }); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = Date.now(); }   // directo: con SOLO_DATOS sin esto no salía (arreglado con la 56a)
     }
   }
   for (const [k, t] of Object.entries(mem)) if (Date.now() - (Number(t) || 0) > 10 * 864e5) nuevo[k] = null;
   if (!DRY && Object.keys(nuevo).length) { try { await db.patch('mlapi/ventafuerafull', nuevo); } catch { /* el log lo dice */ } }
   console.log(`   🚨 ventas de 48 h miradas: ${vistas} · fuera de Full sin despachar: ${fuera}`);
+}
+// ⚖️ DENUNCIAS DE MARCA CON FECHA LÍMITE (56a del 14/11/2026, él: "a"): si no se contestan a tiempo, ML borra la publicación (Invictus y
+// Phantom fueron 10). Cada hora, en las 4 cuentas, se leen las infracciones/moderaciones de la cuenta y cada una NUEVA que sea de marca o de
+// propiedad intelectual, o que tenga una fecha límite por delante, va UNA vez como URGENTE al canal privado con la fecha (`mlapi/denunciamarca`).
+// LA RUTA NO ESTÁ MEDIDA: ML documenta `/moderations/infractions/<user_id>` y el comando `rutas` ya probaba `/users/<id>/moderations/infractions`;
+// se prueban las dos y la primera que contesta manda. Si ninguna contesta se dice en el registro una vez por corrida (sin avisar a Telegram)
+// y se sigue: no frena nada. Sólo la publicación, el motivo y la fecha; nada del denunciante ni de compradores (el registro es público).
+const RE_DENUNCIA_MARCA = /marca|brand|intellectual|propiedad|ppi|infring|counterfeit|falsific|denuncia|trademark|rights|derecho/i;
+function _denunciasDe(j) {
+  const arr = Array.isArray(j) ? j : Array.isArray(j && j.infractions) ? j.infractions : Array.isArray(j && j.results) ? j.results : Array.isArray(j && j.data) ? j.data : [];
+  return arr.filter((x) => x && typeof x === 'object');
+}
+function _denunciaFecha(x) {
+  for (const k of ['remedy_due_date', 'due_date', 'deadline', 'expiration_date', 'expires_at', 'date_to', 'limit_date', 'response_deadline']) { const t = Date.parse(x[k]); if (t > 0) return t; }
+  for (const v of Object.values(x)) if (v && typeof v === 'object') for (const k of ['due_date', 'deadline', 'expiration_date', 'remedy_due_date']) { const t = Date.parse(v[k]); if (t > 0) return t; }
+  return 0;
+}
+async function avisoDenunciasMarca(db, tokensRun, DRY) {
+  let mem = {}; try { mem = (await db.get('mlapi/denunciamarca')) || {}; } catch { mem = {}; }
+  const nuevo = {}; let leidas = 0, avisadas = 0; const sinRuta = [];
+  const ahora = Date.now(), fd = (t) => new Date(t - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
+  for (const [label, tok] of Object.entries(tokensRun || {})) {
+    if (!tok) continue;
+    let me = null; try { me = await mlGet('/users/me', tok); } catch { me = null; }
+    if (!me || !me.id) { sinRuta.push(label + ' (no leí la cuenta)'); continue; }
+    let j = null, err = '';
+    for (const ruta of [`/moderations/infractions/${me.id}`, `/users/${me.id}/moderations/infractions`]) {
+      try { j = await mlGet(ruta, tok); break; } catch (e) { err = String(e && e.message || e).slice(0, 60); j = null; }
+    }
+    if (j == null) { sinRuta.push(`${label} (${err})`); continue; }
+    for (const x of _denunciasDe(j)) {
+      leidas++;
+      const id = String(x.id || x.infraction_id || x.element_id || x.item_id || ''); if (!id) continue;
+      const k = (label + '_' + id).replace(/[.#$\[\]\/]/g, '_'); if (mem[k]) continue;
+      const txtX = JSON.stringify(x); const lim = _denunciaFecha(x), creada = Date.parse(x.date_created || x.created_at || x.date) || 0;
+      const estado = String(x.status || x.state || '').toLowerCase();
+      if (/closed|resolved|solved|cerrad|resuelt|finished|expired/.test(estado)) continue;
+      const esMarca = RE_DENUNCIA_MARCA.test(txtX), conFecha = lim > ahora;
+      if (!esMarca && !conFecha) continue;
+      if (!conFecha && creada && ahora - creada > 30 * 864e5) continue;   // lo viejo sin fecha por delante (Invictus/Phantom) no se re-avisa
+      const mla = String(x.element_id || x.item_id || x.related_item_id || (x.element && x.element.id) || '').toUpperCase();
+      const rz = x.reason && typeof x.reason === 'object' ? (x.reason.description || x.reason.id) : x.reason, mot = String(rz || x.reason_id || x.type || x.infraction_type || (typeof x.remedy === 'string' ? x.remedy : '') || 'denuncia').replace(/[;<>]/g, ' ').slice(0, 80);
+      const txt = `🚨 URGENTE: ${esMarca ? 'denuncia de MARCA' : 'infracción con fecha límite'} en ${label}${mla ? ' · ' + mla : ''} · ${mot}${lim ? ' · hay que contestar antes del ' + fd(lim) : ' · sin fecha límite a la vista: mirarla hoy'} // si no se contesta, ML borra la publicación`;
+      console.log('   ' + txt);
+      avisadas++;
+      if (!DRY) { try { await sendAlerta(txt, { directo: true }); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = ahora; }
+    }
+  }
+  for (const [k, t] of Object.entries(mem)) if (ahora - (Number(t) || 0) > 120 * 864e5) nuevo[k] = null;
+  if (!DRY && Object.keys(nuevo).length) { try { await db.patch('mlapi/denunciamarca', nuevo); } catch { /* el log lo dice */ } }
+  console.log(`   ⚖️ denuncias/infracciones leídas: ${leidas} · avisadas ahora: ${avisadas}${sinRuta.length ? ' · ⚠️ ML no contestó la ruta en: ' + sinRuta.join(', ') : ''}`);
 }
 async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, opt = {}) {
   const PISO = piso != null ? piso : 0.35;   // revisión etapa 8, 28/10/2026: 35% sin piso pasado (antes 30%)
@@ -3466,7 +3517,10 @@ async function activarPausadasFull(db, links, tokensRun, DRY, products, piso, op
       if (ok) { try { await db.patch('cyc/mllinks/' + x.mla, { pausaFueraFull: Date.now() }); } catch { /* */ } }
     }
   }
-  if (opt.pausarFuera) { try { await avisoVentaFueraFull(db, tokensRun, DRY); } catch (e) { console.log("   ⚠️ ventas fuera de Full: " + (e && e.message || e)); } }
+  // 56a del 14/11: con SOLO_DATOS esta función se llama con DRY=true (no activa nada) y `pausarFuera` = la corrida es de verdad: los dos avisos
+  // van con `pausarFuera` (antes avisoVentaFueraFull recibía DRY=true y nunca mandaba nada).
+  if (opt.pausarFuera) { try { await avisoVentaFueraFull(db, tokensRun, false); } catch (e) { console.log("   ⚠️ ventas fuera de Full: " + (e && e.message || e)); } }
+  if (opt.pausarFuera) { try { await avisoDenunciasMarca(db, tokensRun, false); } catch (e) { console.log("   ⚠️ denuncias de marca: " + (e && e.message || e)); } }   // ⚖️ 56a del 14/11
   if (conteo.sinLeer || conteo.lotesFallidos) console.log(`   ⚠️ Sin leer esta vuelta: ${conteo.sinLeer} pausada(s) de Full cuyo stock ML no contestó${sinLeerStock.length ? ' (' + sinLeerStock.slice(0, 10).join(' · ') + ')' : ''}${conteo.lotesFallidos ? ` · ${conteo.lotesFallidos} tanda(s) de 20 publicaciones que ML no devolvió` : ''}. Se miran en la vuelta siguiente.`);
   // Chequeo duro: toda pausada con stock termina activada o avisada. Si esto no cierra, hay un
   // `continue` nuevo saliendo callado — que es exactamente el bug del 16/09 y el de los P47.
@@ -48078,6 +48132,17 @@ async function main() {
         console.log(`  Estás ${(markup - equil).toFixed(1)} puntos arriba → ${money(Math.round((markup - equil) / 100 * costoConImp))}`);
         console.log(`  (tiene que dar lo mismo que "QUEDA EN CYC"; si no, hay algo mal)`);
       }
+      return;
+    }
+    // BILLING_PROBE=denuncias → ⚖️ LAS DENUNCIAS DE MARCA E INFRACCIONES CON FECHA DE LAS 4 CUENTAS (56a del 14/11/2026). SOLO LEE: la misma
+    // cuenta que el aviso de cada hora (`avisoDenunciasMarca`) pero sin mandar nada ni anotar. Sirve para ver si ML contesta la ruta.
+    if (/^denuncias$/.test(String(process.env.BILLING_PROBE || ''))) {
+      const toks = {};
+      for (const l of labels) { const acc = accounts[l]; if (!acc?.refresh_token) continue;
+        try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, acc.refresh_token); await db.patch('mlapi/tokens/' + l, { refresh_token: t.refresh_token, updated_ts: Date.now() }); toks[l] = t.access_token; }
+        catch (e) { console.log(`No pude entrar a ${l}: ${e.message}`); } }
+      console.log('=== ⚖️ DENUNCIAS DE MARCA E INFRACCIONES (sólo muestra: no manda ni anota) ===');
+      await avisoDenunciasMarca(db, toks, true);
       return;
     }
     // BILLING_PROBE=activarfull[:go][:<piso>] → REACTIVA LAS PAUSADAS QUE TIENEN STOCK EN FULL.

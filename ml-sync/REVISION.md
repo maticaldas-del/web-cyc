@@ -2241,6 +2241,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 - **13/11 · 💬 Claude te escribe en Inicio** (él, por el buzón: no puede entrar a Claude). `paramati:<texto>;go` (ml-consulta, `cyc/paramati/<ts>`), `paramati:leido=<ts>;go`; web `renderHomeClaude` (`#home-claude`, arriba de Inicio, ✅ Leído), `paramati` en CYC_KEYS. Qué chequear: que el texto no lleve nada privado (pasa por el registro público); que se vea en el teléfono sin cortarse.
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
+### ⚖️ Denuncias de marca con fecha límite, a CYC Avisos (56a del 14/11/2026)
+- **Qué es:** cada hora (en la misma pasada que pausa lo de fuera de Full), en las 4 cuentas, se leen las infracciones/moderaciones de la cuenta; cada una NUEVA que sea de marca o propiedad intelectual (`RE_DENUNCIA_MARCA`) o que tenga una fecha límite por delante va UNA vez como "🚨 URGENTE" al canal privado, con la publicación, el motivo y "hay que contestar antes del …". Lo cerrado/resuelto y lo de más de 30 días sin fecha por delante no se avisa. `denuncias` (sólo lee) muestra lo mismo sin mandar nada. De paso: el aviso de 🚨 venta fuera de Full (del mismo día) no salía nunca — se llamaba con "prueba" (DRY) en la vuelta de SOLO_DATOS y sin `directo` — ahora sale.
+- **Dónde vive:** `sync.mjs`: `avisoDenunciasMarca`, `_denunciasDe`, `_denunciaFecha`, `RE_DENUNCIA_MARCA` (antes de `activarPausadasFull`), la llamada al final de `activarPausadasFull` (`pausarFuera`), el comando `denuncias`, `mlapi/denunciamarca` (memoria, 120 días).
+- **Qué chequear:** LA RUTA NO ESTÁ MEDIDA: se prueban `/moderations/infractions/<user_id>` (la de la documentación de ML) y `/users/<id>/moderations/infractions` (la que ya probaba `rutas`). Correr `denuncias` una vez: si dice "ML no contestó la ruta en: …" en las 4, buscar la ruta buena (el aviso no hace nada mientras tanto, y no frena el ciclo). Si contesta, mirar que los campos de fecha (`_denunciaFecha`) y del motivo salgan bien. Y que el aviso de venta fuera de Full llegue la próxima vez que pase.
+
 
 - **13/11 · `binance:` leía 19.72 como 1.972** (el punto como de miles; él: "error catastrófico"). Ahora un punto con 1-2 decimales es decimal; con coma, el punto es de miles. Qué chequear: otros comandos que reciben DÓLARES (`compray usd=`, `costousd`, `pyprecio`) con el mismo `replace(/\./g,'')`.
 
