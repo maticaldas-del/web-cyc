@@ -4925,6 +4925,9 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - 30/10 (él: *"primero liquidá MercadoPago… después la mercadería… si vuelve MercadoPago, volver a liquidar MercadoPago"*): `debenmov:perfumeria=-N` (sync.mjs) parte el cobro: a Deuda Perfumería hasta su saldo y el resto a Mercaderia Perfumeria (que lo reparte del más viejo al más nuevo). Probado sin grabar: $300.000 → todo a MercadoPago ($1.132.000 → $832.000). Chequear: con MercadoPago en 0 todo va a Mercadería.
 
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
+### 🔎 Control diario 15/11: 3 sacados y traducciones
+- Sacados de la Tienda: JBL Endurance Run 3 (decía USB-C y el del proveedor es el inalámbrico), Router Mercusys AC10 a $110.990 y Correa Pgytech a $283.990 (precios sin sentido para lo que son). Traducción nueva en `sync.mjs` (lista de la Tienda): caixas de som → parlantes · acesso → acceso · rede → red.
+
 ### 🔍 Tercera revisión de la etapa 10 (14/11/2026, 4 revisores en máximo: secreto · producto exacto · precios · página y publicación)
 - **El candidato nacía "mirado hoy"** (`sync.mjs`, paso de Para probar de la noche): se creaba con `ts: Date.now()` y el US$ de la copia del proveedor, que podía ser de días atrás; pasaba la regla de 24 h de Pedidos, la Tienda y ABEL. Ahora lleva `ts`/`visto` = cuándo se miró (`x.e.ts`) y `alta` = cuándo pasó a Para probar. **Chequear:** un candidato nuevo de una copia vieja sale en "⏳ ocultos" y no con precio.
 - **Portugués:** "Espanhol" → español y "Fonte" → fuente (16 nombres publicados).
