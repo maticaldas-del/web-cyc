@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.212';
+const APP_VERSION='28.213';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.213',f:'15/11',h:'04:37',c:[{n:1,t:'Revisiones: la de las Reglas del cerebro del 15/11 en el cartel, con sus 8 decisiones.'}]},
   {v:'28.212',f:'14/11',h:'15:35',c:[{n:1,t:'Gastos: la tarjeta de arriba dice cuánto fue el mes anterior y la diferencia (sin contar lo que falta pagar).'}]},
   {v:'28.211',f:'14/11',h:'15:20',c:[{n:1,t:'Gastos contra el mes anterior: lo que todavía no se pagó no cuenta como baja (salvo "este mes no va").'}]},
   {v:'28.210',f:'14/11',h:'15:05',c:[{n:1,t:'Gastos: se sacó "Nuevo movimiento a mano" (los carga Claude).'}]},
@@ -6153,10 +6154,10 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
   {etapa:9,t:'13/11 · 10 decisiones del Local',que:'ABEL y la Tienda publicadas viejas (falta el permiso) · avisos de lo tocado en la web · movimiento repetido · saldo de Binance · lo que va a la perfumería · costo de la Tienda · nombres en el registro · devolución de la Tienda · cargado tarde · precios del proveedor en el registro',pedi:'resolvamos'},
   {etapa:6,t:'12/11 · 21 ideas nuevas para elegir',que:'Navidad en las cajas · stock antiguo de 180 días · resaca de enero · comisión con peso · cuotas con interés bajo · IIBB de Luciana · precio de retirar · kits · beneficio de ML · denuncias · pedido de Paraguay en un paso · run del chat · buzón solo · extracto de MP · decisiones de caja · preguntas en el panel · lo que llega · Tienda y ABEL · qué pasó la semana · decidir tocando · numerito',pedi:'resolvamos'},
-  {etapa:5,t:'11/11 · 4 decisiones de Datos y cerebro',que:'ventas del Black Friday que confirman subas · escasez en el Black Friday · salir de un descuento en lo 🔒/🥊 · fecha especial con escalera de subas',pedi:'resolvamos'},
   {etapa:4,t:'09/11 · 7 decisiones de Choques y fallas mudas',que:'noche con lecturas fallidas · comandos que se cortan · cada cuánto el ciclo · proteger la rama · ml-chequeo viejo · sumas de la oficina · rehacer días de la línea',pedi:'resolvamos'},
   {etapa:3,t:'08/11 · 14 decisiones de la Mercadería',que:'listas en el registro · vuelta 98% · Llenar con nuevos · perfumería sin color · FIJO vence · FIJO y cupo · Tenders solos · venta más cara · HOY primero · el más bajo con 0 · Nivea · Navidad en el código · juicios viejos · listas sin ✅',pedi:'resolvamos'},
   {etapa:2,t:'05/11 · 16 decisiones de la Plata',que:'mes negativo · el dólar · cuándo se fija el retiro · retiro no sacado · redondeo · envío abajo de $33.000 · % del monotributo · costo en pesos · recompra de listas · Bs As pagado · Paulvic +10% · de=ml · intereses de Papá · datos fiscales en el registro · cobro en el registro · Mercadería inicial del 31/10',pedi:'resolvamos'},
@@ -6214,7 +6215,7 @@ const REV_HIST={
      {f:'2026-10-31',t:'4 revisores en máximo dibujaron cada pantalla a 360/390/1200 px: ~40 cosas que se cortan o se corren y 20 propuestas con maqueta; 13 decisiones para él (sólo propone).'},
      {f:'2026-11-10',t:'4 revisores en máximo dibujaron todo a 360/390/1200 px, oscuro y claro: Ver deudas salía vacía desde el 08/11 y el logo tapaba los títulos (los dos arreglados, v28.166-28.167); ~40 cosas chicas y 15 decisiones para él.'},
      {f:'2026-11-14',t:'Eligió 14 de las 15 del 10/11 (la 5, Para comprar hoy, no): hechas todas, v28.189-28.199 (Comparar meses, a esta hora, ficha 🇵🇾/🇦🇷, Ver deudas y Gastos, Contar en dos pisos, Tope de H, Mezcla y escalera, Ventas, línea y puertas, 🧠 de Tito y por color, tablas en tarjetas y ~40 chicas).'}],
-  8:[{f:'2026-10-28',t:'4 revisores en máximo (contradicciones, decisiones de la semana, frenos contra el código, correcciones): cerebro y VENTAS al día, ~15 frenos arreglados en el robot, 53 correcciones contadas; 4 decisiones a para_mati.'},{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'},
+  8:[{f:'2026-11-15',t:'4 revisores en máximo: ~10 frenos arreglados ("lo pide él" en un golpe es 🔐 suya, =%N, prueba del mes con descuentos, Black Friday en 🔎 y escasez, envío de la caja sin los Tenders, prueba de 2 al 35%), textos viejos reemplazados, ~24 correcciones contadas; 8 decisiones a para_mati.'},{f:'2026-10-28',t:'4 revisores en máximo (contradicciones, decisiones de la semana, frenos contra el código, correcciones): cerebro y VENTAS al día, ~15 frenos arreglados en el robot, 53 correcciones contadas; 4 decisiones a para_mati.'},{f:'2026-10-21',t:'Primera: CEREBRO.md rehecho de cero (917 → 329 líneas, cada regla una vez), 6 frenos nuevos en el código (frenosBajas) y sus 4 decisiones aplicadas (descuento con tachado, 15 días de espera, corte por visitas, cuántas de cada nuevo).'},
      {f:'2026-11-04',t:'Tercera revisión (4 revisores en máximo): pedidos y cajas de la completa con scripts viejos (rehechos), 3 frenos arreglados, CEREBRO/VENTAS/CLAUDE sin bloques sueltos; 18 decisiones para él.'},
      {f:'2026-11-08',t:'Contestó las 18 (1a-14a, 15b, 16a-18a): una sola vara (ganancia por día), F14 con 10 días con visitas, prueba del mes para todo lo de 30 días sin cambio (al medio si ya no rindió, nunca con sobra), lo lento a las 3 ventas esperadas, escasez con la caja en camino no sube, caja ganada a 15 días un escalón, Black Friday sin pruebas, liquidación sólo con visitas, subir 🔒/🥊 y !golpe mal puesto pasan a ser suyos.'}],
   9:[{f:'2026-11-06',t:'4 revisores en máximo (no se mezcla con ML, oficina y pedidos, deudas, ABEL): ~30 hallazgos, 20 arreglados (freno de monto en cero, devolución del último dejado, lo del local en camino y al llegar, Persea, % de las perfumerías); 16 decisiones a para_mati.'},{f:'2026-10-30',t:'Primera (4 revisores en máximo: robot, pedidos/cajas, Arqueo/deudas, Métricas): ~40 reales, todos arreglados y probados; 12 decisiones a para_mati.'},

@@ -156,7 +156,7 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   regla de sobra); en 🔥/⏳ sólo con 10 días sin vender. Lista 📉 de `errores`: vacía. (3) La **escalera de ≤15%** queda para lo que NO
   tiene un precio anterior que vendía (lanzamientos, lo que nunca vendió). (4) **La próxima +50% espera a confirmar**
   (`subaConfirmada`): 24 h y la mitad de lo esperado al ritmo de antes (3+ esperadas) o 3 ventas si las esperadas no llegan a 3; un 🆕
-  sin ritmo de antes, 3 ventas (13a del 03/11). Una sola venta ya no alcanza. Las fechas especiales cuentan (17b del 03/11). Hoy 🔥/⏳
+  sin ritmo de antes, 3 ventas (13a del 03/11). Una sola venta ya no alcanza. Las fechas especiales cuentan (17b del 03/11), salvo el Black Friday (15a del 14/11: no confirma subas ni acelera la escasez). Hoy 🔥/⏳
   suben con cada venta (16b del 03/11; a decidir el freno cuando el stock ya alcanza: 9 del 04/11).
 - **Vende (y se confirma)** → otro salto (+50%). **Sale mal o no vende (🔴)** → ⚡ vuelve de una (punto medio); sin un precio anterior
   que vendía, 🔒 escalera hasta la PRIMERA VENTA y ahí se queda (F14) **como DESCUENTO propio con el precio tachado**
@@ -172,12 +172,12 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
   precio, sin mirar la etiqueta (5a del 08/11), salvo que le sobre (7a). Con techo +20% (`!mensual`); el precio que no rindió
   (`techofreno`) cuenta como techo y si el +20% llega ahí, la prueba va al MEDIO (6a); sin techo +50% (lo lento: `pruebaLentoOk`, 1a del
   02/11). A los 10 días como máximo (lo lento, a las 3 ventas esperadas: 8a) decide la ganancia por día: si arriba deja igual o más, se queda; si no,
-  vuelve de una. La prueba del mes que vende se queda en ese precio (19a del 03/11). Nunca abajo del 💰. Listas 🔁 y 🧪 de `errores`.
+  vuelve de una. La prueba del mes que vende se queda en ese precio (19a del 03/11). Nunca abajo del 💰. Lista 🔁 de `errores` (lo lento va adentro).
 - **Un precio no es 🔴 techo si otro MÁS ALTO medido dejó más plata por día** (Persea).
 - 🔒 **🏔️ techo encontrado sólo lo anota `techo95`** (`techo95:<MLA>;go`), con la certeza que pide ese día: 95% hasta el día 30 con
   stock a ese precio, baja hasta 70% el día 44 (28/10, él: *"alargar de 7 días a 30 y después sí bajar a 70%"*); **10 días sin vender ahí = techo sí o sí** (02/11, antes 30).
   `#techook` a mano lo rechaza el código.
-- **Las rayas** (días con 3+ u. en Full y con visitas; últimos 60 días, sin fechas especiales; con el precio que vio el comprador, lista
+- **Las rayas** (días con 3+ u. en Full y con visitas; últimos 60 días, sin fechas especiales salvo que al mismo precio ±2% no haya con qué comparar (16.2a); con el precio que vio el comprador, lista
   menos mi descuento: 1a del 03/11): 💰 **más plata** = el precio que más plata por día dejó de los que se probaron (5+ días con ventas;
   desde la primera venta hay uno provisorio, punteado, que es sólo para mirar; nunca se baja de ahí, F5) · 🔴 **techo: no vende** =
   arriba del 💰, no vende (10 días sin vender ahí o más caro, 02/11, sin contar días con 0 visitas; vale aunque no haya 💰; o 0
@@ -295,8 +295,8 @@ Si dos reglas tiran para lados distintos y ninguna fila lo resuelve: no se hace 
 ### Caja, competencia, Premium, cuotas
 - **La caja de compra orienta, no decide** (Full vale ~19% de precio). Perdiendo y vendiendo bien → no se baja. Perdiendo y sin vender
   → se piensa, y recién con línea de techo se baja.
-- **Un solo vendedor en el catálogo no vale como precio** (puede ser inflado). Vendedores del exterior no se miran salvo que no haya
-  argentinos: ahí su precio +20%. Se compara contra el más barato CON Full.
+- **Un solo vendedor en el catálogo no vale como precio** (puede ser inflado). Vendedores del exterior: en la COMPRA cuentan siempre con su precio +33%
+  (19b del 14/11); para "2+ vendedores" y el techo de nuestras publicaciones, sólo los de acá. Se compara contra el más barato CON Full.
 - **Premium:** la que gana la caja se queda en Premium. Premium sin cuotas medidas no se baja ni se rescata. En algunas categorías la
   comisión de Premium YA trae las cuotas adentro: no contarlas dos veces. Caja perdida por cuotas = candidata a gemela, no a bajar.
 - 💳 **Toda Clásica con stock lleva su gemela Premium** al precio de igual plata neta y el mismo % en el peor caso (4a del 03/11); 📦 lo
@@ -394,7 +394,7 @@ techofreno:<MLA>=<precio probado>|<motivo>;go
 | `!vendiocaro` | volver al precio más caro que vendió en 60 días (decido lo verifica en la línea; no lo frenan 4a ni el 50%; no va si el de hoy, medido, deja igual o más plata por día: 7 del 03/11, Barbarella) | decido | no |
 | `!vuelve` | la vuelta del punto medio: volver de una al escalón medido que más ganancia dejó (decido la mide con `vueltaDeSuba`; no la frenan F1-F4, F7, F8 ni F14; sí F5, F10 y el 35%) | decido | no |
 | `!mensual` | la prueba del mes: hasta +20% (o el medio hasta el precio que no rindió) a lo que no cambió de precio en 30 días y no tiene sobra (5a 6a 7a del 08/11; no la frenan el +50%, la 4a ni el 50%) | decido | no |
-| `malpuesto` | `!golpe` con "precio mal puesto" en el motivo (18a del 08/11): el renglón la pide sola | decido, entrarpromo | 🔐 **suya** |
+| `malpuesto` | `!golpe` con "precio mal puesto" (o "equivocado", "error de precio", "lo pide él", 15/11) en el motivo (18a del 08/11): el renglón la pide sola | decido, entrarpromo | 🔐 **suya** |
 | `subirquieto` | SUBIR algo marcado 🔒 no bajar o 🥊 mantener la caja (17a del 08/11): decido la pide sola | decido | 🔐 **suya** |
 | `!lista` | bajar la LISTA de algo que ya probó techo | decido | **sí** |
 | `!nobajar` | F10 bajar una publicación que él marcó 🔒 | decido, entrarpromo | 🔐 **suya** |

@@ -542,7 +542,8 @@ cajaPct=[]
 for c in sorted(set(o['cta'] for o in out)):
     sacados=[]
     while True:
-        V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]
+        # Etapa 8 (15/11): los grandes (Tenders) viajan en SU caja: no entran en el envío de los chicos.
+        V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0 and not o['grande']]
         U=sum(o['q'] for o in V)
         if not U: break
         e=COSTO_CAJA/U; malos=[]
@@ -550,7 +551,8 @@ for c in sorted(set(o['cta'] for o in out)):
             pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
             if not pc: o['_pct']=None; continue
             g,d,sh=pc; o['_pct']=(g+sh-e)/max(1,(d-sh+e))*100
-            if o['_pct']<35 and not o.get('fijo'): malos.append(o)
+            # la 💸 prueba de 2 (bajo35) se mide al precio del 35%, no al de hoy: no sale por esta cuenta (etapa 8, 15/11)
+            if o['_pct']<35 and not o.get('fijo') and not str(o.get('cola','')).startswith('💸 prueba'): malos.append(o)
         if not malos: break
         # de a UNO, el peor primero: sacar uno sube el envío de los demás (si se sacaban todos juntos, caía en cadena lo que daba al quedar solo)
         malos=[min(malos,key=lambda o:o['_pct'])]
@@ -613,7 +615,7 @@ for c in sorted(set(o['cta'] for o in out)):
             if o['cta']==c and o.get('_rel'):
                 dd=(o.get('dias') or 0)+o['q']/o['r']
                 o['cola']=f"➕ relleno: {o['_rel']} de más para que el envío por unidad baje y entre lo que no llegaba al 35% (queda para {dd:.0f} días, tope {RELLENO_DIAS}) · "+o['cola']
-    V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]; U=sum(o['q'] for o in V)
+    V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0 and not o['grande']]; U=sum(o['q'] for o in V)
     for o in V:   # el % con el envío que queda al final (después del relleno)
         pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
         o['_pct']=((pc[0]+pc[2]-COSTO_CAJA/U)/max(1,(pc[1]-pc[2]+COSTO_CAJA/U))*100) if (pc and U) else None

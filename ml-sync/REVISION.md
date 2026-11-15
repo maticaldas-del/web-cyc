@@ -4440,6 +4440,19 @@ Lo que mira, siempre con `ml-sync/CEREBRO.md` entero, `notas/correcciones.md`, `
   · **18 decisiones** en `notas/para_mati.md` ("Reglas del cerebro del 04/11").
   · **Qué chequear:** la próxima completa corre los scripts de add-folder (pedidos.txt no dice "un mes y medio" en Bs As); un `decido …!chico#techo` después de una suba sin confirmar sale "FRENO punto medio (aunque sea !chico)".
 
+### 🔎 Revisión del 15/11/2026 (4 revisores en máximo: textos, reglas nuevas contra el código, correcciones de la semana, cada 🔒 con casos)
+**Arreglado (probado con las funciones reales y datos inventados):**
+- `!golpe` con "equivocado", "error de precio", "mal cargado" o **"lo pide él"** pasa a ser 🔐 suya como "mal puesto" (`RE_MAL_PUESTO`; la corrección del 14/11: se escribió "lo pide él" sin que lo pidiera). "Queda 1 sola" = última unidad (`RE_ULTIMA_UNIDAD`). Chequear: `decido` con esos textos queda guardado en `autoriza`.
+- `=%N` / `=%xN` ya no esquivan el salto de +50% (sólo cuando llevan al 35% del peor caso). `decido`, línea del freno "buscar techo".
+- `sinCambio30` (prueba del mes): un descuento que salió en estos 30 días, o que entró hace menos de 44 (sus 14 días terminaron adentro), cuenta como cambio.
+- Detector `errores`: no avisa "+50%" en `!mensual` ni en la Clásica que sube al precio de su gemela de envío (`!vendio!cruza`).
+- `unapub` (margen a un precio): resta la retención de otra provincia, como `decido` (antes la puerta lo tomaba como peor caso sin serlo).
+- Black Friday (15a): la lista 🔎 de `errores` (vendió en 48 h) y `escasezCubierta` (freno 9a) ya no cuentan esas ventas/días.
+- `decide_cajas.py`: el envío de la caja se reparte sólo entre los chicos (los Tenders van en su caja) y la 💸 prueba de 2 al precio del 35% no se saca por la cuenta del envío (se medía al precio de hoy, abajo del 35% por definición).
+- Textos viejos reemplazados en CEREBRO/VENTAS/CLAUDE: lo lento (8a), Black Friday (15a), pico de fecha al mismo precio (16.2a), subir lo 🔒 (17a) y salir de un descuento (16.1b), gemelas = misma plata (04/11), Navidad (18a), `cajafijo` (61a), Paraguay 600-660 y 24 h, Ayelen/Matías, vendedores de afuera +33% (19b), 🔥 9a, lista 🧪 (ya no existe).
+**Queda para después (no obvio o largo):** stock antiguo: la unidad que cumple 120 días el día del cierre queda corrida un mes y F11/"20 días" cuentan desde el día 120 · `picosNavidad` divide por días de calendario y el archivo de 400 días se come la base (×4 el 24/12 si hay ventas de oct-dic 2025) · la web no tiene la resaca de enero · cuotas sin la marca de campaña en la medición de Paraguay/Listas · fácil/difícil: `pidiendoSinEntrar10` nunca se pasa · `!mensual` y la lista 🔁 sin `subaConfirmada` · `ganUnidadModelo` sin la caja de más · `volver`/`submargen`/`fijar` sin 17a/500%/BF · los textos de las tareas de las 03:00, cortas, timbre y 04:00 siguen con reglas viejas (+50% con cada venta, 🔴 a 30 días, `bajastecho:1`) y sin el filtro de "lo que resuelve una regla no se le pasa" · CEREBRO: fila 6 "cuándo empezar a bajar" contra sobra-plata/F5, pendientes vencidos (§22), la (2) del 12/11, envío entero, 💸, 47a, 51a, 55a sin texto.
+**Correcciones de la semana: ~24** (14 anotadas + ~10 sólo en commits); un tercio = pasarle lo que ya resolvía una regla.
+
 ### ✅ Reglas del 04/11 · contestadas el 08/11
 Él contestó **1a 2a 3a 4a 5a 6a 7a 8a 9a 10a 11a 12a 13a 14a 15b 16a 17a 18a**. Todo vive en `ml-sync/sync.mjs` (la web sólo en `_rayas`,
 para que las rayas den igual). Las reglas nuevas juzgan desde el **09/11 03:00 UTC** (`DET_REGLA_DESDE.reglas0811`): el detector mira cada
