@@ -140,7 +140,7 @@ if (process.env.BILLING_PROBE) {
   console.log = (...a) => { try { const t = a.map((x) => (typeof x === 'string' ? x : '')).join(' '); if (/^\s*❌|no (escribo|cargo|guardo) nada|DATOS INCOMPLETOS|NO LEÍ/i.test(t)) _seNego++;   /* revisión etapa 4 (09/11): todo ❌ al principio y los NO LEÍ */ } catch { /* */ } _ol2(...a); };
   process.on('exit', () => { if (_seNego) _ol2(`##### ⚠️ este comando SE NEGÓ o le faltaron datos (${_seNego} renglón/es): mirar arriba antes de darlo por hecho`); });
 }
-const CONSULTA_ESCRIBE = new Set(['decisiones', 'debenfix', 'cajafijo', 'pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
+const CONSULTA_ESCRIBE = new Set(['decisiones', 'debenfix', 'binancesuma', 'cajafijo', 'pyguia', 'realcaja', 'debendia', 'paramati', 'parachat', 'listapedir', 'listasvale', 'listagz', 'listapriv', 'listawoo', 'buzon', 'prompts', 'pedperf', 'oficyc', 'pedgrupo', 'debenmov', 'pyticketvisto', 'ventasvistas', 'pycat', 'pycatres', 'lista', 'listamedir', 'listaprioridad', 'listacuenta', 'listadato', 'listaori', 'pycatprobados', 'candprecio', 'lineatodo', 'ventasdiames', 'revcand', 'vincular', 'nombreml', 'pasara', 'nomandar', 'fijarvar', 'cupo', 'poncosto', 'tamfull', 'lotesfull', 'sinetiq', 'nobajar', 'marcanoml', 'pyprecio', 'rebusca', 'svprecio', 'nisseivuelta', 'costopesos', 'costopesoshist', 'tgfotos']);   // pyprecio (24/10/2026): el chat de compras manda muchos seguidos y ml-sync cancela el anterior; por consulta corren en paralelo
 const CONSULTA_NIEGA = new Set(['binance', 'gtin', 'msjventa', 'cajaitems', 'cerrarpub', 'techofreno', 'candcuotas', 'candml', 'ofi', 'pvped', 'ancla', 'responder', 'pyped', 'listaped', 'publicar', 'cajallego', 'abrircaja', 'compray', 'pedir', 'dispo', 'saldoml',
   'armarsaldo', 'avisos', 'cajasllegaron', 'netoweb', 'netoreal', 'candidatos', 'supervisor', 'sacapromos', 'pausar', 'liquidando',
   'unapub', 'aclasica', 'volver', 'submargen', 'fijar', 'activarfull', 'decido', 'entrarpromo', 'errores', 'contesto', 'meta', 'ciclo', 'marcano', 'pausaprecio', 'cargargasto', 'retiromes', 'cobrocorr', 'finsuma', 'retiroauto', 'promoventas', 'cargosmes', 'arcacierres', 'webpush', 'pregrepetida']);
@@ -41255,6 +41255,23 @@ async function main() {
       if (GOp) { await db.patch('mlapi/privado_in/' + idP, { intentos: (Number(e.intentos) || 0) + 1 }); globalThis.__binPrivId = idP; }
       process.env.BILLING_PROBE = 'binance:' + txt + (GOp ? ';go' : '');
       }
+    }
+    // BILLING_PROBE=binancesuma:<cuenta>=<pesos>[|<nota>][;go] (15/11/2026, él: la perfumería paga por transferencia a Binance, "dos patas"): suma
+    // esos pesos al saldo de Binance de la cuenta, pasados a dólares con el dólar del panel (`cyc/finanzas/tipo_cambio`), sin imprimir el saldo
+    // (registro público): sólo dice cuántos dólares sumó. La otra pata es `debenmov:perfumeria=-<pesos>|… Binance;go`.
+    if (/^binancesuma:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const rawS = String(process.env.BILLING_PROBE).slice('binancesuma:'.length); const GOs = /;go$/i.test(rawS);
+      const mS = rawS.replace(/;go$/i, '').match(/^([a-z]+)=(\d+)(?:\|.*)?$/i);
+      if (!mS || !['tito'].includes(mS[1].toLowerCase())) { console.log('Uso: binancesuma:tito=<pesos>[|nota][;go]'); return; }
+      const cta = mS[1].toLowerCase(), pesos = Number(mS[2]); const fin = (await db.get('cyc/finanzas')) || {}; const tc = parseFloat(fin.tipo_cambio) || 0;
+      if (!(tc > 0)) { console.log('❌ no hay dólar en el panel: no sumo nada'); return; }
+      const suma = Math.round(pesos / tc * 100) / 100; const ant = Number(fin['bn_' + cta]) || 0; const nuevo = Math.round((ant + suma) * 100) / 100;
+      const tot = ['tito'].reduce((t, c) => t + (c === cta ? nuevo : (Number(fin['bn_' + c]) || 0)), 0);
+      console.log(`🪙 Binance ${cta}: + $${pesos.toLocaleString('es-AR')} = + US$ ${suma.toFixed(2)} (dólar del panel $${tc}) · el saldo no se imprime ${GOs ? '(GUARDO)' : '(prueba: agregá ;go)'}`);
+      if (!GOs) return;
+      await db.patch('cyc/finanzas', { ['bn_' + cta]: nuevo, binance: tot }); await db.patch('cyc/finanzas/_ts', { binance: Date.now() });
+      const r = (await db.get('cyc/finanzas')) || {}; console.log(Number(r['bn_' + cta]) === nuevo ? '✓ releído de la base' : '✗ no quedó');
+      return;
     }
     if (/^binance:/.test(String(process.env.BILLING_PROBE || ''))) {
       const rawB = String(process.env.BILLING_PROBE).slice('binance:'.length); const GOb = /;go$/i.test(rawB);
