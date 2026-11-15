@@ -4926,6 +4926,7 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
 ### 🔎 Control diario 15/11: 3 sacados y traducciones
+- **Revisión del chat de Chrome (páginas 19-30):** sacados 10 (Nioh con foto de otro juego, Returnal y Beats Fit Pro al triple de ML, 2 "Phantom Invictus" con nombre mezclado, almohadillas Corsair sin decirlo, batería Canon con foto dudosa, impresora HP pesada, JBL Max 10 grande, uno con nombre roto). Traducciones nuevas: amanhecer, massageador, rastreamento, rádio, transdutor, ponto de acesso, tiracolo, esquerdo/direito, teto, impressoras, areia, unidadee. La próxima revisión del chat sigue desde la página 31.
 - Sacados de la Tienda: JBL Endurance Run 3 (decía USB-C y el del proveedor es el inalámbrico), Router Mercusys AC10 a $110.990 y Correa Pgytech a $283.990 (precios sin sentido para lo que son). Traducción nueva en `sync.mjs` (lista de la Tienda): caixas de som → parlantes · acesso → acceso · rede → red.
 
 ### 🔍 Tercera revisión de la etapa 10 (14/11/2026, 4 revisores en máximo: secreto · producto exacto · precios · página y publicación)

@@ -14278,6 +14278,10 @@ function tiendaNombreProv(nn) {
     // 4a de la Tienda (08/11/2026): lo que quedaba en portugués en ~560 nombres. Las palabras con acento van con \p{L} (el \b de JS no ve "á").
     // 15/11/2026 (control diario de la Tienda): quedaban "Caixas de Sonido", "Terminal de Acesso" y "Adaptador de Rede".
     [/\bcaixas?\s+de\s+som\b/gi, (m) => (/caixas/i.test(m) ? 'parlantes' : 'parlante')], [/\bacesso\b/gi, 'acceso'], [/\brede\b/gi, 'red'],
+    // 15/11/2026 (revisión de la Tienda del chat de Chrome, páginas 19-30): más palabras que quedaban en portugués.
+    [/\bamanhecer\b/gi, 'amanecer'], [/\bmassageador(es)?\b/gi, 'masajeador$1'], [/\brastreamento\b/gi, 'rastreo'], [/(?<![\p{L}])r[áa]dio(?![\p{L}])/giu, 'radio'],
+    [/\btransdutor(es)?\b/gi, 'transductor$1'], [/\bponto\s+de\s+acceso\b/gi, 'punto de acceso'], [/\btiracolo\b/gi, 'bandolera'], [/\besquerdo\b/gi, 'izquierdo'],
+    [/\bdireito\b/gi, 'derecho'], [/\bteto\b/gi, 'techo'], [/\bimpressoras?\b/gi, (m) => (/s$/i.test(m) ? 'impresoras' : 'impresora')], [/\bareia\b/gi, 'arena'], [/\bunidadee\b/gi, 'unidad'],
     [/\bcondicionador(es)?\b/gi, 'acondicionador$1'], [/\btratamento(s)?\b/gi, 'tratamiento$1'], [/(?<![\p{L}])l[aá]pis(?![\p{L}])/giu, 'lápiz'],
     [/(?<![\p{L}])s[ée]rie(?![\p{L}])/giu, 'serie'], [/\bcorretivo\b/gi, 'corrector'], [/(?<![\p{L}])[áÁ]gua(?![\p{L}])/gu, 'agua'], [/\bbarra\s+de\s+som\b/gi, 'barra de sonido'],
     [/\bauto\s*-?\s*falantes?\b/gi, 'parlante para auto'], [/\bsom\b/gi, 'sonido'], [/(?<![\p{L}])trip[ée](?![\p{L}])/giu, 'trípode'], [/\bvidro\s+temperado\b/gi, 'vidrio templado'],
