@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.213';
+const APP_VERSION='28.214';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.214',f:'15/11',h:'15:55',c:[{n:1,t:'Pedidos: las tarjetas con colores se abren y se cierran tocándolas (arrancan cerradas); las de un solo producto siguen sin abrirse.'}]},
   {v:'28.213',f:'15/11',h:'04:37',c:[{n:1,t:'Revisiones: la de las Reglas del cerebro del 15/11 en el cartel, con sus 8 decisiones.'}]},
   {v:'28.212',f:'14/11',h:'15:35',c:[{n:1,t:'Gastos: la tarjeta de arriba dice cuánto fue el mes anterior y la diferencia (sin contar lo que falta pagar).'}]},
   {v:'28.211',f:'14/11',h:'15:20',c:[{n:1,t:'Gastos contra el mes anterior: lo que todavía no se pagó no cuenta como baja (salvo "este mes no va").'}]},
@@ -24468,14 +24469,18 @@ function _pedidoItemHtml(p,opts){
   const _tanque=_enCam?'':pedTanqueHTML(p);
   const _semTxt=!_sem?'':_sem==='rojo'?(p.cSemCol>0?`🔴 ${p.cSemCol} color${p.cSemCol>1?'es':''} sin stock en ningún lado`:(p.cSemDias>0&&p.cSemDias<999?`🔴 escasez: alcanza ~${p.cSemDias} d y no llega lo nuevo`:p.cSemDias>=999?'🔴 escasez: no se puede reponer':'🔴 sin stock en ningún lado')):(p.cSemDias!=null&&p.cSemDias<999?`${_sem==='naranja'?'🟠':'🟡'} alcanza ~${p.cSemDias} d`:'')+(p.cSemCol>0?` · ${p.cSemCol} color${p.cSemCol>1?'es':''} en cero`:'');
   const _esProb=_armU!=null;
-  const _card=`<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}" open>
-    <summary class="ped-head" onclick="event.preventDefault()" style="cursor:default${_esProb?';display:none':''}">
+  // 15/11/2026 (él: "los que tienen variantes sí que sean desplegables"): con colores la tarjeta se abre y se cierra (arranca cerrada,
+  // recuerda si la abriste); sin colores sigue sin abrirse. Los probados de Paraguay van siempre abiertos (su detalle es otro).
+  const _plega=!!varToggle&&!_esProb;
+  const _card=`<details class="ped-card ${_est}${_sem?' sem-'+_sem:''}"${(!_plega||_abierto)?' open':''}${_plega?` ontoggle="_setPedCardOpen('${p.id}',this.open)"`:''}>
+    <summary class="ped-head"${_plega?'':' onclick="event.preventDefault()"'} style="cursor:${_plega?'pointer':'default'}${_esProb?';display:none':''}">
       ${_prod?fotoChipHTML(_prod,38,p.variante||''):''}
       <span class="ped-name">${p.producto||'—'}${p.variante?` <span style="padding:1px 6px;border-radius:4px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:.65rem;font-family:'DM Mono',monospace;font-weight:400">${p.variante}</span>`:''}${opts.etiqueta||''}${pedCambioChip(p)}${_prod?pedPerfChip(_prod.id):''}</span>
       ${_prod?maxCompraChipPed(_prod,p):''}
       <span class="ped-buy"><b>${fmtN(_cantShow)}</b><i>u. a comprar${p.auto===false?' · a mano':''}</i>${(()=>{/* 💵 lo que cuesta el pedido (02/11/2026, él: "poner costo del pedido, respectivamente las unidades pedidas"): unidades × lo que costó la última vez */
         const q=Number(_cantShow)||0;if(!(q>0)||!_prod)return'';const tcC=curTC();const cu=_prod.costoPesos&&Number(_prod.cost)>0?Number(_prod.cost):(costUSDof(_prod)||0)*tcC;
         return cu>0?`<i style="color:var(--text)" title="${fmtN(q)} u. × ${fmt(Math.round(cu))} (lo que costó cada una la última vez)">💵 ${fmt(Math.round(q*cu))} el pedido</i>`:'';})()}${p._pediste?`<i style="color:var(--green)" title="Ya cargaste ${p._pediste} u. en el 🧾 Pedido: arriba queda lo que falta para llegar a lo recomendado.">🧾 pediste ${p._pediste}</i>`:''}${_semTxt?`<i class="ped-sem" title="Cuenta lo que hay en ML + en camino + en tu oficina, al ritmo de venta">${_semTxt}</i>`:''}</span>
+      ${_plega?`<span class="ped-caret" title="Ver los colores">▾</span>`:''}
     </summary>
     ${varToggle||copiarBtn||hechoBtn?`<div class="ped-body">${varToggle}${copiarBtn}${hechoBtn}</div>`:''}
     ${''/* 14/11/2026 (él: "esto del detalle sacar. que no haya un desplegable. lo de elegir si es bs as o paraguay ya está resuelto porque lo mirás vos"): la tarjeta no se abre; sólo los colores a comprar, si tiene. Afuera 🧠, No lo consigo, Foto, copiar, origen, solapa, proveedor y la ✕. */}

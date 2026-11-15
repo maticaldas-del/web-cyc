@@ -4924,6 +4924,10 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 
 - 30/10 (él: *"primero liquidá MercadoPago… después la mercadería… si vuelve MercadoPago, volver a liquidar MercadoPago"*): `debenmov:perfumeria=-N` (sync.mjs) parte el cobro: a Deuda Perfumería hasta su saldo y el resto a Mercaderia Perfumeria (que lo reparte del más viejo al más nuevo). Probado sin grabar: $300.000 → todo a MercadoPago ($1.132.000 → $832.000). Chequear: con MercadoPago en 0 todo va a Mercadería.
 
+### 🧾 Pedidos: las tarjetas con colores se despliegan (15/11/2026, v28.214, etapa 7 Diseño)
+- **Qué es:** él: *"los que tienen variantes sí que sean desplegables"*. Con colores la tarjeta arranca cerrada y se abre tocándola (▾, recuerda si la abriste: `_openPedCards`); sin colores sigue sin abrirse. Probados de Paraguay sin cambio.
+- **Qué chequear:** que tocar 🧠 / No lo consigo / la casilla de unidades adentro no cierre la tarjeta; que "👉 mirá cada color" se vea cerrada.
+
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
 ### 🔎 Control diario 15/11: 3 sacados y traducciones
 - **Run de la tarde (páginas 25-36):** sacadas las almohadillas Corsair HS80 a $271.990 (TTW9YM4, ~13 veces ML) si seguían · traducciones nuevas: pré-amplificador → preamplificador, marca repetida ("Sony Sony"), "azul y azul", "::.." al final. **Chequear:** que "Bora Bora" y parecidos no se toquen (sólo marcas y colores de la lista).
