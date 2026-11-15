@@ -4929,6 +4929,10 @@ Lo del 28/10 que es del local y vive en la etapa 2: "📥 Lo que nos deben = lis
 - **Qué chequear:** que tocar 🧠 / No lo consigo / la casilla de unidades adentro no cierre la tarjeta; que "👉 mirá cada color" se vea cerrada.
 
 ## 10 · TIENDA (cada 7 días, nació el 30/10/2026)
+### 💵 Dólar viejo o lejos: la Tienda y ABEL no publican precios nuevos (15/11/2026, 13a)
+- **Qué es:** `dolarAuto` guarda el dólar leído en `cyc/mlconfig/dolarRef` ({ts, v}); `tienda` frena (quedan los precios de ayer) si tiene más de 30 h o el cargado se aleja más de 1,5%, y avisa una vez por día (`mlapi/tiendadolaraviso`). Sin referencia (el primer día) no frena.
+- **Qué chequear:** que la noche no quede frenada todos los días (el dólar se lee una vez por día en la vuelta horaria); que un salto de >15% que no se carga sí frene la Tienda.
+
 ### 🔎 Control diario 15/11: 3 sacados y traducciones
 - **Run de la tarde (páginas 25-36):** sacadas las almohadillas Corsair HS80 a $271.990 (TTW9YM4, ~13 veces ML) si seguían · traducciones nuevas: pré-amplificador → preamplificador, marca repetida ("Sony Sony"), "azul y azul", "::.." al final. **Chequear:** que "Bora Bora" y parecidos no se toquen (sólo marcas y colores de la lista).
 - **Revisión del chat de Chrome (páginas 19-30):** sacados 10 (Nioh con foto de otro juego, Returnal y Beats Fit Pro al triple de ML, 2 "Phantom Invictus" con nombre mezclado, almohadillas Corsair sin decirlo, batería Canon con foto dudosa, impresora HP pesada, JBL Max 10 grande, uno con nombre roto). Traducciones nuevas: amanhecer, massageador, rastreamento, rádio, transdutor, ponto de acesso, tiracolo, esquerdo/direito, teto, impressoras, areia, unidadee. La próxima revisión del chat sigue desde la página 31.

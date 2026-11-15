@@ -9883,6 +9883,9 @@ async function dolarAuto(db, DRY) {
     }
   }
   const nuevo = Math.round((a || b).v);
+  // 13a de la Tienda (15/11/2026, él): el dólar de referencia que se leyó hoy (aunque no se cargue por salto), para que la Tienda y ABEL
+  // no publiquen precios nuevos con un dólar viejo o que se aleja más de 1,5% de éste.
+  if (!DRY) { try { await db.set('cyc/mlconfig/dolarRef', { ts: Date.now(), v: nuevo }); } catch { /* sin referencia: la Tienda frena */ } }
   const fuente = (a || b).nom + (a && b ? ' (confirmado por ' + b.nom + ')' : ' (la otra fuente no contestó)');
   if (!actual) {
     if (!DRY) await db.set('cyc/finanzas/tipo_cambio', nuevo);
@@ -34012,6 +34015,16 @@ async function main() {
       const fallos0 = dbConteo.fallos;
       let tc = 0; try { tc = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0; } catch { tc = 0; }
       if (!(tc > 0)) { negar('❌ Sin dólar cargado (cyc/finanzas/tipo_cambio): no escribo nada (no invento uno).'); return; }
+      // 13a (15/11/2026, él): con el dólar de referencia de más de un día (30 h, se lee una vez por día) o a más de 1,5% del cargado, NO se
+      // publica precio nuevo: la Tienda y ABEL quedan como ayer y se le avisa una vez por día.
+      { let ref = null; try { ref = await db.get('cyc/mlconfig/dolarRef'); } catch { ref = null; }
+        const viejo = !!ref && (!(Number(ref.v) > 0) || Date.now() - Number(ref.ts || 0) > 30 * 3600e3);   // sin referencia todavía (el primer día): no frena
+        const lejos = !!ref && !viejo && Math.abs(tc / Number(ref.v) - 1) > 0.015;
+        if (viejo || lejos) {
+          const txt = viejo ? 'el dólar no se pudo leer en más de un día' : `el dólar cargado ($${Math.round(tc)}) se aleja más de 1,5% del de hoy ($${Math.round(Number(ref.v))})`;
+          negar(`⛔ Tienda y ABEL: ${txt}. No publico precios nuevos: quedan los de ayer.`);
+          if (GOt) { try { const hoyD = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10); if ((await db.get('mlapi/tiendadolaraviso')) !== hoyD) { await db.set('mlapi/tiendadolaraviso', hoyD); await sendAlerta(`⛔ Tienda y ABEL: ${txt}. Quedan los precios de ayer hasta que el dólar se acomode.`, { info: true }); } } catch { /* el aviso no frena */ } }
+          return; } }
       const lindo = (x) => (x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 10) / 100) * 100 - 10);
       // 30/10/2026 (él: "¿qué % toma la web local? porque si toma bajo perdemos plata"): el recargo de Paraguay que usa la tienda es el MÁS ALTO
       // de los últimos 3 pedidos con todos los gastos (no el promedio de compras): así el 25% nunca se come en un pedido caro.
