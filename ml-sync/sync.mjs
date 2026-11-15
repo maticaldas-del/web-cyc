@@ -34467,9 +34467,9 @@ async function main() {
       const ABEL_COL = /\b(col[oô]nia|body\s*splash|splash)\b[^]*?\b2[0-5]\d\s*ml\b|\b2[0-5]\d\s*ml\b[^]*?\b(col[oô]nia|body\s*splash|splash)\b/i;
       const abelEsPerf = (n, nn) => ABEL_SI.test(n + ' ' + (nn || '')) && !ABEL_NO.test(n) && !ABEL_MIST.test(n + ' ' + (nn || '')) && !ABEL_COL.test(n + ' ' + (nn || '')) && !TIENDA_USADO.test(n + ' ' + (nn || ''));
       const abelFresco = (ts) => { if (Number(ts) > 0 && hoy - Number(ts) <= ABEL_DIAS * 864e5) return true; abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] = (abelNo[`mirado en Nissei hace más de ${ABEL_DIAS} días`] || 0) + 1; return false; };
-      const abelGenProv = (nn) => { const t = String(nn || ''); return /\buniss?ex\b/i.test(t) ? 'U' : /\b(masculino|homme)\b/i.test(t) ? 'M' : /\b(feminino|femme)\b/i.test(t) ? 'F' : ''; };
+      const abelGenProv = (nn) => { const t = String(nn || ''); return /\buniss?ex\b/i.test(t) ? 'U' : /\b(masculino|homme|hombre|homens)\b/i.test(t) ? 'M' : /\b(feminino|femenino|femme|mujer)\b/i.test(t) ? 'F' : ''; };
       const abelMeter = (id, n, fotos, usd, cod, como, ts, nn) => {
-        const g = abelGenProv(nn);   // análisis semanal del 08/11/2026: el filtro Ella/Él/Unisex usa el nombre; si no dice, el del proveedor ("- Masculino 100ML")
+        const g = abelGenProv(nn) || abelGenProv(n);   // 15/11/2026 (ABEL semanal): si el proveedor no lo dice, el nombre ("Femenino", "para Homens")   // análisis semanal del 08/11/2026: el filtro Ella/Él/Unisex usa el nombre; si no dice, el del proveedor ("- Masculino 100ML")
         const base = usd * tc * ABEL_ENVIO;
         outAbel.push({ id: String(id).toUpperCase(), n: n.slice(0, 140), f: fotos, p: lindo(base * ABEL_EFECTIVO), pt: lindo(base * ABEL_TARJETA), ...(cod ? { k: String(cod) } : {}), c: 'Perfumes', ...(g ? { g } : {}), ...(Number(ts) > 0 ? { v: new Date(Number(ts) - 3 * 36e5).toISOString().slice(0, 10) } : {}) });   // k = el código del proveedor (el botón de WhatsApp lo manda) · v = el día en que se miró en el proveedor (análisis semanal del 08/11/2026: para contar que nada pase de ABEL_DIAS)
         abelCuenta[como] = (abelCuenta[como] || 0) + 1;
