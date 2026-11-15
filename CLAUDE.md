@@ -476,7 +476,7 @@
   que se le dan a la perfumería, no se venden ni se cobran; se anotan con `tester=` y no entran a la oficina) (`pvped:costo:<id>;apagar=;flete=;tester=;regalo=;go`; también `llego` y `pago`). Tarjeta por pedido (`pvPedidoTarjeta`).
 - **7 días hábiles para pagar desde que llega, si no +10%** (20/10): avisarle al llegar los días que le quedan.
 - **Lo que se pide y no viene no se pide más** (`cyc/noconsigo/<prod>/nunca/<aroma>`, `pvped:nunca:-<aroma>;go` lo saca).
-- **Paulvic a la perfumería va SIN aroma** (15/11, él: *"no pongas aroma. poné paulvic todos"*): `debenmov:mercaderia perfumeria=+25%|prod=<Paulvic TODOS>|local=…|u=N|de=ninguna;go` y la oficina se resta del aroma con más unidades (`ofi:Paulvic TODOS@<ese aroma>=-N`), sin preguntarle cuál.
+- **Paulvic a la perfumería va SIN aroma** (15/11, él: *"no pongas aroma. poné paulvic todos"*): `debenmov:mercaderia perfumeria=+25%|prod=<Paulvic TODOS>|local=…|u=N|de=ninguna;go` pero la oficina se resta del aroma que REALMENTE salió (15/11, él: *"tenés que descontar el que realmente sacamos"*): si no lo dice, se le pregunta sólo el aroma.
 - Cada aroma es su publicación y se juzga solo (grupo de precio desactivado 04/09). Compartido Adriana + Persea en Luciana.
 - **Invictus y Phantom: dados de baja en ML para siempre** (24/10, él; ML los frenó por la marca del nombre). No se piden ni se mandan a Full; lo de la oficina va al local. 26/10 (él: *"irrecuperables, eliminá todo"*): las 10 publicaciones ocultas en el panel (`nomas`), oficina en 0 (6 Invictus al local), sin etiqueta en 0, "no vienen más" desde el 22/10.
 
