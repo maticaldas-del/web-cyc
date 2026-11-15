@@ -1,40 +1,40 @@
-ped:p1779912655600=u|0|Hola Tito! Este no hace falta: se venden unos 25 por mes y ya hay 818, alcanza para unos 982 días.|cub=456
+ped:p1779912655600=u|0|Hola Tito! Este no hace falta: se venden unos 23 por mes y ya hay 818.|cub=456
 ped:p1779912655600=venta|3610|precio de la competencia (deja 48%) para el maximo de compra
-ped:p1779912655660#Blanco=u|0|Hola Tito! El Blanco no hace falta: se venden unos 212 por mes y ya hay 514, alcanza para unos 73 días.
+ped:p1779912655660#Blanco=u|0|Hola Tito! El Blanco no hace falta: se venden unos 213 por mes y ya hay 514, alcanza para unos 72 días.
 ped:p1779912655660#Rosa=u|0|Hola Tito! Centímetro Rosa: en la oficina hay 150 Rosa que van a Full ahora y entre los tres colores tenemos más de 800 (Full, oficina y camino). Desde que subió a $3.450 se vende bastante menos. No compres hasta que eso baje
-ped:p1779912655660=venta|17490|precio de la venta mas cara de 365 dias (deja 519%) para el maximo de compra
-ped:p1779912655660#Blanco=venta|17490|precio de la venta mas cara de 365 dias de ese color (deja 519%) para el maximo de compra
-ped:p1779912655660#Rosa=venta|17490|precio de la venta mas cara de 365 dias de ese color (deja 519%) para el maximo de compra
-ped:p1779912656320=u|173|Hola Tito! Te pido 173: quiero tener 337 y ya hay 164. (Filtro agua, pedido de Navidad adelantado (03/11): en 2025 pasó de 18 a 43 y 88 por quincena (casi 5 veces en diciembre) · este año vende el doble que entonces pero a precio más alto, así que cuento un 30% menos de ese pico: ~280 hasta fin de año. Tener 337 (hay 57))|cub=126
+ped:p1779912655660=venta|17490|precio de la venta mas cara de 365 dias (deja 518%) para el maximo de compra
+ped:p1779912655660#Blanco=venta|17490|precio de la venta mas cara de 365 dias de ese color (deja 518%) para el maximo de compra
+ped:p1779912655660#Rosa=venta|17490|precio de la venta mas cara de 365 dias de ese color (deja 518%) para el maximo de compra
+ped:p1779912656320=u|161|Hola Tito! Te pido 161: quiero tener 337 y ya hay 176. (Filtro agua, pedido de Navidad adelantado (03/11): en 2025 pasó de 18 a 43 y 88 por quincena (casi 5 veces en diciembre) · este año vende el doble que entonces pero a precio más alto, así que cuento un 30% menos de ese pico: ~280 hasta fin de año. Tener 337 (hay 57))|cub=139
 ped:p1779912656320=venta|3850|precio de la competencia (deja 43%) para el maximo de compra
 ped:p1779912656330=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 94. Cuento 274 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656330=venta|6490|precio de la venta mas cara de 365 dias (deja 169%) para el maximo de compra
-ped:p1779912656340=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 117. Cuento 277 que se vendieron baratas porque salían al toque.|cub=17
+ped:p1779912656340=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 117. Cuento 275 que se vendieron baratas porque salían al toque.|cub=17
 ped:p1779912656340=venta|6890|precio de la venta mas cara de 365 dias (deja 94%) para el maximo de compra
-ped:p1779912656210#2 Patas=u|0|Hola Tito! El 2 Patas no hace falta: se venden unos 27 por mes y ya hay 60, alcanza para unos 68 días.
+ped:p1779912656210#2 Patas=u|0|Hola Tito! El 2 Patas no hace falta: se venden unos 24 por mes y ya hay 60, alcanza para unos 76 días.
 ped:p1779912656210#3 Patas=u|0|Hola Tito! El 3 Patas no hace falta: se venden unos 2 por mes y ya hay 191.
 ped:p1779912656210=venta|4990|precio de la venta mas cara de 365 dias (deja 186%) para el maximo de compra
 ped:p1779912656210#2 Patas=venta|3490|precio de la venta mas cara de 365 dias de ese color (deja 88%) para el maximo de compra
 ped:p1779912656210#3 Patas=venta|4990|precio de la venta mas cara de 365 dias de ese color (deja 186%) para el maximo de compra
-ped:p1779912655590#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 0 por mes y ya hay 157.
-ped:p1779912655590#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 16 por mes y ya hay 150, alcanza para unos 285 días.
+ped:p1779912655590#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 2 por mes y ya hay 155.
+ped:p1779912655590#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 15 por mes y ya hay 150, alcanza para unos 301 días.
 ped:p1779912655590=venta|4940|precio de la competencia (deja 134%) para el maximo de compra
 ped:p1779912655590#Azul=venta|4940|precio de la competencia de ese color (deja 134%) para el maximo de compra
 ped:p1779912655590#Rojo=venta|4840|precio de la competencia de ese color (deja 128%) para el maximo de compra
 ped:p1779912655620#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655620#Azul Acero=u|0|Hola Tito! El Azul Acero no hace falta: se venden unos 7 por mes y ya hay 2, alcanza para unos 9 días.
+ped:p1779912655620#Azul Acero=u|0|Hola Tito! El Azul Acero no lo compres: lo tuvimos 30 días en Full a $22890 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
 ped:p1779912655620#Beige=u|3|Hola Tito! Te pido 3 del Beige de prueba: antes se vendían unos 10 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Beige oscuro=u|3|Hola Tito! Te pido 3 del Beige oscuro de prueba: antes se vendían unos 12 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Blanco=u|2|Hola Tito! Te pido 2 del Blanco de prueba: antes se vendían unos 3 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Gris=u|0|Hola Tito! El Gris no hace falta: se venden unos 1 por mes y ya hay 14, alcanza para unos 420 días.
-ped:p1779912655620#Gris Oscuro=u|0|Hola Tito! El Gris Oscuro no hace falta: se venden unos 10 por mes y ya hay 24, alcanza para unos 72 días.
+ped:p1779912655620#Gris Oscuro=u|4|Hola Tito! Te pido 4 del Gris Oscuro: se venden unos 13 por mes y entre Full, la oficina y lo que viene en camino hay 22. Con 4 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
 ped:p1779912655620#Negro=u|7|Hola Tito! Te pido 7 del Negro de prueba: antes se vendían unos 28 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Rojo=u|3|Hola Tito! Te pido 3 del Rojo de prueba: antes se vendían unos 11 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
-ped:p1779912655620#Rosa=u|2|Hola Tito! Te pido 2 del Rosa de prueba: antes se vendían unos 9 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Rosa=u|3|Hola Tito! Te pido 3 del Rosa de prueba: antes se vendían unos 9 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620#Rosa Chicle=u|0|Hola Tito! El Rosa Chicle no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655620#Terracota=u|0|Hola Tito! El Terracota no hace falta: se venden unos 1 por mes y ya hay 9, alcanza para unos 351 días.
+ped:p1779912655620#Terracota=u|0|Hola Tito! El Terracota no hace falta: se venden unos 1 por mes y ya hay 9, alcanza para unos 360 días.
 ped:p1779912655620#Verde Musgo=u|0|Hola Tito! El Verde Musgo no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655620#Violeta=u|4|Hola Tito! Te pido 4 del Violeta de prueba: antes se vendían unos 15 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655620#Violeta=u|4|Hola Tito! Te pido 4 del Violeta de prueba: antes se vendían unos 14 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655620=venta|24990|precio de la venta mas cara de 365 dias (deja 48%) para el maximo de compra
 ped:p1779912655620#Azul=venta|19640|precio de la ultima venta de ese color ($19640) para el maximo de compra
 ped:p1779912655620#Azul Acero=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
@@ -50,20 +50,20 @@ ped:p1779912655620#Rosa Chicle=venta|19430|precio de la ultima venta de ese colo
 ped:p1779912655620#Terracota=venta|32790|precio de la ultima venta de ese color ($32790) para el maximo de compra
 ped:p1779912655620#Verde Musgo=venta|17500|precio de la ultima venta de ese color ($17500) para el maximo de compra
 ped:p1779912655620#Violeta=venta|19500|precio de la ultima venta de ese color ($19500) para el maximo de compra
-ped:p1779912655900#Comun Beige=u|9|Hola Tito! Te pido 9 del Comun Beige: se venden unos 23 por mes y entre Full, la oficina y lo que viene en camino hay 37. Con 9 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
-ped:p1779912655900#Comun Negro=u|0|Hola Tito! El Comun Negro no hace falta: se venden unos 19 por mes y ya hay 103, alcanza para unos 163 días.
+ped:p1779912655900#Comun Beige=u|15|Hola Tito! Te pido 15 del Comun Beige: se venden unos 26 por mes y entre Full, la oficina y lo que viene en camino hay 37. Con 15 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
+ped:p1779912655900#Comun Negro=u|0|Hola Tito! El Comun Negro no hace falta: se venden unos 22 por mes y ya hay 102, alcanza para unos 139 días.
 ped:p1779912655900#Triples Beige=u|26|Hola Tito! Te pido 26 del Triples Beige: se venden unos 31 por mes y entre Full, la oficina y lo que viene en camino hay 36. Con 26 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
-ped:p1779912655900#Triples Negro=u|0|Hola Tito! El Triples Negro no hace falta por ahora: al precio de hoy se venden unos 4 por mes (la última suba fue de prueba, no de escasez) y entre Full, la oficina y lo que viene en camino ya hay 39, alcanza para varios meses.
+ped:p1779912655900#Triples Negro=u|43|Hola Tito! Te pido 43 del Triples Negro: se venden unos 37 por mes y entre Full, la oficina y lo que viene en camino hay 31. Con 43 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
 ped:p1779912655900#Triples Rosa=u|0|Hola Tito! El Triples Rosa no hace falta: se venden unos 2 por mes y ya hay 71.
 ped:p1779912655900=venta|20990|precio de la venta mas cara de 365 dias (deja 398%) para el maximo de compra
 ped:p1779912655900#Comun Beige=venta|20990|precio de la venta mas cara de 365 dias de ese color (deja 398%) para el maximo de compra
 ped:p1779912655900#Comun Negro=venta|6228|precio de la venta mas cara de 365 dias de ese color (deja 164%) para el maximo de compra
 ped:p1779912655900#Triples Beige=venta|10990|precio de la venta mas cara de 365 dias de ese color (deja 302%) para el maximo de compra
 ped:p1779912655900#Triples Negro=venta|11690|precio de la venta mas cara de 365 dias de ese color (deja 317%) para el maximo de compra
-ped:p1779912655900#Triples Rosa=venta|7190|precio de la venta mas cara de 365 dias de ese color (deja 199%) para el maximo de compra
-ped:p1779912655880=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 79. Cuento 138 que se vendieron baratas porque salían al toque.|cub=46
+ped:p1779912655900#Triples Rosa=venta|7190|precio de la venta mas cara de 365 dias de ese color (deja 198%) para el maximo de compra
+ped:p1779912655880=u|0|Hola Tito! Este no hace falta: se venden unos 19 por mes y ya hay 79, alcanza para unos 127 días. Cuento 138 que se vendieron baratas porque salían al toque.|cub=46
 ped:p1779912655880=venta|6490|precio de la venta mas cara de 365 dias (deja 76%) para el maximo de compra
-ped:p1779912655800=u|274|Hola Tito! Te pido 274: se venden unos 137 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 274 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 187 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912655800=u|279|Hola Tito! Te pido 279: se venden unos 140 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 279 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 186 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912655800=venta|6890|precio de la competencia (deja 189%) para el maximo de compra
 ped:p1781284068222#Berry Rush=u|0|Hola Tito! El Berry Rush no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 7%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $23790, lo vuelvo a pedir.
 ped:p1781284068222#Brisa Marina=u|0|Hola Tito! El Brisa Marina no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 7%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $20790, lo vuelvo a pedir.
@@ -78,16 +78,16 @@ ped:p1781284068222#Jasmín=venta|18190|precio de la ultima venta de ese color ($
 ped:p1781284068222#Lavanda=venta|25990|precio de la ultima venta de ese color ($25990) para el maximo de compra
 ped:p1781284068222#Limon=venta|19490|precio de la ultima venta de ese color ($19490) para el maximo de compra
 ped:p1781284068222#Rosas=venta|25990|precio de la ultima venta de ese color ($25990) para el maximo de compra
-ped:p1779912655610#Azul=u|4|Hola Tito! Te pido 4 del Azul de prueba: antes se vendían unos 16 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19590). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
-ped:p1779912655610#Beige=u|14|Hola Tito! Te pido 14 del Beige: se venden unos 7 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 14 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 14 conviene pagarlo hasta $6.610 (vendiéndolo a $17.210). Si cuesta más de $6.610, no lo compres.
+ped:p1779912655610#Azul=u|4|Hola Tito! Te pido 4 del Azul de prueba: antes se vendían unos 16 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Beige=u|18|Hola Tito! Te pido 18 del Beige: se venden unos 9 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 18 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 18 conviene pagarlo hasta $6.608 (vendiéndolo a $17.210). Si cuesta más de $6.608, no lo compres.
 ped:p1779912655610#Blanco=u|2|Hola Tito! Te pido 2 del Blanco de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655610#Bordó=u|2|Hola Tito! Te pido 2 del Bordó de prueba: antes se vendían unos 4 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655610#Gris=u|4|Hola Tito! Te pido 4 del Gris de prueba: antes se vendían unos 14 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19590). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655610#Gris Oscuro=u|1|Hola Tito! Te pido 1 del Gris Oscuro de prueba: antes se vendían unos 5 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
-ped:p1779912655610#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 1 por mes y ya hay 12, alcanza para unos 396 días.
+ped:p1779912655610#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 1 por mes y ya hay 12, alcanza para unos 408 días.
 ped:p1779912655610#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 2 por mes y ya hay 4, alcanza para unos 60 días.
 ped:p1779912655610#Rosa=u|0|Hola Tito! El Rosa no hace falta: se venden unos 0 por mes y ya hay 2.
-ped:p1779912655610#Verde Musgo=u|2|Hola Tito! Te pido 2 del Verde Musgo de prueba: antes se vendían unos 6 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655610#Verde Musgo=u|2|Hola Tito! Te pido 2 del Verde Musgo de prueba: antes se vendían unos 7 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655610#Violeta=u|2|Hola Tito! Te pido 2 del Violeta de prueba: antes se vendían unos 5 por mes, pero nunca lo probamos a un precio que nos deje 35% ($19590). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655610#Cian=u|2|Hola Tito! Te pido 2 del Cian de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($18890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655610=venta|23490|precio de la venta mas cara de 365 dias (deja 68%) para el maximo de compra
@@ -105,12 +105,18 @@ ped:p1779912655610#Violeta=venta|14790|precio de la ultima venta de ese color ($
 ped:p1779912655610#Cian=venta|14770|precio de la ultima venta de ese color ($14770) para el maximo de compra
 ped:p1779912656400=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 32, alcanza para unos 480 días. No cuento 13 que se remataron porque estaban parados. Cuento 107 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656400=venta|10190|precio de la venta mas cara de 365 dias (deja 372%) para el maximo de compra
-ped:p1779912656420=u|0|Hola Tito! Este no hace falta: se venden unos 15 por mes y ya hay 25, alcanza para unos 50 días.|cub=15
+ped:p1779912656420=u|0|Hola Tito! Este no hace falta: se venden unos 15 por mes y ya hay 25, alcanza para unos 52 días.|cub=15
 ped:p1779912656420=venta|6490|precio de la ultima venta ($6490) para el maximo de compra
-ped:p1779912655630#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 5 por mes y ya hay 7, alcanza para unos 45 días.
+ped:p1779912655940=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 40. Cuento 90 que se vendieron baratas porque salían al toque.|cub=20
+ped:p1779912655940=venta|8690|precio de la venta mas cara de 365 dias (deja 181%) para el maximo de compra
+ped:p1780106889876=u|59|Hola Tito! Te pido 59: se venden unos 42 por mes y entre Full, la oficina y lo que viene en camino hay 25. Con 59 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 59 conviene pagarlo hasta $7.619 (vendiéndolo a $18.220). Si lo conseguís a menos de $5.985, podés traer hasta 68. Si cuesta más de $7.619, no lo compres.|cub=0
+ped:p1780106889876=venta|18290|precio de la venta mas cara de 365 dias (deja 46%) para el maximo de compra
+ped:p1779912655950=u|24|Hola Tito! Te pido 24: se venden unos 28 por mes y entre Full, la oficina y lo que viene en camino hay 32. Con 24 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 81 que se vendieron baratas porque salían al toque. Según lo que lo pagues: para estas 24 conviene pagarlo hasta $3.063 (vendiéndolo a $8.490). Si lo conseguís a menos de $486, podés traer hasta 60. Si cuesta más de $3.063, no lo compres.|cub=5
+ped:p1779912655950=venta|8490|precio de la venta mas cara de 365 dias (deja 163%) para el maximo de compra
+ped:p1779912655630#Azul=u|0|Hola Tito! El Azul no hace falta: se venden unos 0 por mes y ya hay 7.
 ped:p1779912655630#Negro=u|0|Hola Tito! El Negro no hace falta: se venden unos 0 por mes y ya hay 7.
 ped:p1779912655630#Rojo=u|0|Hola Tito! El Rojo no hace falta: se venden unos 0 por mes y ya hay 14.
-ped:p1779912655630#Rosa=u|32|Hola Tito! Te pido 32 del Rosa: se venden unos 18 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 32 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 32 conviene pagarlo hasta $1.555 (vendiéndolo a $4.890). Si cuesta más de $1.555, no lo compres.
+ped:p1779912655630#Rosa=u|31|Hola Tito! Te pido 31 del Rosa: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 31 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 31 conviene pagarlo hasta $1.554 (vendiéndolo a $4.890). Si lo conseguís a menos de $1.186, podés traer hasta 32. Si cuesta más de $1.554, no lo compres.
 ped:p1779912655630#Verde=u|0|Hola Tito! El Verde no hace falta: se venden unos 1 por mes y ya hay 21, alcanza para unos 630 días.
 ped:p1779912655630#Violeta=u|3|Hola Tito! Te pido 3 del Violeta de prueba: antes se vendían unos 9 por mes, pero nunca lo probamos a un precio que nos deje 35% ($5390). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
 ped:p1779912655630=venta|13170|precio de la competencia (deja 227%) para el maximo de compra
@@ -120,67 +126,61 @@ ped:p1779912655630#Rojo=venta|5500|precio de la competencia de ese color (deja 4
 ped:p1779912655630#Rosa=venta|13170|precio de la competencia de ese color (deja 227%) para el maximo de compra
 ped:p1779912655630#Verde=venta|5550|precio de la competencia de ese color (deja 41%) para el maximo de compra
 ped:p1779912655630#Violeta=venta|4400|precio de la ultima venta de ese color ($4400) para el maximo de compra
-ped:p1779912655940=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 40. Cuento 90 que se vendieron baratas porque salían al toque.|cub=20
-ped:p1779912655940=venta|8690|precio de la venta mas cara de 365 dias (deja 181%) para el maximo de compra
-ped:p1780106889876=u|65|Hola Tito! Te pido 65: se venden unos 45 por mes y entre Full, la oficina y lo que viene en camino hay 25. Con 65 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 65 conviene pagarlo hasta $7.621 (vendiéndolo a $18.220). Si lo conseguís a menos de $5.986, podés traer hasta 68. Si cuesta más de $7.621, no lo compres.|cub=0
-ped:p1780106889876=venta|18290|precio de la venta mas cara de 365 dias (deja 46%) para el maximo de compra
-ped:p1779912655950=u|24|Hola Tito! Te pido 24: se venden unos 28 por mes y entre Full, la oficina y lo que viene en camino hay 32. Con 24 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 83 que se vendieron baratas porque salían al toque. Según lo que lo pagues: para estas 24 conviene pagarlo hasta $3.063 (vendiéndolo a $8.490). Si lo conseguís a menos de $487, podés traer hasta 60. Si cuesta más de $3.063, no lo compres.|cub=5
-ped:p1779912655950=venta|8490|precio de la venta mas cara de 365 dias (deja 163%) para el maximo de compra
 ped:p1779912656010#Blanco=u|0|Hola Tito! Batidora Blanco: 39 unidades salieron del conteo sin entrar a Full (completa del 28/10). No se compra hasta aclarar qué pasó con esa caja
 ped:p1779912656010#negro=u|0|Hola Tito! Batidora negro: 39 unidades salieron del conteo sin entrar a Full (completa del 28/10). No se compra hasta aclarar qué pasó con esa caja
 ped:p1779912656010=venta|22990|precio de la venta mas cara de 365 dias (deja 130%) para el maximo de compra
 ped:p1779912656010#Blanco=venta|22990|precio de la venta mas cara de 365 dias de ese color (deja 130%) para el maximo de compra
 ped:p1779912656010#negro=venta|19990|precio de la venta mas cara de 365 dias de ese color (deja 102%) para el maximo de compra
-ped:p1779912656060=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 60, alcanza para unos 300 días. No cuento 1 que se remataron porque estaban parados. Cuento 22 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656060=u|0|Hola Tito! Este no hace falta: se venden unos 24 por mes y ya hay 59, alcanza para unos 74 días. No cuento 1 que se remataron porque estaban parados. Cuento 22 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912656060=venta|7200|precio de la venta mas cara de 365 dias (deja 52%) para el maximo de compra
-ped:p1779912655870=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -18%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $5690, lo vuelvo a pedir.|cub=0
-ped:p1779912655870=venta|5300|precio de la ultima venta ($5300) para el maximo de compra
-ped:p1779912656220#azul=u|35|Hola Tito! Te pido 35: quiero tener 40 y ya hay 5. (P47 azul, pedido de Navidad adelantado (03/11, la 14a del 25/10): en 2025 el P47 pasó de 19 a 59, 80 y 103 por quincena · este año vende un tercio que entonces (6 por quincena contra 19), así que hasta fin de año van ~82 entre todos los colores. Tener 40 azul (hay 6))
+ped:p1779912656220#azul=u|36|Hola Tito! Te pido 36: quiero tener 40 y ya hay 4. (P47 azul, pedido de Navidad adelantado (03/11, la 14a del 25/10): en 2025 el P47 pasó de 19 a 59, 80 y 103 por quincena · este año vende un tercio que entonces (6 por quincena contra 19), así que hasta fin de año van ~82 entre todos los colores. Tener 40 azul (hay 6))
 ped:p1779912656220#blanco=u|24|Hola Tito! Te pido 24: quiero tener 28 y ya hay 4. (P47 blanco, pedido de Navidad adelantado (03/11): mismo pico que el azul, en proporción a lo que vende cada color. Tener 28 blanco (hay 4))
 ped:p1779912656220#negro=u|20|Hola Tito! Te pido 20 del negro: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 20 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
-ped:p1779912656220#rojo=u|0|Hola Tito! El rojo no hace falta: se venden unos 0 por mes y ya hay 13.
-ped:p1779912656220=venta|9350|precio de la competencia (deja 49%) para el maximo de compra
+ped:p1779912656220#rojo=u|0|Hola Tito! El rojo no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $8590, lo vuelvo a pedir.
+ped:p1779912656220=venta|8680|precio de la competencia (deja 37%) para el maximo de compra
 ped:p1779912656220#azul=venta|8680|precio de la competencia de ese color (deja 37%) para el maximo de compra
 ped:p1779912656220#blanco=venta|9630|precio de la ultima venta de ese color ($9630) para el maximo de compra
 ped:p1779912656220#negro=venta|9100|precio de la venta mas cara de 365 dias de ese color (deja 37%) para el maximo de compra
-ped:p1779912656220#rojo=venta|9350|precio de la competencia de ese color (deja 49%) para el maximo de compra
+ped:p1779912656220#rojo=venta|8490|precio de la ultima venta de ese color ($8490) para el maximo de compra
+ped:p1779912655870=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -18%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $5690, lo vuelvo a pedir.|cub=0
+ped:p1779912655870=venta|5300|precio de la ultima venta ($5300) para el maximo de compra
 ped:p1779912655910=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 18, alcanza para unos 540 días. Cuento 17 que se vendieron baratas porque salían al toque.|cub=8
 ped:p1779912655910=venta|4690|precio de la venta mas cara de 365 dias (deja 60%) para el maximo de compra
-ped:p1781715812444=u|0|Hola Tito! Este no hace falta: se venden unos 13 por mes y ya hay 54, alcanza para unos 125 días. Cuento 39 que se vendieron baratas porque salían al toque.|cub=50
+ped:p1781715812444=u|0|Hola Tito! Este no hace falta: se venden unos 23 por mes y ya hay 54, alcanza para unos 71 días. Cuento 39 que se vendieron baratas porque salían al toque.|cub=50
 ped:p1781715812444=venta|9990|precio de la venta mas cara de 365 dias (deja 110%) para el maximo de compra
-ped:p1779912655920=u|13|Hola Tito! Te pido 13: se venden unos 18 por mes y entre Full, la oficina y lo que viene en camino hay 24. Con 13 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 8 que se vendieron baratas porque salían al toque. Según lo que lo pagues: para estas 13 conviene pagarlo hasta $1.351 (vendiéndolo a $4.620). Si lo conseguís a menos de $961, podés traer hasta 19. Si cuesta más de $1.351, no lo compres.|cub=24
+ped:p1779912655920=u|8|Hola Tito! Te pido 8: se venden unos 16 por mes y entre Full, la oficina y lo que viene en camino hay 24. Con 8 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 8 que se vendieron baratas porque salían al toque. Según lo que lo pagues: para estas 8 conviene pagarlo hasta $1.350 (vendiéndolo a $4.620). Si lo conseguís a menos de $960, podés traer hasta 19. Si cuesta más de $1.350, no lo compres.|cub=24
 ped:p1779912655920=venta|6490|precio de la venta mas cara de 365 dias (deja 127%) para el maximo de compra
-ped:p1779912656350=u|0|Hola Tito! Este no hace falta: se venden unos 17 por mes y ya hay 37, alcanza para unos 65 días. Cuento 39 que se vendieron baratas porque salían al toque.|cub=20
+ped:p1779912656350=u|0|Hola Tito! Este no hace falta: se venden unos 16 por mes y ya hay 37, alcanza para unos 69 días. Cuento 39 que se vendieron baratas porque salían al toque.|cub=20
 ped:p1779912656350=venta|11990|precio de la venta mas cara de 365 dias (deja 194%) para el maximo de compra
-ped:p1784422409763=u|0|Hola Tito! Este no hace falta: se venden unos 27 por mes y ya hay 68, alcanza para unos 76 días.|cub=38
+ped:p1784422409763=u|0|Hola Tito! Este no hace falta: se venden unos 30 por mes y ya hay 68, alcanza para unos 68 días.|cub=38
 ped:p1784422409763=venta|5750|precio de la venta mas cara de 365 dias (deja 50%) para el maximo de compra
-ped:p1779912656070=u|3|Hola Tito! Te pido 3: se venden unos 11 por mes y entre Full, la oficina y lo que viene en camino hay 20. Con 3 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 3 conviene pagarlo hasta $5.989 (vendiéndolo a $17.090). Si lo conseguís a menos de $1.445, podés traer hasta 55. Si cuesta más de $5.989, no lo compres.|cub=11
-ped:p1779912656070=venta|17090|precio de la venta mas cara de 365 dias (deja 268%) para el maximo de compra
+ped:p1779912656070=u|16|Hola Tito! Te pido 16: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 18. Con 16 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 16 conviene pagarlo hasta $6.003 (vendiéndolo a $17.090). Si lo conseguís a menos de $1.448, podés traer hasta 57. Si cuesta más de $6.003, no lo compres.|cub=11
+ped:p1779912656070=venta|25690|precio de la venta mas cara de 365 dias (deja 353%) para el maximo de compra
 ped:p1779912656240=u|0|Hola Tito! Los auriculares F9 no los traigas más por ahora: de 9 que vendimos en 4 meses, 6 tuvieron reclamo (dicen que no es lo que muestra la publicación o que llegó otro modelo). Hasta arreglar eso, nada (8a del 08/11)|cub=4
 ped:p1779912656240=venta|9700|precio de la venta mas cara de 365 dias (deja 37%) para el maximo de compra
 ped:p1779912655890=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $27690, lo vuelvo a pedir.|cub=0
 ped:p1779912655890=venta|29790|precio de la ultima venta ($29790) para el maximo de compra
 ped:p1779912656110=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 16, alcanza para unos 240 días. Cuento 5 que se vendieron baratas porque salían al toque.|cub=9
 ped:p1779912656110=venta|7150|precio de la competencia (deja 99%) para el maximo de compra
-ped:p1779912655930=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes y ya hay 25, alcanza para unos 79 días. Cuento 34 que se vendieron baratas porque salían al toque.|cub=21
-ped:p1779912655930=venta|10990|precio de la venta mas cara de 365 dias (deja 47%) para el maximo de compra
-ped:p1779912655650=u|27|Hola Tito! Te pido 27: se venden unos 21 por mes y entre Full, la oficina y lo que viene en camino hay 15. Con 27 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 27 conviene pagarlo hasta $9.444 (vendiéndolo a $21.990). Si cuesta más de $9.444, no lo compres.|cub=0
+ped:p1779912655650=u|19|Hola Tito! Te pido 19: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 15. Con 19 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 19 conviene pagarlo hasta $9.442 (vendiéndolo a $21.990). Si cuesta más de $9.442, no lo compres.|cub=0
 ped:p1779912655650=venta|21990|precio de la venta mas cara de 365 dias (deja 81%) para el maximo de compra
-ped:p1785593145264lupa100=u|0|Hola Tito! Este no hace falta: se venden unos 10 por mes y ya hay 46, alcanza para unos 138 días. Cuento 4 que se vendieron baratas porque salían al toque.|cub=32
+ped:p1779912655930=u|0|Hola Tito! Este no hace falta: se venden unos 12 por mes y ya hay 25, alcanza para unos 62 días. Cuento 32 que se vendieron baratas porque salían al toque.|cub=21
+ped:p1779912655930=venta|10990|precio de la venta mas cara de 365 dias (deja 47%) para el maximo de compra
+ped:p1785593145264lupa100=u|0|Hola Tito! Este no hace falta: se venden unos 9 por mes y ya hay 46, alcanza para unos 150 días. Cuento 4 que se vendieron baratas porque salían al toque.|cub=32
 ped:p1785593145264lupa100=venta|19990|precio de la venta mas cara de 365 dias (deja 215%) para el maximo de compra
-ped:p1779912656050=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -20%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6090, lo vuelvo a pedir.|cub=0
-ped:p1779912656050=venta|5500|precio de la ultima venta ($5500) para el maximo de compra
-ped:p1779912656100=u|0|Hola Tito! Este no hace falta: se venden unos 4 por mes y ya hay 17, alcanza para unos 142 días.|cub=11
-ped:p1779912656100=venta|4990|precio de la venta mas cara de 365 dias (deja 51%) para el maximo de compra
+ped:p1779912656100=u|24|Hola Tito! Te pido 24: se venden unos 20 por mes y entre Full, la oficina y lo que viene en camino hay 17. Con 24 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=11
+ped:p1779912656100=venta|4990|precio de la venta mas cara de 365 dias (deja 50%) para el maximo de compra
 ped:p1779912656120=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 8, alcanza para unos 240 días.|cub=0
 ped:p1779912656120=venta|6300|precio de la venta mas cara de 365 dias (deja 45%) para el maximo de compra
+ped:p1779912656050=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -19%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6090, lo vuelvo a pedir.|cub=0
+ped:p1779912656050=venta|5500|precio de la ultima venta ($5500) para el maximo de compra
 ped:p1779912656140=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 28.|cub=18
 ped:p1779912656140=venta|8250|precio de la venta mas cara de 365 dias (deja 45%) para el maximo de compra
 ped:p1779912656200=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 16, alcanza para unos 480 días.|cub=15
 ped:p1779912656200=venta|12170|precio de la competencia (deja 78%) para el maximo de compra
 ped:p1779912655850=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 13, alcanza para unos 195 días. Cuento 21 que se vendieron baratas porque salían al toque.|cub=9
 ped:p1779912655850=venta|17990|precio de la venta mas cara de 365 dias (deja 45%) para el maximo de compra
-ped:p1787786300945=u|63|Hola Tito! Te pido 63: se venden unos 32 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 63 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=0
+ped:p1787786300945=u|67|Hola Tito! Te pido 67: se venden unos 33 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 67 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=0
 ped:p1787786300945=venta|10500|precio de la venta mas cara de 365 dias (deja 65%) para el maximo de compra
 ped:p1779912655500#Asher=u|0|Hola Tito! Asher (De la Patagonia): no se consigue más, me lo dijiste el 14/10. No se pide. Quedan 21 en el Full de Adriana y se venden hasta terminarlas
 ped:p1779912655500#Kosten (Hombre)=u|0|Hola Tito! Kosten (De la Patagonia): no se consigue más (14/10). No se pide
@@ -189,30 +189,32 @@ ped:p1779912655500#Asher=venta|49990|precio de la ultima venta de ese color ($49
 ped:p1779912655500#Kosten (Hombre)=venta|51540|precio de la competencia de ese color (deja 36%) para el maximo de compra
 ped:p1783381648682=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 29. Cuento 11 que se vendieron baratas porque salían al toque.|cub=18
 ped:p1783381648682=venta|4670|precio de la venta mas cara de 365 dias (deja 42%) para el maximo de compra
-ped:p1779912655840=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 10. Cuento 10 que se vendieron baratas porque salían al toque.|cub=3
-ped:p1779912655840=venta|25190|precio de la ultima venta ($25190) para el maximo de compra
 ped:p1779912655540=u|0|Hola Tito! Pret a Porter Body Splash: no se consigue desde el 19/10 y a su última venta deja ~25-30% (completa del 28/10). No se pide|cub=0
 ped:p1779912655540=venta|19990|precio de la ultima venta ($19990) para el maximo de compra
+ped:p1779912655840=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 10. Cuento 10 que se vendieron baratas porque salían al toque.|cub=3
+ped:p1779912655840=venta|25190|precio de la ultima venta ($25190) para el maximo de compra
 ped:p1779912655970=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1. Cuento 14 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912655970=venta|7280|precio de la venta mas cara de 365 dias (deja 38%) para el maximo de compra
-ped:p1779912656130=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 18, alcanza para unos 86 días.|cub=18
+ped:p1779912656130=u|0|Hola Tito! Este no hace falta: se venden unos 7 por mes y ya hay 18, alcanza para unos 78 días.|cub=18
 ped:p1779912656130=venta|8990|precio de la venta mas cara de 365 dias (deja 82%) para el maximo de compra
 ped:p1779912656250=u|3|Hola Tito! Te pido 3 de prueba: antes se vendían unos 12 por mes, pero nunca lo probamos a un precio que nos deje 35% ($17190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1779912656250=venta|13490|precio de la ultima venta ($13490) para el maximo de compra
 ped:p1783525155703=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -7%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $82190, lo vuelvo a pedir.|cub=5
 ped:p1783525155703=venta|61990|precio de la ultima venta ($61990) para el maximo de compra
-ped:p1779912655780#Azul=u|2|Hola Tito! Te pido 2 del Azul de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($10190). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
-ped:p1779912655780#Naranja=u|25|Hola Tito! Te pido 25 del Naranja: se venden unos 12 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 25 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 25 conviene pagarlo hasta $3.853 (vendiéndolo a $10.340). Si lo conseguís a menos de $3.619, podés traer hasta 26. Si cuesta más de $3.853, no lo compres.
+ped:p1779912655780#Azul=u|2|Hola Tito! Te pido 2 del Azul de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($10590). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
+ped:p1779912655780#Naranja=u|18|Hola Tito! Te pido 18 del Naranja: se venden unos 9 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 18 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Según lo que lo pagues: para estas 18 conviene pagarlo hasta $3.852 (vendiéndolo a $10.340). Si lo conseguís a menos de $3.619, podés traer hasta 26. Si cuesta más de $3.852, no lo compres.
 ped:p1779912655780=venta|10340|precio de la venta mas cara de 365 dias (deja 37%) para el maximo de compra
 ped:p1779912655780#Azul=venta|9999|precio de la ultima venta de ese color ($9999) para el maximo de compra
 ped:p1779912655780#Naranja=venta|10340|precio de la venta mas cara de 365 dias de ese color (deja 37%) para el maximo de compra
 ped:p1779912656410=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 21%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $20990, lo vuelvo a pedir.|cub=0
 ped:p1779912656410=venta|18160|precio de la ultima venta ($18160) para el maximo de compra
+ped:p1779912656000=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 24, alcanza para unos 120 días. Cuento 15 que se vendieron baratas porque salían al toque.|cub=19
+ped:p1779912656000=venta|9990|precio de la venta mas cara de 365 dias (deja 35%) para el maximo de compra
 ped:p1779912656230#azul=u|0|Hola Tito! El azul no hace falta: se venden unos 0 por mes y ya hay 2.
 ped:p1779912656230#celeste=u|0|Hola Tito! El celeste no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 32%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $10290, lo vuelvo a pedir.
-ped:p1779912656230#negro=u|1|Hola Tito! Te pido 1 del negro: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 1 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).
+ped:p1779912656230#negro=u|0|Hola Tito! El negro no hace falta: se venden unos 0 por mes y ya hay 2.
 ped:p1779912656230#violeta=u|2|Hola Tito! Te pido 2 del violeta de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($10290). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.
-ped:p1779912656230=venta|11999|precio de la venta mas cara de 365 dias (deja 58%) para el maximo de compra
+ped:p1779912656230=venta|10220|precio de la competencia (deja 35%) para el maximo de compra
 ped:p1779912656230#azul=venta|9660|precio de la ultima venta de ese color ($9660) para el maximo de compra
 ped:p1779912656230#celeste=venta|10990|precio de la ultima venta de ese color ($10990) para el maximo de compra
 ped:p1779912656230#negro=venta|11999|precio de la venta mas cara de 365 dias de ese color (deja 58%) para el maximo de compra
@@ -222,23 +224,21 @@ ped:p1779912655640#Negro=u|15|Hola Tito! Te pido 15 del Negro: se venden unos 7 
 ped:p1779912655640=venta|17590|precio de la competencia (deja 149%) para el maximo de compra
 ped:p1779912655640#Azul=venta|8000|precio de la ultima venta de ese color ($8000) para el maximo de compra
 ped:p1779912655640#Negro=venta|17590|precio de la competencia de ese color (deja 149%) para el maximo de compra
-ped:p1779912656000=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 25. Cuento 15 que se vendieron baratas porque salían al toque.|cub=19
-ped:p1779912656000=venta|9990|precio de la venta mas cara de 365 dias (deja 35%) para el maximo de compra
 ped:p1787783558381=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 16, alcanza para unos 480 días.|cub=8
 ped:p1787783558381=venta|6090|precio de la competencia (deja 46%) para el maximo de compra
-ped:p1779912655690=u|34|Hola Tito! Te pido 34: se venden unos 17 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 34 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=0
+ped:p1779912655690=u|36|Hola Tito! Te pido 36: se venden unos 18 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 36 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=0
 ped:p1779912655690=venta|18520|precio de la venta mas cara de 365 dias (deja 41%) para el maximo de compra
-ped:p1779912656080=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 5. Cuento 10 que se vendieron baratas porque salían al toque.|cub=0
-ped:p1779912656080=venta|5190|precio de hoy para el maximo de compra (la ultima venta fue a $7090, mas cara)
-ped:p1779912656190=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 17.|cub=16
+ped:p1779912656190=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 16, alcanza para unos 480 días.|cub=16
 ped:p1779912656190=venta|6600|precio de la competencia (deja 78%) para el maximo de compra
+ped:p1779912656080=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 5, alcanza para unos 27 días. Cuento 10 que se vendieron baratas porque salían al toque.|cub=0
+ped:p1779912656080=venta|5190|precio de hoy para el maximo de compra (la ultima venta fue a $7090, mas cara)
 ped:p1783356360695=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 36.|cub=35
 ped:p1783356360695=venta|8250|precio de la competencia (deja 77%) para el maximo de compra
 ped:p1779912656370=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $7490, lo vuelvo a pedir.|cub=4
 ped:p1779912656370=venta|20290|precio de la ultima venta ($20290) para el maximo de compra
-ped:p1784514320290alg=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 10%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $10290, lo vuelvo a pedir.|cub=0
+ped:p1784514320290alg=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 0%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $10590, lo vuelvo a pedir.|cub=0
 ped:p1784514320290alg=venta|13990|precio de la ultima venta ($13990) para el maximo de compra
-ped:p1790392438056=u|0|Hola Tito! Este no hace falta: se venden unos 5 por mes y ya hay 35, alcanza para unos 210 días. Cuento 1 que se vendieron baratas porque salían al toque.|cub=17
+ped:p1790392438056=u|0|Hola Tito! Este no hace falta: se venden unos 6 por mes y ya hay 35, alcanza para unos 189 días. Cuento 1 que se vendieron baratas porque salían al toque.|cub=17
 ped:p1790392438056=venta|8490|precio de la venta mas cara de 365 dias (deja 73%) para el maximo de compra
 ped:p1782923069593=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($21890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p1782923069593=venta|22990|precio de la ultima venta ($22990) para el maximo de compra
@@ -246,18 +246,18 @@ ped:p1782923102141=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 3 
 ped:p1782923102141=venta|14960|precio de la ultima venta ($14960) para el maximo de compra
 ped:p1779912656090=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 2, alcanza para unos 60 días.|cub=1
 ped:p1779912656090=venta|32999|precio de la venta mas cara de 365 dias (deja 72%) para el maximo de compra
+ped:p1779912656170=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 4 por mes, pero nunca lo probamos a un precio que nos deje 35% ($23890). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
+ped:p1779912656170=venta|29990|precio de la ultima venta ($29990) para el maximo de compra
 ped:p1779912655530#Milán=u|0|Hola Tito! El Milán no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $20090, lo vuelvo a pedir.
-ped:p1779912655530#Paris=u|0|Hola Tito! El Paris no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $20090, lo vuelvo a pedir.
+ped:p1779912655530#Paris=u|0|Hola Tito! El Paris no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 0%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $20090, lo vuelvo a pedir.
 ped:p1779912655530=venta|21990|precio de la competencia (deja 49%) para el maximo de compra
 ped:p1779912655530#Milán=venta|17700|precio de la ultima venta de ese color ($17700) para el maximo de compra
 ped:p1779912655530#Paris=venta|17500|precio de la ultima venta de ese color ($17500) para el maximo de compra
-ped:p1779912656170=u|1|Hola Tito! Te pido 1 de prueba: antes se vendían unos 2 por mes, pero nunca lo probamos a un precio que nos deje 35% ($25090). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
-ped:p1779912656170=venta|20300|precio de la ultima venta ($20300) para el maximo de compra
 ped:p1780152957092=u|1|Hola Tito! Te pido 1 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($22490). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=1
 ped:p1780152957092=venta|25590|precio de la ultima venta ($25590) para el maximo de compra
-ped:p1779912655770=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 29%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17790, lo vuelvo a pedir.|cub=0
+ped:p1779912655770=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 13%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17790, lo vuelvo a pedir.|cub=0
 ped:p1779912655770=venta|12500|precio de la ultima venta ($12500) para el maximo de compra
-ped:p1790392460328=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6390, lo vuelvo a pedir.|cub=8
+ped:p1790392460328=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -2%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6490, lo vuelvo a pedir.|cub=8
 ped:p1790392460328=venta|13490|precio de la ultima venta ($13490) para el maximo de compra
 ped:p1779912655820=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 3. No cuento 2 que se remataron porque estaban parados. Cuento 2 que se vendieron baratas porque salían al toque.|cub=0
 ped:p1779912655820=venta|8410|precio de la ultima venta ($8410) para el maximo de compra
@@ -265,19 +265,19 @@ ped:p1779912655830=u|0|Hola Tito! Este no lo compres por ahora: la competencia l
 ped:p1779912655830=venta|26590|precio de hoy para el maximo de compra (la ultima venta fue a $31999, mas cara)
 ped:p1781367459502393=u|4|Hola Tito! Te pido 4 Cremas Nivea de prueba: en junio se vendieron 4 en una semana y después se agotó. Con tan poca historia no traemos 35: traemos 4 y si se venden bien pedimos más (7a del 08/11)|cub=0
 ped:p1781367459502393=venta|19442|precio de la venta mas cara de 365 dias (deja 118%) para el maximo de compra
-ped:p1785284945528=u|2|Hola Tito! Te pido 2: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días). Cuento 1 que se vendieron baratas porque salían al toque.|cub=0
-ped:p1785284945528=venta|31730|precio de la competencia (deja 37%) para el maximo de compra
+ped:p1785284945528=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $31290, lo vuelvo a pedir.|cub=0
+ped:p1785284945528=venta|28960|precio de la ultima venta ($28960) para el maximo de compra
+ped:p1792440689982=u|8|Hola Tito! Te pido 8: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 8 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=2
+ped:p1792440689982=venta|10960|precio de la competencia (deja 54%) para el maximo de compra
 ped:p1792881560848=u|16|Hola Tito! Te pido 16: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 4. Con 16 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=0
 ped:p1792881560848=venta|7990|precio de la venta mas cara de 365 dias (deja 97%) para el maximo de compra
-ped:p1779912656360=u|0|Hola Tito! Este no lo compres: lo tuvimos 37 días en Full a $8190 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=0
+ped:p1779912656360=u|0|Hola Tito! Este no lo compres: lo tuvimos 38 días en Full a $8190 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=0
 ped:p1779912656360=venta|7800|precio de la ultima venta ($7800) para el maximo de compra
 ped:p1787594663055=u|0|Hola Tito! De la Patagonia KO UNISEX: no se consigue más (14/10). No se pide. Quedan 2 en el Full de Adriana|cub=0
 ped:p1787594663055=venta|45050|precio de la ultima venta ($45050) para el maximo de compra
-ped:p1790622050078=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 19%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6990, lo vuelvo a pedir.|cub=25
+ped:p1790622050078=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 16%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $7090, lo vuelvo a pedir.|cub=25
 ped:p1790622050078=venta|8990|precio de la ultima venta ($8990) para el maximo de compra
-ped:p1792440689982=u|6|Hola Tito! Te pido 6: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 3. Con 6 más cubrimos dos meses (en Bs As la mitad de las veces no hay: se pide para 60 días).|cub=2
-ped:p1792440689982=venta|10960|precio de la competencia (deja 54%) para el maximo de compra
-ped:p1792882870991=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $3790, lo vuelvo a pedir.|cub=0
+ped:p1792882870991=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $3790, lo vuelvo a pedir.|cub=0
 ped:p1792882870991=venta|4190|precio de la ultima venta ($4190) para el maximo de compra
 ped:p1792882690326=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 10, alcanza para unos 300 días.|cub=8
 ped:p1792882690326=venta|3850|precio de la competencia (deja 50%) para el maximo de compra
@@ -285,18 +285,16 @@ ped:p1779912656180=u|0|Hola Tito! Este no lo compres por ahora: la competencia l
 ped:p1779912656180=venta|91000|precio de la ultima venta ($91000) para el maximo de compra
 ped:p1779912656390=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 3.|cub=0
 ped:p1779912656390=venta|16990|precio de la ultima venta ($16990) para el maximo de compra
-ped:p1782925709386=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 2%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.|cub=0
+ped:p1782925709386=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 2%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $14790, lo vuelvo a pedir.|cub=0
 ped:p1782925709386=venta|13180|precio de la ultima venta ($13180) para el maximo de compra
-ped:p1791316673662=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 34%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $109790, lo vuelvo a pedir.|cub=0
-ped:p1791316673662=venta|97990|precio de la ultima venta ($97990) para el maximo de compra
 ped:p1792883052702=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 31%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6790, lo vuelvo a pedir.|cub=2
 ped:p1792883052702=venta|11990|precio de la ultima venta ($11990) para el maximo de compra
 ped:p1793754267430=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $4190, lo vuelvo a pedir.|cub=6
 ped:p1793754267430=venta|3990|precio de la ultima venta ($3990) para el maximo de compra
 ped:p1779912655520=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 23%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $63790, lo vuelvo a pedir.|cub=0
 ped:p1779912655520=venta|68990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1779912655860=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 0.|cub=0
-ped:p1779912655860=venta|6580|precio de la competencia (deja 45%) para el maximo de compra
+ped:p1779912655860=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 35%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $6190, lo vuelvo a pedir.|cub=0
+ped:p1779912655860=venta|6890|nunca vendio: precio de hoy para el maximo de compra
 ped:p1779912655990=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
 ped:p1779912656030=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1779912656030=venta|21990|nunca vendio: precio de hoy para el maximo de compra
@@ -322,15 +320,13 @@ ped:p1789245120427=u|0|Hola Tito! Este no lo compres: todavía no se vendió nun
 ped:p1789245120427=venta|10790|nunca vendio: precio de hoy para el maximo de compra
 ped:p1791411206045=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1791411206045=venta|8490|nunca vendio: precio de hoy para el maximo de compra
-ped:p1791411311858=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $7290, lo vuelvo a pedir.|cub=0
+ped:p1791411311858=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $7290, lo vuelvo a pedir.|cub=0
 ped:p1791411311858=venta|8816|nunca vendio: precio de hoy para el maximo de compra
-ped:p1792787629845=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 22%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $26890, lo vuelvo a pedir.|cub=0
-ped:p1792787629845=venta|32990|nunca vendio: precio de hoy para el maximo de compra
 ped:p1792882500112=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 12.|cub=8
 ped:p1792882500112=venta|4730|precio de la competencia (deja 45%) para el maximo de compra
 ped:p1793032938696=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1793032938696=venta|13450|precio de la competencia (deja 87%) para el maximo de compra
-ped:p1793417351891=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=9
+ped:p1793417351891=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=5
 ped:p1793417351891=venta|10980|precio de la competencia (deja 84%) para el maximo de compra
 ped:p1793675136401=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p1793675136401=venta|4840|precio de la competencia (deja 56%) para el maximo de compra
@@ -356,37 +352,36 @@ ped:p1794063791999=u|0|Hola Tito! Este no lo compres: todavía no se vendió nun
 ped:p1794063791999=venta|3850|precio de la competencia (deja 105%) para el maximo de compra
 ped:p1794063793826=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=30
 ped:p1794063793826=venta|3850|precio de la competencia (deja 71%) para el maximo de compra
-ped:p1794063798829=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $16390, lo vuelvo a pedir.|cub=3
+ped:p1794063798829=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $16390, lo vuelvo a pedir.|cub=3
 ped:p1794063798829=venta|19990|nunca vendio: precio de hoy para el maximo de compra
 ped:p1794063800633=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=2
 ped:p1794063800633=venta|16480|precio de la competencia (deja 59%) para el maximo de compra
-ped:p1794063805405=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -15%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $45990, lo vuelvo a pedir.|cub=3
+ped:p1794063805405=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -15%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $46090, lo vuelvo a pedir.|cub=3
 ped:p1794063805405=venta|47990|nunca vendio: precio de hoy para el maximo de compra
-ped:p1794063807731=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -16%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $63890, lo vuelvo a pedir.|cub=2
+ped:p1794063807731=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -21%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $63890, lo vuelvo a pedir.|cub=2
 ped:p1794063807731=venta|63990|nunca vendio: precio de hoy para el maximo de compra
 ped:p1794178100080=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p1794178100080=venta|14990|nunca vendio: precio de hoy para el maximo de compra
 ped:p1794178519822=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
-ped:p1794414747329=u|0|Hola Tito! Este no lo compres: todavía no tengo cargado cuánto cuesta.|cub=7
 ped:p1782841638453=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 15%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.|cub=0
 ped:p1782841638453=venta|16990|precio de la ultima venta ($16990) para el maximo de compra
 ped:p1779912656280=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $27790, lo vuelvo a pedir.|cub=50
 ped:p1779912656280=venta|23980|precio de la ultima venta ($23980) para el maximo de compra
 ped:p1779912656270=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -9%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $23990, lo vuelvo a pedir.|cub=34
 ped:p1779912656270=venta|24990|precio de la ultima venta ($24990) para el maximo de compra
-ped:p1779912655550#Amber Romance=u|0|Hola Tito! El Amber Romance no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $59890, lo vuelvo a pedir.
+ped:p1779912655550#Amber Romance=u|0|Hola Tito! El Amber Romance no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -14%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $59990, lo vuelvo a pedir.
 ped:p1779912655550#Aqua Kiss=u|0|Hola Tito! El Aqua Kiss no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -23%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $64290, lo vuelvo a pedir.
 ped:p1779912655550#Bare Vanilla=u|0|Hola Tito! El Bare Vanilla no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -35%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $60890, lo vuelvo a pedir.
 ped:p1779912655550#Berry Brulee=u|0|Hola Tito! El Berry Brulee no hace falta: se venden unos 0 por mes y ya hay 0.
 ped:p1779912655550#Coconut Passion=u|0|Hola Tito! El Coconut Passion no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -8%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $63290, lo vuelvo a pedir.
 ped:p1779912655550#Electric Mango=u|0|Hola Tito! El Electric Mango no hace falta: se venden unos 0 por mes y ya hay 0.
 ped:p1779912655550#Love Addict=u|0|Hola Tito! El Love Addict no hace falta: se venden unos 0 por mes y ya hay 2.
-ped:p1779912655550#Love Spell=u|0|Hola Tito! El Love Spell no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -14%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $59890, lo vuelvo a pedir.
+ped:p1779912655550#Love Spell=u|0|Hola Tito! El Love Spell no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -14%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $59990, lo vuelvo a pedir.
 ped:p1779912655550#Mango Temptation=u|0|Hola Tito! El Mango Temptation no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 16%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $61090, lo vuelvo a pedir.
 ped:p1779912655550#Melon Pear=u|0|Hola Tito! El Melon Pear no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1779912655550#Midnight Bloom=u|0|Hola Tito! El Midnight Bloom no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -27%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $71890, lo vuelvo a pedir.
-ped:p1779912655550#Pure Seduction=u|0|Hola Tito! El Pure Seduction no lo compres: lo tuvimos 33 días en Full a $61090 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
-ped:p1779912655550#Romantic=u|0|Hola Tito! El Romantic no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -15%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $60690, lo vuelvo a pedir.
+ped:p1779912655550#Midnight Bloom=u|0|Hola Tito! El Midnight Bloom no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -23%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $71890, lo vuelvo a pedir.
+ped:p1779912655550#Pure Seduction=u|0|Hola Tito! El Pure Seduction no lo compres: lo tuvimos 34 días en Full a $61090 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
+ped:p1779912655550#Romantic=u|0|Hola Tito! El Romantic no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -15%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $60790, lo vuelvo a pedir.
 ped:p1779912655550#Rush=u|0|Hola Tito! El Rush no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $63690, lo vuelvo a pedir.
 ped:p1779912655550#Sizzling Vanilla=u|0|Hola Tito! El Sizzling Vanilla no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 28%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $64090, lo vuelvo a pedir.
 ped:p1779912655550#Vanilla Lace=u|0|Hola Tito! El Vanilla Lace no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $62390, lo vuelvo a pedir.
@@ -408,17 +403,17 @@ ped:p1779912655550#Romantic=venta|45300|precio de la ultima venta de ese color (
 ped:p1779912655550#Rush=venta|45570|precio de la ultima venta de ese color ($45570) para el maximo de compra
 ped:p1779912655550#Vanilla Lace=venta|64990|precio de la ultima venta de ese color ($64990) para el maximo de compra
 ped:p1779912655550#Velve Petals=venta|45300|precio de la ultima venta de ese color ($45300) para el maximo de compra
-ped:p1779912656260=u|3|Hola Tito! Te pido 3: se venden unos 29 por mes y entre Full, la oficina y lo que viene en camino hay 26. Con 3 más cubrimos un mes.|cub=0
+ped:p1779912656260=u|0|Hola Tito! Este no hace falta: se venden unos 21 por mes y ya hay 26, alcanza para unos 38 días.|cub=0
 ped:p1779912656260=venta|20500|precio de la venta mas cara de 365 dias (deja 52%) para el maximo de compra
-ped:p1779912655560=u|0|Hola Tito! Este no lo compres: lo tuvimos 36 días en Full a $65390 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=7
+ped:p1779912655560=u|0|Hola Tito! Este no lo compres: lo tuvimos 37 días en Full a $65390 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=7
 ped:p1779912655560=venta|52000|precio de la ultima venta ($52000) para el maximo de compra
 ped:p1779912656290=u|0|Hola Tito! Pendrive 128gb: se acaban de retirar 34 de Full porque iban a pagar stock antiguo. No comprar hasta vender lo que hay|cub=34
 ped:p1779912656290=venta|32690|precio de hoy para el maximo de compra (la ultima venta fue a $41990, mas cara)
-ped:p1779905818281=u|11|Hola Tito! Te pido 11: se venden unos 11 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 11 más cubrimos un mes. Cuento 13 que se vendieron baratas porque salían al toque. Según lo que lo pagues: para estas 11 conviene pagarlo hasta US$ 19,94 (vendiéndolo a $75.360). Si cuesta más de US$ 19,94, no lo compres.|cub=0
+ped:p1779905818281=u|21|Hola Tito! Te pido 21: se venden unos 12 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 21 más cubrimos 52 días (🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12). Cuento 13 que se vendieron baratas porque salían al toque. Según lo que lo pagues: para estas 21 conviene pagarlo hasta US$ 19,94 (vendiéndolo a $75.360). Si cuesta más de US$ 19,94, no lo compres.|cub=0
 ped:p1779905818281=venta|79130|precio de la venta mas cara de 365 dias (deja 46%) para el maximo de compra
 ped:p1782918442891=u|0|Hola Tito! Cabotine 30 ml: a su última venta deja ~25% y Nissei sólo tiene el de 100 ml (completa del 28/10). No se pide|cub=0
 ped:p1782918442891=venta|58970|precio de la competencia (deja 55%) para el maximo de compra
-ped:p1788886838508#Freesia=u|10|Hola Tito! Te pido 10 del Freesia: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 10 más cubrimos un mes.
+ped:p1788886838508#Freesia=u|18|Hola Tito! Te pido 18 del Freesia: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 18 más cubrimos 52 días (🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12).
 ped:p1788886838508#Kiss=u|0|Hola Tito! Halloween Kiss: Nissei no lo tiene. No se pide hasta que vuelva
 ped:p1788886838508#Kiss Sexy=u|0|Hola Tito! Halloween Kiss Sexy: Nissei no lo tiene. No se pide hasta que vuelva
 ped:p1788886838508=venta|99600|precio de la venta mas cara de 365 dias (deja 40%) para el maximo de compra
@@ -427,21 +422,21 @@ ped:p1788886838508#Kiss=venta|82520|precio de la ultima venta de ese color ($825
 ped:p1788886838508#Kiss Sexy=venta|85844|precio de la ultima venta de ese color ($85844) para el maximo de compra
 ped:p1780106778739=u|0|Hola Tito! Buds Core: el precio de Paraguay no da el 35%. No se pide|cub=1
 ped:p1780106778739=venta|145940|precio de la ultima venta ($145940) para el maximo de compra
-ped:p1785263851692#Bare Vanilla=u|0|Hola Tito! El Bare Vanilla no lo compres: lo tuvimos 33 días en Full a $59990 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
+ped:p1785263851692#Bare Vanilla=u|0|Hola Tito! El Bare Vanilla no lo compres: lo tuvimos 34 días en Full a $59990 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
 ped:p1785263851692#Pure Seduction=u|0|Hola Tito! VS Pure Seduction: no vende hace más de 60 días y está en sobra (completa del 28/10). No se repone hasta que se venda lo que hay
 ped:p1785263851692#Velvet Petals=u|0|Hola Tito! VS Velvet Petals: no vende hace más de 60 días (completa del 28/10). No se repone hasta que vuelva a vender
 ped:p1785263851692=venta|44000|precio de la ultima venta ($44000) para el maximo de compra
 ped:p1785263851692#Bare Vanilla=venta|44000|precio de la ultima venta de ese color ($44000) para el maximo de compra
 ped:p1785263851692#Pure Seduction=venta|49040|precio de la ultima venta de ese color ($49040) para el maximo de compra
 ped:p1785263851692#Velvet Petals=venta|44000|precio de la ultima venta de ese color ($44000) para el maximo de compra
-ped:p1782918468593=u|5|Hola Tito! Te pido 5: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 5 más cubrimos un mes.|cub=0
+ped:p1782918468593=u|8|Hola Tito! Te pido 8: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 8 más cubrimos 52 días (🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12).|cub=0
 ped:p1782918468593=venta|81840|precio de la competencia (deja 38%) para el maximo de compra
-ped:p1782872153975#azul=u|0|Hola Tito! El azul no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $203790, lo vuelvo a pedir.
-ped:p1782872153975#black=u|0|Hola Tito! El black no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 0%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $202590, lo vuelvo a pedir.
-ped:p1782872153975#white=u|0|Hola Tito! El white no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $201090, lo vuelvo a pedir.
+ped:p1782872153975#azul=u|0|Hola Tito! El azul no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $203790, lo vuelvo a pedir.
+ped:p1782872153975#black=u|0|Hola Tito! El black no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $202690, lo vuelvo a pedir.
+ped:p1782872153975#white=u|0|Hola Tito! El white no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $201190, lo vuelvo a pedir.
 ped:p1782872153975=venta|121500|precio de la ultima venta ($121500) para el maximo de compra
 ped:p1782872153975#azul=venta|177520|precio de la ultima venta de ese color ($177520) para el maximo de compra
-ped:p1782872153975#black=venta|170000|precio de la ultima venta de ese color ($170000) para el maximo de compra
+ped:p1782872153975#black=venta|172490|precio de la ultima venta de ese color ($172490) para el maximo de compra
 ped:p1782872153975#white=venta|121500|precio de la ultima venta de ese color ($121500) para el maximo de compra
 ped:p178287291398901=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $108790, lo vuelvo a pedir.|cub=0
 ped:p178287291398901=venta|95680|precio de la ultima venta ($95680) para el maximo de compra
@@ -454,16 +449,16 @@ ped:p1784044584619=venta|87630|precio de la ultima venta ($87630) para el maximo
 ped:p1788893559056=u|0|Hola Tito! Ted Lapidus Rumba: Nissei no lo tiene. No se pide hasta que vuelva|cub=0
 ped:p1788893559056=venta|86990|precio de la ultima venta ($86990) para el maximo de compra
 ped:p1781714867137=u|22|Hola Tito! Te pido 22: está agotado y cuando había se vendían unos 21 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 22 más cubrimos un mes.|cub=0
-ped:p1781714867137=venta|53360|precio de la competencia (deja 51%) para el maximo de compra
-ped:p17833581096731=u|0|Hola Tito! Este no lo compres: lo tuvimos 32 días en Full a $192590 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=0
+ped:p1781714867137=venta|54499|precio de la venta mas cara de 365 dias (deja 54%) para el maximo de compra
+ped:p17833581096731=u|0|Hola Tito! Este no lo compres: lo tuvimos 33 días en Full a $192590 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=0
 ped:p17833581096731=venta|176770|precio de la ultima venta ($176770) para el maximo de compra
-ped:p1784044596199=u|0|Hola Tito! Este no hace falta: se venden unos 2 por mes y ya hay 2, alcanza para unos 30 días.|cub=0
-ped:p1784044596199=venta|202970|precio de la competencia (deja 145%) para el maximo de compra
+ped:p1784044596199=u|2|Hola Tito! Te pido 2: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 2. Con 2 más cubrimos 52 días (🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12). Según lo que lo pagues: para estas 2 conviene pagarlo hasta US$ 21,75 (vendiéndolo a $80.000). Si cuesta más de US$ 21,75, no lo compres.|cub=0
+ped:p1784044596199=venta|202970|precio de la competencia (deja 144%) para el maximo de compra
 ped:p1780106846533=u|0|Hola Tito! Redmi Pad 2: no se repone más (5a de Matías del 22/10, las 2 últimas se vendieron a pérdida por descarte)|cub=0
 ped:p1780106846533=venta|376236|precio de la ultima venta ($376236) para el maximo de compra
 ped:p17833581096736=u|0|Hola Tito! SSD 1TB: el precio de Paraguay no da el 35% y el precio de ML quedó inflado (vendía 1 cada 3 meses). No traer por ahora|cub=0
-ped:p17833581096736=venta|363680|precio de la ultima venta ($363680) para el maximo de compra
-ped:p1788743923415=u|1|Hola Tito! Te pido 1: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 1 más cubrimos un mes. Según lo que lo pagues: para estas 1 conviene pagarlo hasta US$ 56,37 (vendiéndolo a $180.090). Si cuesta más de US$ 56,37, no lo compres.|cub=1
+ped:p17833581096736=venta|438900|precio de la competencia (deja 44%) para el maximo de compra
+ped:p1788743923415=u|1|Hola Tito! Te pido 1: se venden unos 2 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 1 más cubrimos un mes. Según lo que lo pagues: para estas 1 conviene pagarlo hasta US$ 56,36 (vendiéndolo a $180.090). Si cuesta más de US$ 56,36, no lo compres.|cub=1
 ped:p1788743923415=venta|179330|precio de la competencia (deja 51%) para el maximo de compra
 ped:p1788886453710=u|0|Hola Tito! Cool Water Woman: no se puede reponer a un precio que deje el 35%. No se pide|cub=0
 ped:p1788886453710=venta|92499|precio de la ultima venta ($92499) para el maximo de compra
@@ -474,11 +469,10 @@ ped:p17833581096732=venta|429450|precio de la venta mas cara de 365 dias (deja 3
 ped:p1788904839781#Bare Vanilla=u|0|Hola Tito! STARLIT Bare Vanilla: no se puede reponer. No se pide
 ped:p1788904839781#Love Spell=u|0|Hola Tito! El Love Spell no hace falta: se venden unos 0 por mes y ya hay 0.
 ped:p1788904839781#Pure Seduction=u|0|Hola Tito! El Pure Seduction no hace falta: se venden unos 0 por mes y ya hay 0.
-ped:p1788904839781#Velvet Petals=u|0|Hola Tito! El Velvet Petals no hace falta: se venden unos 0 por mes y ya hay 1.
-ped:p1788904839781=venta|63490|precio de la competencia (deja 41%) para el maximo de compra
+ped:p1788904839781#Velvet Petals=u|0|Hola Tito! El Velvet Petals no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 13%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $62890, lo vuelvo a pedir.
+ped:p1788904839781=venta|45000|precio de la ultima venta ($45000) para el maximo de compra
 ped:p1788904839781#Bare Vanilla=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
 ped:p1788904839781#Pure Seduction=venta|45000|precio de la ultima venta de ese color ($45000) para el maximo de compra
-ped:p1788904839781#Velvet Petals=venta|63490|precio de la competencia de ese color (deja 41%) para el maximo de compra
 ped:p17904445729868=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $46990, lo vuelvo a pedir.|cub=0
 ped:p17904445729868=venta|45990|precio de la ultima venta ($45990) para el maximo de compra
 ped:p178287291398904=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 13%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $305390, lo vuelvo a pedir.|cub=0
@@ -493,7 +487,7 @@ ped:p179218076128818=u|0|Hola Tito! No hace falta: ya hay 6 entre Full, la ofici
 ped:p179218076128818=venta|126500|precio de la competencia (deja 48%) para el maximo de compra
 ped:p17833581096735=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -8%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $353390, lo vuelvo a pedir.|cub=0
 ped:p17833581096735=venta|340000|precio de la ultima venta ($340000) para el maximo de compra
-ped:p1784044826040=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $155690, lo vuelvo a pedir.|cub=0
+ped:p1784044826040=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $155690, lo vuelvo a pedir.|cub=0
 ped:p1784044826040=venta|129999|precio de la ultima venta ($129999) para el maximo de compra
 ped:p1788743899629=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p1788743899629=venta|208980|precio de la competencia (deja 39%) para el maximo de compra
@@ -501,11 +495,11 @@ ped:p1788905033350#Love Spell=u|0|Hola Tito! El Love Spell no lo compres por aho
 ped:p1788905033350=venta|62990|precio normal de venta para el maximo de compra
 ped:p17904445725051=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p17904445725051=venta|154000|precio de la competencia (deja 53%) para el maximo de compra
-ped:p17904445726433=u|0|Hola Tito! Este no hace falta: se venden unos 1 por mes y ya hay 1, alcanza para unos 30 días.|cub=1
+ped:p17904445726433=u|1|Hola Tito! Te pido 1: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 1. Con 1 más cubrimos 52 días (🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12).|cub=1
 ped:p17904445726433=venta|72040|precio de la competencia (deja 39%) para el maximo de compra
 ped:p17904445728496=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 22%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $46390, lo vuelvo a pedir.|cub=0
 ped:p17904445728496=venta|42810|precio de la ultima venta ($42810) para el maximo de compra
-ped:p17904445730559=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 6%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $44090, lo vuelvo a pedir.|cub=0
+ped:p17904445730559=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $44390, lo vuelvo a pedir.|cub=0
 ped:p17904445730559=venta|46990|precio normal de venta para el maximo de compra
 ped:p179044457319111=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 29%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $175290, lo vuelvo a pedir.|cub=0
 ped:p179044457319111=venta|174990|precio de la ultima venta ($174990) para el maximo de compra
@@ -516,7 +510,9 @@ ped:p1791244143398=venta|55990|precio de la ultima venta ($55990) para el maximo
 ped:p1791244143398#Pure Seduction=venta|55990|precio de la ultima venta de ese color ($55990) para el maximo de compra
 ped:p1791316566103=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p1791316566103=venta|40690|precio de la competencia (deja 47%) para el maximo de compra
-ped:p1791335371049=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 19%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $27690, lo vuelvo a pedir.|cub=0
+ped:p1791316673662=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 33%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $109890, lo vuelvo a pedir.|cub=0
+ped:p1791316673662=venta|97990|precio de la ultima venta ($97990) para el maximo de compra
+ped:p1791335371049=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 18%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $27690, lo vuelvo a pedir.|cub=0
 ped:p1791335371049=venta|28990|precio de la ultima venta ($28990) para el maximo de compra
 ped:p1791335435353=u|0|Hola Tito! Cuba Prestige Classic: no se puede comprar: Nissei no lo tiene o el precio de Paraguay no da el % (completa del 28/10). No se pide hasta que vuelva|cub=0
 ped:p1791335435353=venta|50000|precio de la ultima venta ($50000) para el maximo de compra
@@ -524,19 +520,19 @@ ped:p17921807531974=u|0|Hola Tito! Este no lo compres por ahora: la competencia 
 ped:p17921807531974=venta|71990|precio de la ultima venta ($71990) para el maximo de compra
 ped:p17921807554518=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=0
 ped:p17921807554518=venta|32990|precio de la competencia (deja 64%) para el maximo de compra
-ped:p17921807560659=u|1|Hola Tito! Te pido 1: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 1 más cubrimos un mes.|cub=0
+ped:p17921807560659=u|2|Hola Tito! Te pido 2: se venden unos 1 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 2 más cubrimos 52 días (🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12).|cub=0
 ped:p17921807560659=venta|32999|precio de la competencia (deja 68%) para el maximo de compra
-ped:p17930313908980=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($146490). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
+ped:p17930313908980=u|2|Hola Tito! Te pido 2 de prueba: antes se vendían unos 1 por mes, pero nunca lo probamos a un precio que nos deje 35% ($146590). Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.|cub=0
 ped:p17930313908980=venta|144990|precio de la ultima venta ($144990) para el maximo de compra
-ped:p17833581096733=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 8%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $150490, lo vuelvo a pedir.|cub=0
+ped:p17833581096733=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 8%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $144790, lo vuelvo a pedir.|cub=0
 ped:p17833581096733=venta|144990|nunca vendio: precio de hoy para el maximo de compra
 ped:p1784044625340=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1. No cuento 1 que se remataron porque estaban parados.|cub=0
 ped:p1784044625340=venta|238150|precio de la competencia (deja 158%) para el maximo de compra
-ped:p17904445724350=u|0|Hola Tito! Este no lo compres: lo tuvimos 35 días en Full a $242990 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=0
+ped:p17904445724350=u|0|Hola Tito! Este no lo compres: lo tuvimos 36 días en Full a $242990 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=0
 ped:p17904445724350=venta|290990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17904445725742=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $66590, lo vuelvo a pedir.|cub=1
+ped:p17904445725742=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $64090, lo vuelvo a pedir.|cub=1
 ped:p17904445725742=venta|62990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179044457312310=u|0|Hola Tito! Este no lo compres: lo tuvimos 34 días en Full a $63190 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=1
+ped:p179044457312310=u|0|Hola Tito! Este no lo compres: lo tuvimos 35 días en Full a $63190 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.|cub=1
 ped:p179044457312310=venta|73990|nunca vendio: precio de hoy para el maximo de compra
 ped:p1791316782281=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=0
 ped:p1791316782281=venta|42290|precio de la competencia (deja 71%) para el maximo de compra
@@ -547,11 +543,11 @@ ped:p17919188223061=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto d
 ped:p17919188223782=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
 ped:p17919188224513=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
 ped:p17919188225224=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
-ped:p17921807511030=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 9%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $169690, lo vuelvo a pedir.|cub=0
+ped:p17921807511030=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 9%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $163190, lo vuelvo a pedir.|cub=0
 ped:p17921807511030=venta|162990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17921807516611=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p17921807516611=venta|186840|precio de la competencia (deja 39%) para el maximo de compra
-ped:p17921807521842=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 5%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $66490, lo vuelvo a pedir.|cub=0
+ped:p17921807521842=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $66490, lo vuelvo a pedir.|cub=0
 ped:p17921807521842=venta|67990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17921807526863=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17921807526863=venta|65000|nunca vendio: precio de hoy para el maximo de compra
@@ -559,10 +555,10 @@ ped:p17921807538125=u|0|Hola Tito! Este no lo compres por ahora: la competencia 
 ped:p17921807538125=venta|132990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17921807544276=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 25%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $79890, lo vuelvo a pedir.|cub=0
 ped:p17921807544276=venta|86990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17921807549557=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 3%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $44090, lo vuelvo a pedir.|cub=0
+ped:p17921807549557=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 1%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $44190, lo vuelvo a pedir.|cub=0
 ped:p17921807549557=venta|46990|nunca vendio: precio de hoy para el maximo de compra
 ped:p179218075658610=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=0
-ped:p179218075719111=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -22%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $49790, lo vuelvo a pedir.|cub=0
+ped:p179218075719111=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja -22%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $50890, lo vuelvo a pedir.|cub=0
 ped:p179218075719111=venta|51990|nunca vendio: precio de hoy para el maximo de compra
 ped:p179218075780612=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p179218075780612=venta|328780|precio de la competencia (deja 97%) para el maximo de compra
@@ -572,11 +568,11 @@ ped:p179218075893514=u|0|Hola Tito! Este no lo compres por ahora: la competencia
 ped:p179218075893514=venta|71990|nunca vendio: precio de hoy para el maximo de compra
 ped:p179218075954815=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $22690, lo vuelvo a pedir.|cub=0
 ped:p179218075954815=venta|23990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218076016416=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $22290, lo vuelvo a pedir.|cub=0
+ped:p179218076016416=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 7%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $22290, lo vuelvo a pedir.|cub=0
 ped:p179218076016416=venta|22990|nunca vendio: precio de hoy para el maximo de compra
 ped:p179218076065917=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 32%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $20290, lo vuelvo a pedir.|cub=0
 ped:p179218076065917=venta|23990|nunca vendio: precio de hoy para el maximo de compra
-ped:p179218076181119=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 6%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $142390, lo vuelvo a pedir.|cub=0
+ped:p179218076181119=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 6%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $136990, lo vuelvo a pedir.|cub=0
 ped:p179218076181119=venta|136990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17926955062221=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $150790, lo vuelvo a pedir.|cub=0
 ped:p17926955062221=venta|151990|nunca vendio: precio de hoy para el maximo de compra
@@ -589,23 +585,25 @@ ped:p17926955074124=venta|126990|nunca vendio: precio de hoy para el maximo de c
 ped:p17926955078115=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 30%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $171290, lo vuelvo a pedir.|cub=0
 ped:p17926955078115=venta|239990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17926955082106=u|0|Hola Tito! Este no lo compres: todavía no sé cuánto deja en ML.|cub=1
+ped:p1792787629845=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 22%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $26890, lo vuelvo a pedir.|cub=0
+ped:p1792787629845=venta|32990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17930313909701=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17930313909701=venta|131990|precio de la competencia (deja 40%) para el maximo de compra
 ped:p17930313910422=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
-ped:p17930313910422=venta|129010|precio de la competencia (deja 69%) para el maximo de compra
+ped:p17930313910422=venta|122560|precio de la competencia (deja 62%) para el maximo de compra
 ped:p17930313911123=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17930313911123=venta|158990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17930313911854=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17930313911854=venta|139990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17930313912565=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 13%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $63090, lo vuelvo a pedir.|cub=0
 ped:p17930313912565=venta|79990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17930313913256=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p17930313913256=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p17930313913256=venta|63660|precio de la competencia (deja 37%) para el maximo de compra
 ped:p17930313913987=u|0|Hola Tito! Este no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 23%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $105990, lo vuelvo a pedir.|cub=0
 ped:p17930313913987=venta|114990|nunca vendio: precio de hoy para el maximo de compra
-ped:p17934023964270=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p17934023964270=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 1.|cub=0
 ped:p17934023964270=venta|218230|precio de la competencia (deja 79%) para el maximo de compra
-ped:p17934023965311=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
+ped:p17934023965311=u|0|Hola Tito! Este no hace falta: se venden unos 0 por mes y ya hay 2.|cub=0
 ped:p17934023965311=venta|132540|precio de la competencia (deja 126%) para el maximo de compra
 ped:p17934023966843=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17934023966843=venta|164980|precio de la competencia (deja 64%) para el maximo de compra
@@ -646,17 +644,17 @@ ped:p17936390147266=venta|109990|precio de la competencia (deja 177%) para el ma
 ped:p17936390148467=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=0
 ped:p17936390148467=venta|391160|precio de la competencia (deja 174%) para el maximo de compra
 ped:p17938955327990=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
-ped:p17938955327990=venta|116990|nunca vendio: precio de hoy para el maximo de compra
+ped:p17938955327990=venta|108330|precio de la competencia (deja 57%) para el maximo de compra
 ped:p17938955328841=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=2
 ped:p17938955328841=venta|134990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17938955329692=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
-ped:p17938955329692=venta|567590|precio de la competencia (deja 122%) para el maximo de compra
+ped:p17938955329692=venta|619510|precio de la competencia (deja 138%) para el maximo de compra
 ped:p17938955330543=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17938955330543=venta|149990|nunca vendio: precio de hoy para el maximo de compra
 ped:p17938955331394=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17938955331394=venta|115710|precio de la competencia (deja 64%) para el maximo de compra
 ped:p17938955332245=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
-ped:p17938955332245=venta|186660|precio de la competencia (deja 136%) para el maximo de compra
+ped:p17938955332245=venta|179070|precio de la competencia (deja 129%) para el maximo de compra
 ped:p17938955333556=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
 ped:p17938955333556=venta|428220|precio de la competencia (deja 163%) para el maximo de compra
 ped:p17938955334407=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
@@ -666,13 +664,13 @@ ped:p17938955335268=venta|96260|precio de la competencia (deja 65%) para el maxi
 ped:p17938955336109=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=2
 ped:p17938955336109=venta|87700|precio de la competencia (deja 62%) para el maximo de compra
 ped:p179389553369510=u|0|Hola Tito! Este no lo compres: todavía no se vendió nunca.|cub=1
-ped:p179389553369510=venta|427990|nunca vendio: precio de hoy para el maximo de compra
+ped:p179389553369510=venta|561330|precio de la competencia (deja 122%) para el maximo de compra
 ped:p1779912655490#1.4 Sexy Men=u|0|Hola Tito! El 1.4 Sexy Men no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#1.4 W Mujer=u|0|Hola Tito! El 1.4 W Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 6%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#1.4M Hombre=u|0|Hola Tito! El 1.4M Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 27%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17790, lo vuelvo a pedir.
 ped:p1779912655490#Abismo=u|0|Hola Tito! El Abismo no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 19%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba.
 ped:p1779912655490#Acqua=u|0|Hola Tito! Acqua: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más.
-ped:p1779912655490#Barbarella=u|0|Hola Tito! El Barbarella no hace falta: se venden unos 9 por mes y ya hay 19, alcanza para unos 63 días.
+ped:p1779912655490#Barbarella=u|1|Hola Tito! Te pido 1 del Barbarella: se venden unos 10 por mes y entre Full, la oficina y lo que viene en camino hay 22. Con 1 más cubrimos 67 días (el Paulvic se pide cada 15 días · 🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12).
 ped:p1779912655490#Bella=u|0|Hola Tito! El Bella no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 17%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17490, lo vuelvo a pedir.
 ped:p1779912655490#Blue Men=u|0|Hola Tito! El Blue Men no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17290, lo vuelvo a pedir.
 ped:p1779912655490#Blush=u|0|Hola Tito! El Blush no lo compres: todavía no se vendió nunca.
@@ -680,44 +678,44 @@ ped:p1779912655490#Boy=u|0|Hola Tito! El Boy no lo compres por ahora: la compete
 ped:p1779912655490#Dark=u|0|Hola Tito! El Dark no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Debutant Hombre=u|0|Hola Tito! El Debutant Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 27%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Debutante Mujer=u|0|Hola Tito! El Debutante Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
-ped:p1779912655490#Dream Way=u|0|Hola Tito! El Dream Way no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17590, lo vuelvo a pedir.
+ped:p1779912655490#Dream Way=u|0|Hola Tito! El Dream Way no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
 ped:p1779912655490#Flores=u|0|Hola Tito! El Flores no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
-ped:p1779912655490#Free Love=u|0|Hola Tito! El Free Love no lo compres: lo tuvimos 31 días en Full a $17890 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
+ped:p1779912655490#Free Love=u|0|Hola Tito! El Free Love no lo compres: lo tuvimos 32 días en Full a $17890 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
 ped:p1779912655490#Fuego=u|0|Hola Tito! El Fuego no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Gentleman=u|0|Hola Tito! El Gentleman no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17290, lo vuelvo a pedir.
-ped:p1779912655490#Gold Hombre=u|0|Hola Tito! El Gold Hombre no lo compres: lo tuvimos 31 días en Full a $17590 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
+ped:p1779912655490#Gold Hombre=u|0|Hola Tito! El Gold Hombre no lo compres: lo tuvimos 32 días en Full a $17590 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
 ped:p1779912655490#Gold Lady=u|0|Hola Tito! El Gold Lady no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
-ped:p1779912655490#Good Mujer=u|0|Hola Tito! El Good Mujer no hace falta: se venden unos 4 por mes y ya hay 30, alcanza para unos 210 días.
+ped:p1779912655490#Good Mujer=u|0|Hola Tito! El Good Mujer no hace falta: se venden unos 4 por mes y ya hay 30, alcanza para unos 240 días.
 ped:p1779912655490#Green=u|0|Hola Tito! El Green no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
 ped:p1779912655490#H For men=u|0|Hola Tito! El H For men no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
-ped:p1779912655490#H Woman=u|0|Hola Tito! El H Woman no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 19%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17690, lo vuelvo a pedir.
+ped:p1779912655490#H Woman=u|0|Hola Tito! El H Woman no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17590, lo vuelvo a pedir.
 ped:p1779912655490#Héroes For Men=u|0|Hola Tito! El Héroes For Men no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17790, lo vuelvo a pedir.
 ped:p1779912655490#Hot=u|0|Hola Tito! El Hot no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17590, lo vuelvo a pedir.
 ped:p1779912655490#Indigo Mujer=u|0|Hola Tito! Indigo Mujer: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más.
 ped:p1779912655490#Invictus=u|0|Hola Tito! Invictus: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local.
 ped:p1779912655490#Jules Hombre=u|0|Hola Tito! El Jules Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
-ped:p1779912655490#L´extase=u|4|Hola Tito! Te pido 4 del L´extase: se venden unos 4 por mes y entre Full, la oficina y lo que viene en camino hay 3. Con 4 más cubrimos un mes y medio (el Paulvic se pide cada 15 días). Según lo que lo pagues: para estas 4 conviene pagarlo hasta $9.358 (vendiéndolo a $21.990). Si lo conseguís a menos de $4.244, podés traer hasta 53. Si cuesta más de $9.358, no lo compres.
+ped:p1779912655490#L´extase=u|0|Hola Tito! El L´extase no hace falta: se venden unos 3 por mes y ya hay 8, alcanza para unos 72 días.
 ped:p1779912655490#Leyton Hombre=u|0|Hola Tito! El Leyton Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
 ped:p1779912655490#Libre=u|0|Hola Tito! El Libre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 14%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17590, lo vuelvo a pedir.
 ped:p1779912655490#Luna=u|0|Hola Tito! El Luna no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Miss Mujer=u|0|Hola Tito! Miss Mujer: no te lo pido más. Lo pedimos y no vino, así que lo damos por que no viene más.
-ped:p1779912655490#Only Glow=u|7|Hola Tito! Te pido 7 del Only Glow: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 0. Con 7 más cubrimos un mes y medio (el Paulvic se pide cada 15 días). Según lo que lo pagues: para estas 7 conviene pagarlo hasta $9.358 (vendiéndolo a $21.990). Si lo conseguís a menos de $5.075, podés traer hasta 13. Si cuesta más de $9.358, no lo compres.
-ped:p1779912655490#Paradise=u|2|Hola Tito! Te pido 2 del Paradise: se venden unos 3 por mes y entre Full, la oficina y lo que viene en camino hay 3. Con 2 más cubrimos un mes y medio (el Paulvic se pide cada 15 días). Según lo que lo pagues: para estas 2 conviene pagarlo hasta $6.336 (vendiéndolo a $14.360). Si lo conseguís a menos de $4.282, podés traer hasta 36. Si cuesta más de $6.336, no lo compres.
+ped:p1779912655490#Only Glow=u|1|Hola Tito! Te pido 1 del Only Glow: se venden unos 5 por mes y entre Full, la oficina y lo que viene en camino hay 10. Con 1 más cubrimos 67 días (el Paulvic se pide cada 15 días · 🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12). Según lo que lo pagues: para estas 1 conviene pagarlo hasta $9.356 (vendiéndolo a $21.990). Si lo conseguís a menos de $5.074, podés traer hasta 9. Si cuesta más de $9.356, no lo compres.
+ped:p1779912655490#Paradise=u|0|Hola Tito! El Paradise no hace falta: se venden unos 3 por mes y ya hay 8, alcanza para unos 69 días.
 ped:p1779912655490#pasion=u|0|Hola Tito! El pasion no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
-ped:p1779912655490#Persea=u|0|Hola Tito! El Persea no hace falta: se venden unos 14 por mes y ya hay 29, alcanza para unos 63 días.
+ped:p1779912655490#Persea=u|0|Hola Tito! El Persea no hace falta: se venden unos 13 por mes y ya hay 32, alcanza para unos 75 días.
 ped:p1779912655490#Phantom=u|0|Hola Tito! Phantom: no te lo pido más. ML lo dio de baja para siempre por la marca del nombre. Lo que hay en la oficina va al local.
 ped:p1779912655490#Privé Hombre=u|0|Hola Tito! El Privé Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
-ped:p1779912655490#Red Hombre=u|0|Hola Tito! El Red Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 12%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
+ped:p1779912655490#Red Hombre=u|0|Hola Tito! El Red Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Rose Mujer=u|0|Hola Tito! El Rose Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Scarf=u|0|Hola Tito! El Scarf no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17590, lo vuelvo a pedir.
 ped:p1779912655490#Sexy Mujer=u|0|Hola Tito! El Sexy Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 4%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17790, lo vuelvo a pedir.
 ped:p1779912655490#Sí=u|0|Hola Tito! El Sí no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 27%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490#Silver Hombre=u|0|Hola Tito! El Silver Hombre no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 24%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
-ped:p1779912655490#Teikirisi=u|0|Hola Tito! El Teikirisi no hace falta: se venden unos 1 por mes y ya hay 4, alcanza para unos 172 días.
-ped:p1779912655490#Transparent Mujer=u|0|Hola Tito! El Transparent Mujer no lo compres: lo tuvimos 31 días en Full a $17790 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
+ped:p1779912655490#Teikirisi=u|0|Hola Tito! El Teikirisi no hace falta: se venden unos 1 por mes y ya hay 4, alcanza para unos 168 días.
+ped:p1779912655490#Transparent Mujer=u|0|Hola Tito! El Transparent Mujer no lo compres: lo tuvimos 32 días en Full a $17790 (el precio que nos deja 35%) o más caro y no se vendió ninguno, así que no lo pedimos más.
 ped:p1779912655490#Turbulence=u|0|Hola Tito! El Turbulence no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 23%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17890, lo vuelvo a pedir.
 ped:p1779912655490#Victory=u|0|Hola Tito! El Victory no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 26%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
-ped:p1779912655490#Witch Night=u|4|Hola Tito! Te pido 4 del Witch Night: se venden unos 13 por mes y entre Full, la oficina y lo que viene en camino hay 16. Con 4 más cubrimos un mes y medio (el Paulvic se pide cada 15 días).
+ped:p1779912655490#Witch Night=u|4|Hola Tito! Te pido 4 del Witch Night: se venden unos 13 por mes y entre Full, la oficina y lo que viene en camino hay 26. Con 4 más cubrimos 67 días (el Paulvic se pide cada 15 días · 🎄 pico de Navidad ×2,0 (🎁 regalo): 22 días del pedido caen del 03/12 al 24/12).
 ped:p1779912655490#Young Mujer=u|0|Hola Tito! El Young Mujer no lo compres por ahora: la competencia lo vende más barato (a su precio nos deja 11%) y nunca lo vendimos a un precio que nos deje 35%. No hago compra de prueba: si lo que hay se vende a $17390, lo vuelvo a pedir.
 ped:p1779912655490=venta|23700|precio de la venta mas cara de 365 dias (deja 87%) para el maximo de compra
 ped:p1779912655490#1.4 Sexy Men=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
@@ -738,7 +736,7 @@ ped:p1779912655490#Free Love=venta|14360|precio de la ultima venta de ese color 
 ped:p1779912655490#Fuego=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
 ped:p1779912655490#Gentleman=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
 ped:p1779912655490#Gold Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
-ped:p1779912655490#Gold Lady=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
+ped:p1779912655490#Gold Lady=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
 ped:p1779912655490#Good Mujer=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 74%) para el maximo de compra
 ped:p1779912655490#Green=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
 ped:p1779912655490#H For men=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
@@ -760,7 +758,7 @@ ped:p1779912655490#Persea=venta|19490|precio de la venta mas cara de 365 dias de
 ped:p1779912655490#Phantom=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Privé Hombre=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Red Hombre=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
-ped:p1779912655490#Rose Mujer=venta|14950|precio de la ultima venta de ese color ($14950) para el maximo de compra
+ped:p1779912655490#Rose Mujer=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
 ped:p1779912655490#Scarf=venta|21990|precio de la ultima venta de ese color ($21990) para el maximo de compra
 ped:p1779912655490#Sexy Mujer=venta|14360|precio de la ultima venta de ese color ($14360) para el maximo de compra
 ped:p1779912655490#Sí=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
@@ -771,295 +769,296 @@ ped:p1779912655490#Turbulence=venta|14360|precio de la ultima venta de ese color
 ped:p1779912655490#Victory=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
 ped:p1779912655490#Witch Night=venta|21990|precio de la venta mas cara de 365 dias de ese color (deja 74%) para el maximo de compra
 ped:p1779912655490#Young Mujer=venta|14990|precio de la ultima venta de ese color ($14990) para el maximo de compra
-ped:p1779912655600=esc|3310:745:15.1111:89:18:0,3890:1057:9.8000:0:5:0,17490:7310:1.0000:0:13:1,26290:11603:0.3333:0:3:0|escalera de compra
-ped:p1779912655660#Blanco=esc|3000:577:7.0000:0:9:0,3450:818:3.3636:0:11:0,3990:1106:3.6667:0:12:0,17490:7285:0.4615:0:13:1|escalera de compra
-ped:p1779912655660#Rosa=esc|2800:470:8.5556:433:9:0,3990:1106:1.2500:0:4:0,5190:1748:8.0000:399:7:1,17490:7285:0.4000:0:10:0|escalera de compra
-ped:p1779912656320=esc|3510:836:3.8222:66:45:0,3910:1050:2.6552:0:29:1,4150:1179:1.3333:0:3:0,4790:1523:0.0000:0:2:0|escalera de compra
-ped:p1779912656330=esc|3200:691:3.6364:124:11:0,3420:810:3.5581:120:43:0,4290:1281:0.9091:0:11:1,6490:2472:0.0000:0:13:0|escalera de compra
-ped:p1779912656340=esc|4300:1234:4.6364:161:22:0,4810:1509:4.6364:161:33:1,5290:1768:2.5294:35:34:0,10390:4517:0.0667:0:15:0|escalera de compra
-ped:p1779912656210#2 Patas=esc|2780:372:5.7778:287:9:0,2990:479:6.0000:300:6:0,3140:556:2.3529:81:17:1,3490:734:0.8636:0:22:0|escalera de compra
-ped:p1779912656210#3 Patas=esc|2654:308:4.1818:60:33:0,3490:734:0.6364:0:11:0,4990:1497:0.3125:0:16:1,6490:2261:0.0000:0:8:0|escalera de compra
-ped:p1779912655590#Azul=esc|3200:621:1.6136:0:132:0,3520:788:3.0000:23:15:1,3870:970:0.4444:0:9:0,17490:7053:0.0769:0:13:0|escalera de compra
-ped:p1779912655590#Rojo=esc|2999:516:1.8108:0:37:0,3200:621:2.1504:0:133:0,3520:788:1.0000:0:12:0,7490:2856:0.5000:0:18:1|escalera de compra
-ped:p1779912655620#Azul=esc|13500:6028:0.5000:30:18:0,15500:6058:0.4634:28:41:0,14600:6611:0.5556:34:18:0,19640:8252:0.0333:2:30:1|escalera de compra
-ped:p1779912655620#Azul Acero=esc|20140:8517:0.7273:42:11:1,21150:9052:0.4706:26:17:0,23990:10557:0.0000:0:27:0|escalera de compra
-ped:p1779912655620#Beige=esc|13500:6028:0.3651:22:63:0,15500:6058:0.2133:13:75:0,17500:7118:0.5000:30:18:0,19400:8125:0.3000:18:20:1|escalera de compra
-ped:p1779912655620#Beige oscuro=esc|13500:6028:0.2333:14:30:0,15500:6058:0.2500:15:4:0,17500:7118:0.4286:26:21:0,19380:8114:0.4615:28:13:1|escalera de compra
-ped:p1779912655620#Blanco=esc|13500:6028:0.2459:15:61:0,15500:6058:0.3281:20:64:0,18600:7701:0.1591:10:44:0,19640:8252:0.2927:18:41:1|escalera de compra
-ped:p1779912655620#Gris=esc|18600:7701:0.5862:21:29:0,20720:8824:0.6316:24:19:1,21760:9375:0.2000:0:15:0,24990:10663:0.0385:0:26:0|escalera de compra
-ped:p1779912655620#Gris Oscuro=esc|15500:6058:0.8065:25:31:0,18600:7701:0.5238:8:21:0,19620:8241:0.1667:0:24:0,24990:10663:0.2609:0:23:1|escalera de compra
-ped:p1779912655620#Negro=esc|13500:6028:0.8571:52:35:0,15500:6058:1.0400:63:25:0,18600:7701:1.1053:67:19:0,20010:8448:0.7000:42:20:1|escalera de compra
-ped:p1779912655620#Rojo=esc|13500:6028:0.3889:24:90:0,15500:6058:0.7222:44:54:0,14600:6611:0.7857:47:14:0,18600:7701:0.3750:23:40:1|escalera de compra
-ped:p1779912655620#Rosa=esc|13500:6028:0.3188:19:69:0,15500:6058:0.2955:18:44:0,17500:7118:0.2857:17:21:0,18600:7701:0.3750:23:16:1|escalera de compra
-ped:p1779912655620#Rosa Chicle=esc|15500:6058:0.1818:11:11:0,17500:7118:0.0526:3:19:0,19430:8141:0.0385:3:26:1|escalera de compra
-ped:p1779912655620#Terracota=esc|20140:8517:0.2000:3:15:1,21150:9052:0.6667:31:6:0,32790:14796:0.0278:0:36:0|escalera de compra
-ped:p1779912655620#Verde Musgo=esc|17500:7118:0.0000:0:59:1|escalera de compra
-ped:p1779912655620#Violeta=esc|13500:6028:0.5000:30:16:0,15500:6058:0.4667:28:15:0,14600:6611:0.5556:34:9:0,18600:7701:0.4500:27:20:1|escalera de compra
-ped:p1779912655900#Comun Beige=esc|2355:0:4.1818:214:11:0,3140:362:1.5385:56:13:0,3490:541:0.8000:11:5:0,20990:8463:0.5000:0:8:1|escalera de compra
-ped:p1779912655900#Comun Negro=esc|2310:0:1.9167:12:12:0,3060:321:1.3846:0:13:0,5290:1463:0.7500:0:8:1,5590:1617:0.6000:0:15:0|escalera de compra
-ped:p1779912655900#Triples Beige=esc|3790:695:1.1837:35:49:0,3980:792:2.1429:93:7:0,10990:4382:0.5455:0:11:1,14290:6073:0.3000:0:10:0|escalera de compra
-ped:p1779912655900#Triples Negro=esc|3790:695:1.5135:60:37:0,3980:792:2.1667:99:6:0,6490:2078:1.5000:59:6:0,11690:4741:0.2000:0:15:1|escalera de compra
-ped:p1779912655900#Triples Rosa=esc|3790:695:0.5341:0:88:0,3980:792:0.3571:0:14:0,5490:1565:0.2222:0:9:0,10790:4280:0.2000:0:10:1|escalera de compra
-ped:p1779912655880=esc|4640:1321:1.2195:0:41:0,4880:1445:1.3750:4:32:1,5390:1709:0.7500:0:8:0,6490:2276:0.2105:0:19:0|escalera de compra
-ped:p1781284068222#Berry Rush=esc|16120:6182:1.0000:44:1:0,14999:6622:0.5000:14:10:0,18150:7277:1.2632:60:19:1|escalera de compra
-ped:p1781284068222#Brisa Marina=esc|14999:6622:0.3636:16:11:0,18150:7277:1.0000:54:24:1,29890:13180:0.0000:0:3:0,32990:14852:1.0000:54:2:0|escalera de compra
-ped:p1781284068222#Jasmín=esc|14999:6622:0.2727:0:11:0,18150:7277:0.5238:8:42:0,23990:10427:0.1667:0:12:1,49690:18317:0.0000:0:11:0|escalera de compra
-ped:p1781284068222#Lavanda=esc|14999:6622:0.5000:10:12:0,18150:7277:0.4722:9:36:1,25990:11076:0.0000:0:9:0,32990:14852:0.0588:0:17:0|escalera de compra
-ped:p1781284068222#Limon=esc|16150:6198:4.0000:218:1:0,14999:6622:0.1429:0:21:0,18150:7277:1.4444:65:18:1,20990:8809:0.0000:0:1:0|escalera de compra
-ped:p1781284068222#Rosas=esc|14999:6622:0.1667:0:24:0,18150:7277:0.6429:10:28:1,25990:11076:0.0000:0:12:0,32990:14852:0.0714:0:14:0|escalera de compra
-ped:p1779912655610#Azul=esc|13999:5934:0.3846:23:13:1|escalera de compra
-ped:p1779912655610#Beige=esc|13999:5934:0.1053:7:57:0,14790:6356:0.1091:7:55:0,17210:6610:0.2727:17:11:1,18990:7560:0.0000:0:11:0|escalera de compra
-ped:p1779912655610#Blanco=esc|14100:5988:0.0135:1:74:0,17070:6535:0.0870:5:23:1|escalera de compra
-ped:p1779912655610#Bordó=esc|13999:5934:0.0811:5:74:0,17290:6653:0.1600:10:25:1|escalera de compra
-ped:p1779912655610#Gris=esc|16190:6066:0.0500:3:20:0,14750:6334:0.0800:5:25:0,17990:7026:0.1000:6:10:1,24990:10335:0.0000:0:8:0|escalera de compra
-ped:p1779912655610#Gris Oscuro=esc|13999:5934:0.2857:16:42:1,16840:6412:0.1481:8:27:0,17990:7026:0.6000:35:5:0,24990:10335:0.0000:0:19:0|escalera de compra
-ped:p1779912655610#Negro=esc|13200:5507:0.0690:0:29:0,14100:5988:0.3721:11:43:1,17510:6770:0.0667:0:30:0,22990:9694:0.0333:0:30:0|escalera de compra
-ped:p1779912655610#Rojo=esc|14100:5988:0.1429:5:35:0,14790:6356:0.0256:0:39:0,17070:6535:0.1111:3:18:0,23490:9961:0.0952:2:21:1|escalera de compra
-ped:p1779912655610#Rosa=esc|14100:5988:0.1136:5:44:0,14780:6350:0.0968:4:31:0,17070:6535:0.2414:13:29:1,23390:9907:0.0000:0:21:0|escalera de compra
-ped:p1779912655610#Verde Musgo=esc|17070:6535:0.5000:30:2:0,17990:7026:1.0000:60:2:0|escalera de compra
-ped:p1779912655610#Violeta=esc|13999:5934:0.1186:7:59:0,14700:6308:0.5714:35:7:1|escalera de compra
-ped:p1779912655610#Cian=esc|13999:5934:0.0455:3:22:1,14770:6345:1.0000:60:1:0|escalera de compra
-ped:p1779912656400=esc|2700:372:1.5435:61:46:0,2955:509:0.6966:10:89:0,3200:640:0.5909:4:22:0,10190:4394:0.1765:0:17:1|escalera de compra
-ped:p1779912656420=esc|7000:2663:1.4326:61:178:1,7350:2849:0.0769:0:13:0,8490:3456:5.0000:275:1:0|escalera de compra
-ped:p1779912655630#Azul=esc|4200:1186:0.4746:22:59:0,4890:1555:0.4000:17:10:0,5090:1662:0.1250:1:8:0,11390:5026:0.1000:0:10:1|escalera de compra
-ped:p1779912655630#Negro=esc|4200:1186:0.3559:15:118:0,4400:1293:1.8462:104:13:0,4890:1555:0.1818:4:11:0,13090:5934:0.0625:0:16:1|escalera de compra
-ped:p1779912655630#Rojo=esc|4740:1475:3.0000:166:4:0,5090:1662:0.1000:0:10:0,5790:2035:0.0000:0:8:0,7590:2997:0.0588:0:17:1|escalera de compra
-ped:p1779912655630#Rosa=esc|4200:1186:0.6042:32:48:0,4890:1555:0.5455:29:11:1,5090:1662:1.8000:104:5:0,6490:2409:0.0000:0:8:0|escalera de compra
-ped:p1779912655630#Verde=esc|5110:1672:0.1667:0:18:1,5790:2035:0.0400:0:25:0|escalera de compra
+ped:p1779912655600=esc|3310:745:15.1111:255:18:0,3890:1056:9.8000:0:5:0,17490:7309:0.9286:0:14:1,26290:11600:0.3333:0:3:0|escalera de compra
+ped:p1779912655660#Blanco=esc|3000:577:7.0000:0:9:0,3450:817:3.3636:0:11:0,3990:1106:3.6667:0:12:0,17490:7284:0.5714:0:14:1|escalera de compra
+ped:p1779912655660#Rosa=esc|2800:470:8.5556:433:9:0,3990:1106:1.2500:0:4:0,5190:1748:7.0000:339:8:1,17490:7284:0.4000:0:10:0|escalera de compra
+ped:p1779912656320=esc|3510:835:3.8222:54:45:0,3910:1050:2.6552:0:29:1,4150:1179:1.3333:0:3:0,4790:1522:0.0000:0:2:0|escalera de compra
+ped:p1779912656330=esc|3200:691:3.6364:124:11:0,3420:810:3.5581:120:43:0,4290:1281:0.9091:0:11:1,6490:2471:0.0000:0:14:0|escalera de compra
+ped:p1779912656340=esc|4300:1234:4.6364:161:22:0,4810:1509:4.6364:161:33:1,5290:1768:2.5294:35:34:0,10390:4516:0.0625:0:16:0|escalera de compra
+ped:p1779912656210#2 Patas=esc|2780:372:5.7778:350:9:0,2990:479:6.0000:366:6:0,3140:555:2.3529:107:17:1,3490:733:0.8696:2:23:0|escalera de compra
+ped:p1779912656210#3 Patas=esc|2654:308:4.1818:106:33:0,3490:733:0.6364:0:11:0,4990:1497:0.2941:0:17:1,6490:2260:0.0000:0:8:0|escalera de compra
+ped:p1779912655590#Azul=esc|3200:621:1.6136:0:132:0,3520:787:3.0000:58:15:1,3870:970:0.4444:0:9:0,17490:7051:0.0714:0:14:0|escalera de compra
+ped:p1779912655590#Rojo=esc|2999:516:1.8108:0:37:0,3200:621:2.1504:3:133:0,3520:787:1.0000:0:12:0,7490:2855:0.5000:0:18:1|escalera de compra
+ped:p1779912655620#Azul=esc|13500:6027:0.5000:30:18:0,15500:6056:0.4634:28:41:0,14600:6610:0.5556:34:18:0,19640:8250:0.0333:2:30:1|escalera de compra
+ped:p1779912655620#Azul Acero=esc|20140:8515:0.7273:42:11:1,21150:9050:0.4706:26:17:0,23990:10554:0.0000:0:28:0|escalera de compra
+ped:p1779912655620#Beige=esc|13500:6027:0.3651:22:63:0,15500:6056:0.2162:13:74:0,17500:7116:0.5000:30:18:0,19400:8123:0.3000:18:20:1|escalera de compra
+ped:p1779912655620#Beige oscuro=esc|13500:6027:0.2414:15:29:0,15500:6056:0.2500:15:4:0,17500:7116:0.4286:26:21:0,19380:8112:0.4615:28:13:1|escalera de compra
+ped:p1779912655620#Blanco=esc|13500:6027:0.2459:15:61:0,15500:6056:0.3281:20:64:0,18600:7699:0.1591:10:44:0,19640:8250:0.2927:18:41:1|escalera de compra
+ped:p1779912655620#Gris=esc|18600:7699:0.5862:21:29:0,20720:8822:0.6316:24:19:1,21760:9373:0.2000:0:15:0,24990:10661:0.0370:0:27:0|escalera de compra
+ped:p1779912655620#Gris Oscuro=esc|15500:6056:0.8065:27:31:0,18600:7699:0.5238:10:21:0,19620:8239:0.1667:0:24:0,24990:10661:0.2500:0:24:1|escalera de compra
+ped:p1779912655620#Negro=esc|13500:6027:0.8571:52:35:0,15500:6056:1.0400:63:25:0,18600:7699:1.1053:67:19:0,20010:8446:0.7000:42:20:1|escalera de compra
+ped:p1779912655620#Rojo=esc|13500:6027:0.3889:24:90:0,15500:6056:0.7222:44:54:0,14600:6610:0.7857:47:14:0,18600:7699:0.3750:23:40:1|escalera de compra
+ped:p1779912655620#Rosa=esc|13500:6027:0.3188:19:69:0,15500:6056:0.2955:18:44:0,17500:7116:0.2857:17:21:0,18600:7699:0.3750:23:16:1|escalera de compra
+ped:p1779912655620#Rosa Chicle=esc|15500:6056:0.1818:11:11:0,17500:7116:0.0526:3:19:0,19430:8139:0.0385:3:26:1|escalera de compra
+ped:p1779912655620#Terracota=esc|20140:8515:0.2000:3:15:1,21150:9050:0.6667:31:6:0,32790:14793:0.0278:0:36:0|escalera de compra
+ped:p1779912655620#Verde Musgo=esc|17500:7116:0.0000:0:59:1|escalera de compra
+ped:p1779912655620#Violeta=esc|13500:6027:0.5000:30:16:0,15500:6056:0.4667:28:15:0,14600:6610:0.5556:34:9:0,18600:7699:0.4500:27:20:1|escalera de compra
+ped:p1779912655900#Comun Beige=esc|2355:0:4.1818:214:11:0,3140:362:1.5385:56:13:0,20990:8461:0.5000:0:8:1,25990:10593:0.0000:0:6:0|escalera de compra
+ped:p1779912655900#Comun Negro=esc|2310:0:1.9167:13:12:0,3060:321:1.3846:0:13:0,5290:1462:0.7778:0:9:1,5590:1616:0.6000:0:15:0|escalera de compra
+ped:p1779912655900#Triples Beige=esc|3790:694:1.1837:35:49:0,3980:792:2.1429:93:7:0,10990:4381:0.5833:0:12:1,14290:6071:0.3000:0:10:0|escalera de compra
+ped:p1779912655900#Triples Negro=esc|3790:694:1.5135:60:37:0,3980:792:2.1667:99:6:0,6490:2077:1.5000:59:6:0,11690:4740:0.2000:0:15:1|escalera de compra
+ped:p1779912655900#Triples Rosa=esc|3790:694:0.5341:0:88:0,3980:792:0.3571:0:14:0,5490:1565:0.2222:0:9:0,10790:4279:0.2000:0:10:1|escalera de compra
+ped:p1779912655880=esc|4640:1321:1.2195:0:41:0,4880:1445:1.3750:4:32:1,5390:1708:0.6667:0:9:0,6490:2276:0.2000:0:20:0|escalera de compra
+ped:p1781284068222#Berry Rush=esc|16120:6180:1.0000:44:1:0,14999:6620:0.5000:14:10:0,18150:7275:1.2632:60:19:1|escalera de compra
+ped:p1781284068222#Brisa Marina=esc|14999:6620:0.3636:16:11:0,18150:7275:1.0000:54:24:1,29890:13177:0.0000:0:3:0,32990:14849:1.0000:54:2:0|escalera de compra
+ped:p1781284068222#Jasmín=esc|14999:6620:0.2727:0:11:0,18150:7275:0.5238:8:42:0,23990:10425:0.1538:0:13:1,49690:18312:0.0000:0:11:0|escalera de compra
+ped:p1781284068222#Lavanda=esc|14999:6620:0.5000:10:12:0,18150:7275:0.4722:9:36:1,25990:11074:0.0000:0:9:0,32990:14849:0.0556:0:18:0|escalera de compra
+ped:p1781284068222#Limon=esc|16150:6196:4.0000:218:1:0,14999:6620:0.1429:0:21:0,18150:7275:1.4444:65:18:1,20990:8807:0.0000:0:2:0|escalera de compra
+ped:p1781284068222#Rosas=esc|14999:6620:0.1667:0:24:0,18150:7275:0.6429:10:28:1,25990:11074:0.0000:0:12:0,32990:14849:0.0667:0:15:0|escalera de compra
+ped:p1779912655610#Azul=esc|13999:5932:0.3846:23:13:1|escalera de compra
+ped:p1779912655610#Beige=esc|13999:5932:0.1053:7:57:0,14790:6354:0.1091:7:55:0,17210:6608:0.2727:17:11:1,18990:7558:0.0000:0:11:0|escalera de compra
+ped:p1779912655610#Blanco=esc|14100:5986:0.0135:1:74:0,17070:6533:0.0870:5:23:1|escalera de compra
+ped:p1779912655610#Bordó=esc|13999:5932:0.0811:5:74:0,17290:6651:0.1600:10:25:1|escalera de compra
+ped:p1779912655610#Gris=esc|16190:6064:0.0500:3:20:0,14750:6333:0.0800:5:25:0,17990:7024:0.1000:6:10:1,24990:10332:0.0000:0:8:0|escalera de compra
+ped:p1779912655610#Gris Oscuro=esc|13999:5932:0.2857:16:42:1,16840:6411:0.1481:8:27:0,17990:7024:0.6000:35:5:0,24990:10332:0.0000:0:20:0|escalera de compra
+ped:p1779912655610#Negro=esc|13200:5506:0.0690:0:29:0,14100:5986:0.3721:11:43:1,17510:6768:0.0667:0:30:0,22990:9692:0.0323:0:31:0|escalera de compra
+ped:p1779912655610#Rojo=esc|14100:5986:0.1429:5:35:0,14790:6354:0.0256:0:39:0,17070:6533:0.1111:3:18:0,23490:9958:0.0909:2:22:1|escalera de compra
+ped:p1779912655610#Rosa=esc|14100:5986:0.1136:5:44:0,14780:6349:0.0968:4:31:0,17070:6533:0.2414:13:29:1,23390:9905:0.0000:0:22:0|escalera de compra
+ped:p1779912655610#Verde Musgo=esc|17070:6533:0.5000:30:2:0,17990:7024:1.0000:60:2:0|escalera de compra
+ped:p1779912655610#Violeta=esc|13999:5932:0.1186:7:59:0,14700:6306:0.5714:35:7:1|escalera de compra
+ped:p1779912655610#Cian=esc|13999:5932:0.0455:3:22:1,14770:6344:1.0000:60:1:0|escalera de compra
+ped:p1779912656400=esc|2700:371:1.5435:78:46:0,2955:508:0.6966:18:89:0,3200:640:0.5909:10:22:0,10190:4393:0.1667:0:18:1|escalera de compra
+ped:p1779912656420=esc|7000:2662:1.4326:61:178:1,7350:2849:0.0769:0:13:0,8490:3455:5.0000:275:1:0|escalera de compra
+ped:p1779912655940=esc|3100:397:0.6014:0:138:0,3310:503:0.5556:0:18:0,3490:595:1.0952:26:21:0,3810:757:1.2609:36:23:1|escalera de compra
+ped:p1780106889876=esc|13200:5985:1.5455:68:11:0,13999:6410:2.1667:105:6:0,14729:6799:0.6364:13:11:0,18220:7619:1.6071:72:56:1|escalera de compra
+ped:p1779912655950=esc|3400:486:1.5217:60:23:0,3830:704:1.6667:68:9:0,4190:886:1.0909:34:22:0,8490:3063:0.7857:15:14:1|escalera de compra
+ped:p1779912655630#Azul=esc|4200:1186:0.4746:22:59:0,4890:1554:0.4000:17:10:0,5090:1661:0.1250:1:8:0,11390:5025:0.1000:0:10:1|escalera de compra
+ped:p1779912655630#Negro=esc|4200:1186:0.3559:15:118:0,4400:1293:1.8462:104:13:0,4890:1554:0.1818:4:11:0,13090:5933:0.0588:0:17:1|escalera de compra
+ped:p1779912655630#Rojo=esc|4740:1474:3.0000:166:4:0,5090:1661:0.1000:0:10:0,5790:2035:0.0000:0:8:0,7590:2996:0.0556:0:18:1|escalera de compra
+ped:p1779912655630#Rosa=esc|4200:1186:0.6042:32:48:0,4890:1554:0.5455:29:11:1,5090:1661:1.8000:104:5:0,6490:2409:0.0000:0:9:0|escalera de compra
+ped:p1779912655630#Verde=esc|5110:1672:0.1667:0:18:1,5790:2035:0.0385:0:26:0|escalera de compra
 ped:p1779912655630#Violeta=esc|4200:1195:0.2762:17:105:1|escalera de compra
-ped:p1779912655940=esc|3100:397:0.6014:0:138:0,3310:504:0.5556:0:18:0,3490:595:1.0952:26:21:0,3810:757:1.2609:36:23:1|escalera de compra
-ped:p1780106889876=esc|13200:5986:1.5455:68:11:0,13999:6412:2.1667:105:6:0,14729:6800:0.6364:13:11:0,18220:7621:1.6071:72:56:1|escalera de compra
-ped:p1779912655950=esc|3400:487:1.5217:60:23:0,3830:704:1.6667:68:9:0,4190:887:1.0909:34:22:0,8490:3063:0.8462:19:13:1|escalera de compra
-ped:p1779912656010#Blanco=esc|11999:4973:0.8085:39:47:0,13450:5687:0.6477:29:88:1,14600:6253:0.2273:4:22:0,17870:6905:0.2439:5:41:0|escalera de compra
-ped:p1779912656010#negro=esc|13500:5712:0.1250:0:16:0,14600:6253:0.5429:9:35:0,18110:7024:0.8182:25:22:1,19990:7949:0.4000:0:30:0|escalera de compra
-ped:p1779912656060=esc|5600:1919:1.5000:30:2:0,6310:2287:0.5000:0:58:1,6390:2329:0.2857:0:7:0,7200:2749:0.2000:0:25:0|escalera de compra
-ped:p1779912656220#azul=esc|6499:2246:0.6667:35:45:0,6799:2401:0.0056:0:178:0,8490:3276:0.1855:6:124:0,8800:3436:0.2500:10:52:1|escalera de compra
-ped:p1779912656220#rojo=esc|7200:2608:0.0556:0:18:0,8100:3074:0.2222:1:18:1,8490:3276:0.1056:0:142:0,8990:3534:0.0000:0:14:0|escalera de compra
-ped:p1779912655910=esc|3999:943:0.8889:36:45:1,4199:1044:0.5153:13:196:0,4690:1291:0.2500:0:20:0,7090:2502:0.0000:0:5:0|escalera de compra
-ped:p1781715812444=esc|5370:1473:1.4167:31:24:1,5790:1687:2.0000:66:2:0,14990:6380:0.0000:0:4:0,17490:6611:0.0000:0:5:0|escalera de compra
-ped:p1779912655920=esc|3300:691:0.1233:0:73:0,3840:961:0.7143:19:21:0,4390:1236:0.2400:0:100:0,4620:1351:0.6000:12:30:1|escalera de compra
-ped:p1779912656350=esc|4100:1056:0.5472:0:53:0,4320:1173:0.8636:15:22:0,4750:1401:0.6667:3:15:0,11990:5250:0.2143:0:14:1|escalera de compra
-ped:p1784422409763=esc|5000:1176:1.0476:0:42:1,5750:1584:2.3333:72:6:0,6990:2259:0.0000:0:1:0,20290:8455:0.0000:0:8:0|escalera de compra
-ped:p1779912656070=esc|5470:1445:1.2500:55:12:0,5990:1691:0.5455:13:11:0,7517:2414:0.3483:1:89:0,17090:5989:0.3750:3:8:1|escalera de compra
-ped:p1779912656240=esc|7000:2300:1.7391:101:23:0,9700:3579:0.0982:2:163:1|escalera de compra
-ped:p1779912655890=esc|22500:9318:0.1562:5:32:0,24800:10053:0.5373:27:67:0,27110:11222:0.6757:36:37:1,29790:12580:0.1250:3:16:0|escalera de compra
-ped:p1779912656110=esc|4599:1215:0.7935:32:92:0,5200:1523:0.2969:2:64:0,7890:2903:0.2632:0:19:1,10290:4133:0.0000:0:12:0|escalera de compra
-ped:p1779912655930=esc|7700:2425:0.4737:4:76:0,8840:3011:0.4717:4:53:0,10990:4116:0.3846:0:13:1,14290:5811:0.1000:0:10:0|escalera de compra
-ped:p1779912655650=esc|12967:5627:0.2909:3:110:0,13750:6049:1.2000:57:5:0,21990:9444:0.4000:9:10:1,24990:10631:0.5000:15:2:0|escalera de compra
-ped:p1785593145264lupa100=esc|6070:1770:0.3333:0:18:0,6980:2211:0.4643:0:28:0,7680:2551:0.3333:0:6:0,19990:7537:0.4286:0:14:1|escalera de compra
-ped:p1779912656100=esc|4200:851:1.4048:68:42:1,4490:1002:0.0000:0:1:0,4990:1261:0.0000:0:1:0,6990:2299:0.0000:0:5:0|escalera de compra
-ped:p1779912656120=esc|5960:1749:0.7614:38:88:1,6300:1925:0.2143:5:14:0,9490:3581:0.0000:0:3:0,14290:6072:0.0833:0:12:0|escalera de compra
-ped:p1779912656140=esc|7440:2736:0.4000:0:20:0,8136:3097:0.4040:0:99:1,20630:8537:0.0435:0:23:0,26890:11356:0.0000:0:10:0|escalera de compra
-ped:p1779912656200=esc|12590:5109:1.6667:84:6:0,17358:6532:0.4038:8:52:1,18590:7170:0.1000:0:70:0,28390:11812:0.1250:0:8:0|escalera de compra
-ped:p1779912655850=esc|12990:5178:0.5566:21:106:1,17990:6619:0.0667:0:15:0|escalera de compra
-ped:p1787786300945=esc|10500:4089:3.7500:225:4:0|escalera de compra
-ped:p1779912655500#Asher=esc|36700:12288:0.4286:6:7:0,32999:14782:1.5000:70:4:0,41999:15127:0.2414:0:58:0,48870:18807:0.2778:0:54:1|escalera de compra
-ped:p1779912655500#Kosten (Hombre)=esc|36700:13022:0.2000:12:5:0,32999:14782:0.3333:20:6:0,41999:15861:0.0076:1:132:1,45000:17468:0.0000:0:13:0|escalera de compra
-ped:p1783381648682=esc|4010:1098:0.6875:12:16:0,4140:1167:0.2000:0:15:0,4440:1325:0.3448:0:29:0,7790:3088:0.0588:0:17:1|escalera de compra
-ped:p1779912655840=esc|19900:7798:0.5370:22:54:0,21400:8558:0.0690:0:29:0,22500:9115:0.2963:8:81:0,25010:9956:0.3636:12:22:1|escalera de compra
-ped:p1779912655540=esc|14990:6593:0.3590:20:39:0,19570:8002:0.2321:12:56:1,19990:8227:0.1250:6:8:0,29990:13154:1.0000:58:1:0|escalera de compra
-ped:p1779912655970=esc|5999:1947:0.4904:29:104:0,6200:2047:0.2353:13:34:0,6610:2250:0.2424:14:33:0,7280:2582:0.2258:13:31:1|escalera de compra
-ped:p1779912656130=esc|6500:2076:0.3000:0:20:0,7170:2424:0.1000:0:10:0,8000:2855:0.2344:0:64:0,8990:3369:0.2308:0:13:1|escalera de compra
-ped:p1783525155703=esc|46400:3626:1.2000:60:5:0,56950:9255:0.3913:12:23:0,65850:14005:0.1538:0:39:1|escalera de compra
-ped:p1779912655780#Naranja=esc|8650:3063:0.1250:8:8:0,9840:3619:0.4211:26:19:0,10340:3853:0.5000:30:12:1|escalera de compra
-ped:p1779912656410=esc|11500:4612:0.6471:39:17:0,12400:5074:0.1136:7:44:0,13999:5896:0.2254:14:71:0,18160:6989:0.2857:17:21:1|escalera de compra
-ped:p1779912656230#azul=esc|9660:3568:0.2000:10:10:1,10990:4247:0.0000:0:25:0|escalera de compra
-ped:p1779912656230#celeste=esc|9660:3568:0.0000:0:18:0,10990:4247:0.0952:6:21:1|escalera de compra
-ped:p1779912656230#negro=esc|11999:4761:0.0510:1:196:1,18090:6824:0.0000:0:6:0|escalera de compra
-ped:p1779912656000=esc|7700:2368:0.2899:0:69:0,8200:2628:0.0000:0:8:0,8940:3011:0.4667:3:15:1,9990:3556:0.2308:0:13:0|escalera de compra
-ped:p1787783558381=esc|6000:1668:0.3846:7:26:0,8490:2956:0.2500:0:8:0,9490:3474:0.3077:3:13:1,14290:5958:0.0667:0:15:0|escalera de compra
-ped:p1779912655690=esc|17000:6974:0.1233:8:146:1,18520:7793:0.7500:45:4:0|escalera de compra
-ped:p1779912656080=esc|2900:157:2.6250:153:16:0,4690:1083:0.5000:25:8:1,7090:2325:0.0000:0:12:0,10690:4188:0.2000:7:5:0|escalera de compra
-ped:p1779912656190=esc|6300:2025:0.3182:2:22:0,7280:2532:0.2833:0:60:1,9490:3675:0.0000:0:15:0|escalera de compra
-ped:p1783356360695=esc|9390:3624:0.0000:0:3:0,10000:3940:0.4839:0:31:1,17490:6771:0.0000:0:4:0|escalera de compra
-ped:p1779912656370=esc|6350:2380:0.2794:12:68:0,6730:2585:0.2500:10:8:1,20290:8859:0.2000:7:5:0,33090:9795:0.0000:0:8:0|escalera de compra
-ped:p1784514320290alg=esc|8580:3345:0.2000:5:5:0,9030:3574:0.5000:23:4:0,13990:6104:0.0667:0:15:1,20990:8630:0.0000:0:16:0|escalera de compra
-ped:p1790392438056=esc|6490:2022:2.5000:115:2:0,8490:3050:0.0000:0:1:0,14990:6389:2.0000:85:1:0|escalera de compra
-ped:p1782923069593=esc|17000:5812:0.0968:6:62:0,21020:7617:0.2500:15:12:1,22080:8093:0.0435:3:23:0|escalera de compra
-ped:p1779912656090=esc|11000:4458:0.1562:8:32:0,32999:14368:0.0952:4:42:1,47990:16583:0.0000:0:10:0|escalera de compra
-ped:p1779912655530#Milán=esc|17500:7158:0.0957:6:94:1|escalera de compra
-ped:p1779912655530#Paris=esc|17500:7158:3.0000:180:1:0|escalera de compra
-ped:p1779912656170=esc|19999:7355:0.1167:6:60:1,21250:7939:0.0000:0:10:0,22990:8752:0.0000:0:11:0,29990:11631:0.0000:0:22:0|escalera de compra
-ped:p1780152957092=esc|21999:7993:0.0411:2:146:1,23320:8614:0.0000:0:6:0,35699:9208:0.0000:0:13:0,29990:11373:0.0000:0:23:0|escalera de compra
-ped:p1779912655770=esc|10999:4226:0.0066:1:301:0,13900:5620:0.0000:0:33:1,14990:6144:0.0000:0:7:0|escalera de compra
-ped:p1790392460328=esc|4505:659:0.0000:0:9:1,6790:1833:2.0000:110:1:0,8990:2963:0.0000:0:1:0,13490:5275:0.3333:10:3:0|escalera de compra
-ped:p1779912655820=esc|8000:3077:0.1414:6:99:0,8410:3289:0.0189:0:53:0,9990:4107:0.0000:0:2:0,10990:4624:0.0000:0:10:1|escalera de compra
-ped:p1779912655830=esc|17599:6727:0.0000:0:89:0,28500:11817:0.0940:1:149:0,31999:13589:0.0497:0:161:1,32999:14096:0.0000:0:18:0|escalera de compra
-ped:p1785284945528=esc|28960:12977:0.0492:3:61:1,32290:14761:0.0000:0:5:0|escalera de compra
-ped:p1792881560848=esc|7990:2904:0.0000:0:1:0,11990:5038:2.0000:116:2:0|escalera de compra
-ped:p1779912656360=esc|7200:2823:0.2000:8:20:0,7800:3147:0.2500:11:8:1,12870:5883:0.0000:0:24:0,19390:8357:0.0000:0:6:0|escalera de compra
-ped:p1787594663055=esc|41999:15734:0.0156:1:64:0,45050:17368:0.1364:8:22:1|escalera de compra
-ped:p1790622050078=esc|6390:2173:0.2000:0:5:0,8990:3489:0.0000:0:21:1,13490:5768:1.0000:33:1:0|escalera de compra
-ped:p1792440689982=esc|11990:4821:0.0000:0:2:0,17990:6815:0.1667:7:6:0,21990:8841:1.0000:57:1:0,26990:10943:0.1000:3:10:1|escalera de compra
-ped:p1792882870991=esc|6290:1935:0.2500:7:4:0,8990:3355:1.0000:52:1:0|escalera de compra
-ped:p1792882690326=esc|4190:782:0.0000:0:3:0,6290:1887:0.1818:1:11:1|escalera de compra
-ped:p1779912656390=esc|15000:6004:0.0000:0:3:0,13999:6508:0.0000:0:10:1,16990:7078:0.3333:17:3:0,22990:10316:0.0000:0:22:0|escalera de compra
-ped:p1782925709386=esc|8598:3213:0.8696:44:23:0,11990:4931:0.0000:0:1:0,13830:5862:0.0227:0:44:1,14790:6349:0.0000:0:13:0|escalera de compra
-ped:p1791316673662=esc|97990:42263:0.0000:0:1:0,109990:48691:0.0000:0:6:0,127990:58334:0.0435:2:23:1|escalera de compra
-ped:p1792883052702=esc|11990:4731:0.0714:0:14:1|escalera de compra
+ped:p1779912656010#Blanco=esc|11999:4972:0.8085:39:47:0,13450:5686:0.6477:29:88:1,14600:6252:0.2273:4:22:0,17870:6904:0.2439:5:41:0|escalera de compra
+ped:p1779912656010#negro=esc|13500:5710:0.1250:0:16:0,14600:6252:0.5429:9:35:0,18110:7022:0.8182:25:22:1,19990:7947:0.3871:0:31:0|escalera de compra
+ped:p1779912656060=esc|5600:1919:1.5000:31:2:0,6310:2287:0.5000:0:58:1,6390:2328:0.2857:0:7:0,7200:2748:0.2000:0:25:0|escalera de compra
+ped:p1779912656220#azul=esc|6499:2245:0.6667:36:45:0,6799:2400:0.0056:0:178:0,8490:3275:0.1855:7:124:0,8800:3435:0.2500:11:52:1|escalera de compra
+ped:p1779912656220#rojo=esc|7200:2608:0.0556:0:18:0,8100:3073:0.2222:1:18:1,8490:3275:0.1056:0:142:0,8990:3533:0.0000:0:15:0|escalera de compra
+ped:p1779912655910=esc|3999:942:0.8889:36:45:1,4199:1043:0.5153:13:196:0,4690:1291:0.2857:0:21:0,7090:2501:0.0000:0:5:0|escalera de compra
+ped:p1781715812444=esc|5370:1473:1.4167:31:24:1,5790:1687:2.0000:66:2:0,14990:6378:0.2000:0:5:0,17490:6609:0.0000:0:5:0|escalera de compra
+ped:p1779912655920=esc|3300:691:0.1233:0:73:0,3840:960:0.7143:19:21:0,4390:1235:0.2400:0:100:0,4620:1350:0.6000:12:30:1|escalera de compra
+ped:p1779912656350=esc|4100:1055:0.5472:0:53:0,4320:1172:0.8636:15:22:0,4750:1401:0.6667:3:15:0,11990:5249:0.2143:0:14:1|escalera de compra
+ped:p1784422409763=esc|5000:1175:1.0476:0:42:1,5750:1583:2.3333:72:6:0,6990:2258:0.0000:0:1:0,20290:8453:0.0000:0:9:0|escalera de compra
+ped:p1779912656070=esc|5470:1448:1.2500:57:12:0,5990:1695:0.5455:15:11:0,7517:2419:0.3483:3:89:0,17090:6003:0.3750:5:8:1|escalera de compra
+ped:p1779912656240=esc|7000:2299:1.7391:101:23:0,9700:3578:0.0982:2:163:1|escalera de compra
+ped:p1779912655890=esc|22500:9315:0.1562:8:32:0,24800:10050:0.5373:39:67:0,27110:11220:0.6757:51:37:1,29790:12577:0.1176:5:17:0|escalera de compra
+ped:p1779912656110=esc|4599:1215:0.7935:32:92:0,5200:1523:0.2969:2:64:0,7890:2902:0.2500:0:20:1,10290:4132:0.0000:0:12:0|escalera de compra
+ped:p1779912655650=esc|12967:5626:0.2909:3:110:0,13750:6048:1.2000:57:5:0,21990:9442:0.3636:7:11:1,24990:10628:0.5000:15:2:0|escalera de compra
+ped:p1779912655930=esc|7700:2424:0.4737:4:76:0,8840:3010:0.4717:4:53:0,10990:4115:0.3846:0:13:1,14290:5810:0.1000:0:10:0|escalera de compra
+ped:p1785593145264lupa100=esc|6070:1770:0.3333:0:18:0,6980:2211:0.4643:0:28:0,7680:2550:0.3333:0:6:0,19990:7536:0.4000:0:15:1|escalera de compra
+ped:p1779912656100=esc|4200:851:1.4048:68:42:1,4490:1001:0.0000:0:1:0,4990:1261:0.0000:0:1:0,6990:2299:0.1667:0:6:0|escalera de compra
+ped:p1779912656120=esc|5960:1748:0.7614:38:88:0,6300:1925:0.2143:5:14:0,9490:3580:0.0000:0:3:0,14290:6070:0.1538:1:13:1|escalera de compra
+ped:p1779912656140=esc|7440:2735:0.4000:0:20:0,8136:3096:0.4040:0:99:1,20630:8535:0.0435:0:23:0,26890:11354:0.0000:0:10:0|escalera de compra
+ped:p1779912656200=esc|12590:5108:1.6667:84:6:0,17358:6531:0.4038:8:52:1,18590:7168:0.1000:0:70:0,28390:11809:0.1111:0:9:0|escalera de compra
+ped:p1779912655850=esc|12990:5176:0.5566:33:106:1,17990:6617:0.1250:0:16:0|escalera de compra
+ped:p1787786300945=esc|10500:4088:3.7500:225:4:0|escalera de compra
+ped:p1779912655500#Asher=esc|36700:12284:0.4286:15:7:0,32999:14779:1.5000:103:4:0,41999:15122:0.2414:0:58:0,48870:18803:0.2778:3:54:1|escalera de compra
+ped:p1779912655500#Kosten (Hombre)=esc|36700:13018:0.2000:17:5:0,32999:14779:0.3333:28:6:0,41999:15856:0.0076:1:132:1,45000:17464:0.0000:0:13:0|escalera de compra
+ped:p1783381648682=esc|4010:1098:0.6875:12:16:0,4140:1166:0.2000:0:15:0,4440:1324:0.3448:0:29:0,7790:3088:0.0556:0:18:1|escalera de compra
+ped:p1779912655540=esc|14990:6591:0.3590:28:39:0,19570:8000:0.2321:17:56:1,19990:8225:0.1250:8:8:0,29990:13151:1.0000:80:1:0|escalera de compra
+ped:p1779912655840=esc|19900:7796:0.5370:22:54:0,21400:8555:0.0690:0:29:0,22500:9112:0.2963:8:81:0,25010:9954:0.3636:12:22:1|escalera de compra
+ped:p1779912655970=esc|5999:1947:0.4904:29:104:0,6200:2046:0.2353:13:34:0,6610:2249:0.2424:14:33:0,7280:2581:0.2258:13:31:1|escalera de compra
+ped:p1779912656130=esc|6500:2076:0.3000:0:20:0,7170:2423:0.1000:0:10:0,8000:2854:0.2344:0:64:0,8990:3368:0.2308:0:13:1|escalera de compra
+ped:p1783525155703=esc|46400:3621:1.2000:60:5:0,56950:9250:0.3913:12:23:0,65850:13998:0.1538:0:39:1|escalera de compra
+ped:p1779912655780#Naranja=esc|8650:3062:0.1250:8:8:0,9840:3619:0.4211:26:19:0,10340:3852:0.5000:30:12:1|escalera de compra
+ped:p1779912656410=esc|11500:4611:0.6471:39:17:0,12400:5073:0.1136:7:44:0,13999:5894:0.2254:14:71:0,18160:6987:0.2857:17:21:1|escalera de compra
+ped:p1779912656000=esc|7700:2368:0.2899:0:69:0,8200:2627:0.0000:0:8:0,8940:3011:0.4667:4:15:1,9990:3555:0.2143:0:14:0|escalera de compra
+ped:p1779912656230#azul=esc|9660:3567:0.2000:10:10:1,10990:4245:0.0000:0:25:0|escalera de compra
+ped:p1779912656230#celeste=esc|9660:3567:0.0000:0:18:0,10990:4245:0.0952:6:21:1|escalera de compra
+ped:p1779912656230#negro=esc|11999:4760:0.0510:1:196:1,18090:6822:0.0000:0:7:0|escalera de compra
+ped:p1787783558381=esc|6000:1667:0.3846:7:26:0,8490:2955:0.2500:0:8:0,9490:3473:0.3077:3:13:1,14290:5956:0.0625:0:16:0|escalera de compra
+ped:p1779912655690=esc|17000:6972:0.1233:8:146:1,18520:7791:0.7500:45:4:0|escalera de compra
+ped:p1779912656190=esc|6300:2024:0.3182:3:22:0,7280:2531:0.2833:1:60:1,9490:3674:0.0000:0:16:0|escalera de compra
+ped:p1779912656080=esc|2900:157:2.6250:153:16:0,4690:1083:0.5000:25:8:1,7090:2324:0.0000:0:12:0,10690:4186:0.2000:7:5:0|escalera de compra
+ped:p1783356360695=esc|9390:3623:0.0000:0:4:0,10000:3939:0.4839:0:31:1,17490:6769:0.0000:0:4:0|escalera de compra
+ped:p1779912656370=esc|6350:2379:0.2794:12:68:0,6730:2584:0.2500:10:8:1,20290:8857:0.1667:5:6:0,33090:9791:0.0000:0:8:0|escalera de compra
+ped:p1784514320290alg=esc|8580:3344:0.2000:5:5:0,9030:3573:0.5000:23:4:0,13990:6103:0.0667:0:15:1,20990:8628:0.0000:0:17:0|escalera de compra
+ped:p1790392438056=esc|6490:2021:2.5000:170:2:0,8490:3049:0.0000:0:1:0,14990:6388:2.0000:129:1:0|escalera de compra
+ped:p1782923069593=esc|17000:5810:0.0968:6:62:0,21020:7615:0.2500:15:12:1,22080:8091:0.0435:3:23:0|escalera de compra
+ped:p1779912656090=esc|11000:4457:0.1562:8:32:0,32999:14365:0.0930:4:43:1,47990:16579:0.0000:0:10:0|escalera de compra
+ped:p1779912656170=esc|19999:7414:0.1167:10:60:1,21250:8003:0.0000:0:10:0,22990:8822:0.0000:0:11:0,29990:11724:0.0000:0:23:0|escalera de compra
+ped:p1779912655530#Milán=esc|17500:7156:0.0957:8:94:1|escalera de compra
+ped:p1779912655530#Paris=esc|17500:7156:3.0000:246:1:0|escalera de compra
+ped:p1780152957092=esc|21999:7991:0.0411:2:146:1,23320:8612:0.0000:0:6:0,35699:9205:0.0000:0:13:0,29990:11371:0.0000:0:23:0|escalera de compra
+ped:p1779912655770=esc|10999:4225:0.0066:1:301:0,13900:5619:0.0000:0:33:1,14990:6142:0.0000:0:7:0|escalera de compra
+ped:p1790392460328=esc|4505:658:0.0000:0:9:1,6790:1832:2.0000:154:1:0,8990:2962:0.0000:0:1:0,13490:5274:0.3333:18:3:0|escalera de compra
+ped:p1779912655820=esc|8000:3076:0.1414:6:99:0,8410:3288:0.0189:0:53:0,9990:4106:0.0000:0:2:0,10990:4623:0.0000:0:10:1|escalera de compra
+ped:p1779912655830=esc|17599:6725:0.0000:0:89:0,28500:11815:0.0940:1:149:0,31999:13586:0.0497:0:161:1,32999:14092:0.0000:0:18:0|escalera de compra
+ped:p1785284945528=esc|28960:12974:0.0492:3:61:1,32290:14758:0.0000:0:5:0|escalera de compra
+ped:p1792440689982=esc|11990:4820:0.0000:0:2:0,17990:6814:0.1667:8:6:0,21990:8839:1.0000:58:1:0,26990:10941:0.1000:4:10:1|escalera de compra
+ped:p1792881560848=esc|7990:2903:0.0000:0:1:0,11990:5037:1.3333:76:3:0|escalera de compra
+ped:p1779912656360=esc|7200:2822:0.2000:8:20:0,7800:3146:0.2500:11:8:1,12870:5882:0.0000:0:24:0,19390:8356:0.0000:0:6:0|escalera de compra
+ped:p1787594663055=esc|41999:15729:0.0156:2:64:0,45050:17364:0.1364:11:22:1|escalera de compra
+ped:p1790622050078=esc|6390:2172:0.2000:0:5:0,8990:3489:0.0000:0:21:1,13490:5767:1.0000:33:1:0|escalera de compra
+ped:p1792882870991=esc|6290:1934:0.2500:7:4:0,8990:3355:1.0000:52:1:0|escalera de compra
+ped:p1792882690326=esc|4190:782:0.0000:0:3:0,6290:1886:0.1818:1:11:1|escalera de compra
+ped:p1779912656390=esc|15000:6002:0.0000:0:3:0,13999:6506:0.0000:0:10:1,16990:7076:0.3333:17:3:0,22990:10314:0.0000:0:23:0|escalera de compra
+ped:p1782925709386=esc|8598:3212:0.8696:44:23:0,11990:4929:0.0000:0:1:0,13830:5861:0.0227:0:44:1,14790:6347:0.0000:0:13:0|escalera de compra
+ped:p1792883052702=esc|11990:4730:0.0667:0:15:1|escalera de compra
 ped:p1793754267430=esc|3990:740:0.0000:0:1:0|escalera de compra
-ped:p1779912656380=esc|19833:8675:1.0000:60:2:0|escalera de compra
-ped:p1792882500112=esc|4690:942:0.0000:0:3:0,4990:1103:0.0000:0:11:1|escalera de compra
+ped:p1779912656380=esc|19833:8673:1.0000:60:2:0|escalera de compra
+ped:p1792882500112=esc|4690:941:0.0000:0:4:0,4990:1102:0.0000:0:11:1|escalera de compra
 ped:p1793754272582=esc|3990:740:0.0000:0:1:0|escalera de compra
-ped:p1793754280062=esc|11290:4581:0.0000:0:1:0|escalera de compra
-ped:p1782841638453=esc|16020:6401:7.5000:132:2:0,17060:6959:3.8846:24:26:1,21320:9242:4.0000:27:4:0|escalera de compra
-ped:p1779912656280=esc|21200:9225:2.3810:9:42:1,22690:10023:0.7714:0:35:0,23980:10715:0.8056:0:36:0,29990:13507:0.0000:0:19:0|escalera de compra
-ped:p1779912656270=esc|12000:5447:1.9000:0:30:0,20100:8744:2.5833:16:24:1,20500:8959:0.9341:0:91:0,32990:15224:0.0909:0:11:0|escalera de compra
-ped:p1779912655550#Amber Romance=esc|45300:17426:2.5000:72:2:0,49000:19377:1.0000:27:1:0,53990:22007:0.0000:0:15:1,59990:25171:0.0000:0:20:0|escalera de compra
-ped:p1779912655550#Aqua Kiss=esc|45300:15505:0.8000:22:5:0,53990:20086:0.1250:2:8:1,56990:21668:0.0000:0:4:0,74990:31158:0.0000:0:24:0|escalera de compra
-ped:p1779912655550#Coconut Passion=esc|42800:15512:0.3333:0:42:0,45300:16830:0.1818:0:33:1,49000:18780:0.0222:0:45:0,54990:21938:0.0000:0:12:0|escalera de compra
-ped:p1779912655550#Love Addict=esc|64990:25293:0.0000:0:5:0,72290:29142:0.0000:0:5:0,84990:35837:0.0000:0:16:1|escalera de compra
-ped:p1779912655550#Love Spell=esc|40000:14632:0.3333:10:3:0,42800:16108:0.0755:3:53:0,45300:17426:0.0385:1:52:0,49000:19377:0.4286:13:7:1|escalera de compra
-ped:p1779912655550#Mango Temptation=esc|46930:17823:1.0000:27:1:0,52990:21018:2.0000:57:1:0,69990:29980:0.0000:0:21:1|escalera de compra
-ped:p1779912655550#Midnight Bloom=esc|42800:9810:0.1852:4:27:0,45300:11128:0.1379:2:29:0,51200:14238:0.0400:0:50:0,56470:17016:0.0000:0:15:1|escalera de compra
-ped:p1779912655550#Pure Seduction=esc|40000:14213:0.3333:8:18:0,42800:15689:0.2857:7:14:0,45300:17007:0.2273:5:22:1,62990:26333:0.0000:0:13:0|escalera de compra
-ped:p1779912655550#Sizzling Vanilla=esc|64990:25613:0.0000:0:17:1,89990:38793:0.0000:0:11:0|escalera de compra
-ped:p1779912655550#Vanilla Lace=esc|64990:26572:0.0556:0:18:1,90990:40279:0.0000:0:12:0|escalera de compra
-ped:p1779912655550#Velve Petals=esc|44000:16523:0.2456:7:57:1,53990:21790:0.0000:0:16:0,59990:24953:0.0000:0:20:0|escalera de compra
-ped:p1779912655550#Wild Neroli=esc|64990:25293:0.0000:0:23:1|escalera de compra
-ped:p1779912656260=esc|11000:4872:5.6667:144:18:0,20500:8887:0.7687:0:147:1,25990:11380:3.0000:64:1:0|escalera de compra
-ped:p1779912655560=esc|52000:19804:0.5102:1:49:0,55000:21411:0.3333:0:9:1,70990:29977:0.0000:0:25:0,92990:41763:0.0000:0:10:0|escalera de compra
-ped:p1779912656290=esc|38562:12668:0.1786:0:28:0,41440:14210:0.1406:0:64:0,31500:14425:0.4444:0:9:1,42999:15046:0.1190:0:42:0|escalera de compra
-ped:p1779905818281=esc|57000:21584:0.1616:5:99:0,68510:27559:0.3333:10:21:0,75360:31114:0.5000:15:8:1,79130:33071:0.6667:20:3:0|escalera de compra
-ped:p1782918442891=esc|35900:11635:0.6818:15:22:0,43990:15969:0.1429:0:7:1,57990:23469:1.0000:24:1:0|escalera de compra
-ped:p1788886838508#Freesia=esc|99600:45250:0.6667:20:6:0|escalera de compra
-ped:p1788886838508#Kiss=esc|82520:36275:1.0000:29:4:0|escalera de compra
-ped:p1788886838508#Kiss Sexy=esc|84990:36351:1.0000:30:3:0|escalera de compra
-ped:p1780106778739=esc|112000:36427:0.1364:1:66:0,121319:41091:0.2500:5:8:0,164990:62945:0.0000:0:15:1,182990:71953:0.0000:0:10:0|escalera de compra
-ped:p1785263851692#Bare Vanilla=esc|44000:16751:0.1081:2:37:1,52600:21358:0.0000:0:3:0,62990:26924:0.0000:0:13:0,69990:30674:0.0000:0:5:0|escalera de compra
-ped:p1785263851692#Velvet Petals=esc|40000:14813:0.5000:15:10:1,44000:16956:1.0000:30:1:0|escalera de compra
-ped:p1782918468593=esc|62901:24603:0.8000:24:5:0,70990:28936:0.3636:11:11:1|escalera de compra
-ped:p1782872153975#azul=esc|176890:84414:0.0714:2:28:1|escalera de compra
-ped:p1782872153975#black=esc|170000:81341:0.0441:1:68:1,182990:88256:0.0000:0:8:0,199990:97305:0.0000:0:4:0|escalera de compra
-ped:p1782872153975#white=esc|121500:56337:1.0000:30:1:0|escalera de compra
-ped:p178287291398901=esc|79999:31175:0.1282:2:39:0,95680:38647:0.0233:0:43:1,108990:44989:0.0000:0:1:0|escalera de compra
-ped:p1779912655570=esc|60000:23541:0.2500:6:8:0,65990:26750:0.1667:3:12:1,73990:31036:0.0526:0:19:0|escalera de compra
-ped:p1779912656300=esc|42490:16571:0.0813:3:123:1|escalera de compra
-ped:p1784044584619=esc|85660:33855:0.1562:0:32:1,92990:37782:0.0000:0:19:0,104990:44211:0.0000:0:17:0|escalera de compra
-ped:p1788893559056=esc|69999:28977:1.0000:30:2:0,79990:34329:0.5000:15:4:0,86990:38079:0.2500:8:4:0,104990:47722:1.0000:30:1:0|escalera de compra
-ped:p1781714867137=esc|54499:22410:1.2500:38:4:0|escalera de compra
-ped:p17833581096731=esc|165999:83986:0.0357:0:28:0,176770:89999:0.0909:2:11:1,194490:99891:0.0000:0:32:0|escalera de compra
-ped:p1784044596199=esc|80000:33931:0.2353:5:17:1,86990:37676:0.0000:0:1:0,119990:55354:0.0000:0:11:0|escalera de compra
-ped:p1780106846533=esc|376236:194874:0.0506:2:79:1,425700:222185:0.0000:0:1:0|escalera de compra
-ped:p17833581096736=esc|344999:174340:0.6667:20:3:0,381990:194168:1.0000:30:2:0|escalera de compra
-ped:p1788743923415=esc|180090:87940:0.1200:3:25:1,197990:97534:0.0000:0:8:0|escalera de compra
-ped:p1788886453710=esc|92499:41659:1.0000:30:2:0,104990:48351:1.0000:30:2:0|escalera de compra
-ped:p17904445727134=esc|145000:64083:0.1818:4:11:1,217590:101111:0.0000:0:2:0|escalera de compra
-ped:p17833581096732=esc|429450:231575:1.0000:30:1:0|escalera de compra
-ped:p1788904839781#Love Spell=esc|45000:16865:0.0000:0:3:0,52990:21146:0.0000:0:16:1,58990:24360:0.0000:0:10:0|escalera de compra
-ped:p1788904839781#Velvet Petals=esc|52990:21146:0.0000:0:10:1,58990:24360:0.0000:0:15:0|escalera de compra
-ped:p17904445729868=esc|43550:14752:0.3333:9:6:0,45990:15996:0.0000:0:19:1|escalera de compra
-ped:p178287291398904=esc|394690:210667:0.0000:0:20:1|escalera de compra
-ped:p17904445727815=esc|67230:26182:0.0000:0:2:0,74990:30140:2.0000:60:1:0|escalera de compra
-ped:p17919098378641=esc|101990:44896:0.0000:0:1:0,113990:51324:0.1429:4:7:1,132990:61503:0.0667:1:15:0|escalera de compra
-ped:p17919098379973=esc|74990:30614:0.0000:0:1:0,97990:42935:1.0000:30:1:0|escalera de compra
-ped:p179218076128818=esc|269990:126407:0.1667:0:12:1|escalera de compra
-ped:p17833581096735=esc|340000:181641:1.0000:30:1:0|escalera de compra
-ped:p1784044826040=esc|134510:63091:0.2500:6:4:0,139990:66026:0.0000:0:10:1,155990:74598:0.0000:0:9:0|escalera de compra
-ped:p1788743899629=esc|189999:93027:0.0588:1:17:1,202990:99990:0.0000:0:26:0|escalera de compra
-ped:p17904445725051=esc|169900:80888:0.0714:1:14:1,254890:126418:0.0000:0:11:0|escalera de compra
-ped:p17904445726433=esc|62690:25276:0.0000:0:4:0,69990:29187:0.0400:0:25:1|escalera de compra
-ped:p17904445728496=esc|42810:14170:0.0000:0:11:0,55990:20893:0.0417:0:24:1|escalera de compra
-ped:p17904445730559=esc|32990:14291:0.0000:0:1:0,41990:14551:0.0000:0:7:1,46990:17102:0.0000:0:20:0,53000:20168:0.0000:0:7:0|escalera de compra
-ped:p179044457319111=esc|174990:80330:0.1429:5:7:1|escalera de compra
-ped:p1791244143398#Bare Vanilla=esc|55990:22194:0.0000:0:10:1,60990:24872:0.0000:0:20:0|escalera de compra
-ped:p1791244143398#Pure Seduction=esc|55990:22194:0.3333:10:3:0|escalera de compra
-ped:p1791244143398#Velvet Petals=esc|55990:22194:0.0000:0:10:1,60990:24872:0.0000:0:20:0|escalera de compra
-ped:p1791316566103=esc|50000:19072:0.0000:0:8:0,52990:20674:0.0000:0:6:0,61990:25495:0.0625:1:16:1|escalera de compra
-ped:p1791335371049=esc|28990:12634:0.3333:9:3:0,32990:14777:0.0000:0:1:0,67174:28758:0.0000:0:15:1,80690:35999:0.0000:0:11:0|escalera de compra
-ped:p1791335435353=esc|50000:18547:0.0000:0:11:1,74990:31934:1.0000:29:1:0|escalera de compra
-ped:p17921807531974=esc|71990:29538:0.0833:3:12:1|escalera de compra
-ped:p17921807554518=esc|29999:12422:0.0000:0:1:0,32990:13948:0.1429:3:7:1|escalera de compra
-ped:p17921807560659=esc|28490:12074:0.1667:5:6:0,30690:13196:0.0000:0:8:1,32990:14369:0.0000:0:7:0|escalera de compra
-ped:p17930313908980=esc|144990:64044:0.2500:8:4:0|escalera de compra
-ped:p17833581096733=esc|136890:68309:0.0000:0:14:1,165590:84331:0.0000:0:13:0|escalera de compra
-ped:p1784044625340=esc|132380:62620:0.0000:0:1:0,153990:74196:0.0000:0:18:1,189990:93482:0.0000:0:7:0,209990:104196:0.0000:0:11:0|escalera de compra
-ped:p17904445724350=esc|249890:119678:0.0000:0:19:1,269990:129857:0.0000:0:11:0|escalera de compra
-ped:p17904445725742=esc|55990:20955:0.0000:0:15:1,62990:24705:0.0000:0:19:0|escalera de compra
-ped:p179044457312310=esc|69783:28844:0.0000:0:30:1|escalera de compra
-ped:p1791316782281=esc|32990:14777:0.0000:0:4:0,45000:17480:0.0000:0:26:1|escalera de compra
-ped:p17919098382687=esc|143990:68442:0.0000:0:2:0,157990:75942:0.0000:0:10:1,169990:82371:0.0000:0:11:0|escalera de compra
-ped:p17921807511030=esc|159990:71887:0.0000:0:22:1|escalera de compra
-ped:p17921807516611=esc|177990:81069:0.0000:0:3:0,199990:92292:0.0000:0:2:0,229990:107595:0.0000:0:17:1|escalera de compra
-ped:p17921807521842=esc|60990:23782:0.0000:0:1:0,67990:27379:0.0000:0:20:1|escalera de compra
-ped:p17921807538125=esc|105990:45341:0.0000:0:11:1,112990:48912:0.0000:0:11:0|escalera de compra
-ped:p17921807544276=esc|86990:37319:0.0000:0:21:1|escalera de compra
-ped:p17921807549557=esc|30990:11914:0.0000:0:2:0,32990:12934:0.0000:0:6:0,43990:14815:0.0000:0:14:1|escalera de compra
-ped:p179218075719111=esc|32990:12812:0.0000:0:2:0,48990:17184:0.0000:0:20:1|escalera de compra
-ped:p179218075780612=esc|354990:172714:0.0000:0:5:0,385990:188413:0.0000:0:16:1|escalera de compra
-ped:p179218075832913=esc|80990:32589:0.0000:0:11:1,89990:37180:0.0000:0:11:0|escalera de compra
-ped:p179218075893514=esc|71990:29701:0.0000:0:19:1,89990:39016:0.0000:0:2:0|escalera de compra
-ped:p179218075954815=esc|23990:8773:0.0000:0:22:1|escalera de compra
-ped:p179218076016416=esc|20990:7242:0.0000:0:22:1|escalera de compra
-ped:p179218076065917=esc|23990:8773:0.0000:0:22:1|escalera de compra
-ped:p17926955062221=esc|151990:68692:0.0000:0:15:1|escalera de compra
-ped:p17926955066202=esc|99990:43466:0.0000:0:14:1|escalera de compra
-ped:p17926955070173=esc|49990:19246:0.0000:0:15:1|escalera de compra
-ped:p17926955074124=esc|126990:56769:0.0000:0:15:1|escalera de compra
-ped:p17926955078115=esc|239990:115382:0.0000:0:15:1|escalera de compra
-ped:p17930313909701=esc|139990:62181:0.0000:0:5:0|escalera de compra
-ped:p17930313910422=esc|169990:78872:0.0000:0:5:0|escalera de compra
-ped:p17930313911123=esc|158990:72091:0.0000:0:5:0|escalera de compra
-ped:p17930313911854=esc|139990:62199:0.0000:0:5:0|escalera de compra
-ped:p17930313912565=esc|79990:33093:0.0000:0:6:0|escalera de compra
-ped:p17930313913256=esc|79990:33093:0.0000:0:6:0|escalera de compra
-ped:p17930313913987=esc|114990:51020:0.0000:0:6:0|escalera de compra
-ped:p17934023964270=esc|299990:145317:0.0000:0:6:0|escalera de compra
-ped:p17934023965311=esc|187990:88684:0.0000:0:6:0|escalera de compra
-ped:p17934023966843=esc|178490:83177:0.0000:0:5:0|escalera de compra
-ped:p17934023967884=esc|499990:239484:0.0000:0:5:0|escalera de compra
-ped:p17934023968925=esc|489990:249996:0.0000:0:5:0|escalera de compra
-ped:p17934023969966=esc|383990:188166:0.0000:0:5:0|escalera de compra
-ped:p17934023971007=esc|361990:178785:0.0000:0:5:0|escalera de compra
-ped:p17936390141201=esc|278990:139642:0.0000:0:1:0|escalera de compra
-ped:p17936390147266=esc|99990:44320:0.0000:0:1:0|escalera de compra
-ped:p17936390148467=esc|425990:218072:0.0000:0:1:0|escalera de compra
-ped:p1779912655490#1.4 Sexy Men=esc|11990:5075:0.0805:0:87:0,14360:6336:0.0930:0:129:1,14990:6671:0.0000:0:5:0,21990:9358:0.0000:0:8:0|escalera de compra
-ped:p1779912655490#1.4 W Mujer=esc|11990:5075:0.0225:0:89:0,13700:5985:0.1579:4:19:1,13999:6144:0.0370:0:81:0,14990:6671:0.0500:0:20:0|escalera de compra
-ped:p1779912655490#1.4M Hombre=esc|9999:4016:0.3684:13:19:0,10500:4282:0.2549:8:51:0,14360:6336:0.1186:2:59:0,21990:9358:0.0500:0:20:1|escalera de compra
-ped:p1779912655490#Abismo=esc|10500:4282:0.2737:13:95:0,11990:5075:0.2297:11:74:0,14360:6336:0.0541:3:111:1,14950:6650:0.0400:2:25:0|escalera de compra
-ped:p1779912655490#Acqua=esc|14360:6336:0.0725:4:69:1|escalera de compra
-ped:p1779912655490#Barbarella=esc|10500:4282:0.6667:11:63:0,11990:5075:0.4516:2:62:0,14360:6336:0.3366:0:101:0,23790:10316:0.1739:0:23:1|escalera de compra
-ped:p1779912655490#Bella=esc|11990:5075:0.6111:18:36:0,14360:6336:0.2381:1:105:1,21990:9358:0.0000:0:15:0|escalera de compra
-ped:p1779912655490#Blue Men=esc|13572:5917:0.6154:15:13:1,24990:10527:0.0000:0:20:0|escalera de compra
-ped:p1779912655490#Boy=esc|10500:4282:0.4182:13:55:0,11990:5075:0.2407:5:54:0,12990:5607:0.4000:12:20:1,14360:6336:0.1368:0:95:0|escalera de compra
-ped:p1779912655490#Dark=esc|11990:5075:0.0606:0:33:0,12990:5607:0.2381:5:21:1,13700:5985:0.1083:0:120:0,14990:6671:0.0500:0:20:0|escalera de compra
-ped:p1779912655490#Debutant Hombre=esc|11990:5075:0.1887:8:53:0,12990:5607:0.2667:11:30:1,14360:6336:0.0874:3:103:0,14990:6671:0.1000:4:20:0|escalera de compra
-ped:p1779912655490#Debutante Mujer=esc|11990:5075:0.4857:15:35:0,12990:5607:0.1364:0:22:0,13999:6144:0.0602:0:83:0,14950:6650:0.1667:1:30:1|escalera de compra
-ped:p1779912655490#Dream Way=esc|11990:5075:0.9118:12:34:0,13999:6144:0.5854:0:41:1,14360:6336:0.2778:0:54:0,21990:9358:0.0000:0:7:0|escalera de compra
-ped:p1779912655490#Flores=esc|11990:5075:0.8000:25:20:0,13300:5772:0.1429:0:14:0,14360:6336:0.3304:4:115:1,21990:9358:0.0500:0:20:0|escalera de compra
-ped:p1779912655490#Free Love=esc|10500:4282:0.2208:3:77:0,11990:5075:0.2424:4:66:0,12990:5607:0.1429:0:21:0,14360:6336:0.1308:0:107:1|escalera de compra
-ped:p1779912655490#Fuego=esc|13999:6144:0.0857:0:70:0,14990:6671:0.2000:4:15:1,21990:9358:0.0000:0:8:0|escalera de compra
-ped:p1779912655490#Gentleman=esc|11990:5075:0.5000:21:36:0,12990:5607:0.4138:17:29:1,14360:6336:0.1705:6:88:0,21990:9358:0.0000:0:19:0|escalera de compra
-ped:p1779912655490#Gold Hombre=esc|10500:4282:1.0000:36:21:0,11990:5075:0.7083:23:48:0,12990:5607:0.0789:0:38:0,14360:6336:0.1688:0:77:1|escalera de compra
-ped:p1779912655490#Gold Lady=esc|10414:4237:0.7500:30:48:0,11990:5075:0.1324:2:68:0,12990:5607:0.3077:10:26:0,14360:6336:0.1622:4:111:1|escalera de compra
-ped:p1779912655490#Good Mujer=esc|11990:5075:0.9375:12:32:0,12990:5607:1.0000:15:12:0,13999:6144:1.0462:17:65:1,21990:9358:0.1613:0:31:0|escalera de compra
-ped:p1779912655490#Green=esc|10500:4282:0.6349:24:63:0,12990:5607:0.1333:1:30:0,14360:6336:0.2093:5:86:1,21990:9358:0.0357:0:28:0|escalera de compra
-ped:p1779912655490#H For men=esc|9999:4016:0.2000:6:30:0,10500:4282:0.0323:0:31:0,11990:5075:0.0101:0:198:0,14990:6671:0.0286:0:35:1|escalera de compra
-ped:p1779912655490#H Woman=esc|10500:4282:0.4595:19:74:0,11990:5075:0.3256:13:43:0,13300:5772:0.1875:7:48:0,14360:6336:0.1429:5:70:1|escalera de compra
-ped:p1779912655490#Héroes For Men=esc|14360:6336:0.0702:1:57:1,14990:6671:0.0000:0:7:0,17290:6858:0.0000:0:3:0,21990:9358:0.0000:0:8:0|escalera de compra
-ped:p1779912655490#Hot=esc|10500:4282:0.7419:29:31:0,11990:5075:0.2500:6:4:0,14360:6336:0.2778:8:72:1,14990:6671:0.0000:0:6:0|escalera de compra
-ped:p1779912655490#Indigo Mujer=esc|14360:6336:0.0676:2:74:1,21990:9358:0.0000:0:4:0|escalera de compra
-ped:p1779912655490#Jules Hombre=esc|10500:4282:0.1846:8:65:0,11990:5075:0.0800:3:75:0,14360:6336:0.0460:1:87:1,21990:9358:0.0000:0:8:0|escalera de compra
-ped:p1779912655490#L´extase=esc|10428:4244:1.2500:53:32:0,11990:5075:0.7193:30:57:0,14360:6336:0.1949:6:118:0,21990:9358:0.1290:3:31:1|escalera de compra
-ped:p1779912655490#Leyton Hombre=esc|10500:4282:0.1186:0:59:0,11990:5075:0.1087:0:92:0,13999:6144:0.1062:0:113:0,14840:6591:0.0938:0:32:1|escalera de compra
-ped:p1779912655490#Libre=esc|10500:4282:0.7167:27:60:0,11990:5075:0.1111:0:18:0,14360:6336:0.2727:8:55:0,28590:12443:0.0588:0:17:1|escalera de compra
-ped:p1779912655490#Luna=esc|11990:5075:0.4333:9:30:0,12990:5607:0.7083:21:24:1,14360:6336:0.0631:0:111:0,14990:6671:0.0556:0:18:0|escalera de compra
-ped:p1779912655490#Miss Mujer=esc|7875:2886:0.4737:22:19:0,10500:4282:0.1250:6:64:0,11990:5075:0.0380:2:79:0,13700:5985:0.0351:2:114:1|escalera de compra
-ped:p1779912655490#Only Glow=esc|11990:5075:0.2857:13:35:0,13999:6144:0.0957:5:115:0,21990:9358:0.1600:7:25:1|escalera de compra
-ped:p1779912655490#Paradise=esc|10500:4282:0.8667:36:30:0,11990:5075:0.4286:17:49:0,13300:5772:0.2308:8:39:0,14360:6336:0.1806:5:72:1|escalera de compra
-ped:p1779912655490#pasion=esc|11990:5075:0.1905:6:42:0,12990:5607:0.1364:3:22:0,14360:6336:0.1171:3:111:1,21990:9358:0.0000:0:20:0|escalera de compra
-ped:p1779912655490#Persea=esc|11990:5050:1.9706:60:68:0,13700:5956:1.2586:28:58:0,14360:6306:1.0204:17:49:0,14850:6566:1.0000:16:33:1|escalera de compra
-ped:p1779912655490#Privé Hombre=esc|11990:5075:0.2667:7:45:0,12990:5607:0.2143:5:14:1,14360:6336:0.1028:0:107:0,21990:9358:0.0000:0:8:0|escalera de compra
-ped:p1779912655490#Red Hombre=esc|11990:5075:0.0161:0:62:0,13300:5772:0.2105:7:19:0,14360:6336:0.1449:4:69:1,14990:6671:0.0500:0:20:0|escalera de compra
-ped:p1779912655490#Rose Mujer=esc|10500:4282:0.2295:8:122:0,11990:5075:0.0361:0:166:0,14360:6336:0.0800:1:75:1,21990:9358:0.0000:0:8:0|escalera de compra
-ped:p1779912655490#Scarf=esc|6999:2420:0.2407:8:54:0,9999:4016:0.0588:0:34:0,10500:4282:0.2830:10:53:0,12990:5607:0.0085:0:117:1|escalera de compra
-ped:p1779912655490#Sexy Mujer=esc|11990:5075:0.1818:5:55:0,13300:5772:0.1739:5:23:0,13999:6144:0.1468:4:109:1,21990:9358:0.0000:0:20:0|escalera de compra
-ped:p1779912655490#Sí=esc|10500:4282:0.3158:14:19:0,11990:5075:0.1000:5:70:0,12990:5607:0.2857:13:28:1,14360:6336:0.0776:4:116:0|escalera de compra
-ped:p1779912655490#Silver Hombre=esc|11990:5075:0.1837:8:49:0,13300:5772:0.1071:4:28:0,13999:6144:0.0413:1:121:0,21990:9358:0.0667:2:15:1|escalera de compra
-ped:p1779912655490#Teikirisi=esc|10500:4282:0.1616:4:99:0,11990:5075:0.0508:0:59:0,12990:5607:0.1000:1:20:1,13700:5985:0.0320:0:125:0|escalera de compra
-ped:p1779912655490#Transparent Mujer=esc|10500:4282:0.8140:28:43:0,11990:5075:0.3235:6:68:0,14360:6336:0.2041:0:98:1,21990:9358:0.0000:0:31:0|escalera de compra
-ped:p1779912655490#Turbulence=esc|10500:4282:0.7451:28:51:0,11990:5075:0.2182:4:55:0,12990:5607:0.1500:1:20:0,13999:6144:0.1316:0:114:1|escalera de compra
-ped:p1779912655490#Victory=esc|11990:5075:0.2045:4:44:0,12990:5607:0.2308:6:13:1,13999:6144:0.0947:0:95:0,14990:6671:0.0556:0:18:0|escalera de compra
-ped:p1779912655490#Witch Night=esc|10500:4282:1.3333:44:30:0,11990:5075:0.9804:28:51:0,14360:6336:0.6479:13:71:0,21990:9358:0.2778:0:18:1|escalera de compra
-ped:p1779912655490#Young Mujer=esc|10500:4282:0.5294:20:51:0,11990:5075:0.0784:0:51:0,14360:6336:0.0989:1:91:1,14990:6671:0.0500:0:20:0|escalera de compra
+ped:p1793754274885=esc|10790:4794:0.0000:0:1:0|escalera de compra
+ped:p1793754280062=esc|11290:4580:0.0000:0:1:0|escalera de compra
+ped:p1782841638453=esc|16020:6400:7.5000:132:2:0,17060:6957:3.8846:24:26:1,21320:9240:4.0000:27:4:0|escalera de compra
+ped:p1779912656280=esc|21200:9222:2.3810:9:42:1,22690:10021:0.7714:0:35:0,23980:10712:0.8056:0:36:0,29990:13504:0.0000:0:20:0|escalera de compra
+ped:p1779912656270=esc|12000:5446:1.9000:0:30:0,20100:8742:2.5833:16:24:1,20500:8957:0.9341:0:91:0,32990:15220:0.0909:0:11:0|escalera de compra
+ped:p1779912655550#Amber Romance=esc|45300:17421:2.5000:72:2:0,49000:19372:1.0000:27:1:0,53990:22002:0.0000:0:15:1,59990:25165:0.0000:0:21:0|escalera de compra
+ped:p1779912655550#Aqua Kiss=esc|45300:15500:0.8000:22:5:0,53990:20081:0.1250:2:8:1,56990:21662:0.0000:0:4:0,74990:31150:0.0000:0:25:0|escalera de compra
+ped:p1779912655550#Coconut Passion=esc|42800:15507:0.3333:0:42:0,45300:16825:0.1818:0:33:1,49000:18775:0.0222:0:45:0,54990:21933:0.0000:0:12:0|escalera de compra
+ped:p1779912655550#Love Addict=esc|64990:25287:0.0000:0:5:0,72290:29135:0.0000:0:6:0,84990:35829:0.0000:0:16:1|escalera de compra
+ped:p1779912655550#Love Spell=esc|40000:14628:0.3333:18:3:0,42800:16104:0.0755:4:53:0,45300:17421:0.0385:2:52:0,49000:19372:0.4286:23:7:1|escalera de compra
+ped:p1779912655550#Mango Temptation=esc|46930:17818:1.0000:49:1:0,52990:21012:2.0000:101:1:0,69990:29973:0.0000:0:22:1|escalera de compra
+ped:p1779912655550#Midnight Bloom=esc|42800:9805:0.1852:4:27:0,45300:11123:0.1379:2:29:0,51200:14233:0.0400:0:50:0,56470:17011:0.0000:0:15:1|escalera de compra
+ped:p1779912655550#Pure Seduction=esc|40000:14209:0.3333:8:18:0,42800:15684:0.2857:7:14:0,45300:17002:0.2273:5:22:1,62990:26327:0.0000:0:13:0|escalera de compra
+ped:p1779912655550#Sizzling Vanilla=esc|64990:25607:0.0000:0:18:1,89990:38784:0.0000:0:11:0|escalera de compra
+ped:p1779912655550#Vanilla Lace=esc|64990:26565:0.0526:0:19:1,90990:40270:0.0000:0:12:0|escalera de compra
+ped:p1779912655550#Velve Petals=esc|44000:16519:0.2456:7:57:1,53990:21785:0.0000:0:16:0,59990:24947:0.0000:0:21:0|escalera de compra
+ped:p1779912655550#Wild Neroli=esc|64990:27206:0.0000:0:23:1|escalera de compra
+ped:p1779912656260=esc|11000:4871:5.6667:144:18:0,20500:8885:0.7687:0:147:1,25990:11378:3.0000:64:1:0|escalera de compra
+ped:p1779912655560=esc|52000:19799:0.5102:12:49:0,55000:21405:0.3333:3:9:1,70990:29970:0.0000:0:26:0,92990:41753:0.0000:0:10:0|escalera de compra
+ped:p1779912656290=esc|38562:12664:0.1786:0:28:0,41440:14206:0.1406:0:64:0,31500:14422:0.4444:0:9:1,42999:15042:0.1190:0:42:0|escalera de compra
+ped:p1779905818281=esc|57000:21579:0.1616:9:99:0,68510:27552:0.3333:18:21:0,75360:31107:0.5000:26:8:1,79130:33063:0.6667:35:3:0|escalera de compra
+ped:p1782918442891=esc|35900:11631:0.6818:30:22:0,43990:15964:0.1429:2:7:1,57990:23463:1.0000:46:1:0|escalera de compra
+ped:p1788886838508#Freesia=esc|99600:45240:0.6667:35:6:0|escalera de compra
+ped:p1788886838508#Kiss=esc|82520:36267:1.0000:51:4:0|escalera de compra
+ped:p1788886838508#Kiss Sexy=esc|84990:36343:1.0000:52:3:0|escalera de compra
+ped:p1780106778739=esc|112000:36417:0.1364:1:66:0,121319:41079:0.2500:5:8:0,164990:62930:0.0000:0:15:1,182990:71936:0.0000:0:10:0|escalera de compra
+ped:p1785263851692#Bare Vanilla=esc|44000:16747:0.1081:2:37:1,52600:21353:0.0000:0:3:0,62990:26918:0.0000:0:13:0,69990:30667:0.0000:0:5:0|escalera de compra
+ped:p1785263851692#Velvet Petals=esc|40000:14809:0.5000:26:10:1,44000:16952:1.0000:52:1:0|escalera de compra
+ped:p1782918468593=esc|62901:24597:0.8000:42:5:0,70990:28929:0.3636:19:11:1|escalera de compra
+ped:p1782872153975#azul=esc|176890:84396:0.0714:4:28:1|escalera de compra
+ped:p1782872153975#black=esc|170000:81324:0.0441:3:68:1,182990:88237:0.0000:0:8:0,199990:97285:0.0000:0:4:0|escalera de compra
+ped:p1782872153975#white=esc|121500:56325:1.0000:52:1:0|escalera de compra
+ped:p178287291398901=esc|79999:31168:0.1282:2:39:0,95680:38639:0.0233:0:43:1,108990:44980:0.0000:0:1:0|escalera de compra
+ped:p1779912655570=esc|60000:23535:0.2500:11:8:0,65990:26744:0.1667:7:12:1,73990:31029:0.0526:1:19:0|escalera de compra
+ped:p1779912656300=esc|42490:16567:0.0813:3:123:1|escalera de compra
+ped:p1784044584619=esc|85660:33847:0.1562:0:32:1,92990:37773:0.0000:0:19:0,104990:44200:0.0000:0:18:0|escalera de compra
+ped:p1788893559056=esc|69999:28970:1.0000:52:2:0,79990:34321:0.5000:26:4:0,86990:38070:0.2500:13:4:0,104990:47711:1.0000:52:1:0|escalera de compra
+ped:p1781714867137=esc|54499:22405:1.2500:38:4:0|escalera de compra
+ped:p17833581096731=esc|165999:83970:0.0357:1:28:0,176770:89981:0.0909:4:11:1,194490:99871:0.0000:0:33:0|escalera de compra
+ped:p1784044596199=esc|80000:33923:0.2353:10:17:1,86990:37667:0.0000:0:1:0,119990:55342:0.0000:0:12:0|escalera de compra
+ped:p1780106846533=esc|376236:194837:0.0506:3:79:1,425700:222143:0.0000:0:1:0|escalera de compra
+ped:p17833581096736=esc|344999:174306:0.6667:20:3:0,381990:194130:1.0000:30:2:0|escalera de compra
+ped:p1788743923415=esc|180090:87922:0.1200:3:25:1,197990:97514:0.0000:0:8:0|escalera de compra
+ped:p1788886453710=esc|92499:41650:1.0000:52:2:0,104990:48340:1.0000:52:2:0|escalera de compra
+ped:p17904445727134=esc|145000:64068:0.1818:8:11:1,217590:101090:0.0000:0:2:0|escalera de compra
+ped:p17833581096732=esc|429450:231532:1.0000:52:1:0|escalera de compra
+ped:p1788904839781#Love Spell=esc|45000:16861:0.0000:0:3:0,52990:21140:0.0000:0:16:1,58990:24354:0.0000:0:10:0|escalera de compra
+ped:p1788904839781#Velvet Petals=esc|52990:21140:0.0000:0:10:1,58990:24354:0.0000:0:15:0|escalera de compra
+ped:p17904445729868=esc|43550:14747:0.3333:17:6:0,45990:15992:0.0000:0:19:1|escalera de compra
+ped:p178287291398904=esc|394690:210628:0.0000:0:20:1|escalera de compra
+ped:p17904445727815=esc|67230:26175:0.0000:0:2:0,74990:30133:2.0000:60:1:0|escalera de compra
+ped:p17919098378641=esc|101990:44885:0.0000:0:1:0,113990:51313:0.1250:6:8:1,132990:61489:0.0667:3:15:0|escalera de compra
+ped:p17919098379973=esc|74990:30606:0.0000:0:1:0,97990:42925:1.0000:52:1:0|escalera de compra
+ped:p179218076128818=esc|269990:126380:0.1538:2:13:1|escalera de compra
+ped:p17833581096735=esc|340000:181607:1.0000:30:1:0|escalera de compra
+ped:p1784044826040=esc|134510:63077:0.2500:6:4:0,139990:66012:0.0000:0:10:1,155990:74582:0.0000:0:9:0|escalera de compra
+ped:p1788743899629=esc|189999:93008:0.0588:1:17:1,202990:99970:0.0000:0:27:0|escalera de compra
+ped:p17904445725051=esc|169900:80871:0.0714:1:14:1,254890:126393:0.0000:0:12:0|escalera de compra
+ped:p17904445726433=esc|62690:25270:0.0000:0:4:0,69990:29180:0.0400:1:25:1|escalera de compra
+ped:p17904445728496=esc|42810:14166:0.0000:0:11:0,55990:20888:0.0400:0:25:1|escalera de compra
+ped:p17904445730559=esc|32990:14288:0.0000:0:1:0,41990:14547:0.0000:0:7:1,46990:17097:0.0000:0:21:0,53000:20162:0.0000:0:7:0|escalera de compra
+ped:p179044457319111=esc|174990:80312:0.1429:8:7:1|escalera de compra
+ped:p1791244143398#Bare Vanilla=esc|55990:22188:0.0000:0:10:1,60990:24866:0.0000:0:21:0|escalera de compra
+ped:p1791244143398#Pure Seduction=esc|55990:22188:0.3333:10:3:0|escalera de compra
+ped:p1791244143398#Velvet Petals=esc|55990:22188:0.0000:0:10:1,60990:24866:0.0000:0:21:0|escalera de compra
+ped:p1791316566103=esc|50000:19067:0.0000:0:9:0,52990:20668:0.0000:0:6:0,61990:25489:0.0625:1:16:1|escalera de compra
+ped:p1791316673662=esc|97990:42253:0.0000:0:1:0,109990:48680:0.0000:0:6:0,127990:58322:0.0417:0:24:1|escalera de compra
+ped:p1791335371049=esc|28990:12631:0.3333:9:3:0,32990:14773:0.0000:0:1:0,67174:28752:0.0000:0:15:1,80690:35991:0.0000:0:12:0|escalera de compra
+ped:p1791335435353=esc|50000:18542:0.0000:0:11:1,74990:31927:1.0000:51:1:0|escalera de compra
+ped:p17921807531974=esc|71990:29530:0.0833:3:12:1|escalera de compra
+ped:p17921807554518=esc|29999:12419:0.0000:0:1:0,32990:13944:0.1250:2:8:1|escalera de compra
+ped:p17921807560659=esc|28490:12071:0.1667:9:6:0,30690:13193:0.0000:0:8:1,32990:14366:0.0000:0:7:0|escalera de compra
+ped:p17930313908980=esc|144990:64029:0.2500:8:4:0|escalera de compra
+ped:p17833581096733=esc|136890:68296:0.0000:0:14:1,165590:84314:0.0000:0:13:0|escalera de compra
+ped:p1784044625340=esc|132380:62606:0.0000:0:1:0,153990:74181:0.0000:0:19:1,189990:93463:0.0000:0:7:0,209990:104175:0.0000:0:11:0|escalera de compra
+ped:p17904445724350=esc|249890:119653:0.0000:0:19:1,269990:129830:0.0000:0:11:0|escalera de compra
+ped:p17904445725742=esc|55990:20949:0.0000:0:15:1,62990:24699:0.0000:0:20:0|escalera de compra
+ped:p179044457312310=esc|69783:28837:0.0000:0:30:1|escalera de compra
+ped:p1791316782281=esc|32990:14773:0.0000:0:4:0,45000:17475:0.0000:0:27:1|escalera de compra
+ped:p17919098382687=esc|143990:68428:0.0000:0:2:0,157990:75926:0.0000:0:11:1,169990:82354:0.0000:0:11:0|escalera de compra
+ped:p17921807511030=esc|159990:71871:0.0000:0:23:1|escalera de compra
+ped:p17921807516611=esc|177990:81052:0.0000:0:4:0,199990:92272:0.0000:0:2:0,229990:107572:0.0000:0:17:1|escalera de compra
+ped:p17921807521842=esc|60990:23776:0.0000:0:1:0,67990:27372:0.0000:0:21:1|escalera de compra
+ped:p17921807538125=esc|105990:45331:0.0000:0:12:1,112990:48901:0.0000:0:11:0|escalera de compra
+ped:p17921807544276=esc|86990:37310:0.0000:0:22:1|escalera de compra
+ped:p17921807549557=esc|30990:11911:0.0000:0:2:0,32990:12931:0.0000:0:6:0,43990:14810:0.0000:0:14:1,46990:16340:0.0000:0:1:0|escalera de compra
+ped:p179218075719111=esc|32990:12809:0.0000:0:2:0,48990:16579:0.0000:0:20:1,51990:18098:0.0000:0:1:0|escalera de compra
+ped:p179218075780612=esc|354990:172679:0.0000:0:6:0,385990:188374:0.0000:0:16:1|escalera de compra
+ped:p179218075832913=esc|80990:32581:0.0000:0:12:1,89990:37171:0.0000:0:11:0|escalera de compra
+ped:p179218075893514=esc|71990:29694:0.0000:0:20:1,89990:39007:0.0000:0:2:0|escalera de compra
+ped:p179218075954815=esc|23990:8770:0.0000:0:23:1|escalera de compra
+ped:p179218076016416=esc|20990:7240:0.0000:0:22:1,22990:8260:0.0000:0:1:0|escalera de compra
+ped:p179218076065917=esc|23990:8770:0.0000:0:23:1|escalera de compra
+ped:p17926955062221=esc|151990:68677:0.0000:0:16:1|escalera de compra
+ped:p17926955066202=esc|99990:43456:0.0000:0:15:1|escalera de compra
+ped:p17926955070173=esc|49990:19241:0.0000:0:16:1|escalera de compra
+ped:p17926955074124=esc|126990:56756:0.0000:0:16:1|escalera de compra
+ped:p17926955078115=esc|239990:115358:0.0000:0:16:1|escalera de compra
+ped:p17930313909701=esc|139990:62167:0.0000:0:6:0|escalera de compra
+ped:p17930313910422=esc|169990:78855:0.0000:0:6:0|escalera de compra
+ped:p17930313911123=esc|158990:72075:0.0000:0:6:0|escalera de compra
+ped:p17930313911854=esc|139990:62185:0.0000:0:6:0|escalera de compra
+ped:p17930313912565=esc|79990:33085:0.0000:0:7:1|escalera de compra
+ped:p17930313913256=esc|79990:33085:0.0000:0:7:1|escalera de compra
+ped:p17930313913987=esc|114990:51009:0.0000:0:7:1|escalera de compra
+ped:p17934023964270=esc|299990:145287:0.0000:0:7:1|escalera de compra
+ped:p17934023965311=esc|187990:88665:0.0000:0:7:1|escalera de compra
+ped:p17934023966843=esc|178490:83160:0.0000:0:6:0|escalera de compra
+ped:p17934023967884=esc|499990:239434:0.0000:0:6:0|escalera de compra
+ped:p17934023968925=esc|489990:249947:0.0000:0:6:0|escalera de compra
+ped:p17934023969966=esc|383990:188128:0.0000:0:6:0|escalera de compra
+ped:p17934023971007=esc|361990:178748:0.0000:0:6:0|escalera de compra
+ped:p17936390141201=esc|278990:139614:0.0000:0:1:0|escalera de compra
+ped:p17936390147266=esc|99990:44310:0.0000:0:1:0|escalera de compra
+ped:p17936390148467=esc|425990:218030:0.0000:0:1:0|escalera de compra
+ped:p1779912655490#1.4 Sexy Men=esc|11990:5074:0.0805:0:87:0,14360:6335:0.0930:0:129:1,14990:6670:0.0000:0:5:0,21990:9356:0.0000:0:8:0|escalera de compra
+ped:p1779912655490#1.4 W Mujer=esc|11990:5074:0.0225:0:89:0,13700:5984:0.1579:8:19:1,13999:6143:0.0370:0:81:0,14990:6670:0.0476:0:21:0|escalera de compra
+ped:p1779912655490#1.4M Hombre=esc|9999:4015:0.3684:21:19:0,10500:4281:0.2600:14:50:0,14360:6335:0.1186:4:59:0,21990:9356:0.0476:0:21:1|escalera de compra
+ped:p1779912655490#Abismo=esc|10500:4281:0.2766:19:94:0,11990:5074:0.2297:16:74:0,14360:6335:0.0541:4:111:1,14950:6648:0.0400:3:25:0|escalera de compra
+ped:p1779912655490#Acqua=esc|14360:6335:0.0725:5:69:1|escalera de compra
+ped:p1779912655490#Barbarella=esc|10500:4281:0.6613:23:62:0,11990:5074:0.4516:9:62:0,14360:6335:0.3366:1:101:0,23790:10313:0.1667:0:24:1|escalera de compra
+ped:p1779912655490#Bella=esc|11990:5074:0.6111:18:36:0,14360:6335:0.2381:1:105:1,21990:9356:0.0000:0:16:0|escalera de compra
+ped:p1779912655490#Blue Men=esc|13572:5915:0.6154:28:13:1,21990:9356:0.0000:0:1:0,24990:10525:0.0000:0:20:0|escalera de compra
+ped:p1779912655490#Boy=esc|10500:4281:0.4259:13:54:0,11990:5074:0.2407:5:54:0,14360:6335:0.1368:0:95:1,21990:9356:0.0000:0:21:0|escalera de compra
+ped:p1779912655490#Dark=esc|11990:5074:0.0606:0:33:0,12990:5606:0.2381:10:21:1,13700:5984:0.1083:2:120:0,14990:6670:0.0476:0:21:0|escalera de compra
+ped:p1779912655490#Debutant Hombre=esc|11990:5074:0.1887:12:53:0,12990:5606:0.2667:17:30:1,14360:6335:0.0874:5:103:0,14990:6670:0.0952:6:21:0|escalera de compra
+ped:p1779912655490#Debutante Mujer=esc|11990:5074:0.4857:26:35:0,12990:5606:0.1364:2:22:0,13999:6143:0.0602:0:83:0,14950:6648:0.1667:4:30:1|escalera de compra
+ped:p1779912655490#Dream Way=esc|11990:5074:0.9118:12:34:0,13999:6143:0.5854:0:41:1,14360:6335:0.2778:0:54:0,21990:9356:0.0000:0:7:0|escalera de compra
+ped:p1779912655490#Flores=esc|11990:5074:0.8000:43:20:0,13300:5771:0.1429:0:14:0,14360:6335:0.3304:11:115:1,21990:9356:0.0476:0:21:0|escalera de compra
+ped:p1779912655490#Free Love=esc|10500:4281:0.2237:3:76:0,11990:5074:0.2424:4:66:0,12990:5606:0.1429:0:21:0,14360:6335:0.1308:0:107:1|escalera de compra
+ped:p1779912655490#Fuego=esc|13999:6143:0.0857:1:70:0,14990:6670:0.1875:8:16:1,21990:9356:0.0000:0:8:0|escalera de compra
+ped:p1779912655490#Gentleman=esc|11990:5074:0.5000:32:36:0,12990:5606:0.4138:26:29:1,14360:6335:0.1705:10:88:0,21990:9356:0.0000:0:19:0|escalera de compra
+ped:p1779912655490#Gold Hombre=esc|10500:4281:1.0500:38:20:0,11990:5074:0.7083:23:48:0,12990:5606:0.0789:0:38:0,14360:6335:0.1688:0:77:1|escalera de compra
+ped:p1779912655490#Gold Lady=esc|10414:4236:0.7660:49:47:0,11990:5074:0.1324:6:68:0,12990:5606:0.3077:18:26:0,14360:6335:0.1622:8:111:1|escalera de compra
+ped:p1779912655490#Good Mujer=esc|11990:5074:0.9375:33:32:0,12990:5606:1.0000:37:12:0,13999:6143:1.0462:40:65:1,21990:9356:0.1562:0:32:0|escalera de compra
+ped:p1779912655490#Green=esc|10500:4281:0.6452:38:62:0,12990:5606:0.1333:4:30:0,14360:6335:0.2093:9:86:1,21990:9356:0.0345:0:29:0|escalera de compra
+ped:p1779912655490#H For men=esc|9999:4015:0.2000:11:30:0,10500:4281:0.0323:0:31:0,11990:5074:0.0101:0:198:0,14990:6670:0.0278:0:36:1|escalera de compra
+ped:p1779912655490#H Woman=esc|10500:4281:0.4658:29:73:0,11990:5074:0.3256:20:43:0,13300:5771:0.1875:11:48:0,14360:6335:0.1429:8:70:1|escalera de compra
+ped:p1779912655490#Héroes For Men=esc|14360:6335:0.0702:3:57:1,14990:6670:0.0000:0:7:0,17290:6856:0.0000:0:4:0,21990:9356:0.0000:0:8:0|escalera de compra
+ped:p1779912655490#Hot=esc|10500:4281:0.7667:47:30:0,11990:5074:0.2500:12:4:0,14360:6335:0.2778:14:72:1,14990:6670:0.0000:0:6:0|escalera de compra
+ped:p1779912655490#Indigo Mujer=esc|14360:6335:0.0676:4:74:1,21990:9356:0.0000:0:4:0|escalera de compra
+ped:p1779912655490#Jules Hombre=esc|10500:4281:0.1719:11:64:0,11990:5074:0.0800:5:75:0,14360:6335:0.0460:2:87:1,21990:9356:0.0000:0:8:0|escalera de compra
+ped:p1779912655490#L´extase=esc|10428:4243:1.2903:79:31:0,11990:5074:0.7193:40:57:0,14360:6335:0.1949:5:118:0,21990:9356:0.1290:1:31:1|escalera de compra
+ped:p1779912655490#Leyton Hombre=esc|10500:4281:0.1207:0:58:0,11990:5074:0.1087:0:92:0,13999:6143:0.1062:0:113:0,14840:6590:0.0938:0:32:1|escalera de compra
+ped:p1779912655490#Libre=esc|10500:4281:0.7119:27:59:0,11990:5074:0.1111:0:18:0,14360:6335:0.2727:8:55:0,28590:12440:0.0588:0:17:1|escalera de compra
+ped:p1779912655490#Luna=esc|11990:5074:0.4333:18:30:0,12990:5606:0.7083:37:24:1,14360:6335:0.0631:0:111:0,14990:6670:0.0526:0:19:0|escalera de compra
+ped:p1779912655490#Miss Mujer=esc|7875:2885:0.4737:32:19:0,10500:4281:0.1270:9:63:0,11990:5074:0.0380:3:79:0,13700:5984:0.0351:3:114:1|escalera de compra
+ped:p1779912655490#Only Glow=esc|11990:5074:0.2857:9:35:0,13999:6143:0.0957:0:115:0,21990:9356:0.1600:1:25:1|escalera de compra
+ped:p1779912655490#Paradise=esc|10500:4281:0.8667:50:30:0,11990:5074:0.4286:21:49:0,13300:5771:0.2308:8:39:0,14360:6335:0.1806:4:72:1|escalera de compra
+ped:p1779912655490#pasion=esc|11990:5074:0.1905:6:42:0,12990:5606:0.1364:3:22:0,14360:6335:0.1171:3:111:1,21990:9356:0.0000:0:21:0|escalera de compra
+ped:p1779912655490#Persea=esc|11990:5049:1.9706:100:68:0,13700:5955:1.2586:53:58:0,14360:6305:1.0204:37:49:0,14850:6564:1.0000:35:33:1|escalera de compra
+ped:p1779912655490#Privé Hombre=esc|11990:5074:0.2667:13:45:0,12990:5606:0.2143:10:14:1,14360:6335:0.1028:2:107:0,21990:9356:0.0000:0:8:0|escalera de compra
+ped:p1779912655490#Red Hombre=esc|11990:5074:0.0161:0:62:0,13300:5771:0.2105:11:19:0,14360:6335:0.1449:7:69:1,14990:6670:0.0476:0:21:0|escalera de compra
+ped:p1779912655490#Rose Mujer=esc|10500:4281:0.2314:14:121:0,11990:5074:0.0361:1:166:0,14360:6335:0.0789:4:76:1,21990:9356:0.0000:0:8:0|escalera de compra
+ped:p1779912655490#Scarf=esc|6999:2419:0.2407:13:54:0,9999:4015:0.0588:1:34:0,10500:4281:0.2885:17:52:0,12990:5606:0.0085:0:117:1|escalera de compra
+ped:p1779912655490#Sexy Mujer=esc|11990:5074:0.1818:5:55:0,13300:5771:0.1739:5:23:0,13999:6143:0.1468:4:109:1,21990:9356:0.0000:0:21:0|escalera de compra
+ped:p1779912655490#Sí=esc|9414:3704:0.5556:37:18:0,11990:5074:0.1000:7:70:0,12990:5606:0.2857:19:28:1,14360:6335:0.0776:5:116:0|escalera de compra
+ped:p1779912655490#Silver Hombre=esc|11990:5074:0.1837:12:49:0,13300:5771:0.1034:6:29:0,13999:6143:0.0413:2:121:0,21990:9356:0.0667:4:15:1|escalera de compra
+ped:p1779912655490#Teikirisi=esc|10500:4281:0.1616:7:99:0,11990:5074:0.0508:0:59:0,12990:5606:0.1000:3:20:1,13700:5984:0.0320:0:125:0|escalera de compra
+ped:p1779912655490#Transparent Mujer=esc|10500:4281:0.8140:28:43:0,11990:5074:0.3235:6:68:0,14360:6335:0.2041:0:98:1,21990:9356:0.0000:0:32:0|escalera de compra
+ped:p1779912655490#Turbulence=esc|10500:4281:0.7600:28:50:0,11990:5074:0.2182:4:55:0,13999:6143:0.1316:0:114:1,21990:9356:0.0000:0:21:0|escalera de compra
+ped:p1779912655490#Victory=esc|11990:5074:0.2045:9:44:0,12990:5606:0.2308:11:13:1,13999:6143:0.0947:2:95:0,14990:6670:0.0526:0:19:0|escalera de compra
+ped:p1779912655490#Witch Night=esc|10500:4281:1.3448:64:29:0,11990:5074:0.9804:40:51:0,14360:6335:0.6479:18:71:0,21990:9356:0.2632:0:19:1|escalera de compra
+ped:p1779912655490#Young Mujer=esc|10500:4281:0.5200:31:50:0,11990:5074:0.0784:2:51:0,14360:6335:0.0989:3:91:1,14990:6670:0.0476:0:21:0|escalera de compra
