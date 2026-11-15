@@ -759,3 +759,8 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 - **22 microSD SanDisk 128 GB** encabezan "Pedidos en riesgo" (unos 405.000 de costo) calculados con 5 ventas en 4 días de julio: lo miro antes del próximo pedido de Nissei (poca historia).
 
 - (15/11) Compró 269,94 USDT a $1.707,79 ($461.000) en Binance: van al próximo pedido de Paraguay (al cargar el `compray` de ese pedido, los pesos son 461.000 por esos 269,94 USDT). Falta el saldo real de Binance (por 🔒 Archivo para Claude) para dejarlo exacto.
+
+## 15/11 · Tarde (él: "pasame todo… lo obvio hacelo vos")
+- **Hechas por mí (a):** Tienda 5 (7 perfumes de ABEL sin tamaño, afuera) y 6 (12 teclados en portugués + licor Amarula + chocolate, afuera) con `tienda:fuera`. Reglas del cerebro 2, 3, 4, 5, 6, 7 y 8 del 15/11 tomadas en (a) porque siguen lo que él ya dijo (la más nueva manda): **falta pasarlas al código** (hacerlo en la completa; avisarle cuando estén).
+- **Siguen siendo de él:** Tienda 1, 2, 3, 4, 7, 8 · Paulvic 9 (Indigo/Silver) y 10 (Luna) · Reglas 1 (lo fácil y los precios) · completa 25 (Kit Jade, autorizo), 26 (Cubreasiento), 27 (caros nuevos de 1 unidad) · reclamo Joystick (vence lun 16/11 14:00) · 30 lugares de Ayelen · mensaje TP-Link · Espejo 8" · $9.200 de Ayelen del 14/11 · costo del limpiador · saldo de Binance · TIENDA_TOKEN.
+- La autorización vieja de la Codera (TMK3, 08/11) no se usa: la Codera se resolvió el 14/11.
