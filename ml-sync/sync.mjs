@@ -14294,6 +14294,8 @@ function tiendaNombreProv(nn) {
     // 15/11/2026 (Tienda, páginas 31-36): "Pré-Amplificador", "Sony Sony", "azul y azul", "Minecraft::..".
     [/\bpr[ée]-?amplificador(es)?\b/gi, 'preamplificador$1'], [/\b(sony|samsung|xiaomi|jbl|apple|lg|hp|logitech|philips|tp-link|kingston|sandisk)\s+\1\b/gi, '$1'],
     [/\b(azul|negro|blanco|rojo|verde|rosa|gris)\s+y\s+\1\b/gi, '$1'], [/:{2,}\.*/g, ''],
+    // 15/11/2026 (ABEL semanal): la misma marca escrita dos veces distinto partía el filtro de Marca ("Aurora Scenst", "Al A'Raaf").
+    [/\bscenst\b/gi, 'Scents'], [/\bal a'raaf\b/gi, "Al-A'Raaf"],
     [/\bcondicionador(es)?\b/gi, 'acondicionador$1'], [/\btratamento(s)?\b/gi, 'tratamiento$1'], [/(?<![\p{L}])l[aá]pis(?![\p{L}])/giu, 'lápiz'],
     [/(?<![\p{L}])s[ée]rie(?![\p{L}])/giu, 'serie'], [/\bcorretivo\b/gi, 'corrector'], [/(?<![\p{L}])[áÁ]gua(?![\p{L}])/gu, 'agua'], [/\bbarra\s+de\s+som\b/gi, 'barra de sonido'],
     [/\bauto\s*-?\s*falantes?\b/gi, 'parlante para auto'], [/\bsom\b/gi, 'sonido'], [/(?<![\p{L}])trip[ée](?![\p{L}])/giu, 'trípode'], [/\bvidro\s+temperado\b/gi, 'vidrio templado'],
