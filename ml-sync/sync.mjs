@@ -14282,6 +14282,9 @@ function tiendaNombreProv(nn) {
     [/\bamanhecer\b/gi, 'amanecer'], [/\bmassageador(es)?\b/gi, 'masajeador$1'], [/\brastreamento\b/gi, 'rastreo'], [/(?<![\p{L}])r[áa]dio(?![\p{L}])/giu, 'radio'],
     [/\btransdutor(es)?\b/gi, 'transductor$1'], [/\bponto\s+de\s+acceso\b/gi, 'punto de acceso'], [/\btiracolo\b/gi, 'bandolera'], [/\besquerdo\b/gi, 'izquierdo'],
     [/\bdireito\b/gi, 'derecho'], [/\bteto\b/gi, 'techo'], [/\bimpressoras?\b/gi, (m) => (/s$/i.test(m) ? 'impresoras' : 'impresora')], [/\bareia\b/gi, 'arena'], [/\bunidadee\b/gi, 'unidad'],
+    // 15/11/2026 (Tienda, páginas 31-36): "Pré-Amplificador", "Sony Sony", "azul y azul", "Minecraft::..".
+    [/\bpr[ée]-?amplificador(es)?\b/gi, 'preamplificador$1'], [/\b(sony|samsung|xiaomi|jbl|apple|lg|hp|logitech|philips|tp-link|kingston|sandisk)\s+\1\b/gi, '$1'],
+    [/\b(azul|negro|blanco|rojo|verde|rosa|gris)\s+y\s+\1\b/gi, '$1'], [/:{2,}\.*/g, ''],
     [/\bcondicionador(es)?\b/gi, 'acondicionador$1'], [/\btratamento(s)?\b/gi, 'tratamiento$1'], [/(?<![\p{L}])l[aá]pis(?![\p{L}])/giu, 'lápiz'],
     [/(?<![\p{L}])s[ée]rie(?![\p{L}])/giu, 'serie'], [/\bcorretivo\b/gi, 'corrector'], [/(?<![\p{L}])[áÁ]gua(?![\p{L}])/gu, 'agua'], [/\bbarra\s+de\s+som\b/gi, 'barra de sonido'],
     [/\bauto\s*-?\s*falantes?\b/gi, 'parlante para auto'], [/\bsom\b/gi, 'sonido'], [/(?<![\p{L}])trip[ée](?![\p{L}])/giu, 'trípode'], [/\bvidro\s+temperado\b/gi, 'vidrio templado'],
