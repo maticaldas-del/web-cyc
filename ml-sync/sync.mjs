@@ -156,6 +156,12 @@ if (EN_CONSULTA) {
     console.log(`❌ "${_nom || '(vacío)'}" no corre por ml-consulta: escribe en cantidad o en plata y ml-consulta no tiene candado. Va por ml-sync.`);
     process.exit(1);
   }
+  // 15/11/2026 (falla muda: `listadto:pirineo;…;go` por ml-consulta mostró la cuenta y no guardó nada, sin avisar): un comando con `go`
+  // que no está en CONSULTA_ESCRIBE corre en sólo lectura y sus escrituras se pierden calladas → se niega con el motivo.
+  if (!CONSULTA_ESCRIBE.has(_nom) && _conGo) {
+    console.log(`❌ "${_nom}" con go no guarda nada por ml-consulta (corre en sólo lectura). Va por ml-sync.`);
+    process.exit(1);
+  }
   if (!CONSULTA_ESCRIBE.has(_nom)) {
     CONSULTA_SOLO_LEE = true;
     const _fetchReal = globalThis.fetch;
