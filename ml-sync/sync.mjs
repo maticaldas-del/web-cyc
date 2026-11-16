@@ -28563,7 +28563,7 @@ async function main() {
       const yaIds = new Set(cargados.map((x) => x.id));
       const pool = Object.entries(cands).filter(([id, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && !yaIds.has(id) && enG(c.nombre) && !(PY_ELEGANCIA_OFF && (provPyDeBot(c) === 'elegancia' || /^EL_/i.test(String(c.cod || ''))))
         && !candPorQueNoBot(c, '', tcL, mNoL) && (parseFloat(c.usd) || 0) > 0 && Number(c.margen) >= CAND_VARA_COMPRA && vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res)
-        && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5).sort((a, b) => (star(b[1]) >= 7) - (star(a[1]) >= 7) || star(b[1]) - star(a[1]));   // 16/11, él: "se tiene que llenar a 600 dólares mínimo, sino no se hace el pedido": primero ⭐7+, después el resto por ⭐ (antes sólo ⭐7+ y quedaba en 476)
+        && (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5 && star(c) > 0).sort((a, b) => (star(b[1]) >= 7) - (star(a[1]) >= 7) || star(b[1]) - star(a[1]));   // 16/11 (él: "los que no tienen ni ventas ni reseñas ¿por qué los pusiste?"): sin ventas ni reseñas conocidas (⭐ 0) no entra   // 16/11, él: "se tiene que llenar a 600 dólares mínimo, sino no se hace el pedido": primero ⭐7+, después el resto por ⭐ (antes sólo ⭐7+ y quedaba en 476)
       const agregados = [], nuevosNo = []; let medidos = 0;
       for (const [id, c] of pool) {
         if (total >= TOPE || medidos >= 120) break;
