@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.214';
+const APP_VERSION='28.215';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.215',f:'16/11',h:'00:16',c:[{n:2,t:'🧴 Paulvic: las unidades de cada aroma se redondean siempre para arriba, de a 5 (21 → 25), como pediste el 15/11.'},{n:2,t:'⚖️ Tope de H: el 💡 de la próxima cuenta para lo nuevo mira la ventana que todavía se puede mover (julio 2026 a junio 2027), igual que el robot. Las barras y el aviso rojo siguen con el cierre de diciembre.'}]},
   {v:'28.214',f:'15/11',h:'15:55',c:[{n:1,t:'Pedidos: las tarjetas con colores se abren y se cierran tocándolas (arrancan cerradas); las de un solo producto siguen sin abrirse.'}]},
   {v:'28.213',f:'15/11',h:'04:37',c:[{n:1,t:'Revisiones: la de las Reglas del cerebro del 15/11 en el cartel, con sus 8 decisiones.'}]},
   {v:'28.212',f:'14/11',h:'15:35',c:[{n:1,t:'Gastos: la tarjeta de arriba dice cuánto fue el mes anterior y la diferencia (sin contar lo que falta pagar).'}]},
@@ -24304,7 +24305,9 @@ function maxCompraChip(p){
 // podés poner un botón para copiar? (…) que sólo aparezca nombre y unidades a pedir"). Se copian SÓLO
 // las variantes que hay que comprar (las de "✓ mandar" no), en el mismo orden que se ven en pantalla.
 const _pedCopiaTxt={},_pedHechoItems={};
-function pvRedondo(q){q=Number(q)||0;if(q<=0)return 0;const P=[3,5,10,20,50,100];if(q>100)return Math.round(q/100)*100;let b=P[0];for(const t of P)if(Math.abs(t-q)<Math.abs(b-q)||(Math.abs(t-q)===Math.abs(b-q)&&t>b))b=t;return b;}
+// (3a del 15/11/2026, Reglas del cerebro): el Paulvic se redondea SIEMPRE PARA ARRIBA, de a 5 (21 → 25; 1 → 5), como la regla general del
+// 14/11 ("si tenés que redondear redondeá para arriba"). Antes, al más cercano de 3/5/10/20/50/100 (21 → 20).
+function pvRedondo(q){q=Number(q)||0;if(q<=0)return 0;return Math.ceil(q/5-1e-9)*5;}
 // CAMBIAR A MANO CUÁNTAS PEDIR DE UN COLOR (19/10/2026). Va a `claudedecide/ped/<id>/mano/<color>` ({u,ts}): el robot no lo toca
 // y manda sobre lo mío hasta que se marca el pedido hecho (ahí se borra).
 async function pedSetVarU(pid,v,val){
@@ -27984,10 +27987,17 @@ function _facOficial(ini,hoy){
   });
   return {real,ofi};
 }
-function parejoDatos(){
+// (8a del 15/11/2026, Reglas del cerebro): PARA ELEGIR LA CUENTA DE LO NUEVO se mira la ventana que todavía se puede mover: la que arranca en
+// el último 01/07 o 01/01 (en nov-2026: jul-2026 → jun-2027), no la que está por cerrar (ene-dic 2026, ya casi toda facturada). Las barras y
+// el 🔴 de la tarjeta ⚖️ siguen con la que cierra. Misma cuenta en el robot (`lugarHPorCuenta(…, true)`, sync.mjs: repartopy y paramcompra).
+function _ventanaMovibleARCA(){
+  const h=new Date(); const y=h.getFullYear();
+  return h.getMonth()<6?{ini:new Date(y,0,1),fin:new Date(y,11,31)}:{ini:new Date(y,6,1),fin:new Date(y+1,5,30)};
+}
+function parejoDatos(movible){
   const topeH=catLim('H'); if(!(topeH>0))return null;
   const hoy=new Date(); hoy.setHours(0,0,0,0);
-  const {ini,fin}=_proxCierreARCA();
+  const {ini,fin}=movible?_ventanaMovibleARCA():_proxCierreARCA();
   const {real,ofi}=_facOficial(ini,hoy);
   const faltan=Math.max(0,Math.round((fin-hoy)/864e5));
   // Ritmo = los 30 días ENTEROS hasta AYER. Antes entraba HOY, que a la madrugada casi no tiene ventas:
@@ -28181,7 +28191,8 @@ function renderHomeParejo(){
   el.innerHTML=caja(`<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem">⚖️ Las 4 cuentas contra el tope de H (${fM(d.topeH)}/año)</div>
     <div style="font-size:.6rem;color:var(--muted);margin-top:2px">al cierre de ARCA, el ${fD(d.fin).slice(0,5)} · tocá una cuenta para el detalle <span class="tt-i" title="La próxima recategorización de ARCA mira del ${fD(d.ini)} al ${fD(d.fin)}. La barra entera es el tope de la K (${fM(MONO_CATS[MONO_CATS.length-1].lim)}); cada raya blanca es el tope de una categoría (la de H, más gruesa). Tres partes: llena = lo facturado oficial hasta hoy (canceladas incluidas, como las cuenta ARCA) · clarita = en teoría, lo que ya vende cada producto a su ritmo hasta el cierre · rayada = lo nuevo que todavía no vendió (en Full, viajando o en la caja), a su precio de hoy. El tope es por cuenta." onclick="ttI(this,event)">ⓘ</span></div>
     ${barras}${aviso}
-    <div style="font-size:.66rem;margin-top:8px">💡 Lo próximo de Paraguay que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(orden.find(f=>f.a==='ayelen'||f.a==='matias')||menos).a]}</strong>, la que más lugar tiene entre Ayelen y Matías. <span style="color:var(--muted)">(Perfumes de Paraguay → Adriana · Luciana sólo lo que no es de Paraguay · lo que ya está en una cuenta, queda.)</span></div>
+    ${(()=>{/* 8a del 15/11/2026: el 💡 elige con la ventana que se puede mover (jul→jun), como el robot */let dM=null;try{dM=parejoDatos(true);}catch(e){}const oM=(dM&&dM.filas&&dM.filas.length)?[...dM.filas].sort((x,y)=>x.proy-y.proy):orden;const fM2=x=>String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear();
+      return `<div style="font-size:.66rem;margin-top:8px">💡 Lo próximo de Paraguay que no sea perfume → <strong style="color:var(--green)">${MET_LABELS[(oM.find(f=>f.a==='ayelen'||f.a==='matias')||oM[0]).a]}</strong>, la que más lugar tiene entre Ayelen y Matías${dM?` en la ventana que todavía se puede mover (${fM2(dM.ini)} a ${fM2(dM.fin)})`:''}. <span style="color:var(--muted)">(Perfumes de Paraguay → Adriana · Luciana sólo lo que no es de Paraguay · lo que ya está en una cuenta, queda.)</span></div>`;})()}
     <div style="text-align:right;margin-top:8px"><button onclick="goMonotributo()" style="background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:6px 12px;min-height:36px;font-size:.64rem;cursor:pointer">✎ AFIP / meses</button></div>`);
 }
 // LA VENTANA QUE MIRA ARCA. No son los últimos 365 días: ARCA cierra por semestre y mira los 12

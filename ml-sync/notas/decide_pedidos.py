@@ -126,7 +126,9 @@ BAJA_ML={('p1779912655490','Invictus'),('p1779912655490','Phantom')}
 # puede vender igual. sí o sí hay que probar con productos en stock en Full"): lo que nunca vendió a 35% se descarta SÓLO si estuvo 30+ días con
 # stock al precio que deja 35% (o más caro) sin vender. Si no se probó, va una COMPRA DE PRUEBA: una semana de lo que vendía (mínimo 2) menos
 # lo que ya hay, para venderla al precio del 35%. El competidor ya no descarta nada.
-PRUEBA_DIAS=30
+# (2a del 15/11/2026, Reglas del cerebro): la prueba al 35% dura 2 meses (60 días con stock a ese precio sin vender), igual que la 💸 prueba
+# de mandar a Full (`bajo35` de decide_cajas.py, 11/11). Antes 30 días.
+PRUEBA_DIAS=60
 def m35_probado(mm): return mm and mm['f']=='no' and mm.get('d',0)>=PRUEBA_DIAS and mm.get('u',0)==0
 # 30/10/2026 (él eligió la a: "prueba sólo donde no hay competencia medida"): la compra de prueba va SÓLO donde no hay precio de la
 # competencia medido (`M35 no:?:…`: sin `techofull`). Donde la competencia vende más barato (`M35 no:<%>:…` con número) no se hace compra de
@@ -614,7 +616,7 @@ def tito(q,r,t,obj,b,rent,neto,color=None,extra='',motNo=''):
 def prueba_mot(q,r,p35,color=None):
     de=f" del {color}" if color else ''
     return (f"Hola Tito! Te pido {q}{de} de prueba: antes se vendían unos {r*30:.0f} por mes, pero nunca lo probamos a un precio que nos deje 35%"
-            +(f" (${p35})" if p35 else '')+". Si se venden, lo seguimos pidiendo. Si en 30 días no se vende ninguno, no se pide más.")
+            +(f" (${p35})" if p35 else '')+". Si se venden, lo seguimos pidiendo. Si en 2 meses no se vende ninguno, no se pide más.")  # (2a del 15/11/2026, Reglas del cerebro)
 def titoJ(mo): return "Hola Tito! "+mo
 # Revisión etapa 9, 30/10/2026: lo que pidió la perfumería de un color SIN renglón en el log (ni ventas, ni stock, ni nada en camino), o de un
 # producto con colores sin ningún renglón: antes se perdía sin aviso (o se pedía de otro color). Va como renglón de ESE color sólo para ella;

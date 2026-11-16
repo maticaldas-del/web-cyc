@@ -4734,7 +4734,9 @@ const RE_REGALO = /perfum|parfum|\bedp\b|\bedt\b|eau de|body splash|body mist|co
 // cuentas y colores juntos, días corridos: el registro de stock del año pasado no alcanza). Sólo lo regalable (`RE_REGALO`), con 4+ ventas de
 // cada lado y ×1,3 o más (tope ×5). → { <prodId>: x }. Lo usan `escasez` (2a: lo que se corta antes de Navidad se ve antes) y la liquidación
 // de 30 días / la sobra (4a: del 15/11 al 24/12 no baja lo que vende en Navidad).
-function picosNavidad(vp, prodById, ahora = Date.now()) {
+// `todos` (6a del 15/11/2026, Reglas del cerebro): devuelve el factor MEDIDO de todo producto con 4+ ventas de cada lado, sin el filtro de
+// regalo ni el piso ×1,3 (lo usa `picosNavidadTemp` para saber qué se midió parejo, ~×1).
+function picosNavidad(vp, prodById, ahora = Date.now(), todos = false) {
   const y = new Date(ahora - 3 * 3600e3).getUTCFullYear() - (new Date(ahora - 3 * 3600e3).getUTCMonth() === 11 && new Date(ahora - 3 * 3600e3).getUTCDate() > 24 ? 0 : 1);
   const k = (m, d) => `${y}_${String(m).padStart(2, '0')}_${String(d).padStart(2, '0')}`;
   const wA = k(12, 3), wB = k(12, 24), bA = k(10, 20), bB = k(12, 2);
@@ -4744,8 +4746,8 @@ function picosNavidad(vp, prodById, ahora = Date.now()) {
   for (const [dk, ents] of Object.entries(vp || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(dk) || dk < bA || dk > wB) continue; const enW = dk >= wA; if (!enW && (dk > bB || ofer.some((o) => dk >= o.a && dk <= o.b))) continue;
     for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId) continue; const x = (U[v.prodId] = U[v.prodId] || { w: 0, b: 0 }); if (enW) x.w += Number(v.qty) || 1; else x.b += Number(v.qty) || 1; } }
   const out = {};
-  for (const [pid, x] of Object.entries(U)) { const pr = (prodById || {})[pid]; if (!pr || !RE_REGALO.test(String(pr.name || ''))) continue; if (x.w < 4 || x.b < 4 || !(dB > 0)) continue;
-    const f = (x.w / dW) / (x.b / dB); if (f >= 1.3) out[pid] = Math.round(Math.min(5, f) * 100) / 100; }
+  for (const [pid, x] of Object.entries(U)) { const pr = (prodById || {})[pid]; if (!pr || (!todos && !RE_REGALO.test(String(pr.name || '')))) continue; if (x.w < 4 || x.b < 4 || !(dB > 0)) continue;
+    const f = (x.w / dW) / (x.b / dB); if (todos || f >= 1.3) out[pid] = Math.round(Math.min(5, f) * 100) / 100; }
   return out;
 }
 // 🎁☀️ PICO DE TEMPORADA POR RUBRO (14/11/2026, él: "la navidad pasada teníamos poco o ningún producto de lo que manejamos hoy. pero elegí vos
@@ -4762,8 +4764,13 @@ function temporadaDe(nom) { const n = String(nom || ''); if (RE_TEMP_VERANO.test
 // → { x: {<prodId>: x}, tipo: {<prodId>: 'medido'|'regalo'|'verano'} }
 function picosNavidadTemp(vp, prodById, ahora = Date.now()) {
   const med = picosNavidad(vp, prodById, ahora) || {}, x = {}, tipo = {};
+  // (6a del 15/11/2026, Reglas del cerebro): si la Navidad pasada SÍ se midió (4+ ventas de cada lado) y no dio pico (vendió parejo, menos de
+  // ×1,3), manda lo medido: ×1, sin el ×2/×1,5 de su rubro. El rubro queda sólo para lo que no se pudo medir.
+  let medTodos = {}; try { medTodos = picosNavidad(vp, prodById, ahora, true) || {}; } catch { medTodos = {}; }
   for (const [pid, pr] of Object.entries(prodById || {})) {
     if (med[pid] > 1) { x[pid] = med[pid]; tipo[pid] = 'medido'; continue; }
+    if (medTodos[pid] >= 1.3) { x[pid] = medTodos[pid]; tipo[pid] = 'medido'; continue; }   // medido con pico (aunque el nombre no esté en RE_REGALO)
+    if (medTodos[pid] != null) continue;   // 6a del 15/11: medido parejo → sin pico (×1)
     const t = temporadaDe(pr && pr.name); if (t) { x[pid] = t === 'verano' ? TEMP_VERANO_X : TEMP_REGALO_X; tipo[pid] = t; }
   }
   return { x, tipo };
@@ -6099,11 +6106,15 @@ function navResacaVentana(ahora = Date.now()) {
 }
 const enNavResaca = (ts, ahora = Date.now()) => { const v = navResacaVentana(ahora); return !!v && Number(ts) >= v.ini && Number(ts) < v.fin; };
 const diaNavResaca = (k, ahora = Date.now()) => enNavResaca(Date.parse(String(k).slice(0, 10).replace(/_/g, '-') + 'T12:00:00-03:00'), ahora);
-function enBlackFriday(ts) { const v = bfVentana(ts); return (!!v && Number(ts) >= v.ini && Number(ts) < v.fin) || enNavResaca(ts); }
-function horasBF(t0, t1) { let h = 0; const vs = new Map(); for (const t of [t0, t1]) { const v = bfVentana(t); if (v) vs.set(v.ini, v); }
-  { const vN = navResacaVentana(); if (vN) vs.set(vN.ini, vN); }   // 49a del 14/11: la resaca de enero
+// (7a del 15/11/2026, Reglas del cerebro): a lo de VERANO (`temporadaDe` = 'verano': cartas, mazos, enchufe viajero, pava de auto) NO se le
+// saca el pico de diciembre en la resaca de enero: el verano sigue en enero, diciembre no fue un pico raro. `sinResaca` = true deja sólo el
+// Black Friday. Donde se sabe el producto (Pedidos, el ritmo normal de la noche, la escasez) se pasa `esVeranoNom(nombre)`.
+const esVeranoNom = (nom) => temporadaDe(nom) === 'verano';
+function enBlackFriday(ts, sinResaca = false) { const v = bfVentana(ts); return (!!v && Number(ts) >= v.ini && Number(ts) < v.fin) || (!sinResaca && enNavResaca(ts)); }
+function horasBF(t0, t1, sinResaca = false) { let h = 0; const vs = new Map(); for (const t of [t0, t1]) { const v = bfVentana(t); if (v) vs.set(v.ini, v); }
+  if (!sinResaca) { const vN = navResacaVentana(); if (vN) vs.set(vN.ini, vN); }   // 49a del 14/11: la resaca de enero (7a del 15/11: no a lo de verano)
   for (const v of vs.values()) h += Math.max(0, Math.min(t1, v.fin) - Math.max(t0, v.ini)) / 36e5; return h; }
-const diaEnBF = (k) => enBlackFriday(Date.parse(String(k).replace(/_/g, '-') + 'T12:00:00-03:00'));
+const diaEnBF = (k, sinResaca = false) => enBlackFriday(Date.parse(String(k).replace(/_/g, '-') + 'T12:00:00-03:00'), sinResaca);
 // 6a del 08/11/2026 (él: "a"): EL PRECIO QUE NO RINDIÓ CUENTA COMO TECHO MEDIDO (como ya hacía `ventasraras`): el anotado en
 // `cyc/techofreno` al volver de una suba (la vuelta del punto medio o la primera baja 🪜), de los últimos 60 días. Así lo que volvió puede
 // quedar 💰 (no es "💰 sin 🔴") y la próxima prueba del mes va al MEDIO entre el precio de hoy y el que falló, no al mismo +50%.
@@ -8144,7 +8155,7 @@ async function medirParamCompra(db, accounts, labels, GO) {
   const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
   // 22/10/2026 (7a): la que más lugar tiene contra el tope de H, no la que menos facturó en 90 días.
-  const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db)), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
+  const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db), true), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;   // 8a del 15/11/2026: la ventana que se puede mover
   // 23/10/2026 (él: "van en la de ayelen o luciana"): entre esas dos, como `repartopy` y la tarjeta ⚖️ (revisión Plata 27/10/2026: elegía entre las 4).
   // 08/11/2026 (él): lo de Paraguay que no es perfume va a Ayelen o Matías (Luciana sólo lo que no es de Paraguay).
   out.cuentaNuevos = ['ayelen', 'matias'].sort((a, b) => fact[a] - fact[b])[0];
@@ -10578,6 +10589,7 @@ function calcRitmoNormal(o) {
   const ritmo = {}, hoyDiario = {};
   for (const [k, mlas] of Object.entries(pubsDe)) {
     let dG = 0, dU = 0, uG = 0, uU = 0, uR = 0, nR = 0;
+    const _verK = mlas.some((m) => esVeranoNom((links[m] || {}).title));   // 7a del 15/11/2026, Reglas del cerebro: lo de verano no tiene resaca de enero
     const hD = [];   // día por día, para el ritmo desde el último cambio (_ritmoRegimen)
     for (const dk of dias) {
       const x = (ven[k] || {})[dk] || { u: 0, r: 0 };
@@ -10586,7 +10598,7 @@ function calcRitmoNormal(o) {
       const rec = { dk, u: x.u, rem: false, fr: null, caja: diR ? diR[2] : '', p: diR ? Number(diR[1]) || 0 : 0 };
       hD.push(rec);
       if (esRemDia(k, dk)) { nR++; rec.rem = true; continue; }
-      if (diaNavResaca(dk, hoyTs)) { rec.rem = true; continue; }   // 📉 49a del 14/11: en la resaca de enero los días del pico de Navidad no son ritmo normal
+      if (!_verK && diaNavResaca(dk, hoyTs)) { rec.rem = true; continue; }   // 📉 49a del 14/11: en la resaca de enero los días del pico de Navidad no son ritmo normal (7a del 15/11: salvo lo de verano)
       let fr = fracStock(k, dk);
       if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0;
         // Sin dato de stock: con visitas había stock, sin visitas (ni ventas) no (regla suya del 03/10/2026).
@@ -12516,11 +12528,16 @@ function perfLocalPct(costoPesos, precioML) {
 // Lugar = tope H − proyección. Como el tope es el mismo para las 4, la que más lugar tiene es la de menor proyección.
 // Lo usan `repartopy` y `paramcompra` (cuentaNuevos). La tarjeta ⚖️ de Inicio hace la cuenta fina con facturas y ARCA.
 const TOPE_H_ANUAL = 81924660.37;
-function lugarHPorCuenta(vp, X) {
+// `movible` (8a del 15/11/2026, Reglas del cerebro): para ELEGIR LA CUENTA de lo nuevo se mira la ventana que todavía se puede mover, la que
+// arranca en el último 01/07 o 01/01 (en nov-2026: jul-2026 → jun-2027), no la que está por cerrar (ene-dic 2026, ya casi toda facturada).
+// La usan `repartopy` y `paramcompra` (cuentaNuevos). Sin `movible` queda la que está por cerrar (el aviso del tope, como la tarjeta ⚖️).
+// Misma cuenta en index.html (`_ventanaMovibleARCA` + `parejoDatos(true)` para el 💡 de la tarjeta ⚖️).
+function lugarHPorCuenta(vp, X, movible = false) {
   const CTAS = ['adriana', 'luciana', 'ayelen', 'matias'];
   const ctaDe = (x) => { const c = String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); return CTAS.find((k) => c.startsWith(k)) || null; };
   const hoy = new Date(Date.now() - 3 * 3600e3), y = hoy.getUTCFullYear(), m = hoy.getUTCMonth() + 1;
-  const ini = Date.parse(m <= 6 ? `${y - 1}-07-01` : `${y}-01-01`), fin = Date.parse(m <= 6 ? `${y}-06-30` : `${y}-12-31`) + 864e5;
+  const ini = movible ? Date.parse(m <= 6 ? `${y}-01-01` : `${y}-07-01`) : Date.parse(m <= 6 ? `${y - 1}-07-01` : `${y}-01-01`);
+  const fin = (movible ? Date.parse(m <= 6 ? `${y}-12-31` : `${y + 1}-06-30`) : Date.parse(m <= 6 ? `${y}-06-30` : `${y}-12-31`)) + 864e5;
   const faltan = Math.max(0, (fin - Date.now()) / 864e5);
   const kART = (ms) => new Date(ms - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_'), k30d = kART(Date.now() - 30 * 864e5), kAyer = kART(Date.now() - 864e5);
   const r = {}; for (const c of CTAS) r[c] = { fact: 0, f30: 0 };
@@ -28245,7 +28262,7 @@ async function main() {
         const fmt = (r) => (r ? `${Math.round(r.margen)}%` : '—');
         const nF = pi ? pi.conFull : 0, nV = ofs.filter((o) => !o._afuera).length || ofs.length;   // 19b del 14/11: los "vendedores" son los de acá (salvo que sólo lo vendan de afuera)
         const mT = rT ? rT.margen : null;
-        const ver = !pi ? '❓ SIN PRECIO EN ML (no se puede medir)' : mT >= CAND_VARA_COMPRA ? (nV < 2 ? '🟡 da, pero 1 SOLO vendedor' : '✅ da') : (rF && rF.margen >= CAND_VARA_COMPRA ? '🟡 contra el más barato no da, contra Full sí' : '❌ NO DA');
+        const ver = !pi ? '❓ SIN PRECIO EN ML (no se puede medir)' : mT >= CAND_VARA_COMPRA ? (nV < 2 ? '🟡 da, pero 1 SOLO vendedor' : '✅ da') : (rF && rF.margen >= CAND_VARA_COMPRA ? '❌ NO DA (contra Full sí, pero sale: 4a del 15/11)' : '❌ NO DA');   // (4a del 15/11/2026, Reglas del cerebro): lo que sólo da contra Full sale
         if (it.u) { if (/✅/.test(ver)) totOk += it.u * it.usd; else totMal += it.u * it.usd; }
         const _hV = it.visto ? (Date.now() - it.visto) / 3600e3 : null;
         console.log(`\n${_hV == null || _hV >= PY_VIEJO_DIAS * 24 ? '⛔ MIRADO EN NISSEI ' + (_hV == null ? 'SIN FECHA' : 'HACE ' + Math.round(_hV) + ' H') + ' (no pasa) · ' : ''}${ver} · [${it.tipo}${it.star ? ' ⭐' + it.star.toFixed(1) : ''}] ${it.u ? it.u + ' u. · ' : ''}US$ ${it.usd} (puesto ${money(Math.round(puesto * tc))}) · ${String(it.nom).slice(0, 70)} [${it.id}]`);
@@ -28405,7 +28422,8 @@ async function main() {
     //  1) FRENA si la vuelta completa de Nissei (`cyc/mlconfig/nisseiVuelta`, 90%+) no terminó HOY (él, 10/11: "siempre tiene que ser una vuelta de hoy").
     //  2) Deja la 🏬 Tienda (`py_personal`) y lo que pidió él (`py_armado/<ficha>.pidio` o `candidatos_py/<id>.pidioEl`; `|el=` los marca).
     //  3) Mide CADA renglón ya cargado contra ML EN EL MOMENTO (la misma cuenta que `pyrevisar`: el más barato de todos y el más barato con Full,
-    //     con sus cuotas): lo que hoy NO da 35% sale (salvo lo que pidió él); lo DUDOSO (1 solo vendedor, sin precio en ML, sólo da contra Full)
+    //     con sus cuotas): lo que hoy NO da 35% sale (salvo lo que pidió él), también lo que sólo da contra el más barato con Full (4a del
+    //     15/11/2026, Reglas del cerebro); lo DUDOSO (1 solo vendedor, sin precio en ML)
     //     QUEDA con su motivo (él, 10/11: "los que tenés dudas no los saques… lo analizamos"); lo mirado en Nissei hace 24 h o más sale.
     //  4) Llena con NUEVOS por ⭐ (los mismos filtros que `pyllenar`), midiendo cada uno contra ML ANTES de entrar: entra sólo lo que da ✅,
     //     hasta llegar a US$ <tope> (600) sin pasar 660 (×1,10).
@@ -28453,7 +28471,9 @@ async function main() {
         const mT = rT ? rT.margen : null, mF = rF ? rF.margen : null;
         if (mT == null) return { k: 'duda', m: null, motivo: 'ML no contestó la comisión' };
         if (mT >= CAND_VARA_COMPRA) return nV < 2 ? { k: 'duda', m: mT, motivo: `da ${Math.round(mT)}% pero hay 1 solo vendedor` } : { k: 'ok', m: mT, motivo: `${Math.round(mT)}% contra el más barato (${nV} vend.)` };
-        if (mF != null && mF >= CAND_VARA_COMPRA) return { k: 'duda', m: mT, motivo: `contra el más barato ${Math.round(mT)}%, contra el más barato con Full ${Math.round(mF)}%` };
+        // (4a del 15/11/2026, Reglas del cerebro): como "duda" queda sólo lo que no se sabe si es el mismo producto. Lo que da menos de 35% contra
+        // el más barato de ML (con o sin Full) SALE, aunque contra el más barato CON Full dé 35% (antes quedaba como 🟡 duda).
+        if (mF != null && mF >= CAND_VARA_COMPRA) return { k: 'no', m: mT, motivo: `hoy da ${Math.round(mT)}% contra el más barato (${money(pi.baratoTodos)}); contra el más barato con Full daría ${Math.round(mF)}%, pero sale igual (4a del 15/11)` };
         return { k: 'no', m: mT, motivo: `hoy da ${Math.round(mT)}% contra el más barato (${money(pi.baratoTodos)})` };
       };
       // 2-3) lo cargado
@@ -51407,6 +51427,8 @@ async function main() {
       const _monoEs = await leerMonoPct(db);
       const pName = {}, pById = {}; for (const pp of Object.values(prods)) if (pp && pp.id) { pName[pp.id] = pp.name; pById[pp.id] = pp; }
       const PICO_NAV = picosNavidadTemp(vp, pById, ahora).x;   // 🎄 2a del 03/11 (+ 🎁☀️ rubro, 14/11)
+      // (7a del 15/11/2026, Reglas del cerebro): lo de verano no tiene resaca de enero (`sinResaca` en enBlackFriday/horasBF/diaEnBF).
+      const verK = (k) => esVeranoNom(pName[String(k).split('__')[0]]);
       const money = (n) => '$' + Math.round(n).toLocaleString('es-AR');
       // El color de una venta: el de la venta, si no el de su publicación (`mllinks.variant` o el título). Misma regla
       // que `varDe` de `pedidostodo` (revisión 9: "cada variante se juzga sola", regla suya del 12/10).
@@ -51489,14 +51511,14 @@ async function main() {
           const desdeR = Math.max(t0, Math.min(...cs));
           const d = desdeR < ahora ? diasStockE(k, desdeR, ahora) : null;
           // 15a del 14/11/2026: sin las ventas ni los días del Black Friday (25-30/11)
-          const dB = d != null ? d - horasBF(desdeR, ahora) / 24 : null;
-          if (dB != null && dB >= 3) { const u = vv.vts.filter(([t]) => t >= desdeR && !enBlackFriday(t)).reduce((s2, [, q]) => s2 + q, 0); return { r: u / dB, d: dB, cal: false }; }
+          const dB = d != null ? d - horasBF(desdeR, ahora, verK(k)) / 24 : null;
+          if (dB != null && dB >= 3) { const u = vv.vts.filter(([t]) => t >= desdeR && !enBlackFriday(t, verK(k))).reduce((s2, [, q]) => s2 + q, 0); return { r: u / dB, d: dB, cal: false }; }
         }
         // Respaldo: días corridos desde que volvió el stock (la cuenta de antes).
         const h = sh[k] || {}; const desde = Number(h.desde) || 0;
         const ini = Math.max(t0, desde && !h.aprox ? desde : 0);
-        const dCon = Math.max(1, (ahora - ini) / 864e5 - horasBF(ini, ahora) / 24);
-        const uVen = vv.vts.filter(([t]) => t >= ini && !enBlackFriday(t)).reduce((s2, [, q]) => s2 + q, 0);
+        const dCon = Math.max(1, (ahora - ini) / 864e5 - horasBF(ini, ahora, verK(k)) / 24);
+        const uVen = vv.vts.filter(([t]) => t >= ini && !enBlackFriday(t, verK(k))).reduce((s2, [, q]) => s2 + q, 0);
         return dCon >= 3 ? { r: uVen / dCon, d: dCon, cal: true } : { r: vv.u30 / 30, d: 30, cal: true };
       };
       // Qué se juzga: cada producto × cuenta con ventas en 30 días. Si tiene stock POR COLOR (claves `__v__` en el
@@ -51572,7 +51594,7 @@ async function main() {
           const ms = mlasK[k].filter((m) => LINR[m]); if (!ms.length) { sinLin++; continue; }
           const dias = {};
           // 15a del 14/11/2026: los días del Black Friday (25-30/11) no entran al ritmo de la escasez (se mide con el ritmo de antes del evento).
-          for (const m of ms) for (const [dk, d] of Object.entries(LINR[m])) { if (dk >= hoyK || !d || diaEnBF(dk)) continue; const x = (dias[dk] = dias[dk] || { u: 0, uR: 0, st: null, vis: 0 }); x.u += Number(d.u) || 0; x.uR += Number(d.uR) || 0; x.vis += Number(d.vis) || 0; if (d.st != null) x.st = (x.st || 0) + (Number(d.st) || 0); }
+          for (const m of ms) for (const [dk, d] of Object.entries(LINR[m])) { if (dk >= hoyK || !d || diaEnBF(dk, verK(k))) continue; const x = (dias[dk] = dias[dk] || { u: 0, uR: 0, st: null, vis: 0 }); x.u += Number(d.u) || 0; x.uR += Number(d.uR) || 0; x.vis += Number(d.vis) || 0; if (d.st != null) x.st = (x.st || 0) + (Number(d.st) || 0); }
           const ult = Object.keys(dias).sort().slice(-30);
           let u = 0, dc = 0; for (const dk of ult) { const d = dias[dk]; if (d.u > 0 || d.st > 0 || (d.vis > 0 && d.st == null)) { dc++; u += Math.max(0, d.u - d.uR); } }
           // 2a (16/10/2026, él: el bucle "no vende porque está caro, y no se compra porque hay para un montón de días"): la
@@ -51635,8 +51657,8 @@ async function main() {
         // no se subió). Si en los últimos 7 días (con stock) vendió 2+ u. y el doble o más del ritmo de 30 d, la escasez se
         // mide con ese ritmo: lo que se está por acabar rápido no espera a que el promedio largo se entere.
         // 15a del 14/11/2026 (él: "a"): las ventas del Black Friday (25-30/11) NO aceleran la escasez: se sacan sus ventas y sus días.
-        { const t7 = ahora - 7 * 864e5, u7 = vv.vts.filter(([t]) => t >= t7 && !enBlackFriday(t)).reduce((s2, [, q]) => s2 + q, 0);
-          const d7 = Math.max(1, Math.min(7, diasStockE(k, t7, ahora) ?? 7) - horasBF(t7, ahora) / 24), r7 = u7 / d7;
+        { const t7 = ahora - 7 * 864e5, u7 = vv.vts.filter(([t]) => t >= t7 && !enBlackFriday(t, verK(k))).reduce((s2, [, q]) => s2 + q, 0);
+          const d7 = Math.max(1, Math.min(7, diasStockE(k, t7, ahora) ?? 7) - horasBF(t7, ahora, verK(k)) / 24), r7 = u7 / d7;
           if (u7 >= 2 && r7 >= 2 * rr.r) rr = { ...rr, r: r7, d: d7, rapido: true }; }
         const r14 = rr.r, r3 = vv.u3 / 3;
         // 🎄 2a del 03/11/2026 (él: "a" = la escasez de Navidad antes de que se note): lo regalable que en la Navidad pasada vendió ×1,3 o más
@@ -52905,7 +52927,7 @@ async function main() {
         // agotado desde julio) daba 6 por mes cuando vendía más de 1 por día mientras tuvo.
         const t = Number(v.ts) || 0;
         // 📉 49a del 14/11: en la resaca de enero lo vendido del 03/12 al 24/12 cuenta ÷ el pico de Navidad del producto (lo normal de esos días).
-        if (PNAV[v.prodId] > 1 && diaNavResaca(k, hoy)) q = q / PNAV[v.prodId];
+        if (PNAV[v.prodId] > 1 && diaNavResaca(k, hoy) && !esVeranoNom((byId[v.prodId] || {}).name)) q = q / PNAV[v.prodId];   // 7a del 15/11/2026, Reglas del cerebro: lo de verano no
         const add = (o) => { o.t180 += q; if (k >= k60) o.t60 += q; if (k >= k30) o.t30 += q; if (k > o.ult) o.ult = k; if (t > 0) { if (!(o.t0 <= t)) o.t0 = t; if (!(o.t1 >= t)) o.t1 = t; } };
         add(s); const va = varDe(v); if (va) add(s.v[va] || (s.v[va] = { t30: 0, t60: 0, t180: 0, ult: '' }));
       };
@@ -53225,7 +53247,7 @@ async function main() {
         // sólo se sacaba lo que decía la estrategia y algo que vendía 1 por día con 60 días liquidando quedaba en 0,84 (Pedidos compraba de menos).
         for (const m of mlas) { const lin = await lineaDe(m); if (lin == null) return null;
           for (const [k, x] of Object.entries(lin || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
-            if (diaNavResaca(k, hoy)) { conDato.add(k); remD.add(k); continue; }   // 📉 49a del 14/11: la resaca de enero (el día y sus ventas no cuentan)
+            if (diaNavResaca(k, hoy) && !esVeranoNom((byId[pid] || {}).name)) { conDato.add(k); remD.add(k); continue; }   // 📉 49a del 14/11: la resaca de enero (el día y sus ventas no cuentan; 7a del 15/11: salvo lo de verano)
             if (x.st != null || x.est != null) conDato.add(k);
             if (Number(x.rem) === 1) { remD.add(k); conDato.add(k); continue; }
             if (diaConStock(x) && normalEn(m, mediodia(k))) dias.add(k); } }
@@ -53386,7 +53408,7 @@ async function main() {
           if ((pc > 0 && mc == null) || (pv > 0 && mv == null)) return PHt;
           // 29/10/2026 (él: "descartar sólo con el producto probado. nunca teniendo en cuenta el competidor… sí o sí hay que probar con productos en
           // stock en full"): el precio que deja 35% (`p35`, entre el de hoy y la venta más cara, verificado con la comisión de ML) y cuántos días
-          // estuvo a ese precio o más caro con stock y cuánto vendió ahí (365 días). decide_pedidos.py descarta sólo con 30+ días sin vender.
+          // estuvo a ese precio o más caro con stock y cuánto vendió ahí (365 días). decide_pedidos.py descarta sólo con 60+ días sin vender (2a del 15/11/2026, Reglas del cerebro: 2 meses, como la prueba de Full).
           const P0 = Number(b.price) || 0; const mh = await mg(P0);
           let p35 = null; const pts = [[pv, mv], [P0, mh], [pc, mc]].filter(([x, y]) => x > 0 && y != null).sort((x, y) => x[0] - y[0]);
           if (pts.length >= 2) { const [p1, y1] = pts[0], [p2, y2] = pts[pts.length - 1]; if (y2 > y1) p35 = p1 + (MIN35 - y1) * (p2 - p1) / (y2 - y1); }
@@ -54408,6 +54430,10 @@ async function main() {
           }
           if (mensualOk) vuelveA = true;   // 🔁 la prueba del mes no la frenan la 4a ni el 50%
           const al25 = d.mgP0 != null && Number(d.mgP0) < PISO_DURO && d.mgPA != null && Number(d.mgPA) <= PISO_DURO + 2;   // subir al piso del peor caso (35% desde el 24/10)
+          // (5a del 15/11/2026, Reglas del cerebro): en el Black Friday (25-30/11) no ARRANCA ninguna suba, cualquiera sea su etiqueta (💰 punto,
+          // 🎁 fecha…; el freno de arriba miraba sólo 📈/🆕/la del mes). Siguen: 🔥 escasez / ⏳ sin reposición, volver a un precio que ya tuvo
+          // (`vuelveA`) y subir al 35% del peor caso (`al25`). Salida: !chico con "EXCEPCIÓN: …".
+          if (d.accion === 'sube' && !['escasez', 'sinrepo'].includes(tg) && !vuelveA && !al25 && !exc('chico') && enBlackFriday(Date.now())) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO Black Friday: del 25 al 30/11 no arranca ninguna suba (las ventas del evento no miden el precio; 5a del 15/11). Siguen 🔥/⏳, volver a un precio que ya tuvo y subir al 35%. Se retoma el 01/12.'; continue; }
           if (d.accion === 'sube' && !exc('chico') && !al25 && !vuelveA) {
             if (estT[d.mla] === undefined) { try { estT[d.mla] = (await db.get('cyc/estrategia/' + d.mla)) || {}; } catch { estT[d.mla] = {}; } }
             const hT = estT[d.mla] || {}; let ultT = ''; for (const k of Object.keys(hT).map(Number).filter((n) => n > 0).sort((x, y) => x - y)) { const x = hT[k]; if (x && x.t) ultT = x.t === 'correccion' ? pasajeDe(ultT) : x.t; }
@@ -54431,7 +54457,9 @@ async function main() {
           // techo), ni volver a un precio de los últimos 90 días, ni !chico con "EXCEPCIÓN: …". Con el dato viejo (+4 días) o de otro precio no frena.
           // Revisión etapa 8, 04/11/2026: `!chico` no saltea el punto medio (4): una suba 📈/🆕 chica después de otra suba sin confirmar se frena igual
           // (si no, se podían encadenar subas de +45% sin esperar: las Cartas Casino otra vez). El freno 50% de abajo sí lo sigue salteando.
-          if (d.accion === 'sube' && exc('chico') && !vuelveA && (tg === 'techo' || tg === 'nuevo')) {
+          // (5a del 15/11/2026, Reglas del cerebro): toda suba espera la confirmación de la anterior, no sólo 📈/🆕 (salvo 🔥/⏳, volver a un precio
+          // que ya tuvo y subir al 35%).
+          if (d.accion === 'sube' && exc('chico') && !vuelveA && !al25 && !['escasez', 'sinrepo'].includes(tg)) {
             if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } }
             const uC = globalThis._ccCache4a && Object.values(globalThis._ccCache4a).filter((r) => r && String(r.mla) === String(d.mla) && Number(r.ts) > Date.now() - 30 * 864e5 && r.por !== 'errores').sort((x, y) => Number(y.ts) - Number(x.ts))[0];
             if (globalThis._ccCache4a === null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO punto medio: no pude leer mis cambios de precio para ver si la suba anterior se confirmó.'; continue; }
@@ -54474,7 +54502,10 @@ async function main() {
             }
             // Revisión etapa 1, 03/11/2026: el punto medio (4) también para una suba 📈/🆕 SIN !vendio cuando el último cambio mío fue una suba: antes
             // sólo `!vendio#techo` pasaba por `subaConfirmada` y un `#techo` suelto podía subir otro +50% horas después (el error de las Cartas Casino).
-            else if (tg === 'techo' || tg === 'nuevo') {
+            // (5a del 15/11/2026, Reglas del cerebro): TODA suba (💰 punto, 🎁 fecha, ↘️/↗️ que no vuelve a un precio que ya tuvo…), no sólo 📈/🆕,
+            // espera a que la suba anterior se confirme. Afuera quedan 🔥/⏳ (bloque de arriba), `vuelveA` (volver a un precio que ya tuvo, la
+            // prueba del mes) y subir al 35% del peor caso (`al25`).
+            else if (!al25) {
               if (globalThis._ccCache4a === undefined) { try { globalThis._ccCache4a = (await db.get('cyc/claudecambios')) || {}; } catch { globalThis._ccCache4a = null; } }
               if (globalThis._ccCache4a === null) { d.accion = 'nada'; d.freno = true; d.motivo = '🚫 FRENO punto medio: no pude leer mis cambios de precio (cyc/claudecambios) para ver si la suba anterior se confirmó. Se vuelve a mirar en la próxima vuelta.'; continue; }
               const uC = Object.values(globalThis._ccCache4a).filter((r) => r && String(r.mla) === String(d.mla) && Number(r.ts) > Date.now() - 60 * 864e5 && r.por !== 'errores').sort((x, y) => Number(y.ts) - Number(x.ts))[0];   // 60 días (antes 30): lo lento se juzga a los ~42 (8a), etapa 5 11/11
@@ -56914,7 +56945,7 @@ async function main() {
       const RE_PERFUME = /perfum|parfum|\bedp\b|\bedt\b|eau de|fragan|body splash|body mist|\bcolonia\b/i;
       // 22/10/2026 (7a): lo que equilibra es el LUGAR contra el tope de H (proyección al cierre de la ventana de ARCA), no
       // lo facturado en 90 días. `fact` = proyección: la de menor proyección es la de más lugar.
-      const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db)), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;
+      const LH = lugarHPorCuenta(vp, await leerLugarHExtra(db), true), fact = {}; for (const c of CTAS) fact[c] = LH.porCta[c].proy; void ctaDe;   // 8a del 15/11/2026: la ventana que se puede mover (jul→jun)
       console.log(`=== EN QUÉ CUENTA PUBLICAR LO QUE LLEGA DE PARAGUAY · compra ${comp.fecha || cid} ===`);
       console.log(`SOLO LEE · no crea fichas ni publica nada · piso ${piso}%`);
       console.log(`\nLugar contra el tope de H (ventana ${LH.ini} → ${LH.fin}, faltan ${LH.faltan} días · tope ${money(Math.round(TOPE_H_ANUAL))} por cuenta) · lo que se usa para equilibrar:`);

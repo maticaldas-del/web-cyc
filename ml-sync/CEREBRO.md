@@ -358,8 +358,10 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   🔒 **🛍️ Black Friday (25-30/11, 2 días antes y los 4 del evento): no se ARRANCA ninguna prueba 📈** (ni `!vendio`, ni la prueba del mes,
   ni la del lento) **y la vuelta del punto medio se mide SIN esos días** (sus horas, sus ventas y el ritmo de antes) (12a del 08/11: las
   ventas del evento trababan 45-60 días un precio que deja −24%). Freno en `decido`; las listas de `errores` no las piden; se retoma el 01/12.
+  **Desde el 15/11 (5a) no arranca NINGUNA suba en esos días, cualquiera sea la etiqueta (💰, 🎁 fecha…)**; siguen 🔥/⏳, volver a un precio que ya tuvo y subir al 35%.
   🔒 **📉 La resaca de enero** (49a del 14/11): del 25/12 al 31/01 los días del 03/12 al 24/12 cuentan como el Black Friday: la escasez, el
   punto medio, el ritmo normal y Pedidos/cajas (NOR y HOY sin esos días; v30/v60/v180 con lo vendido ÷ el pico `NAV`) no los toman como ritmo normal (`navResacaVentana`).
+  **Lo de ☀️ verano (`temporadaDe`: cartas, mazos, enchufe viajero, pava de auto) NO tiene resaca** (7a del 15/11: el verano sigue en enero): Pedidos, el ritmo normal de la noche y la escasez le dejan diciembre (`esVeranoNom`, `sinResaca`).
 - **Cómo:** 🔒 **siempre un salto grande, nunca de a poco** (21/10/2026, regla suya: *"cuando buscan techo siempre dar un salto
   grande nunca ir subiendo de a poco. después cuando se encuentre el techo ahí sí bajar de a poco con descuentos"*): **+50% como
   mínimo** (27/10 a la noche; antes +30%; ML deja hasta +100%; 🔒 más del doble pide `!salto`). `decido` frena una suba #techo de menos de +50% salvo
@@ -397,7 +399,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   el precio de vuelta queda abajo del 35% en el peor caso y la unidad tiene menos de 90 días, se queda al precio de hoy) ni pasa por
   encima de un 🔒 (F10); en 🔥/⏳ sólo con 10 días sin vender (ahí vender menos es a propósito). (3) La **escalera de ≤15%** queda para lo
   que NO tiene un precio anterior que vendía (lanzamientos, lo que nunca vendió), cada escalón ~3 ventas esperadas (24 h a 7 días). (4)
-  **La próxima +50% espera a confirmar** (`subaConfirmada`, freno en `!vendio`): el precio de hoy vendió la mitad de lo esperado al ritmo
+  **La próxima suba espera a confirmar** (`subaConfirmada`, freno en `decido`; **toda suba desde el 15/11, 5a**: 💰, 🎁 fecha y cualquier
+  etiqueta, no sólo 📈/🆕; salvo 🔥/⏳, volver a un precio que ya tuvo y subir al 35%): el precio de hoy vendió la mitad de lo esperado al ritmo
   del de antes (3+ esperadas) o 3 ventas si las esperadas no llegan a 3, y lleva 24 h; sin ritmo de antes medible (un 🆕 que arranca),
   3 ventas (13a del 03/11). Una sola venta ya no alcanza. Las fechas especiales cuentan para confirmar (17b del 03/11), salvo el Black Friday: no confirma subas ni acelera la escasez (15a del 14/11). 🔥/⏳ suben
   con cada venta, sin esperar la confirmación (16b del 03/11), **salvo 🔥 con la caja en camino cuando el stock ya alcanza hasta que llega**
@@ -496,7 +499,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   más** (9a del 08/11: antes $10.000 → $29.990 → $44.990 → $67.490 con la caja a 8 días): es "🚚 cubierto" (`escasezCubierta`: la caja más
   próxima que no llegó, sale con `envSalidaTs` + ~8 días). Freno en `decido` (#escasez) y la lista 📈🔥 de `errores` no la pide. La vuelta
   del punto medio en 🔥/⏳ va sólo con 10 días sin vender.
-- 🎁☀️ **Pico por rubro** (14/11, él: *"elegí vos los productos de regalo y de verano"*): sin pico medido, regalo ×2 (perfumes, tecnología de regalo) y verano ×1,5 (cartas, mazos, enchufe viajero, pava de auto) en Pedidos, cajas y escasez (`temporadaDe`); liquidación y sobra sólo con lo medido.
+- 🎁☀️ **Pico por rubro** (14/11, él: *"elegí vos los productos de regalo y de verano"*): sin pico medido, regalo ×2 (perfumes, tecnología de regalo) y verano ×1,5 (cartas, mazos, enchufe viajero, pava de auto) en Pedidos, cajas y escasez (`temporadaDe`); liquidación y sobra sólo con lo medido. **Lo medido manda** (6a del 15/11): si la Navidad pasada se midió (4+ ventas de cada lado) y vendió parejo (menos de ×1,3), va ×1, sin el ×2/×1,5 del rubro (`picosNavidadTemp`).
 - 🎄 **Navidad** (2a del 03/11): lo regalable con pico en la Navidad pasada (×1,3+, `picosNavidad`) cuenta en `escasez` su ritmo × ese
   pico del 03/12 al 24/12, para que se vea antes.
 - Si ML la pausa por el precio → **se le avisa en el chat y lo arregla él** (28/10, 3b: *"avisarme y lo arreglo"*); no se toca solo.
@@ -651,7 +654,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   Con la estrategia nueva el precio alto se queda: comprar con el ritmo barato llenaba de stock que después hay que liquidar.
   **Precio cambiado hace menos de 7 días: manda el MÁS BAJO entre el ritmo de antes y lo que vendió al precio nuevo** (2+ días con
   stock; 1a del 03/11, con Bs As a 60 días; reemplaza la 2b del 28/10). La escasez sigue con su regla.
-- Navidad (18a del 14/11): hasta el 24/12 todo pedido (Paraguay, Bs As, Paulvic) lleva el pico de Navidad de cada producto (`NAV x` de `pedidostodo` → `Tde` de `decide_pedidos.py`); sin pico medido, el de su rubro (🎁 regalo ×2, ☀️ verano ×1,5).
+- Navidad (18a del 14/11): hasta el 24/12 todo pedido (Paraguay, Bs As, Paulvic) lleva el pico de Navidad de cada producto (`NAV x` de `pedidostodo` → `Tde` de `decide_pedidos.py`); sin pico medido, el de su rubro (🎁 regalo ×2, ☀️ verano ×1,5); medido parejo, ×1 (6a del 15/11).
+- 🧪 **La prueba al 35% dura 2 meses** (2a del 15/11): lo que nunca vendió a 35% se descarta recién con **60 días** con stock al precio que deja 35% (o más caro) sin vender (`PRUEBA_DIAS` de `decide_pedidos.py`, `M35 no:…:p35:u/d`), igual que la 💸 prueba de Full (`bajo35`, 11/11). Antes 30 días.
 
 ## 15 · CAJAS
 - 37 días (30 de venta + 7 de viaje); 60 sólo en lo parejo sin prueba abierta (`notas/sin_estirar.txt`); nada pasa 90 días; lo
@@ -680,6 +684,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   espera al próximo; lo que se corta antes de que llegue se pide igual. **Un pedido sale cuando llega el anterior** (~1 por semana, sin
   fechas fijas; 02/11, él: *"pedimos cuando llega, o sea una por semana aprox."*); hasta Navidad cada pedido lleva el pico de Navidad de
   cada producto y los del 9 y 16/11 llevan primero los regalables nuevos de 35%+ (3a del 03/11).
+  **Como "duda" queda sólo lo que no se sabe si es el mismo producto** (4a del 15/11): lo que da menos de 35% contra el más barato de ML
+  (con o sin Full) SALE del pedido, aunque contra el más barato con Full dé 35% (`pypedido`, `pyrevisar`).
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia en la pasada semanal de
   los sábados 9:00 (24/10, eligió 1a 2a: probados primero + catálogo entero). Nada pasa 14 días sin volver a mirarse (23/10). **⛔ Sólo
   pasa lo mirado en Nissei hace MENOS DE 24 HORAS** (10/11, él: *"no puede haber productos que se miraron hace más de 24hr"*;
@@ -695,7 +701,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Ticket real obligatorio para cerrar (`compray:<fecha>|det=…|go`); gastos: dólares, retira, correo (monto y kilos); `adelanto=` y
   `cambio=` sólo cuando él avisa. Recargo: el medido de los pedidos (respaldo 20%).
 - Al llegar: ficha (pagado × recargo), cuenta por rubro (perfumes → Adriana) y si no, lo de Paraguay entre Ayelen y Matías (08/11; Luciana sólo lo que no es de Paraguay; Matías lo mínimo, 12/11) la que **más lugar tiene contra el tope de H**
-  (`repartopy`, 7a del 22/10), vínculo. Por ahora siempre las 4 cuentas en H (8b): ni 5ª cuenta ni K.
+  (`repartopy`, 7a del 22/10) **en la ventana que todavía se puede mover** (8a del 15/11: la que arranca el último 01/07 o 01/01, hoy jul-2026 → jun-2027, no la que cierra; `lugarHPorCuenta(…, true)` en el robot y el 💡 de la tarjeta ⚖️), vínculo. Por ahora siempre las 4 cuentas en H (8b): ni 5ª cuenta ni K.
 - Un proveedor, Nissei, con dos pedidos (perfumería y resto). Elegancia quedó apagada el 26/10 (él: *"eliminá elegancia. nunca se usa y
   genera problemas"*); no volver a proponerla. Shopping China recién cuando Nissei se agote (24/10).
 
@@ -706,7 +712,7 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
 - Nunca cargar una lista vieja. Se paga el neto, no el precio de lista (preguntar antes de cargar). Iscos: sólo lo de su web, ×0,665.
 
 ## 18 · PAULVIC
-- Pedido cada 15 días para 45 días por aroma, redondeado a 3/5/10/20/50 (lo que él cambia a mano no se toca). Nunca "Sólo este
+- Pedido cada 15 días para 45 días por aroma, **redondeado siempre para arriba, de a 5** (3a del 15/11: 21 → 25; `pvRedondo`; antes al más cercano de 3/5/10/20/50) (lo que él cambia a mano no se toca). Nunca "Sólo este
   color" en motivos ni en el copiar.
 - Costo = el del último pedido: (pagado + flete) ÷ (llegadas + regalos perfume); los testers son probadores para la perfumería y no cuentan (22/10). Lo que se pide y no viene, no se pide más (⏳).
 - Pagar en 7 días hábiles desde que llega.
