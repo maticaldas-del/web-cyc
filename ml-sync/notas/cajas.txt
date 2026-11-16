@@ -1,5 +1,5 @@
 caja:p1779912655600@Luciana=u|0|al precio de hoy vende 14 en 16 días con stock (desde el último cambio de precio) · 🎄 pico de Navidad ×1,5: 21 días de esta caja caen del 03/12 al 24/12 · hay 358 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 41 · en la oficina 456 · (cuenta automática)
-caja:p1779912655660@Luciana#Blanco=u|0|al precio de hoy vende 5 en 15 días con stock (desde el último cambio de precio) · hay 236 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 12 · en la oficina 278 · (cuenta automática)
+caja:p1779912655660@Luciana#Blanco=u|20|🧪 prueba barata/cara (él, 16/11): 20 de la oficina para la publicación NUEVA de catálogo MLA4205323138 a $5.190 (la común de $17.490 sigue con lo de Full) · (fijo de él)
 caja:p1779912656320@Matias=u|0|vende 42 en 30 d · hay 36 en Full y 41 en camino · para 37 dias (30 + 7 de viaje) hacen falta 70 · en la oficina 98 · (cuenta automática)
 caja:p1779912656340@Matias=u|0|al precio de hoy vende 1 en 18 días con stock (desde el último cambio de precio) · hay 100 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 2 · en la oficina 17 · (cuenta automática)
 caja:p1779912656210@Ayelen#3 Patas=u|0|📦 caja con 30 lugares comprados (él 14/11): le alcanza lo de Full hasta el recálculo de ML
