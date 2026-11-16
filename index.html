@@ -3717,7 +3717,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.221';
+const APP_VERSION='28.222';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3730,6 +3730,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.222',f:'16/11',h:'19:15',c:[{n:1,t:'🏠 Inicio: Pedidos sin el numerito rojo; Oficina ML muestra las cajas cargadas por cuenta (tocás y vas a Armar caja), las unidades en la oficina y cuántas faltan etiquetar.'}]},
   {v:'28.221',f:'16/11',h:'18:50',c:[{n:1,t:'🏷️ Inicio · tarjeta Ventas: sin el numerito azul ni "sin mirar"; muestra la ganancia de hoy en verde con el % que vamos.'}]},
   {v:'28.220',f:'16/11',h:'18:10',c:[{n:2,t:'📈 Línea de tiempo: la raya de una prueba de precio decía "no vendió" aunque sí había vendido (Centímetro Rosa a $17.490, 2 ventas). Ahora dice cuántas vendió y en cuántos días.'}]},
   {v:'28.219',f:'16/11',h:'17:30',c:[{n:2,t:'💼 Arqueo: Oficina ML, Oficina Local y En camino a Full también comparan contra el cierre anterior (▲/▼ con % y US$), como En ML. El cierre guarda el reparto de las dos oficinas desde hoy.'}]},
@@ -11466,6 +11467,7 @@ function renderNcOfi(filas){
     const _mc=aMandarConCupo(filas),aMandar=_mc.totalCupo;
     const v=cajasVerdes(filas);
     const nSinDec=SOLO_CLAUDE?new Set(filas.filter(f=>f.sinDecidir&&f.hay>0).map(f=>f.p.id)).size:0;   // 09/10/2026
+    sub.innerHTML='';sub.style.display='none';return;   // 16/11/2026: lo útil va arriba en la tarjeta (cajas listas, unidades, sin etiqueta)
     sub.innerHTML=(uHay?`${uHay} u. en casa · ${aMandar} para mandar${nSinDec?` · <span style="color:var(--amber)">${nSinDec} sin decidir</span>`:''}`:'Sin nada contado todavía')
       +(v.length?`<div style="color:var(--green);font-weight:700;margin-top:4px">📦 ${v.length} caja${v.length===1?'':'s'} para mandar ya · ${v.map(c=>`<span role="button" onclick="irACaja('${c}',event)" title="Ir a Armar caja de ${c}" style="text-decoration:underline;cursor:pointer">${c}</span>`).join(', ')}</div>`:'');
   }catch(e){}
@@ -28672,7 +28674,12 @@ function _homeVivos(d){
   // 16/11/2026 (él: "en la tarjeta de ventas quiero que saques esos números y pongas la ganancia en verde con el % que vamos"): la ganancia de HOY en verde con su %, sin el numerito ni "sin mirar".
   if(d.ventas!=null)out.ventas=d.ventas&&!ocultaVendido()?`<span class="${d.gan>=0?'g':'r'}" style="font-weight:700">${fmt(d.gan)}</span>${d.pct!=null&&isFinite(d.pct)?` <span class="${d.pct>=35?'g':d.pct>=25?'a':'r'}">· ${Math.round(d.pct)}%</span>`:''}`:(d.ventas?'':'<span style="color:var(--muted)">todavía ninguna hoy</span>');
   if(d.peds!=null)out.ped=d.peds?(d.rojo?`<span class="r">🔴 ${fmtN(d.rojo)} en rojo</span>`:(d.pedN?`${fmtN(d.pedN)} por comprar`:'<span class="g">✓ nada en rojo</span>')):'';
-  if(d.cajas!=null)out.ofi=d.cajas?`<span class="g">📦 ${d.cajas} caja${d.cajas===1?'':'s'} ya</span>`:(d.mandar?`${fmtN(d.mandar)} u. para mandar`:d.casa?`${fmtN(d.casa)} u. en casa`:'nada contado');
+  // 16/11/2026 (él: "ponelo más lindo a esa tarjeta y útil"): Oficina ML dice las cajas que ya están CARGADAS para que el chat las arme (por
+  // cuenta, tocables), cuántas unidades hay y cuántas faltan etiquetar. Sin "sin decidir" ni "para mandar" (confundían).
+  {const ca=Object.entries(state.cajas_armando||{}).map(([c,x])=>[c,Object.values((x&&x.items)||{}).reduce((t,u)=>t+(Number(u)||0),0)]).filter(([,u])=>u>0);
+    let se=0;try{(state.products||[]).forEach(p=>{if(stockOficina(p)>0)se+=sinEtiqProd(p);});}catch(_){}
+    const top=ca.length?`<span class="g" style="font-weight:700">📦 ${ca.length} caja${ca.length===1?'':'s'} lista${ca.length===1?'':'s'}</span><br><span style="font-size:.85em">${ca.map(([c,u])=>`<span role="button" onclick="irACaja('${c}',event)" style="text-decoration:underline dotted;cursor:pointer">${c} ${fmtN(u)} u.</span>`).join(' · ')}</span>`:'<span style="color:var(--muted)">no hay cajas cargadas</span>';
+    out.ofi=top+`<br><span style="color:var(--muted);font-size:.85em">🏠 ${fmtN(d.casa||0)} u. en la oficina${se?` · <span style="color:var(--amber)">🏷️ ${fmtN(se)} sin etiqueta</span>`:''}</span>`;}
   if(d.gastosFaltan!=null)out.gastos=d.gastosFaltan?`<span class="a">${d.gastosFaltan} sin cargar</span>`:'<span class="g">✓ todo cargado</span>';
   return out;
 }
@@ -28684,7 +28691,8 @@ function renderHomeVivos(){
     r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
   try{hxBadge(_d.nuevasBuenas||0);}catch(e){}   // 21a del 14/11: el numerito del ícono = ventas buenas nuevas
   try{renderHomeExtra();}catch(e){}   // 14/11: 💬 preguntas · 🗳️ decisiones · 🚚 lo que llega · 🔍 la semana
-  try{const r=document.getElementById('hv-ped-rojo');if(r){const n=_d.rojo||0;r.textContent=n?String(n):'';r.title=n?`${n} pedido${n===1?'':'s'} en rojo (se cortan en 14 días o menos)`:'';r.style.display=n?'':'none';}}catch(e){}
+  try{const r=document.getElementById('hv-ped-rojo');if(r){const n=0;   // 16/11/2026 (él: "sacá el número en pedidos también")
+    r.textContent=n?String(n):'';r.title=n?`${n} pedido${n===1?'':'s'} en rojo (se cortan en 14 días o menos)`:'';r.style.display=n?'':'none';}}catch(e){}
   return v;
 }
 // 7.26 · "🧠 ÚLTIMA VUELTA DE CLAUDE" EN INICIO (21/10/2026, eligió la a). Qué hice en la última vuelta: los cambios de precio
