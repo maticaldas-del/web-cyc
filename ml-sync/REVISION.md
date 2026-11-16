@@ -1195,6 +1195,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **Qué chequear:** que lo que daba 100%+ en las listas baje a lo real; que el ✅ de fotos se vuelva a pedir cuando cambia el catálogo; que no agarre un catálogo más barato de OTRO tamaño.
 
 ### 🧾 El pedido de Paraguay se arma solo (16/11/2026)
+- **16/11 tarde:** para llegar a US$ 600 (él: "se tiene que llenar a 600 mínimo, sino no se hace") `pypedido` ya no exige ⭐7+: primero los de ⭐7+ y después el resto por ⭐ (siempre 35%+ medido hoy), hasta 120 medidos. Ojo: los nuevos tienen que estar mirados en Nissei en las últimas 24 h, así que sin la vuelta GUAY del día el 📦 Resto queda vacío.
 - **Qué es:** el ciclo de 2 min (`colaParaRobot`) encola `pypedido:perf;go` y `pypedido:resto;go` (cola interna, `COLA_INTERNO`) una vez por día desde las 7 y otra vez cuando se cierra una vuelta nueva, si la vuelta completa de Nissei tiene menos de 24 h (`pypedido` ahora acepta las últimas 24 h, no sólo el mismo día). Sin vuelta fresca, a las 13 avisa una vez (`sendAlerta` info). Marca en `mlapi/pypedidoauto/<día>` ({fin, aviso}).
 - **Qué chequear:** que corran los dos después de la vuelta (Mi oficina → 📥 Para el robot) y que lo pedido por él (`!el`) quede.
 
