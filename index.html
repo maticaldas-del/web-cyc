@@ -3727,7 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
-  {v:'28.217',f:'16/11',h:'13:20',c:[{n:1,t:'📅 Inicio · Mes y Año: ventas Y ganancia dicen "hasta ayer DD/MM" (cuentan sólo los días terminados).'}]},
+  {v:'28.217',f:'16/11',h:'13:20',c:[{n:1,t:'📅 Inicio · Mes y Año: ventas Y ganancia dicen "hasta ayer DD/MM" (cuentan sólo los días terminados); se sacó la explicación de abajo del calendario (mes y año).'}]},
   {v:'28.216',f:'16/11',h:'04:45',c:[{n:2,t:'Pedidos: el máximo de compra usa el envío normal (antes el más caro del catálogo, de un Tender). Rayas iguales al robot con descuentos en publicaciones pausadas. Revisión de Precios en el cartel.'}]},
   {v:'28.215',f:'16/11',h:'00:16',c:[{n:2,t:'🧴 Paulvic: las unidades de cada aroma se redondean siempre para arriba, de a 5 (21 → 25), como pediste el 15/11.'},{n:2,t:'⚖️ Tope de H: el 💡 de la próxima cuenta para lo nuevo mira la ventana que todavía se puede mover (julio 2026 a junio 2027), igual que el robot. Las barras y el aviso rojo siguen con el cierre de diciembre.'}]},
   {v:'28.214',f:'15/11',h:'15:55',c:[{n:1,t:'Pedidos: las tarjetas con colores se abren y se cierran tocándolas (arrancan cerradas); las de un solo producto siguen sin abrirse.'}]},
@@ -10825,7 +10825,7 @@ function _homeAnioHTML(hf,chip){
   if(_hoyA){try{const th=_homeDiaTot(dateToKey(new Date()));_gT-=th.gan||0;_bT-=th.bruto||0;_dT=Math.max(0,_dT-1);}catch(e){}}
   const tot=A.some(m=>m.dias)?_hcalTotHTML('año',_bT,_gT,_dT,_hoyA):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g" style="grid-template-columns:repeat(4,minmax(0,1fr))">${cells}</div><div class="hcal-ley">${ley} <span>por día</span></div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un mes, del color de su ganancia promedio por día (los mismos colores que los días; el mes en curso, con lo ganado repartido en todos sus días: arranca bajo y sube con cada venta). Abajo, lo que dejó en total y 🧾 las ventas brutas (lo que pagaron los compradores). Tocá uno y abre ese mes.</div></div>`;
+    </div>`;
 }
 function homeCalIr(k){_vpIrDia=String(k).replace(/_/g,'-');vpLimpiarFiltros();goPage('ventaprod');}
 // El número completo, sin "k" (22/10/2026, él: "no pongas k, poné el número completo").
@@ -10866,7 +10866,7 @@ function _homeGustoHTML(esc,dia,hf){
   const _ks=Object.keys(R.tot).filter(k=>k!==hoyK),_gM=_ks.reduce((a,k)=>a+(R.tot[k].gan||0),0),_bM=_ks.reduce((a,k)=>a+(R.tot[k].bruto||0),0);
   const tot=Object.keys(R.tot).length?_hcalTotHTML('mes',_bM,_gM,_ks.length,!!R.tot[hoyK]):'';
   return `${c?`<div class="hoy-chips">${c}</div>`:''}<div class="hoy-cal">${tot}<div class="hcal-g">${cells}</div><div class="hcal-ley">${ley}</div>
-    <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cada cuadrito es un día, del color de su ganancia (los mismos de la tarjeta del día); abajo, 🧾 sus ventas brutas. Tocá uno y abre Ventas en ese día.</div></div>`;
+    </div>`;
 }
 // ── G5 · VENTAS EN EL CELU: LOS 6 CUADROS EN UN RENGLÓN QUE SE ABRE ──
 // Sólo en el teléfono (el CSS lo esconde en la PC). Se recuerda abierto/cerrado en cada aparato.
