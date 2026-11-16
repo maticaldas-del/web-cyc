@@ -28528,9 +28528,9 @@ async function main() {
           for (const m of mlas.slice(0, 8)) { try { const ctaM = String((links[m] || {}).cuenta || '');
               if (!(ctaM in tokPP)) { const lab = labels.find((l) => l.toLowerCase() === ctaM.toLowerCase()); tokPP[ctaM] = null;
                 if (lab && accounts[lab]?.refresh_token) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[lab].refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokPP[ctaM] = t.access_token; } catch { /* sin token */ } } }
-              const b = await mlGet(`/items/${String(m).split('__')[0]}`, tokPP[ctaM] || tok); /* 16/11: ML deja leer la publicación sólo con el token de SU cuenta */ if (b && b.status === 'active' && Number(b.price) > 0 && b.listing_type_id !== 'gold_pro' && (!best || Number(b.price) < Number(best.price))) best = b; } catch { /* sigue */ } }
+              const b = await mlGet(`/items/${String(m).split('__')[0]}`, tokPP[ctaM] || tok); /* 16/11: ML deja leer la publicación sólo con el token de SU cuenta */ if (b && b.status !== 'closed' && Number(b.price) > 0 && b.listing_type_id !== 'gold_pro' && (!best || Number(b.price) < Number(best.price))) best = b; } catch { /* sigue */ } }
           if (!best) { // 16/11: si ML no deja leerla, lo que guarda la noche (`cyc/netopub`: precio y lo que deja después de comisión y envío)
-            const fs = mlas.map((m) => npPP[m]).filter((f) => f && f.activa !== false && Number(f.precio) > 0 && Number(f.neto) > 0).sort((a, b) => a.precio - b.precio);
+            const fs = mlas.map((m) => npPP[m]).filter((f) => f && Number(f.precio) > 0 && Number(f.neto) > 0).sort((a, b) => a.precio - b.precio);
             const f = fs[0]; if (f) { const costo = puesto * tc, pr = Number(f.precio), mlx = pr * (mlExtraPct(it.cuenta || 'ayelen') + monoP) / 100, env = Number(f.envio) || 0;
               const mg = (f.neto - costo - mlx - pr * PEOR_RET_PCT) / (costo + mlx + env) * 100;
               return mg >= CAND_VARA_COMPRA ? { k: 'ok', m: mg, motivo: `${Math.round(mg)}% a nuestro precio de ML (${money(pr)})` } : { k: 'no', m: mg, motivo: `hoy da ${Math.round(mg)}% a nuestro precio de ML (${money(pr)}): abajo del 35% no se repone` }; } }
@@ -28538,7 +28538,7 @@ async function main() {
             if (!(rP && rP.margen != null)) return { k: 'duda', m: null, motivo: `sin catálogo · no pude medir nuestra publicación ${best.id} (${money(Number(best.price))})` };
             return rP.margen >= CAND_VARA_COMPRA ? { k: 'ok', m: rP.margen, motivo: `${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))})` } : { k: 'no', m: rP.margen, motivo: `hoy da ${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))}): abajo del 35% no se repone` }; }
         }
-        if (!pi) return { k: 'duda', m: null, motivo: (it.cat ? 'sin precio en ML hoy (no se puede medir)' : 'sin catálogo de ML') + (it.tipo === 'probado' ? ` · pub. nuestras sin leer: ${Object.entries(links).filter(([, l]) => l && l.prodId === it.id).map(([m]) => m + '[' + Object.keys(npPP[m] || {}).slice(0, 6).join(',') + (npPP[m] ? ' p' + npPP[m].precio + ' a' + npPP[m].activa : '') + ']').join(' ')}` : '') };
+        if (!pi) return { k: 'duda', m: null, motivo: (it.cat ? 'sin precio en ML hoy (no se puede medir)' : 'sin catálogo de ML') + (it.tipo === 'probado' ? ' · no pude leer nuestra publicación' : '') };
         const catx = pi.ref ? catDeOfertas(ofs, pi.ref) : null; if (!catx) return { k: 'duda', m: null, motivo: 'ML no dio la categoría' };
         const refF = ofs.filter(esOfertaFull).sort((x, y) => (Number(x.price) || 0) - (Number(y.price) || 0))[0];
         const cta = it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS);
