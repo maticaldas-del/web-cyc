@@ -5511,7 +5511,9 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const enFalta = enEscasez || ['escasez', 'sinrepo'].includes(ultFalta) || ['escasez', 'sinrepo'].includes(tagNuevo);
     const edadF = brkEdad(edadViejaFull(e, 'k', lotes || {}, { k: hSh.aprox === false ? hSh : null }));   // revisión etapa 8: FIFO (ver `edadFifo`)
     const cobraDesde = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0];
-    const antiguoCerca = edadF != null && edadF >= cobraDesde - 20;
+    // 10a del 16/11/2026 (revisión de Precios, él: "a"): los 20 días se cuentan desde el CIERRE de la cuenta en que ML cobra por primera vez
+    // (`cierreCobroAntiguo`, como `antiguo15`), no desde el día en que la unidad cumple los 120 (o 60): antes se abría el día 100 de edad.
+    const antiguoCerca = edadF != null && ahora >= cierreCobroAntiguo(ahora - edadF * 864e5, cobraDesde, cta, ahora) - 20 * 864e5;
     // 27/10/2026: 15 días antes de pagar stock antiguo (ver F12). 48a del 14/11/2026 (él: "a"): contados desde el CIERRE de esa cuenta en que
     // ML cobra por primera vez (Adriana el 10, las otras el 12: cobra según la edad de cada unidad ese día, `cierreCobroAntiguo`), no desde el
     // día en que la unidad cumple los 120 (o 60) días: la que los cumple el 13 recién paga el 12 del mes siguiente.
@@ -5637,7 +5639,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
       // antes saltaban F7/F8/F14 por sobra sin pasar por el 1,3×), y no frena renovar el mismo descuento (46a: no es una baja; si no, vencía y SUBÍA).
       if ((tagNuevo === 'sobra' || tagNuevo === 'desobra' || (!tagNuevo && ult === 'sobra') || exento === 'sobra' || exento === 'liquidando') && !renueva0 && !antiguo15 && lin && !suya('pideel') && !(ahora < PIDEEL_DESDE && /lo pide él|lo pidió él|elegido por él|él eligió|eligió él/i.test(String(fz.motivo || '')))) {   // 22a del 03/11/2026 (él: "a"): escribir "lo pide él" en el motivo ya no saltea esta regla; es la 🔐 !pideel, con su "autorizo"
         const k30s = kDia(ahora - 30 * 864e5); let dH = 0, uH = 0;
-        for (const k of ks) { if (k < k30s) continue; const x = lin[k]; if (!diaConStock(x)) continue; const pp = [Number(x.p) || 0, Number(x.pLista) || 0]; if (!pp.some((n) => n > 0 && Math.abs(n - p0) <= p0 * 0.03)) continue; dH++; uH += Number(x.u) || 0; }
+        for (const k of ks) { if (k < k30s) continue; const x = lin[k]; if (!diaConStock(x)) continue; const pp = preciosVistosLin(x); if (!pp.some((n) => n > 0 && Math.abs(n - p0) <= p0 * 0.03)) continue; dH++; uH += Number(x.u) || 0; }   // 11a del 16/11/2026: con mi descuento, el precio que vio el comprador
         if (uH > 0 && ahora >= DET_REGLA_DESDE.reglas0811) {
           // 1a del 08/11/2026 (él: "a" = UNA SOLA VARA): la baja por sobra pasa si deja IGUAL O MÁS GANANCIA POR DÍA NETA (ritmo × ganancia por
           // unidad, con la parte neta de lo cobrado de la línea, −$100 de trabajo, −3% del tope de H y la caja de más), no si factura 1,3×.
@@ -6236,11 +6238,15 @@ const ventaCuentaDesde = (v, mla, desde, ts, viejo = 0) => ts > desde && (String
 // ⚡ EL PUNTO MEDIO (02/11/2026, él: "¿se puede hacer la misma estrategia más rápida? no quiero esperar más de 10 días sin vender para bajar y
 // luego seguir bajando"; eligió 1 (con "mínimo dejar 24 h") 2 3 4). Las Cartas Casino subieron 7 veces en una semana ($4.290 → $26.290) con
 // una venta cada vez y dejaron de vender: estas dos funciones son la cuenta del "punto medio" para `decido` (!vendio y !vuelve) y el detector.
-// Ritmo a un precio (±3%, lista o tachado) en la línea de tiempo, entre t0 y t1, sólo días con stock: { dias, u, r } o null sin días.
+// Ritmo a un precio (±3%) en la línea de tiempo, entre t0 y t1, sólo días con stock: { dias, u, r } o null sin días.
+// 11a del 16/11/2026 (revisión de Precios, él: "a"): con mi descuento activo el día cuenta al precio que VIO EL COMPRADOR (`pV`), como las
+// rayas (`rayasPrecioLinea`); sin `pV`, como antes (lista o `pLista`). `preciosVistosLin` = los precios del día con que se compara.
+function preciosVistosLin(x) { return Number(x && x.pV) > 0 ? [Number(x.pV)] : [Number(x && x.p) || 0, Number(x && x.pLista) || 0].filter((n) => n > 0); }
+function precioVistoLin(x) { return Number(x && x.pV) > 0 ? Number(x.pV) : (Number(x && x.p) || 0); }
 function ritmoAPrecioLin(lin, precio, t0, t1, sinBF = false) {   // sinBF: 12a del 08/11, sin los días del Black Friday
   if (!lin || !(precio > 0)) return null; const k0 = dayKeyFromISO(t0), k1 = dayKeyFromISO(t1); let dias = 0, u = 0;
   for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k0 || k >= k1 || !x || typeof x !== 'object' || !diaConStock(x) || (sinBF && diaEnBF(k))) continue;
-    const pp = [Number(x.p) || 0, Number(x.pLista) || 0].filter((n) => n > 0); if (!pp.some((n) => Math.abs(n - precio) <= precio * 0.03)) continue;
+    const pp = preciosVistosLin(x); if (!pp.some((n) => Math.abs(n - precio) <= precio * 0.03)) continue;
     dias++; u += Math.max(0, (Number(x.u) || 0) - (Number(x.uR) || 0)); }
   return dias ? { dias, u, r: u / dias } : null;
 }
@@ -6660,7 +6666,7 @@ async function detectarErrores(db, o = {}) {
   // Clásica activa con stock cuyo tag de hoy es 🆕 y que vendió (ella o una gemela/hermana del mismo stock) después del tag sin una
   // suba mía después de esa venta. La lista tiene que quedar vacía al terminar la vuelta (se sube con el comando que trae).
   // Cerca de pagar stock antiguo (20 días o menos, o ya pagando): ahí no se sube a buscar techo, se vende (o lo decidió él, 27/10: "esperar como están").
-  const cercaAntiguo = (e) => { try { const ed = edadViejaFull(e, null, lotes || {}, {}); if (ed == null) return null; const pr = prods && e.prodId ? prods[e.prodId] : null; const cb = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0]; return ed >= cb - 20 ? `la unidad más vieja lleva ${ed} d en Full y el stock antiguo se cobra desde los ${cb}` : null; } catch { return null; } };
+  const cercaAntiguo = (e) => { try { const ed = edadViejaFull(e, null, lotes || {}, {}); if (ed == null) return null; const pr = prods && e.prodId ? prods[e.prodId] : null; const cb = (tablaAntiguoDe(e, pr, lotes || {}, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0]; const ah = Date.now(), T = cierreCobroAntiguo(ah - ed * 864e5, cb, e.cuenta, ah); return ah >= T - 20 * 864e5 ? `la unidad más vieja lleva ${ed} d en Full y ML cobra el stock antiguo (desde los ${cb} d) en el cierre del ${new Date(T).toISOString().slice(8, 10)}/${new Date(T).toISOString().slice(5, 7)}` : null; } catch { return null; } };   // 10a del 16/11/2026: 20 días antes del CIERRE en que cobra
   // 🛑 tope de 500% (02/11): el último cambio mío a este precio (±2%) anotó cuánto deja en el peor caso; con 500%+ no se pide subir.
   let _cc500 = {}; try { _cc500 = (await db.get('cyc/claudecambios')) || {}; } catch { _cc500 = {}; }
   const tope500 = (m, P) => { const r = Object.values(_cc500).filter((c) => c && String(c.mla) === String(m) && Number(c.a) > 0 && Math.abs(Number(c.a) - P) <= P * 0.02 && c.mgPA != null).sort((x, y) => Number(y.ts) - Number(x.ts))[0]; return !!(r && Number(r.mgPA) >= TOPE_GANANCIA_PCT); };
@@ -6736,7 +6742,7 @@ async function detectarErrores(db, o = {}) {
       let escCorto = false;
       if (ult === 'escasez' || ult === 'sinrepo') { let lin = null; try { lin = (await db.get('mlapi/linea/' + m)) || null; } catch { lin = null; }
         if (lin) { const k30 = dayKeyFromISO(ahora - 30 * 864e5); let st = null, dd = 0, uu = 0;
-          for (const k of Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k30).sort()) { const x = lin[k]; if (!x || typeof x !== 'object') continue; if (x.st != null) st = Number(x.st) || 0; if (diaConStock(x) && Math.abs((Number(x.pLista || x.p) || 0) - P) <= P * 0.02) { dd++; uu += Number(x.u) || 0; } }
+          for (const k of Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k30).sort()) { const x = lin[k]; if (!x || typeof x !== 'object') continue; if (x.st != null) st = Number(x.st) || 0; if (diaConStock(x) && Math.abs((Number(x.pV) > 0 ? Number(x.pV) : Number(x.pLista || x.p) || 0) - P) <= P * 0.02) { dd++; uu += Number(x.u) || 0; } }   // 11a del 16/11/2026: con mi descuento, el precio que vio el comprador
           escCorto = st != null && dd >= 5 && uu > 0 && st / (uu / dd) < 100; } }
       // 9a del 08/11/2026: 🔥 escasez con la caja en camino: si el stock alcanza al ritmo de este precio hasta que llega, no se sube más.
       if (ult === 'escasez' && ahora >= DET_REGLA_DESDE.reglas0811) { let linE = null; try { linE = (await db.get('mlapi/linea/' + m)) || null; } catch { linE = null; }
@@ -7621,7 +7627,7 @@ async function calcCerebro(db, o) {
         const np = netopub[mla] || {};
         // El envío medido sólo vale arriba si se midió a un precio de arriba (etapa 1, 21/10/2026): con `np.precio` abajo de la barrera
         // `np.envio` es 0 o el de una compra de varias unidades, no el de una venta de arriba.
-        const envArriba = (p0 >= UMBRAL_ENVIO_GRATIS && Number(np.precio) >= UMBRAL_ENVIO_GRATIS && Number(np.envio) > 0 && !np.envioML && !np.sinEnvio) ? Number(np.envio) : CAND_ENVIO_ARRIBA;
+        const envArriba = p0 >= UMBRAL_ENVIO_GRATIS ? envioArribaPeor(np) : CAND_ENVIO_ARRIBA;   // 7a del 16/11/2026: nunca vendió arriba → mayor entre tarifa de ML y referencia
         const gan = async (P) => {
           const f = await feeAt(b, P, tk); if (f == null) return null;
           const env = P >= UMBRAL_ENVIO_GRATIS ? envArriba : 0;
@@ -13066,7 +13072,15 @@ let CAND_ENVIO_ARRIBA = 6190; // el envío de Full arriba de la barrera · lo pi
 // de esa publicación o el peor % medido); envío de Full arriba de la barrera (el medido en `cyc/netopub` sólo si se midió a un precio
 // de arriba, si no `CAND_ENVIO_ARRIBA`); IIBB + monotributo; 3% del facturado de más (tope de H, ⚖️); peor caso con `PEOR_RET_PCT`.
 // `fC` = la comisión de la Clásica ya preguntada (para no repetirla). null si ML no contestó una comisión.
-function envioGemelaDe(np) { return np && Number(np.precio) >= UMBRAL_ENVIO_GRATIS && Number(np.envio) > 0 && !np.envioML && !np.sinEnvio ? Number(np.envio) : CAND_ENVIO_ARRIBA; }
+// 📦 EL ENVÍO DE ARRIBA DE LA BARRERA PARA EL PEOR CASO, UNO SOLO (7a del 16/11/2026, revisión de Precios, él: "a"): el peor visto en sus
+// ventas de arriba (`cyc/netopub` medido a un precio de arriba); si nunca vendió arriba, el MAYOR entre la tarifa de ML de ESA publicación
+// (la que guarda la noche con `envioSegunML`, `envioML`) y el de referencia (`CAND_ENVIO_ARRIBA`): lo pesado paga la tarifa.
+function envioArribaPeor(np) {
+  const n = np || {}, arriba = Number(n.precio) >= UMBRAL_ENVIO_GRATIS && Number(n.envio) > 0 && !n.sinEnvio;
+  if (arriba && !n.envioML) return Number(n.envio);
+  return Math.max(CAND_ENVIO_ARRIBA, arriba ? Number(n.envio) : 0);
+}
+function envioGemelaDe(np) { return envioArribaPeor(np); }
 async function cuentaGemela({ b, P, tk, costo, envio, impPct, cuoMed, cuoPeor, fC = null }) {
   // Revisión etapa 1 (24/10): una comisión de $0 (o menos) es ML que no contestó bien, no un dato: null (la gemela no se mueve esa vuelta).
   const fee = async (lt, pr) => { try { const d = await mlGet(`/sites/${b.site_id || 'MLA'}/listing_prices?price=${pr}&listing_type_id=${lt}&category_id=${b.category_id}`, tk); const o = Array.isArray(d) ? d[0] : d; return typeof o?.sale_fee_amount === 'number' && o.sale_fee_amount > 0 ? { f: o.sale_fee_amount, fin: Number(o?.sale_fee_details?.financing_add_on_fee) > 0 } : null; } catch { return null; } };
@@ -30093,9 +30107,9 @@ async function main() {
       const ritmoHoy = (J) => {
         const ks = Object.keys(J || {}).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && J[k] && typeof J[k] === 'object').sort();
         if (!ks.length) return null;
-        const pU = Number(J[ks[ks.length - 1]].p) || 0;
+        const pU = precioVistoLin(J[ks[ks.length - 1]]);   // 11a del 16/11/2026: el que vio el comprador
         let dd = 0, uu = 0;
-        for (let i = ks.length - 1; i >= 0; i--) { const x = J[ks[i]]; const p = Number(x.p) || 0; if (pU > 0 && p > 0 && Math.abs(p - pU) > pU * 0.02) break; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+        for (let i = ks.length - 1; i >= 0; i--) { const x = J[ks[i]]; const p = precioVistoLin(x); if (pU > 0 && p > 0 && Math.abs(p - pU) > pU * 0.02) break; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
         if (dd >= 7) return { u: uu, d: dd, hoy: true };
         const k30 = dayKeyFromISO(Date.now() - 30 * 864e5); dd = 0; uu = 0;
         for (const k of ks) { if (k < k30) continue; const x = J[k]; if (!diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
@@ -47640,7 +47654,7 @@ async function main() {
         const costo = costoPesos(p, 1, tc).costo; const m = (mlExtraPct(b.cuenta) + monoP) / 100;
         const npU = npAll[b.id] || {};
         const mgA = async (pr) => { if (!(pr > 0)) return null; const com = await fee(b, pr); if (com == null) return null;
-          const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+          const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : envioArribaPeor(npU);
           const mlx = pr * m; const neto = pr - com - env; return (neto - costo - mlx - pr * PEOR_RET_PCT) / (costo + mlx + env) * 100; };   // + la retención de otra provincia, como planilla
         const tf = techo[b.id] || null; const pComp = tf && tf.t ? Number(tf.t) : null;
         const pVen = maxVenta[pid] || null;
@@ -47817,7 +47831,7 @@ async function main() {
         if (r.falloML) out = null;
         else if (r.envio != null && r.mismoLado) out = { envio: r.envio, fuente: `${modo === 'max' ? 'peor' : 'mejor'} caso de ${r.usadas} venta(s) de arriba de la barrera` };
         else if (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 && !npU.envioML && !npU.sinEnvio) out = { envio: Number(npU.envio), fuente: 'el medido por netoweb arriba de la barrera (sin ventas propias de arriba)' };
-        else out = { envio: CAND_ENVIO_ARRIBA, fuente: 'el peor envío de Full medido (sin ventas de arriba de esta publicación)' };
+        else { const eP = envioArribaPeor(npU); out = { envio: eP, fuente: eP > CAND_ENVIO_ARRIBA ? 'la tarifa de ML de esta publicación (más que el de referencia; nunca vendió arriba, 7a del 16/11)' : 'el peor envío de Full medido (sin ventas de arriba de esta publicación)' }; }
         envioCache[kE] = out; return out;
       };
       const envHoy = await envioPara(b.price || 0, 'max'), envHoyMin = await envioPara(b.price || 0, 'min');
@@ -53313,8 +53327,8 @@ async function main() {
         let kCam = '', pCamN = 0, pCamV = 0;
         for (const m of mlas) { const lin = await lineaDe(m); if (!lin) continue;
           const kp = Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < dk(0) && lin[k] && Number(lin[k].p) > 0).sort(); if (!kp.length) continue;
-          const pH = Number(lin[kp[kp.length - 1]].p);
-          for (let i = kp.length - 1; i > 0; i--) if (Math.abs(Number(lin[kp[i - 1]].p) - pH) > pH * 0.02) { if (kp[i] > kCam) { kCam = kp[i]; pCamN = pH; pCamV = Number(lin[kp[i - 1]].p); } break; } }
+          const pH = precioVistoLin(lin[kp[kp.length - 1]]);   // 11a del 16/11/2026: el precio que vio el comprador (con mi descuento, `pV`)
+          for (let i = kp.length - 1; i > 0; i--) if (Math.abs(precioVistoLin(lin[kp[i - 1]]) - pH) > pH * 0.02) { if (kp[i] > kCam) { kCam = kp[i]; pCamN = pH; pCamV = precioVistoLin(lin[kp[i - 1]]); } break; } }
         // 13a de la revisión de Datos (01/11, él el 03/11): el día del cambio, lo vendido pudo salir al precio de ANTES (la venta que dispara la
         // suba es de antes de subir). Ese día sólo cuentan para el precio de hoy las ventas cobradas más cerca del precio nuevo que del viejo
         // (la regla de las rayas). Si no, Pedidos veía 1 venta al precio nuevo y Armar caja mandaba 3 de algo que no vendió a ese precio.
@@ -53374,7 +53388,7 @@ async function main() {
           const b = [...bs].sort((x, y) => (y.status === 'active') - (x.status === 'active') || (Number(y.price) || 0) - (Number(x.price) || 0))[0];
           const costo = costoPesos(p, 1, tc).costo; if (!(costo > 0)) return ''; const mm = (mlExtraPct(b.cuenta) + mono35) / 100; const npU = NPp[b.id] || {};
           const mg = async (pr) => { if (!(pr > 0)) return null; const com = await fee(b, pr); if (com == null) return null;
-            const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+            const env = pr < UMBRAL_ENVIO_GRATIS ? 0 : envioArribaPeor(npU);
             const mlx = pr * mm; return (pr - com - env - costo - mlx - pr * PEOR_RET_PCT) / (costo + mlx + env) * 100; };
           // 🪜 LA ESCALERA DE COMPRA (03/11/2026, Tito por audio con el Kit Limpia: "al vender más caro se puede comprar más caro y eso está
           // bien, pero también tiene que poner el ritmo vendido a ese precio. o sea más barato más unidades, a comprar más caro menos"). Para
@@ -53399,7 +53413,7 @@ async function main() {
               for (const c0 of CL) { const D = new Set(); let u = 0, best = c0.ps[0], bd = -1;
                 for (const X of c0.ps) { for (const k of SAM[X].D) D.add(k); u += SAM[X].u; if (SAM[X].D.size > bd) { bd = SAM[X].D.size; best = X; } }
                 const d = D.size; if (!d) continue; const P = best; const com = await fee(b, P); if (com == null) continue;
-                const env = P < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+                const env = P < UMBRAL_ENVIO_GRATIS ? 0 : envioArribaPeor(npU);
                 const mlx = P * mm, A = P - com - env - mlx - P * PEOR_RET_PCT;
                 const cMax = (A - m35 * (mlx + env)) / (1 + m35);   // lo más que puede costar PUESTO (con envío/embalaje y reclamos) para quedar en 35%
                 const cPago = tcL > 0 ? Math.max(0, ((cMax / tcL - shipU) / devF) * tcL) : cMax;   // lo que se paga la unidad
@@ -53422,7 +53436,7 @@ async function main() {
           // y el ritmo daba la mitad: compra de menos); si no se pudo leer la línea de una, no se mide (antes se salteaba callada).
           const rit = async (X) => { const D = new Set(); let u = 0; for (const m of mlas) { const lin = await lineaDe(m); if (!lin) return '?/0';
             for (const [k, x] of Object.entries(lin)) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
-              if (diaConStock(x) && Number(x.pLista || x.p) >= X * 0.97) { D.add(k); u += Number(x.u) || 0; } } } return `${u}/${D.size}`; };
+              if (diaConStock(x) && (Number(x.pV) > 0 ? Number(x.pV) : Number(x.pLista || x.p)) >= X * 0.97) { D.add(k); u += Number(x.u) || 0; } } } return `${u}/${D.size}`; };   // 11a del 16/11/2026: con mi descuento, el precio que vio el comprador
           const r = (x) => x == null ? '?' : Math.round(x);
           // 11/11/2026 (él con el Pendrive 128: "se vende a menos de 35%… la idea es sacar de encima el stock extra de ML… después subirlos al 35% y
           // mantener ahí dos meses. Si se vende ahí sí mando a ese ritmo"): el % de HOY al precio de la publicación, para que decide_cajas.py no mande a Full
@@ -53442,7 +53456,7 @@ async function main() {
           let PCt = '';
           try { const prW = (_mhV != null && (_mhA == null || _mhV < _mhA)) ? _vu.pu : _P0h;
             if (prW > 0) { const com = await fee(b, prW); if (com != null) {
-              const env = prW < UMBRAL_ENVIO_GRATIS ? 0 : (Number(npU.precio) >= UMBRAL_ENVIO_GRATIS && Number(npU.envio) > 0 ? Number(npU.envio) : CAND_ENVIO_ARRIBA);
+              const env = prW < UMBRAL_ENVIO_GRATIS ? 0 : envioArribaPeor(npU);
               const mlx = prW * mm, gN = prW - com - env - costo - mlx - prW * PEOR_RET_PCT, dN = costo + mlx + env;
               const shP = (Number(costoPesos(p, 1, tc).shipUSD) || 0) * (tc > 0 ? tc : 0);
               PCt = ` · PC ${Math.round(gN)}:${Math.round(dN)}:${Math.round(shP)}`; } } } catch (_) { PCt = ''; }
@@ -55316,13 +55330,14 @@ async function main() {
             else if (cuo == null) nota = 'Premium sin cuotas medidas';
             else if (P > 0) {
               const n0 = np[mla] || {};
-              const env = P >= UMBRAL_ENVIO_GRATIS ? ((Number(n0.envio) > 0 && !n0.envioML && Number(n0.precio) >= UMBRAL_ENVIO_GRATIS) ? Number(n0.envio) : CAND_ENVIO_ARRIBA) : 0;
+              const env = P >= UMBRAL_ENVIO_GRATIS ? envioArribaPeor(n0) : 0;
               const fe = await feeAtP(b, P, tk);
               if (fe == null) nota = 'ML no contestó la comisión';
               else {
                 g = P - fe - P * cuo - env - costo - P * m; mg = g / (costo + P * m + env) * 100;
                 // PEOR CASO (12/10/2026, regla suya con los Sony ZX310): retención de IIBB de otra provincia
-                // (`PEOR_RET_PCT`). El envío ya es el peor visto en sus ventas (o el de referencia si nunca vendió):
+                // (`PEOR_RET_PCT`). El envío ya es el peor visto en sus ventas (o, si nunca vendió arriba, el mayor entre la tarifa de ML y el de
+                // referencia: 7a del 16/11/2026, `envioArribaPeor`):
                 // ponerle encima el de referencia a todas sería la exageración que él pidió no hacer.
                 const envP = env;
                 const gP = P - fe - P * cuo - envP - costo - P * m - P * PEOR_RET_PCT;
@@ -55332,7 +55347,7 @@ async function main() {
                 { const Pd = Math.round(Number((pClaude[mla] || {}).precio) || 0);
                   if (Pd > 0 && Pd < P && promoClaudeVigente(pClaude[mla], hoy).vig) { const feD = await feeAtP(b, Pd, tk);
                     if (feD == null) mgPdSin = true;
-                    else { const envD = Pd >= UMBRAL_ENVIO_GRATIS ? ((Number(n0.envio) > 0 && !n0.envioML && Number(n0.precio) >= UMBRAL_ENVIO_GRATIS) ? Number(n0.envio) : CAND_ENVIO_ARRIBA) : 0;
+                    else { const envD = Pd >= UMBRAL_ENVIO_GRATIS ? envioArribaPeor(n0) : 0;
                       const gD = Pd - feD - Pd * cuo - envD - costo - Pd * m - Pd * PEOR_RET_PCT; mgPd = gD / (costo + Pd * m + envD) * 100; } } }
                 // 🪜 6.P6: justo arriba del escalón de comisión, lo que dejaría a $14.990 (comisión preguntada a ML a ese precio).
                 { const esc = escalonDeComision(P); if (esc && !(b.variations || []).length) { const fE = await feeAtP(b, esc - 10, tk); if (fE != null) { const gE = (esc - 10) - fE - (esc - 10) * cuo - costo - (esc - 10) * m; escC = { e: esc, gE, mgE: gE / (costo + (esc - 10) * m) * 100 }; } else escC = { e: esc, gE: null }; } }
