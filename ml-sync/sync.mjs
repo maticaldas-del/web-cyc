@@ -35298,6 +35298,15 @@ async function main() {
         try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
         console.log(`   validación con family_name (sin title): ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`);
       }
+      // 16/11/2026 (Centímetro en Luciana: "attributes are required" al armar el título): con family_name ML necesita los atributos. Van los del
+      // producto de catálogo (marca, modelo…) y, si faltan, los de la publicación común de la misma ficha en esa cuenta. Se vuelve a validar.
+      if (val === 400 && /attributes are required/i.test(valTxt) && body.family_name) {
+        let at = ((prodML && prodML.attributes) || []).filter((a) => a && a.id && (a.value_id || a.value_name)).map((a) => ({ id: a.id, ...(a.value_id ? { value_id: a.value_id } : { value_name: a.value_name }) }));
+        if (at.length < 2) { try { const lnk = Object.entries((await db.get('cyc/mllinks')) || {}).find(([m, e]) => e && e.prodId === P.id && e.cuenta === label && e.status === 'active'); if (lnk) { const bb = await mlGet('/items/' + lnk[0] + '?attributes=attributes', tokP); at = ((bb && bb.attributes) || []).filter((a) => a && a.id && (a.value_id || a.value_name) && !/^(SELLER_SKU|GTIN|ITEM_CONDITION)$/.test(a.id)).map((a) => ({ id: a.id, ...(a.value_id ? { value_id: a.value_id } : { value_name: a.value_name }) })); } } catch { /* sin atributos */ } }
+        if (at.length) { body.attributes = at;
+          try { const r = await fetch(ML_API + '/items/validate', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); val = r.status; valTxt = (await r.text()).slice(0, 1500); } catch (e) { valTxt = String(e.message || e).slice(0, 200); }
+          console.log(`   validación con ${at.length} atributos: ${val === 204 || val === 200 ? '✓ la aceptaría' : '✗ ' + (val || 'sin respuesta') + ' ' + valTxt}`); }
+      }
       // SÓLO AVISOS (23/10/2026, Webcam EMEET S600): ML devuelve 400 "validation_error" aunque todo lo que lista sea `type: warning`
       // ("User has not mode me1", "Mandatory free shipping added"). Eso no es un error: se publica igual y se dicen los avisos.
       if (val === 400) { try { const j = JSON.parse(valTxt); const cs = Array.isArray(j.cause) ? j.cause : []; if (cs.length && cs.every((c) => c && c.type === 'warning')) { val = 204; console.log(`   ✓ ML sólo da avisos, no errores: ${cs.map((c) => c.message || c.code).join(' · ')}`); } } catch { /* no es JSON: queda como error */ } }
