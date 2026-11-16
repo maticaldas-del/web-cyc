@@ -40,8 +40,12 @@ Siempre en este orden, una tarea atrás de la otra, sin saltear: HOY LLEGA (a00)
 MIRAR CORTO → CAJAS LLEGADAS → EXTRACTO → MÁS VENDIDOS → COMPETENCIA → lo semanal que toque (MIRAR TODO completo, LISTAS, MAYORISTAS WEB, ONCE, IMEGA) → TIENDA.
 - PERFUMES deja SU mensaje aparte: "PERFUMES <fecha>: <cuántos copiaste> en <cuántas páginas>" (ya no va adentro de la RUTINA).
 - **MIRAR CORTO** (todos los días): del MIRAR TODO (PROMPT_RUTINA_MANANA) hacés SÓLO lo que el robot NO ve: la parte 2 (mensajes de compradores sin
-  leer), la 4 (lo que ML frena o avisa), la 7 (Mercado Pago: deudas y cosas raras) y la 8 (facturas de ML). Lo demás (reclamos, preguntas,
-  reputación, Full, stock, métricas, promos, dólar) ya lo lee el robot por su lado: NO lo repitas. Mensaje: "MIRAR CORTO <fecha>: …" con el mismo formato.
+  leer), la 4 (lo que ML frena o avisa: también todo cartel de infracción o "productos falsificados" arriba de cada cuenta), la 6 SÓLO en lo de
+  unidades con problema en Full ("no aptas", dañadas, para retirar, para descarte, sin etiqueta: producto + cuántas + qué pide ML + hasta cuándo;
+  16/11, Matías: la Doree estuvo ahí sin que nadie la viera), la 7 (Mercado Pago: deudas y cosas raras) y la 8 (facturas de ML). Además, 5
+  publicaciones por día (seguí el orden de la lista del panel, retomando donde quedaste): ¿algún dato de la ficha no cierra con el producto
+  (velocidad, capacidad, medidas, voltaje, compatibilidad; ej. TP-Link "2,4 Gbps" cuando es 300 Mbps)? Anotá MLA + qué dice + qué debería decir,
+  SIN cambiar nada. Lo demás (reclamos, preguntas, reputación, stock por agotarse, stock antiguo, métricas, promos, dólar) ya lo lee el robot: NO lo repitas. Mensaje: "MIRAR CORTO <fecha>: …" con el mismo formato.
 - **MIRAR TODO completo, una vez por semana** (cuando la línea "Última vez" dice 7 días o más, o "nunca"): ese día hacés el MIRAR TODO entero
   en vez del corto.
 - **A las 11 de la mañana** el robot mira el 📋 HOY TOCA: si falta algo le llega a Matías "falta GUAY: decile seguí". Cuando te diga "seguí",
