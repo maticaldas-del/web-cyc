@@ -35067,6 +35067,42 @@ async function main() {
       else console.log(`✗ ML NO LA ACEPTA (${st || 'sin respuesta'}): ${tx}`);
       return;
     }
+    // BILLING_PROBE=catoptin:<MLA común>=<MLA producto de catálogo>|precio=<pesos>[|go] (16/11/2026, él: "en ml baratas y caras y vemos si le saca
+    // ventas a la cara o no… no quiero hacer nada con las publicaciones yo"): le pide a ML la versión DE CATÁLOGO de una publicación común que ya
+    // tenemos (`POST /items/catalog_listings`): ML crea otra publicación atada a la misma (mismo stock de Full) y la ofrece en ese catálogo. Le pone
+    // el precio pedido (es una publicación nueva que nunca vendió: la salida de `!activar`), la relee, la vincula a la ficha de la común con su
+    // color y anota la estrategia. Sin `|go` sólo muestra la común y el catálogo. Sólo con su pedido (la prueba barata/cara).
+    if (/^catoptin:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const raw = String(process.env.BILLING_PROBE).slice('catoptin:'.length); const pz = raw.split('|').map((x) => x.trim()).filter(Boolean);
+      const GOo = pz.includes('go') && !DRY; const m0 = (pz[0] || '').match(/^(MLA\d+)=(MLA\d+)$/i); const kvo = {}; for (const x of pz) { const mm = x.match(/^([a-z]+)=(.*)$/i); if (mm) kvo[mm[1].toLowerCase()] = mm[2].trim(); }
+      if (!m0 || !(pesosArg(kvo.precio) > 0)) { console.log('Usá: catoptin:<MLA común>=<MLA producto de catálogo>|precio=<pesos>[|go]'); return; }
+      const ITEM = m0[1].toUpperCase(), CAT = m0[2].toUpperCase(), PRE = pesosArg(kvo.precio);
+      const lk = (await db.get('cyc/mllinks/' + ITEM)) || {}; const lab = labels.find((l) => l === lk.cuenta);
+      if (!lab || !lk.prodId) { console.log(`❌ ${ITEM} no está vinculada a una ficha con cuenta: no hago nada.`); return; }
+      let tk; try { const tR = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[lab].refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: tR.refresh_token, updated_ts: Date.now() }); tk = tR.access_token; } catch { console.log('No pude renovar el token.'); return; }
+      let b0 = null; try { b0 = await mlGet('/items/' + ITEM, tk); } catch (e) { console.log('ML no me dio ' + ITEM + ': ' + String(e.message || e).slice(0, 120)); return; }
+      let pc = null; try { pc = await mlGet('/products/' + CAT, tk); } catch { pc = null; }
+      console.log(`=== CATÁLOGO PARA UNA PUBLICACIÓN QUE YA TENEMOS (${GOo ? 'DE VERDAD' : 'PRUEBA'}) ===`);
+      console.log(`común ${ITEM} · ${lab} · ${money(b0.price)} · ${b0.status} · catálogo hoy: ${b0.catalog_listing ? 'ya es de catálogo' : 'no'}`);
+      console.log(`catálogo pedido ${CAT} · «${String((pc && pc.name) || '?').slice(0, 70)}» · precio para la nueva ${money(PRE)}`);
+      if (b0.catalog_listing) { console.log('❌ esa ya es de catálogo.'); return; }
+      if (!GOo) { console.log('(prueba: agregá |go)'); return; }
+      const r = await fetch(ML_API + '/items/catalog_listings', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: ITEM, catalog_product_id: CAT }), signal: AbortSignal.timeout(30000) });
+      const txt = await r.text(); _anotarEscrituraML(r, lk.prodId, 'catálogo de una publicación existente', txt);
+      if (!r.ok) { console.log(`❌ ML no la creó: ${r.status} ${txt.slice(0, 800)}`); return; }
+      let nv = {}; try { nv = JSON.parse(txt); } catch { nv = {}; } const nid = String(nv.id || '');
+      if (!/^MLA\d+$/.test(nid)) { console.log('⚠️ ML contestó sin un id que entienda: ' + txt.slice(0, 400)); return; }
+      const rp = await fetch(ML_API + '/items/' + nid, { method: 'PUT', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ price: PRE }) });
+      const tp = await rp.text(); _anotarEscrituraML(rp, lk.prodId, 'precio de la publicación de catálogo nueva', tp);
+      await new Promise((ok) => setTimeout(ok, 3000));
+      let b2 = null; try { b2 = await mlGet('/items/' + nid, tk); } catch { b2 = null; }
+      console.log(`✓ creada ${nid} · ${b2 ? b2.status + ' · ' + money(b2.price) + ' · catálogo ' + (b2.catalog_product_id || '?') + ' · stock ' + b2.available_quantity : 'sin releer'}${rp.ok ? '' : ' · ⚠️ el precio no lo tomó: ' + rp.status + ' ' + tp.slice(0, 200)}`);
+      if (b2 && Math.abs((Number(b2.price) || 0) - PRE) > 1) console.log(`⚠️ quedó a ${money(b2.price)}, no a ${money(PRE)}: corregir con decido`);
+      const e2 = { prodId: lk.prodId, cuenta: lab, title: (b2 && b2.title) || '', status: (b2 && b2.status) || '', catalogo: CAT, catalogoListing: true, ...(lk.variant ? { variant: lk.variant } : {}), pruebaDe: ITEM, ts: Date.now() };
+      try { await db.patch('cyc/mllinks/' + nid, e2); console.log('   ✓ vinculada a la misma ficha' + (lk.variant ? ' · ' + lk.variant : '')); } catch (e) { console.log('   ⚠️ no la pude vincular: ' + String(e.message || e).slice(0, 100)); }
+      try { const okE = await guardarEstrategia(db, nid, 'techo', `Prueba barata/cara (él, 16/11): la de catálogo a ${money(PRE)} al lado de la común ${ITEM} a ${money(b0.price)}. Se juzga en 2-3 semanas: si la cara vende menos de la mitad que antes, se cierra ésta.`); console.log(okE ? '   ✓ estrategia anotada' : '   ⚠️ estrategia sin anotar'); } catch { /* */ }
+      return;
+    }
     // BILLING_PROBE=publicar:<ficha>|cuenta=<cuenta>|precio=<pesos>[|catalogo=<MLA…>][|color=<variante>][|!piso][|go]
     // (etapa 6 · A1, 21/10/2026, él: "probemos y me decís") → CLAUDE PUBLICA EN ML LO NUEVO DE UN PEDIDO, UNA POR VEZ.
     // Hasta hoy la publicación la creaba él (*"solo armar la publicacion en cyc. ml la hago yo"*, 26/09). Esto la crea PAUSADA, en el

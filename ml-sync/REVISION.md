@@ -79,6 +79,7 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
 
 ## 1 · PRECIOS (lunes)
 ### 🧪 Prueba barata y cara del mismo producto (16/11/2026)
+- **`catoptin:<MLA común>=<MLA catálogo>|precio=<p>[|go]`:** le pide a ML la versión de catálogo de una publicación común (`POST /items/catalog_listings`, mismo stock), le pone el precio, la relee y la vincula a la misma ficha con `pruebaDe`. Lo usé porque crear una nueva desde cero en esa categoría ML la rechaza (pide atributos).
 - **Qué es:** `publicar` acepta `|!segunda` (otra publicación de la misma ficha en la misma cuenta, sólo si él lo pidió) y `|u=<n>` (el cupo se mide con las que se mandan, no con toda la oficina). Primer uso: Centímetro Blanco de catálogo a ~$5.190 con stock de la oficina, al lado de la común a $17.490. `unapub` ahora dice si es de catálogo y cuál.
 - **Qué chequear:** que la vuelta no las iguale por la regla 👯 (excepción en CLAUDE.md); a las 2-3 semanas comparar el ritmo de la cara contra el de antes.
 
