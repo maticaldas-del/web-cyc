@@ -47750,6 +47750,7 @@ async function main() {
       console.log(`=== ${MLA} · ${String(b.title || '').slice(0, 60)} ===`);
       if (cuoSinMedirU) console.log('⚠️ Es Premium y no tengo las cuotas medidas (cyc/mlcuotas): el margen de abajo va SIN cuotas y es de más. No se baja (corré cuotas).');
       console.log(`Cuenta ${label} · estado ${b.status}${(b.sub_status || []).length ? ' (' + b.sub_status.join(', ') + ')' : ''} · stock ${b.available_quantity} · vendidas ${b.sold_quantity}`);
+      console.log(`catálogo: ${b.catalog_listing ? 'SÍ, es publicación de catálogo' : 'no (publicación común)'}${b.catalog_product_id ? ' · producto de catálogo ' + b.catalog_product_id : ''}${b.user_product_id ? ' · user_product ' + b.user_product_id : ''} · categoría ${b.category_id || '?'} · ${b.listing_type_id || '?'}`);   // 16/11: para armar la prueba barata/cara del centímetro
       console.log(`\n── PRECIOS QUE TIENE ML ──`);
       console.log(`  price (el de lista, el que leo yo) : ${money(Math.round(b.price || 0))}`);
       if (b.base_price != null && Math.round(b.base_price) !== Math.round(b.price || 0)) console.log(`  base_price                        : ${money(Math.round(b.base_price))}`);
