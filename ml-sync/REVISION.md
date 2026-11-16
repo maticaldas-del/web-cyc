@@ -1044,6 +1044,10 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 - **12/11 · 🧲 Fácil o difícil de conseguir** (él eligió la a). Qué es: `cyc/conseguir/py/<prod>/<día>` una marca por vuelta completa de Nissei (en `marcarAgotadosVuelta`) · `cyc/conseguir/bsas/<prod>` {trajo, no} por cada pedido de Pedidos (en el `desde` de `decido`) · `conseguirDe` lo clasifica · `conseguir[:palabra]` · `CONS` en `pedidostodo`. Dónde: `sync.mjs`, CEREBRO §7b. Qué chequear: que en ~5 días haya vueltas suficientes; que lo de Bs As no pedido quede ⚪; que un "no" seguido de "trajo" en el mismo pedido no confunda.
 
 ## 2 · PLATA (martes)
+### 💼 Arqueo: cada renglón del stock compara contra el cierre anterior (16/11/2026, v28.219)
+- **Qué es:** Oficina ML, Oficina Local y En camino a Full con su ▲/▼ (% y US$) como En ML (él: "quiero que compare todo"). El cierre guarda `ofiML`/`ofiLoc` desde hoy; los cierres viejos comparan Oficina ML contra `of_mia` y Local contra `of_viejo`+vendedores.
+- **Qué chequear:** que las tres variaciones + la de Full sumen la del Stock total (en el próximo cierre, con el reparto guardado).
+
 ### 📊 Gastos del mes contra el mes anterior (14/11/2026, él)
 - **14/11 (él: "que aparezca en la tarjeta… que quede lindo"):** la comparación pasó a la tarjeta 💸 Gastos del período (▼/▲ en verde/rojo, % y "sin contar lo que todavía no se pagó"); del encabezado de la lista se sacó (v28.212, dibujada a 390 y 1200 px). Cada renglón sigue diciendo el suyo.
 - **14/11 (él):** lo que todavía no se cargó (y no es "este mes no va") no cuenta como baja: el renglón dice "todavía no se pagó" y el total compara sin eso (v28.211).
@@ -1200,6 +1204,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 📦 Lo FIJO que ya salió no vuelve como "decisión anterior" (16/11/2026)
+- **Qué es:** `decide_cajas.py` guarda en `FIJO_CUMPL` las claves de lo FIJO (código o base) que ya salió entero y no lo mantiene como decisión anterior: la caja de Ayelen volvía a cargar 35 u. ya despachadas el 15/11 (él: "eso está enviado ya").
+- **Qué chequear:** después de despachar una caja con FIJO, la próxima corrida cuenta lo de esa cuenta en automático (con lo en camino restado).
+
 ### 🧴 Catálogos repetidos: se mide contra el más barato (16/11/2026)
 - **Qué es:** la medición de listas y Paraguay (`listamedir`/`pycatmedir`, el bucle de `_vis`) ya no se queda con el primer catálogo con vendedores: mira los (hasta 5 + hijos) que pasan el chequeo de mismo producto y usa el de precio más bajo. Caso: Sedal Rizos de Dai Nippon medido contra un catálogo viejo a $32.999 (184%) cuando el que vende está a $7.408; igual Curitas pies, Bonmetique tono 1, Patrichs.
 - **Qué chequear:** que lo que daba 100%+ en las listas baje a lo real; que el ✅ de fotos se vuelva a pedir cuando cambia el catálogo; que no agarre un catálogo más barato de OTRO tamaño.

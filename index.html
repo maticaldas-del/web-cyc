@@ -1600,6 +1600,7 @@ setTimeout(function _ldVigia(){try{
           <span class="bk-lbl" style="margin:0">🏠 Oficina ML <span data-arqdet="ofiml" style="opacity:.6">▸</span></span>
           <span class="bk-val neutral" id="bk_ofi_ml" style="font-size:.78rem">$0</span>
         </div>
+        <div id="dbk_ofi_ml" style="margin-top:3px"></div>
         <div id="det_ofiml" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"><div id="det_ofiml_txt"></div>
           <!-- 29/10/2026 (él: "que estos estén en un desplegable dentro de oficina local / oficina ml"): el campo vive adentro de su oficina. -->
           <div class="arq-ofi-campo" onclick="event.stopPropagation()" style="margin-top:6px;font-size:.8rem">
@@ -1611,6 +1612,7 @@ setTimeout(function _ldVigia(){try{
           <span class="bk-lbl" style="margin:0">🏪 Oficina Local <span data-arqdet="ofiloc" style="opacity:.6">▸</span></span>
           <span class="bk-val neutral" id="bk_ofi_local" style="font-size:.78rem">$0</span>
         </div>
+        <div id="dbk_ofi_local" style="margin-top:3px"></div>
         <div id="det_ofiloc" style="display:none;font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"><div id="det_ofiloc_txt"></div>
           <div class="arq-ofi-campo" onclick="event.stopPropagation()" style="margin-top:6px;font-size:.8rem">
         <div class="fin-field"><div class="fin-left"><span class="fin-label">Oficina Local</span><span id="ofi-cyc-nota" style="font-size:.6rem;color:var(--muted)"> · solo el valor, no es de ML</span><span id="db_of_viejo"></span></div><input class="fin-input money" type="text" inputmode="numeric" id="f_of_viejo" placeholder="US$ 0" onchange="saveFin('of_viejo',this.value)"></div>
@@ -1624,6 +1626,7 @@ setTimeout(function _ldVigia(){try{
             <span class="bk-lbl" style="margin:0">🚚 En camino a Full <span data-arqdet="camino" style="opacity:.6">▸</span></span>
             <span class="bk-val neutral" id="bk_stock_camino" style="font-size:.78rem">$0</span>
           </div>
+          <div id="dbk_camino_cmp" style="margin-top:3px"></div>
           <div id="det_camino" style="display:none"><div id="dbk_stock_camino" style="font-size:.6rem;color:var(--muted);margin-top:3px;line-height:1.5"></div></div>
         </div>
 
@@ -3714,7 +3717,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.218';
+const APP_VERSION='28.219';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3730,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.219',f:'16/11',h:'17:30',c:[{n:2,t:'💼 Arqueo: Oficina ML, Oficina Local y En camino a Full también comparan contra el cierre anterior (▲/▼ con % y US$), como En ML. El cierre guarda el reparto de las dos oficinas desde hoy.'}]},
   {v:'28.218',f:'16/11',h:'16:40',c:[{n:2,t:'🧾 Paraguay: lo mirado en Nissei vale 48 horas (antes 24).'}]},
   {v:'28.217',f:'16/11',h:'13:20',c:[{n:1,t:'📅 Inicio · Mes y Año: ventas Y ganancia dicen "hasta ayer DD/MM" (cuentan sólo los días terminados); se sacó la explicación de abajo del calendario (mes y año).'}]},
   {v:'28.216',f:'16/11',h:'04:45',c:[{n:2,t:'Pedidos: el máximo de compra usa el envío normal (antes el más caro del catálogo, de un Tender). Rayas iguales al robot con descuentos en publicaciones pausadas. Revisión de Precios en el cartel.'}]},
@@ -12490,6 +12494,7 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
   // snapshot, así que reconstruirlo con el stock de hoy daría un número que no es el de ese mes.
   // En camino a Full: solo se muestra si hay algo, para no agregar un renglón en cero.
   const camWrap=document.getElementById('bk_camino_wrap');
+  {const dc=document.getElementById('dbk_camino_cmp');if(dc)dc.innerHTML=prev?deltaBadge(dispCamino||0,_camDe(prev)):'';}
   if(camWrap){
     // Etapa 2 (28/09): en un mes cerrado la tarjeta muestra lo que iba en camino ese día (ya está
     // adentro del "Stock total"); sin el detalle por cuenta, que el cierre no guarda.
@@ -12577,6 +12582,14 @@ function updateArqueo(){try{if(!_arqViewYM)_btnCerrarTxt();renderCobroCrec();}ca
     const vNoML=contado?pr.reduce((t,x)=>t+x.vL,0):0, vML=contado?pr.reduce((t,x)=>t+x.v-x.vL,0):ofM;
     const vLoc=ofV+vend+vNoML+(contado?Math.max(0,ofM-vML-vNoML):0);
     setCard('bk_ofi_ml',vML,'neutral');setCard('bk_ofi_local',vLoc,'neutral');
+    // 16/11/2026 (él: "quiero que compare todo. como tiene ML"): cada renglón con su ▲/▼ contra el cierre anterior, como En ML (Full).
+    // El cierre guarda el reparto desde hoy (`ofiML`/`ofiLoc`); los de antes no lo tienen: Oficina ML = `of_mia` y Local = `of_viejo`+vendedores.
+    if(!_arqViewYM)window._ofiSplit={ml:vML,loc:vLoc};
+    {const pf=prev&&prev.finanzas||{};
+      const pML=prev?(prev.ofiML!=null?prev.ofiML:(parseFloat(pf.of_mia)||0)):undefined;
+      const pLoc=prev?(prev.ofiLoc!=null?prev.ofiLoc:(parseFloat(pf.of_viejo)||0)+(parseFloat(pf.vendedores)||0)):undefined;
+      const a=document.getElementById('dbk_ofi_ml'),b=document.getElementById('dbk_ofi_local');
+      if(a)a.innerHTML=pML!==undefined?deltaBadge(vML,pML):'';if(b)b.innerHTML=pLoc!==undefined?deltaBadge(vLoc,pLoc):'';}
     const _li=(arr)=>arr.sort((a,b)=>b.v-a.v).slice(0,12).map(x=>`<div style="display:flex;gap:6px"><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_escC?_escC(x.p.name):x.p.name}</span><span style="white-space:nowrap">${fmtN(x.u)} u. · US$ ${fmtN(Math.round(x.v))}</span></div>`).join('');
     const dM=document.getElementById('det_ofiml_txt'),dL=document.getElementById('det_ofiloc_txt');
     const mlA=pr.filter(x=>x.ml).map(x=>({...x,u:x.u-x.uL,v:x.v-x.vL})),noA=pr.filter(x=>x.uL>0).map(x=>({...x,u:x.uL,v:x.vL}));
@@ -12825,7 +12838,7 @@ async function saveSnapshot(){
   // noviembre y el cierre quedaba un mes de H más abajo (misma regla que `arcacierres` del robot).
   const _tcA=curTC(), arcaARS=c.arcaDeuda>0?arcaDeudaARS(key).ars:0;
   const totalSnap=c.total+((c.arcaDeuda>0&&_tcA>0)?c.arcaDeuda-arcaARS/_tcA:0);
-  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,total:totalSnap,tipoCambio,tcMes,tcPorVenta,arcaARS,
+  const snap={label,ts:Date.now(),stock:c.stockVal,stockML:c.stockML,stockLocal:c.stockLocal,...(window._ofiSplit?{ofiML:window._ofiSplit.ml,ofiLoc:window._ofiSplit.loc}:{}),total:totalSnap,tipoCambio,tcMes,tcPorVenta,arcaARS,
     vsrUSD:c.vsr||0,pvUSD:c.pvDeuda||0,
     finanzas:finSnap,
     locValues:Object.fromEntries(LOCS.map(l=>{let v=0;(state.products||[]).forEach(p=>v+=Math.max(0,getQ(p.id,l))*costP(p));return[sid(l),v];})),

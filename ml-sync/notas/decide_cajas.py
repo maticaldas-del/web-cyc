@@ -255,7 +255,7 @@ if os.path.exists(_CJ0):
         mm=re.match(r'(caja:[^=]+)=u\|(\d+)\|',l.strip())
         if mm: _prevQ[mm.group(1)]=int(mm.group(2))
 _byId={q['id']:q for q in P}
-FIJO_ACT={};fijoCumplidos=[];fijoSalio=[]
+FIJO_ACT={};fijoCumplidos=[];fijoSalio=[];FIJO_CUMPL=set()   # 16/11/2026: las claves (cab) de lo FIJO que ya salió entero
 for (pid,v,c),(fq,fm) in FIJO.items():
     if fq<=0: FIJO_ACT[(pid,v,c)]=(fq,fm); continue
     q=_byId.get(pid); x=next((y for y in q['vars'] if y['v']==v),None) if (q and v) else None
@@ -269,7 +269,7 @@ for (pid,v,c),(fq,fm) in FIJO.items():
         if pv is not None and U is not None and camNow>0: d=min(max(0,pv-U),camNow); sal+=d
     _fsal[k]=(fq,sal)
     nom=(q['n'][:38] if q else pid)+(f" · {v}" if v else '')
-    if sal>=fq: fijoCumplidos.append(f"{nom} → {c}: lo FIJO de {fq} ya salió entero → vuelve la cuenta automática"); continue
+    if sal>=fq: fijoCumplidos.append(f"{nom} → {c}: lo FIJO de {fq} ya salió entero → vuelve la cuenta automática"); FIJO_CUMPL.add(cab); continue
     FIJO_ACT[(pid,v,c)]=(fq-sal,fm+(f" · ya salieron {sal} de {fq}: faltan {fq-sal}" if sal else ''))
 # 📦 61a del 14/11/2026 (él: "a"): SUS DECISIONES TAMBIÉN DESDE LA BASE (`cajafijo:<producto>@<cuenta>[#color]=<N|no>|motivo;go` → `cyc/cajafijo`),
 # que `pedidostodo` imprime como `FIJO|<id>|<color>|<cuenta>|<u>|<salió>|<ts>|<motivo>`. Se suman a las de arriba y, para la misma clave, MANDA LA
@@ -286,7 +286,7 @@ for k,(fq,sal,fm) in FIJO_DB.items():
     q_=_byId.get(k[0]); nom=(q_['n'][:38] if q_ else k[0])+(f" · {k[1]}" if k[1] else '')
     FIJO_ACT.pop(k,None)
     if fq<=0: FIJO_ACT[k]=(0,fm); continue
-    if sal>=fq: fijoCumplidos.append(f"{nom} → {k[2]}: lo que decidió él ({fq}, de la base) ya salió entero → vuelve la cuenta automática (sacarlo con cajafijo:…=-)"); continue
+    if sal>=fq: fijoCumplidos.append(f"{nom} → {k[2]}: lo que decidió él ({fq}, de la base) ya salió entero → vuelve la cuenta automática (sacarlo con cajafijo:…=-)"); FIJO_CUMPL.add(f"caja:{k[0]}@{k[2]}"+(f"#{k[1]}" if k[1] else '')); continue
     FIJO_ACT[k]=(fq-sal,fm+(f" · ya salieron {sal} de {fq}: faltan {fq-sal}" if sal else ''))
 if FIJO_DB: print(f"📦 {len(FIJO_DB)} decisión(es) de caja suya(s) de la base (cajafijo)")
 FIJO_TAG=' · (fijo de él)'   # lo lee `cajaarmar` (sync.mjs): lo fijo va aunque pase el cupo (6a del 08/11)
@@ -437,6 +437,9 @@ for o in out:
     if o.get('fijo') or o.get('baja') or o.get('perf0') or len(sys.argv)>=3: continue      # lo FIJO de él, lo dado de baja y lo apartado para la perfumería (revisión etapa 9) mandan siempre
     pv=_prev.get(o['cab'])
     if not pv: continue
+    # 16/11/2026 (él: "vos me pedís mandar a cuenta de Aye. pero eso está enviado ya"): lo FIJO que ya salió entero no vuelve como "decisión
+    # anterior": se quedaba la decisión de la base (que no baja al despachar) y la caja de Ayelen volvía a cargar 35 u. ya mandadas el 15/11.
+    if o['cab'] in FIJO_CUMPL: continue
     mot,q0=_base_motivo(pv[1])
     if _es_auto(mot): continue
     Q=pv[0] if q0 is None else q0            # lo que decidí a mano (antes de que lo recortara el cupo o la caja aparte)
