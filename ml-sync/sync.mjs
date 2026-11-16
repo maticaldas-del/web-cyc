@@ -28520,6 +28520,14 @@ async function main() {
         const puesto = it.usd * RECARGO_PAR; let ofs = [];
         if (it.cat) { try { ofs = ((await mlGet(`/products/${it.cat}/items`, tok)).results) || []; } catch { ofs = []; } }
         ofs = ofertasParaMedir(ofs).ofs; const pi = precioAIgualar(ofs);
+        if (!pi && it.tipo === 'probado') {
+          // 16/11/2026 (él, con la SanDisk 128 a −6%: "los que no llegan a 35% no. eso ya lo sabemos"): un probado sin catálogo (o sin precio
+          // en el catálogo hoy) se mide contra NUESTRA publicación activa más barata de esa ficha; abajo del 35% sale.
+          const mlas = Object.entries(links).filter(([, l]) => l && l.prodId === it.id).map(([m]) => m); let best = null;
+          for (const m of mlas.slice(0, 8)) { try { const b = await mlGet(`/items/${m}`, tok); if (b && b.status === 'active' && Number(b.price) > 0 && b.listing_type_id !== 'gold_pro' && (!best || Number(b.price) < Number(best.price))) best = b; } catch { /* sigue */ } }
+          if (best) { const rP = await cuentaCandidatoMejor(Math.min(Number(best.price), TECHO_DURO), best.category_id, puesto, tc, monoP, feeAt, 0, it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS));
+            if (rP && rP.margen != null) return rP.margen >= CAND_VARA_COMPRA ? { k: 'ok', m: rP.margen, motivo: `${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))})` } : { k: 'no', m: rP.margen, motivo: `hoy da ${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))}): abajo del 35% no se repone` }; }
+        }
         if (!pi) return { k: 'duda', m: null, motivo: it.cat ? 'sin precio en ML hoy (no se puede medir)' : 'sin catálogo de ML' };
         const catx = pi.ref ? catDeOfertas(ofs, pi.ref) : null; if (!catx) return { k: 'duda', m: null, motivo: 'ML no dio la categoría' };
         const refF = ofs.filter(esOfertaFull).sort((x, y) => (Number(x.price) || 0) - (Number(y.price) || 0))[0];
