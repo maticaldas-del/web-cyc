@@ -1,0 +1,5 @@
+[
+ {"n": 1, "grupo": "noche", "tit": "🛍️ Balanzas de cocina dejadas en las perfumerías: ¿cuál se vendió al precio anterior?",
+  "txt": "Dejaste 10 balanzas: 7 en Soares y 3 en Ceballos. Me dijiste que 9 van a $5.000 ($4.000 + 25%) y 1 al precio anterior ($4.433). Hoy las 10 están cargadas a $4.433, así que faltan $567 por cada una de las 9 (+$5.103 en total). Necesito saber en qué perfumería estaba la que se vendió al precio anterior para corregir la cuenta de cada una.",
+  "a": {"t": "En Soares: 6 de Soares y 3 de Ceballos a $5.000"}, "b": {"t": "En Ceballos: 7 de Soares y 2 de Ceballos a $5.000"}}
+]

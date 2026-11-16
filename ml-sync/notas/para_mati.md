@@ -778,7 +778,7 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 - Hecho: CHAT_LOCAL tareas h) ARCA (día 2 de cada mes), i) POSICIÓN y j) PROGRAMAS ML (semanales); PROMPT_COMPETENCIA: siempre llenar Full/tiene/vendió; 8a va como pedido 📌 al chat (cuotas con interés bajo en los Paulvic de Adriana).
 - 2a (16/11): pedido 📌 al chat de Chrome para averiguar el IIBB de Luciana (sin CUIT ni domicilios); la respuesta llega al buzón como RESPUESTA.
 
-## 16/11 · Revisión de Precios (11 decisiones; para la noche)
+## 16/11 · Revisión de Precios (11 decisiones) — RESUELTAS el 16/11 (1b 2a 3b 4a 5a 6b 7a 8 9a 10a 11a)
 1. **Una venta del Black Friday, ¿frena las bajadas?** Hoy frena la liquidación de 30 días y el "lo que vendió no se baja" (10 días). (a) sugerida: no, para bajar tampoco cuenta · (b) sí, una venta es una venta.
 2. **🥊 Mantener la caja (la waflera) en el Black Friday:** si el otro vendedor baja 30%, la seguimos hasta el piso y después no vuelve a subir sola (subirla es tuyo). (a) sugerida: pausarlo del 25 al 30/11 · (b) dejarlo.
 3. **Un precio que sólo existió en el Black Friday** (promo): (a) sugerida: no cuenta como medido · (b) queda medido.
@@ -791,8 +791,11 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 10. **"A 20 días de pagar stock antiguo"** (deja bajar algo en 🔥/⏳): hoy se abre desde el día 100 aunque ML cobre un mes después. (a) sugerida: contarlo desde el cierre en que ML cobra, como la ventana de 15 días · (b) dejarlo.
 11. **El ritmo a un precio con descuento:** hoy se mide con el precio de lista, no el que vio el comprador. (a) sugerida: con el que vio el comprador, como las rayas · (b) dejarlo.
 
-## 16/11 · De la completa
+## 16/11 · De la completa — RESUELTAS el 16/11 (Recortadora y Tendedero contestadas)
 28. **Recortadora 4 en 1 (Ayelen, MLA1474502515):** 5 en Full de 116 días, sin ventas en 60 días. Desde el 13/11 está al costo (26.590, 0 por ciento) y ni así vende; ganar la caja pide 22.966, abajo de 0. Cerca del 20/11 empieza a pagar stock antiguo (unos 1.500 el primer cierre y a los 180 días unas 9 veces más). (a) sugerida: retirar las 5 al local antes del 20/11 · (b) dejarlas en Full al costo pagando.
 29. **Tendedero 3 pisos (Luciana, MLA3576626852):** el descuento a 61.990 que elegiste el 27/10 vence el 18/11. Ahí vende 1 cada 5 días y es su precio de más plata, pero con el envío de Full de hoy (unos 19.200 por unidad) deja 14 por ciento del peor caso (a 67.990, 24). Las 7 de Full tienen 68 días. (a) sugerida: renovarlo a 61.990 hasta Navidad, porque vende y deja más que retirarlo · (b) dejarlo volver a 67.990 y que venda más lento.
 - **Con números de hoy (siguen esperando tu respuesta):** Infusor (100 en Full a 10.390, vende 1 cada 14 días, unos 230 por día contra unos 1.800 a 5.290, stock antiguo cerca del 27/12, techo95 lo da techo seguro) · Centímetro Blanco (147 en Full, más de un año a este ritmo, techo95 24 por ciento) · Pendrive 64 (29 días sin vender a 29.990, techo95 unos 76 por ciento, stock antiguo cerca del 27/12) · Paulvic Silver (180 días cerca del 25/11) · Cubreasiento (180 días cerca del 07/12, para decidir el 22/11).
 - **Para que sepas:** Pendrive 32 hace hoy el escalón a 21.390 en la vuelta de las 9:52 (antes lo frena el plazo de 48 horas). Cabotine 30: el 17/11 desde las 05:00 conviene pasarlo a la promo de ML "Potencia tus ventas" a 72.643 (ML pone 4,1 por ciento y nos queda como 76.287, más que con el descuento de hoy).
+
+## 16/11 · Noche
+1. **Balanzas en las perfumerías:** ¿la que se vendió al precio anterior estaba en Soares o en Ceballos? (también en Inicio como tarjeta)

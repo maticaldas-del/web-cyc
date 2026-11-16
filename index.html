@@ -3717,7 +3717,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.222';
+const APP_VERSION='28.223';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3730,6 +3730,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.223',f:'16/11',h:'20:45',c:[{n:1,t:'🧰 Ajustes: el cartel de revisiones ya no muestra las 11 decisiones de Precios del 16/11 (contestadas).'}]},
   {v:'28.222',f:'16/11',h:'19:15',c:[{n:1,t:'🏠 Inicio: Pedidos sin el numerito rojo; Oficina ML muestra las cajas cargadas por cuenta (tocás y vas a Armar caja), las unidades en la oficina y cuántas faltan etiquetar.'}]},
   {v:'28.221',f:'16/11',h:'18:50',c:[{n:1,t:'🏷️ Inicio · tarjeta Ventas: sin el numerito azul ni "sin mirar"; muestra la ganancia de hoy en verde con el % que vamos.'}]},
   {v:'28.220',f:'16/11',h:'18:10',c:[{n:2,t:'📈 Línea de tiempo: la raya de una prueba de precio decía "no vendió" aunque sí había vendido (Centímetro Rosa a $17.490, 2 ventas). Ahora dice cuántas vendió y en cuántos días.'}]},
@@ -6166,7 +6167,6 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
-  {etapa:1,t:'16/11 · 11 decisiones de Precios',que:'ventas del Black Friday y las bajadas · 🥊 en el Black Friday · precio que sólo existió en el BF · 🥊 y la barrera · Premium de lo 🔒 · retención contada dos veces · envío de lo que nunca vendió arriba · cuotas de la competencia · 25% de la Tienda · 20 días antes del stock antiguo · ritmo con descuento',pedi:'resolvamos'},
   {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
   {etapa:9,t:'13/11 · 10 decisiones del Local',que:'ABEL y la Tienda publicadas viejas (falta el permiso) · avisos de lo tocado en la web · movimiento repetido · saldo de Binance · lo que va a la perfumería · costo de la Tienda · nombres en el registro · devolución de la Tienda · cargado tarde · precios del proveedor en el registro',pedi:'resolvamos'},
