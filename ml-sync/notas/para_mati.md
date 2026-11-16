@@ -776,3 +776,4 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 
 ### ✅ Contestó las decisiones de la noche del 15/11 (el 16/11): 1a 3b 4b 5b 6a 7a 8a 9a · 10 "ni idea" (Aurora Purple queda como está) · la 2 (IIBB de Luciana) no la contestó.
 - Hecho: CHAT_LOCAL tareas h) ARCA (día 2 de cada mes), i) POSICIÓN y j) PROGRAMAS ML (semanales); PROMPT_COMPETENCIA: siempre llenar Full/tiene/vendió; 8a va como pedido 📌 al chat (cuotas con interés bajo en los Paulvic de Adriana).
+- 2a (16/11): pedido 📌 al chat de Chrome para averiguar el IIBB de Luciana (sin CUIT ni domicilios); la respuesta llega al buzón como RESPUESTA.
