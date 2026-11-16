@@ -2304,6 +2304,9 @@ async function mantenerCaja(db, accounts, DRY) {
     { const pr0 = prods.find((x) => x && x.id === e.prodId); const cu0 = pr0 && tc > 0 ? costoPesos(pr0, 1, tc).costo : 0; const mgW = mgCajaPeor(tw, np[mla], cu0, e.cuenta, monoMC);
       if (mgW != null && mgW < Math.max(35, PISO_DURO) && tw < p0) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}: a ${money(tw)} quedaría en ${mgW.toFixed(0)}% en el peor caso (abajo del ${Math.max(35, PISO_DURO)}%): se queda en ${money(p0)}`); await avisoPerdida(); continue; } }
     let to = Math.max(tw, Math.ceil(p0 * 0.85 / 10) * 10);   // escalera: como mucho 15% por hora
+    // 4a del 16/11/2026 (él): el escalón que cae justo arriba de $33.000 paga el envío y queda abajo del 35%, y como el % del escalón frena,
+    // no bajaba nunca. Si para ganar la caja hay que estar abajo de $33.000 y el escalón cae arriba, va directo a $32.990 (aunque baje algo más de 15%).
+    if (to >= UMBRAL_ENVIO_GRATIS && tw < UMBRAL_ENVIO_GRATIS && p0 >= UMBRAL_ENVIO_GRATIS) to = Math.max(tw, UMBRAL_ENVIO_GRATIS - 10);
     if (to < piso) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}, abajo del piso que aceptó (${money(piso)}): se queda en ${money(p0)}`); await avisoPerdida(); continue; }
     if (!(to < p0)) { out.no.push(`${nom}: ya está en ${money(p0)}, el precio para ganar es ${money(ptw)}`); await avisoPerdida(); continue; }
     // El % en que queda (para el piso duro de setPriceTo). Revisión etapa 8, 28/10/2026: con la cuenta de la app, en el PEOR caso
@@ -12753,7 +12756,7 @@ async function marcarAgotadosVuelta(db, desde, ahora = Date.now(), GO = true) {
   else console.log('🚫 ninguna ficha de Paraguay quedó sin ver en la vuelta completa');
   return nuevos.length;
 }
-const PY_VIEJO_DIAS = 1; // 10/11/2026 (él): "no puede haber productos que se miraron hace más de 24 h" → pasa sólo lo mirado hace menos de 24 h. Antes 2; // 2 o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él). Antes: mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
+const PY_VIEJO_DIAS = 2; // 16/11/2026 (él): "que sean 48 hr" (con 24 h el pedido se vaciaba a las 24 h de la vuelta). // 10/11/2026 (él): "no puede haber productos que se miraron hace más de 24 h" → pasa sólo lo mirado hace menos de 24 h. Antes 2; // 2 o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él). Antes: mirado en Paraguay hace más de 3 días no entra al pedido (antes 7 y entraba en rojo)
 // La fecha en que se miró el candidato en Paraguay. "↩︎ Devolver" de la web renueva `ts` sin mirar: ahí vale `renovDe` (igual que `candVistoTs`).
 // Por qué un candidato NO se puede pedir ('' = se puede). La usan `pedir` y `pyllenar` (04/11/2026: la misma cuenta en los dos).
 function candPorQueNoBot(c, viajaF, _tcP, mNoML) {
@@ -16004,7 +16007,7 @@ async function colaParaRobot(db, labels) {
     const nAR = new Date(Date.now() - 3 * 36e5), diaA = nAR.toISOString().slice(0, 10), horaA = nAR.getUTCHours();
     if (horaA >= 7) {
       const ya = (await db.get('mlapi/pypedidoauto/' + diaA)) || null, nv = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
-      const fresca = Number(nv.pct) >= 90 && Date.now() - Number(nv.fin) < 24 * 36e5;
+      const fresca = Number(nv.pct) >= 90 && Date.now() - Number(nv.fin) < PY_VIEJO_DIAS * 24 * 36e5;
       if (fresca && !(ya && Number(ya.fin) === Number(nv.fin))) {
         let i = 0; for (const g of ['perf', 'resto']) { const idC = String(Date.now() + i++) + String(Math.floor(Math.random() * 900) + 100), t = `pypedido:${g};go`;
           await db.set('mlapi/colainterna/' + idC, { t, ts: Date.now() }); cola[idC] = { t, por: 'pedido de Paraguay al día (solo)', estado: 'nuevo', ts: Date.now() }; await db.set('cyc/pararobot/' + idC, cola[idC]); }
@@ -28480,8 +28483,8 @@ async function main() {
       // 1) la vuelta de HOY
       const nv = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
       const diaAR = (t) => new Date(Number(t) - 3 * 36e5).toISOString().slice(0, 10);
-      if (!(Number(nv.fin) > 0 && Number(nv.pct) >= 90 && (diaAR(nv.fin) === diaAR(Date.now()) || Date.now() - Number(nv.fin) < 24 * 36e5))) {   // 16/11: vale la de las últimas 24 h
-        console.log(`SE NEGÓ: la última vuelta completa de Nissei ${Number(nv.fin) > 0 ? 'terminó el ' + diaAR(nv.fin) + ' (' + (nv.pct || '?') + '%)' : 'no está guardada'}. El pedido se arma sólo con la vuelta de HOY (él, 10/11): avisale y esperá que el chat de Chrome termine GUAY con ;fin=.`);
+      if (!(Number(nv.fin) > 0 && Number(nv.pct) >= 90 && (diaAR(nv.fin) === diaAR(Date.now()) || Date.now() - Number(nv.fin) < PY_VIEJO_DIAS * 24 * 36e5))) {   // 16/11: vale la de las últimas 48 h (PY_VIEJO_DIAS)
+        console.log(`SE NEGÓ: la última vuelta completa de Nissei ${Number(nv.fin) > 0 ? 'terminó el ' + diaAR(nv.fin) + ' (' + (nv.pct || '?') + '%)' : 'no está guardada'}. El pedido se arma sólo con una vuelta de las últimas 48 h (él, 16/11): avisale y esperá que el chat de Chrome termine GUAY con ;fin=.`);
         return;
       }
       try { await cargarParamCompra(db); } catch { /* los de siempre */ }

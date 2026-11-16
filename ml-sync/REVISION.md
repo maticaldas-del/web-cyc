@@ -78,6 +78,13 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🗳️ Decisiones de la revisión de Precios del 16/11, contestadas el 16/11 (1b 2a* 3b 4a 5a 6b 7a 9a 10a 11a)
+- **4a:** `mantenerCaja`: si para ganar la caja hay que estar abajo de $33.000 y el escalón de 15% cae arriba, va directo a $32.990.
+- **5a:** la Premium de algo 🔒/🥊 sube sola con su Clásica (misma plata): queda como regla.
+- **2a con piso 60%:** la waflera sigue ganando la caja en el Black Friday pero con piso del 60% en el peor caso (vendió arriba del 100%).
+- **1b 3b 6b 9a:** quedan como están.
+- **Qué chequear:** una 🥊 que cruza la barrera baja a 32.990 y relee.
+
 ### 🔎 Revisión del 16/11/2026 (4 revisores en máximo: el % en todos lados, lo que cambia solo cada hora, las mediciones, listo para el Black Friday)
 **Arreglado (probado con las funciones reales y datos inventados):**
 - 🥊 `mantenerCaja`: el piso y el 35% se miran en el precio que GANA la caja (antes bajaba 15% y se quedaba sin ganarla); relee Y compara (si ML no quedó en el precio pedido, ⚠️ y no lo anota ni lo avisa como hecho); no toca gemelas, y `ganarcaja` se niega en una gemela (se peleaba con `alinearGemelas`: 11 cambios en 6 h).

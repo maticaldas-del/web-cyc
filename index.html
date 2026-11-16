@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.217';
+const APP_VERSION='28.218';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.218',f:'16/11',h:'16:40',c:[{n:2,t:'🧾 Paraguay: lo mirado en Nissei vale 48 horas (antes 24).'}]},
   {v:'28.217',f:'16/11',h:'13:20',c:[{n:1,t:'📅 Inicio · Mes y Año: ventas Y ganancia dicen "hasta ayer DD/MM" (cuentan sólo los días terminados); se sacó la explicación de abajo del calendario (mes y año).'}]},
   {v:'28.216',f:'16/11',h:'04:45',c:[{n:2,t:'Pedidos: el máximo de compra usa el envío normal (antes el más caro del catálogo, de un Tender). Rayas iguales al robot con descuentos en publicaciones pausadas. Revisión de Precios en el cartel.'}]},
   {v:'28.215',f:'16/11',h:'00:16',c:[{n:2,t:'🧴 Paulvic: las unidades de cada aroma se redondean siempre para arriba, de a 5 (21 → 25), como pediste el 15/11.'},{n:2,t:'⚖️ Tope de H: el 💡 de la próxima cuenta para lo nuevo mira la ventana que todavía se puede mover (julio 2026 a junio 2027), igual que el robot. Las barras y el aviso rojo siguen con el cierre de diciembre.'}]},
@@ -19100,7 +19101,7 @@ function candPrecioViejo(c){
 // mas dias en paraguay. porque pudo modificarse el precio o el stock y que no deje perdirlo"). Nuevos: la fecha más nueva entre `visto`
 // y `ts` (las renuevan la carga del catálogo, `candprecio` y la rutina del chat). Probados: `nisseiTs` de la ficha (`pyprecio`, pycat).
 // Frena la casilla, los dos botones de llenar, el mensaje para el proveedor y "Ya lo pedí". El robot (`pedir`) tiene la misma regla.
-const PY_VIEJO_DIAS=1;   // 10/11/2026 (él): "no puede haber productos que se miraron hace más de 24hr" → 1 = 24 h o más no pasa. Antes 2:   // 2 = 2 días o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él, segunda vez: "que pasen solo los que tienen menos de 2 días de haberse mirado"; antes 4). 01/11/2026 (él): "todos los productos que tienen más de 3 días sin mirarlos en nissei que no entren" (antes 7 y entraban en rojo)
+const PY_VIEJO_DIAS=2;   // 16/11/2026 (él): "que sean 48 hr".   // 10/11/2026 (él): "no puede haber productos que se miraron hace más de 24hr" → 1 = 24 h o más no pasa. Antes 2:   // 2 = 2 días o más: pasa sólo lo mirado hace menos de 2 días (01/11/2026, él, segunda vez: "que pasen solo los que tienen menos de 2 días de haberse mirado"; antes 4). 01/11/2026 (él): "todos los productos que tienen más de 3 días sin mirarlos en nissei que no entren" (antes 7 y entraban en rojo)
 function _pyViejoDe(t){t=Number(t)||0;const d=t?Math.floor((Date.now()-t)/864e5):null;
   return d==null||d>=PY_VIEJO_DIAS?{d,txt:`se miró en ${pyProvNom()} ${d==null?'sin fecha':'hace '+d+' días'}: el precio o el stock pueden haber cambiado`}:null;}
 // "↩︎ Devolver" renueva `ts`/`visto` SIN mirar el precio: ahí vale la fecha de antes (`renovDe`) hasta que alguien lo mire de verdad.
