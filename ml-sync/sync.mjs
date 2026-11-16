@@ -28538,7 +28538,7 @@ async function main() {
             if (!(rP && rP.margen != null)) return { k: 'duda', m: null, motivo: `sin catálogo · no pude medir nuestra publicación ${best.id} (${money(Number(best.price))})` };
             return rP.margen >= CAND_VARA_COMPRA ? { k: 'ok', m: rP.margen, motivo: `${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))})` } : { k: 'no', m: rP.margen, motivo: `hoy da ${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))}): abajo del 35% no se repone` }; }
         }
-        if (!pi) return { k: 'duda', m: null, motivo: (it.cat ? 'sin precio en ML hoy (no se puede medir)' : 'sin catálogo de ML') + (it.tipo === 'probado' ? ` · ${Object.values(links).filter((l) => l && l.prodId === it.id).length} pub. nuestras, ninguna activa leída` : '') };
+        if (!pi) return { k: 'duda', m: null, motivo: (it.cat ? 'sin precio en ML hoy (no se puede medir)' : 'sin catálogo de ML') + (it.tipo === 'probado' ? ` · pub. nuestras sin leer: ${Object.entries(links).filter(([, l]) => l && l.prodId === it.id).map(([m]) => m + '[' + Object.keys(npPP[m] || {}).slice(0, 6).join(',') + (npPP[m] ? ' p' + npPP[m].precio + ' a' + npPP[m].activa : '') + ']').join(' ')}` : '') };
         const catx = pi.ref ? catDeOfertas(ofs, pi.ref) : null; if (!catx) return { k: 'duda', m: null, motivo: 'ML no dio la categoría' };
         const refF = ofs.filter(esOfertaFull).sort((x, y) => (Number(x.price) || 0) - (Number(y.price) || 0))[0];
         const cta = it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS);
