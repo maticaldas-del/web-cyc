@@ -26,4 +26,4 @@ Lo uso cada día al mirar el extracto (CLAUDE §8). Sin montos de terceros ni no
 - Lo que sale: gastos sin cargar (con su ✓ de pagado en Gastos), peajes → deuda de la perfumería, ingresos que no son ventas de ML (se cruzan con las deudas), transferencias a personas que no conozco → preguntas en la lista de las 12:30 (una sola vez cada una).
 
 ### Analizado hasta
-- Adriana: 2026-11-14 · Luciana: 2026-11-14 · Ayelen: 2026-11-14 · Matias: 2026-11-14
+- Adriana: 2026-11-15 · Luciana: 2026-11-15 · Ayelen: 2026-11-15 · Matias: 2026-11-15
