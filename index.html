@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.215';
+const APP_VERSION='28.216';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.216',f:'16/11',h:'04:45',c:[{n:2,t:'Pedidos: el máximo de compra usa el envío normal (antes el más caro del catálogo, de un Tender). Rayas iguales al robot con descuentos en publicaciones pausadas. Revisión de Precios en el cartel.'}]},
   {v:'28.215',f:'16/11',h:'00:16',c:[{n:2,t:'🧴 Paulvic: las unidades de cada aroma se redondean siempre para arriba, de a 5 (21 → 25), como pediste el 15/11.'},{n:2,t:'⚖️ Tope de H: el 💡 de la próxima cuenta para lo nuevo mira la ventana que todavía se puede mover (julio 2026 a junio 2027), igual que el robot. Las barras y el aviso rojo siguen con el cierre de diciembre.'}]},
   {v:'28.214',f:'15/11',h:'15:55',c:[{n:1,t:'Pedidos: las tarjetas con colores se abren y se cierran tocándolas (arrancan cerradas); las de un solo producto siguen sin abrirse.'}]},
   {v:'28.213',f:'15/11',h:'04:37',c:[{n:1,t:'Revisiones: la de las Reglas del cerebro del 15/11 en el cartel, con sus 8 decisiones.'}]},
@@ -6156,6 +6157,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:1,t:'16/11 · 11 decisiones de Precios',que:'ventas del Black Friday y las bajadas · 🥊 en el Black Friday · precio que sólo existió en el BF · 🥊 y la barrera · Premium de lo 🔒 · retención contada dos veces · envío de lo que nunca vendió arriba · cuotas de la competencia · 25% de la Tienda · 20 días antes del stock antiguo · ritmo con descuento',pedi:'resolvamos'},
   {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
   {etapa:9,t:'13/11 · 10 decisiones del Local',que:'ABEL y la Tienda publicadas viejas (falta el permiso) · avisos de lo tocado en la web · movimiento repetido · saldo de Binance · lo que va a la perfumería · costo de la Tienda · nombres en el registro · devolución de la Tienda · cargado tarde · precios del proveedor en el registro',pedi:'resolvamos'},
@@ -6183,7 +6185,7 @@ const REV_PENDIENTE=[
 const REV_HECHAS={1:'2026-10-24',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-11-08'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
-  1:[{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
+  1:[{f:'2026-11-16',t:'4 revisores en máximo: 🥊 mantener la caja (piso en el precio que gana, relee y compara, no en gemelas), =%N con el peor caso, Black Friday fuera de sobra/lento/ritmo normal/Pedidos, pico de Navidad sin inflar, 180 días con el ritmo de hoy, máximo de compra de la web con el envío normal; 11 decisiones a para_mati.'},{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
      {f:'2026-09-27',t:'4 revisores, 23 hallazgos: 22 arreglados (cuotas Premium, variantes, remate en tramos). Él eligió cómo juzgar la prueba de +5%.'},
      {f:'2026-10-08',t:'Después del cerebro y la regla del 20%: 27 reales, 21 arreglados y 6 decisiones suyas (manda el cerebro, sin rescate al vender).'},
      {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'},
@@ -11191,7 +11193,7 @@ function _cajaPct35(p){try{
     const c2=comisionEnPrecio(comHoy,precio,P);if(!c2)return null;
     // 04/11/2026: arriba de la barrera, el envío de ESTE producto si ML ya lo cobró (`netoCalcEnvio`); el peor de todo el catálogo sólo si no hay
     // (el Aer x6 daba −26% a $33.090 con el envío del producto más pesado).
-    const gP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((Number(p.netoCalcEnvio)>=3000?Number(p.netoCalcEnvio):0)||(envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
+    const gP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((Number(p.netoCalcEnvio)>=3000?Number(p.netoCalcEnvio):0)||SIM_ENVIO_ARRIBA));/* etapa 1 (16/11): el de referencia, como el robot; envioEstimadoArriba() es el más caro de TODO el catálogo (un Tender) */
     const imp=P*impPct,div=merc+imp+gP;return div>0?(P-c2.com-gP-merc-imp-P*PEOR_RET_PCT)/div*100:null;};
   const out={META:metaMargenML(),hoy:{P:precio,m:pctEn(precio)}};
   // 04/11/2026 (él: "que aparezca el no da si la competencia no da y si tampoco da ninguna venta de los últimos 60 días"): de TODAS las
@@ -13879,6 +13881,7 @@ function _lineaJunta(porMla,lks,varSel){
             if(vr)S.V[vr]=Math.max(S.V[vr]||0,q);else if(_conC&&!_todosAd){if(x.stF==='ops'||x.stF==='sinmov')S.V['?'+mla]=Math.max(S.V['?'+mla]||0,q);}else S.P=Math.max(S.P||0,q);}}
         else o.st=(o.st||0)+Number(x.st||0);o.stN++;}
       if(Number(x.pV)>0&&(x.est==null||x.est==='active'))o.pV=o.pV==null?Number(x.pV):Math.min(o.pV,Number(x.pV));   // 1a del 03/11: el precio con mi descuento
+      else if(Number(x.pV)>0)o._pVx=o._pVx==null?Number(x.pV):Math.min(o._pVx,Number(x.pV));   // etapa 1 (16/11): el de una pausada queda de respaldo (el robot lo usa)
       if(x.p!=null&&Number(x.p)>0){o.p=o.p==null?Number(x.p):Math.min(o.p,Number(x.p));
         // El precio de una publicación PAUSADA no es el que se cobra (Cartas Casino: la línea decía $2.706 de una
         // pausada y se cobraba $3.310). Vale el de las activas o las que vendieron ese día.
@@ -13902,6 +13905,7 @@ function _lineaJunta(porMla,lks,varSel){
       if(r.length){const m=r.map(c=>c.ult).sort().pop();o.pA=Math.min(...r.filter(c=>c.ult===m).map(c=>c.p));}
       else{const v=o._c.filter(c=>c.viva);if(v.length)o.pA=Math.min(...v.map(c=>c.p));}}
     delete o._c;if(o.pA!=null)o.p=o.pA;
+    if(o.pV==null&&o._pVx!=null&&!o._eA)o.pV=o._pVx;delete o._pVx;
     if(o._eS)o.est=o._eA?'active':o._eO;delete o._eS;delete o._eA;delete o._eO;
     if(o._st){let t=0,hay=false;for(const S of Object.values(o._st)){if(S.P!=null){t+=S.P;hay=true;}else{const vs=Object.values(S.V);if(vs.length){t+=vs.reduce((a,b)=>a+b,0);hay=true;}}}o.st=hay?t:null;if(!hay)o.stN=0;delete o._st;}
     if(o._gA){if(o.st!=null){o.pubs=o._gA.size;o.stN=o._gS?o._gS.size:0;}delete o._gA;delete o._gS;}}
@@ -24126,7 +24130,7 @@ function maxCompraDe(p,metaPct,color){
   // EL ENVÍO DE FULL DEL LADO DE LA BARRERA DE P (21/10/2026 · etapa 1): si se vende a otro precio que el de hoy (caja, techo de
   // Full, el que decidí), el envío es el de ESE lado: abajo de $33.000 cero; arriba el medido de hoy si hoy ya está arriba, si no
   // el peor medido en ventas reales (`envioEstimadoArriba`, o `SIM_ENVIO_ARRIBA`). La comisión de hoy (`comHoy`) sigue con el de hoy.
-  const gestP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:((envioEstimadoArriba()||{}).envio||SIM_ENVIO_ARRIBA));
+  const gestP=P<UMBRAL_ENVIO_GRATIS?0:((precio>=UMBRAL_ENVIO_GRATIS&&gest>0)?gest:SIM_ENVIO_ARRIBA);/* etapa 1 (16/11): como el robot (M35), no el envío más caro del catálogo */
   // EL PEOR CASO (21/10/2026 · etapa 1, 1.5a): el máximo de compra deja la meta con la retención de IIBB de otra provincia restada
   // (`PEOR_RET_PCT`, 2% del precio), igual que la regla 🛡️ de cualquier precio y que los candidatos del robot (`cuentaCandidato`).
   const ret=Math.round(P*PEOR_RET_PCT);
