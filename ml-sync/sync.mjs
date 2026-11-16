@@ -28548,7 +28548,8 @@ async function main() {
       { const pedsPy = Object.values((await db.get('cyc/pedidos_py')) || {}); const sinSt = (await db.get('cyc/py_sinstock')) || {}; const ya = new Set(cargados.map((x) => x.id));
         for (const ped of pedsPy) { if (!ped || ped.estado === 'suficiente') continue; const cant = parseInt(ped.cantidad) || 0; if (cant <= 0) continue;
           const k = ped.prodId && prods[ped.prodId] ? ped.prodId : null; if (!k || ya.has(k)) continue; const p = prods[k];
-          if (!p || p.origen !== 'py' || !enG(p.name) || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || '')) || sinSt[k]) continue;
+          const ctaP = Object.values(links).find((l) => l && l.prodId === k)?.cuenta || ''; const esPerfP = esB(p.name) || /adriana/i.test(ctaP);   // 16/11: el Ferrari Negro (perfume de Adriana sin la palabra) caía en Resto
+          if (!p || p.origen !== 'py' || (grp === 'perf') !== esPerfP || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || '')) || sinSt[k]) continue;
           if (!(Date.now() - (Number(p.nisseiTs) || 0) < PY_VIEJO_DIAS * 864e5) || !(parseFloat(p.nisseiUSD) > 0)) continue;
           ya.add(k); const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
           cargados.unshift({ tipo: 'probado', id: k, nom: p.name, u: cant, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: false, nuevoProb: true, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); } }
@@ -28566,7 +28567,8 @@ async function main() {
       }
       let total = tienda + quedan.reduce((t, x) => t + x.u * x.usd, 0);
       // los probados agregados por Pedidos no pasan el tope (el más barato por unidad de ganancia sale primero: se sacan desde el final)
-      for (let i = quedan.length - 1; i >= 0 && total > TOPE_MAX; i--) if (quedan[i].nuevoProb) { total -= quedan[i].u * quedan[i].usd; salen.push({ ...quedan[i], motivo: 'probado que pide Pedidos: no entra en el tope de US$ ' + TOPE_MAX }); quedan.splice(i, 1); }
+      for (let i = quedan.length - 1; i >= 0 && total > TOPE_MAX; i--) if (quedan[i].nuevoProb) { const q = quedan[i], uCabe = Math.floor((TOPE_MAX - (total - q.u * q.usd)) / (q.usd || 1)); if (uCabe >= 1 && uCabe < q.u) { total -= (q.u - uCabe) * q.usd; q.u = uCabe; q.motivoU = 'bajado a ' + uCabe + ' u. para entrar en el tope'; continue; }   // 16/11: antes de sacarlo entero, menos unidades
+        total -= quedan[i].u * quedan[i].usd; salen.push({ ...quedan[i], motivo: 'probado que pide Pedidos: no entra en el tope de US$ ' + TOPE_MAX }); quedan.splice(i, 1); }
       // 4) llenar con nuevos medidos
       const ahora = Date.now();
       const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
