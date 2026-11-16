@@ -28545,7 +28545,8 @@ async function main() {
       };
       // 2-3) lo cargado
       const cargados = [];
-      for (const [k, v] of Object.entries(arm)) { const p = prods[k]; if (!p || !enG(p.name)) continue; const u = parseInt((v || {}).u) || 0; if (!u) continue;
+      const enGP = (k, n) => { const cta = Object.values(links).find((l) => l && l.prodId === k)?.cuenta || ''; return (grp === 'perf') === (esB(n) || /adriana/i.test(cta)); };   // 16/11: perfume de Adriana sin la palabra (Ferrari Negro) va a 🌸
+      for (const [k, v] of Object.entries(arm)) { const p = prods[k]; if (!p || !enGP(k, p.name)) continue; const u = parseInt((v || {}).u) || 0; if (!u) continue;
         const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
         cargados.push({ tipo: 'probado', id: k, nom: p.name, u, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: !!(v && v.pidio) || elIds.includes(k), cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); }
       for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre || c.pedidoEn || c.prodId || !enG(c.nombre)) continue; const u = Number(c.pedirU) || 0; if (!u) continue;
