@@ -15992,6 +15992,26 @@ async function colaParaRobot(db, labels) {
       const id = String(Date.now()) + String(Math.floor(Math.random() * 90) + 10); cola[id] = { t: `binancepriv:${k};go`, por: 'saldo de Binance cerrado', estado: 'nuevo', ts: Date.now() };
       await db.set('cyc/pararobot/' + id, cola[id]); await db.patch('mlapi/privado_in/' + k, { encola: Date.now() }); } }
   catch (e) { /* la próxima vuelta */ }
+  // 🧾 EL PEDIDO DE PARAGUAY SIEMPRE AL DÍA (16/11/2026, él: "¿por qué no se hace automático? ir agregando y sacando productos según convenga,
+  // todos los días" y "quiero que siempre esté actualizado cada 24 hrs y esté bien y listo para realizar el pedido… en cualquier momento tengo
+  // que hacer el pedido"): con una vuelta completa de Nissei de las últimas 24 h, el robot corre `pypedido:perf;go` y `pypedido:resto;go`
+  // una vez por día y otra vez cada vez que se cierra una vuelta nueva. Sin vuelta fresca a las 13 avisa (una vez por día) al canal privado.
+  try {
+    const nAR = new Date(Date.now() - 3 * 36e5), diaA = nAR.toISOString().slice(0, 10), horaA = nAR.getUTCHours();
+    if (horaA >= 7) {
+      const ya = (await db.get('mlapi/pypedidoauto/' + diaA)) || null, nv = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
+      const fresca = Number(nv.pct) >= 90 && Date.now() - Number(nv.fin) < 24 * 36e5;
+      if (fresca && !(ya && Number(ya.fin) === Number(nv.fin))) {
+        let i = 0; for (const g of ['perf', 'resto']) { const idC = String(Date.now() + i++) + String(Math.floor(Math.random() * 900) + 100), t = `pypedido:${g};go`;
+          await db.set('mlapi/colainterna/' + idC, { t, ts: Date.now() }); cola[idC] = { t, por: 'pedido de Paraguay al día (solo)', estado: 'nuevo', ts: Date.now() }; await db.set('cyc/pararobot/' + idC, cola[idC]); }
+        await db.set('mlapi/pypedidoauto/' + diaA, { fin: Number(nv.fin), ts: Date.now() });
+      } else if (!fresca && horaA >= 13 && !(ya && ya.aviso)) {
+        await db.set('mlapi/pypedidoauto/' + diaA, { ...(ya || {}), aviso: Date.now() });
+        const dF = Number(nv.fin) > 0 ? new Date(Number(nv.fin) - 3 * 36e5).toISOString().slice(0, 10).split('-').reverse().slice(0, 2).join('/') : '?';
+        await sendAlerta(`🧾 El pedido de Paraguay NO está al día: la última vuelta completa de Nissei es del ${dF}. Que el chat de Chrome haga GUAY (la vuelta entera) y se arma solo.`, { info: true });
+      }
+    }
+  } catch { /* la próxima vuelta */ }
   // 2) lo nuevo, a /tmp para que lo corra ciclo.sh
   // 60a del 14/11: lo que encola el PROPIO robot (los peajes del extracto → `debenmov`) pasa aunque no esté en COLA_OK, sólo si su id está en
   // `mlapi/colainterna` con el MISMO texto (el panel no puede pedir un debenmov).
@@ -27385,11 +27405,7 @@ async function main() {
           const nis = Object.entries({ ...cat, ...upd }).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
           const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 && FIN_TOT >= 0.5 * nis.length ? FIN_TOT : nis.length;   // revisión etapa 3 (08/11): un fin= de menos de la mitad que el catálogo guardado no se cree
           const pct = total > 0 ? Math.round(vistos / total * 1000) / 10 : 0;
-          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; try {   // 16/11/2026, él: "¿por qué no se hace automático? ir agregando y sacando productos según convenga, todos los días": con la vuelta de HOY el robot arma los dos pedidos del momento solo (una vez por día; lo que pidió él con !el no se toca)
-            const diaV = new Date(ahora - 3 * 36e5).toISOString().slice(0, 10), yaV = (await db.get('mlapi/pypedidoauto/' + diaV)) || null;
-            if (!yaV) { let i = 0; for (const g of ['perf', 'resto']) { const idC = String(Date.now() + i++) + String(Math.floor(Math.random() * 900) + 100), t = `pypedido:${g};go`;
-              await db.set('mlapi/colainterna/' + idC, { t, ts: Date.now() }); await db.set('cyc/pararobot/' + idC, { t, por: 'vuelta completa de Nissei (solo)', estado: 'nuevo', ts: Date.now() }); }
-              await db.set('mlapi/pypedidoauto/' + diaV, { ts: Date.now() }); msgV += ' 🧾 Los dos pedidos del momento se arman solos en unos minutos.'; } } catch { /* se arma a mano */ } try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
+          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; msgV += ' 🧾 Los dos pedidos del momento se ponen al día solos en unos minutos.'; try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
           else msgV = `⚠️ vuelta INCOMPLETA: ${vistos} de ${total} productos (${pct}%), hace falta el 90%. NO cuenta.`;
         } else if (cur) msgV = `🔄 vuelta en curso desde la página 1. Se cierra con "fin=<productos que dice la web>" en la última página.`;
         await db.set('mlapi/pycatvuelta', { cur });
@@ -28460,7 +28476,7 @@ async function main() {
       // 1) la vuelta de HOY
       const nv = (await db.get('cyc/mlconfig/nisseiVuelta')) || {};
       const diaAR = (t) => new Date(Number(t) - 3 * 36e5).toISOString().slice(0, 10);
-      if (!(Number(nv.fin) > 0 && Number(nv.pct) >= 90 && diaAR(nv.fin) === diaAR(Date.now()))) {
+      if (!(Number(nv.fin) > 0 && Number(nv.pct) >= 90 && (diaAR(nv.fin) === diaAR(Date.now()) || Date.now() - Number(nv.fin) < 24 * 36e5))) {   // 16/11: vale la de las últimas 24 h
         console.log(`SE NEGÓ: la última vuelta completa de Nissei ${Number(nv.fin) > 0 ? 'terminó el ' + diaAR(nv.fin) + ' (' + (nv.pct || '?') + '%)' : 'no está guardada'}. El pedido se arma sólo con la vuelta de HOY (él, 10/11): avisale y esperá que el chat de Chrome termine GUAY con ;fin=.`);
         return;
       }

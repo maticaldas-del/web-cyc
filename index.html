@@ -3714,7 +3714,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.216';
+const APP_VERSION='28.217';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3727,6 +3727,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.217',f:'16/11',h:'13:20',c:[{n:1,t:'📅 Inicio · Mes y Año: ventas Y ganancia dicen "hasta ayer DD/MM" (cuentan sólo los días terminados).'}]},
   {v:'28.216',f:'16/11',h:'04:45',c:[{n:2,t:'Pedidos: el máximo de compra usa el envío normal (antes el más caro del catálogo, de un Tender). Rayas iguales al robot con descuentos en publicaciones pausadas. Revisión de Precios en el cartel.'}]},
   {v:'28.215',f:'16/11',h:'00:16',c:[{n:2,t:'🧴 Paulvic: las unidades de cada aroma se redondean siempre para arriba, de a 5 (21 → 25), como pediste el 15/11.'},{n:2,t:'⚖️ Tope de H: el 💡 de la próxima cuenta para lo nuevo mira la ventana que todavía se puede mover (julio 2026 a junio 2027), igual que el robot. Las barras y el aviso rojo siguen con el cierre de diciembre.'}]},
   {v:'28.214',f:'15/11',h:'15:55',c:[{n:1,t:'Pedidos: las tarjetas con colores se abren y se cierran tocándolas (arrancan cerradas); las de un solo producto siguen sin abrirse.'}]},
@@ -10785,7 +10786,9 @@ function homeCalMes(Y,M){const n=new Date();_homeHoyEsc='mes';_homeHoyOff=Math.m
 // cerrados; el cuadrito de hoy sigue en el calendario con lo suyo.
 function _hcalTotHTML(q,bruto,gan,dias,hastaAyer){
   if(!(dias>0))return `<div class="hcal-tot"><div style="color:var(--muted)">🧾 todavía no hay días cerrados en este ${q}</div></div>`;
-  return `<div class="hcal-tot"><div>🧾 ventas del ${q} <b>${fmt(Math.round(bruto))}</b> · <b>${fmt(Math.round(bruto/dias))}</b> por día <span>(${dias} días${hastaAyer?', hasta ayer':''})</span></div><div>💰 ganancia del ${q} <b style="color:var(--green)">${fmt(Math.round(gan))}</b> · <b style="color:var(--green)">${fmt(Math.round(gan/dias))}</b> por día</div></div>`;
+  // 16/11/2026, él: "que también diga hasta ayer y marque hasta ayer": las dos líneas dicen hasta qué día (la fecha de ayer).
+  const _ay=new Date();_ay.setDate(_ay.getDate()-1);const _ha=hastaAyer?`, hasta ayer ${String(_ay.getDate()).padStart(2,'0')}/${String(_ay.getMonth()+1).padStart(2,'0')}`:'';
+  return `<div class="hcal-tot"><div>🧾 ventas del ${q} <b>${fmt(Math.round(bruto))}</b> · <b>${fmt(Math.round(bruto/dias))}</b> por día <span>(${dias} días${_ha})</span></div><div>💰 ganancia del ${q} <b style="color:var(--green)">${fmt(Math.round(gan))}</b> · <b style="color:var(--green)">${fmt(Math.round(gan/dias))}</b> por día <span>(${dias} días${_ha})</span></div></div>`;
 }
 function _anioMeses(Y){
   const hoy=new Date(),t0=_vpPrimerDiaTs(),out=[];

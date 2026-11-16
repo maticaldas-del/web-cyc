@@ -1191,7 +1191,7 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 
 ## 3 · MERCADERÍA (miércoles)
 ### 🧾 El pedido de Paraguay se arma solo (16/11/2026)
-- **Qué es:** al cerrarse la vuelta completa de Nissei (`pycat …;fin=`, 90%+) el robot encola `pypedido:perf;go` y `pypedido:resto;go` (cola interna, `COLA_INTERNO`), una vez por día (`mlapi/pypedidoauto/<día>`).
+- **Qué es:** el ciclo de 2 min (`colaParaRobot`) encola `pypedido:perf;go` y `pypedido:resto;go` (cola interna, `COLA_INTERNO`) una vez por día desde las 7 y otra vez cuando se cierra una vuelta nueva, si la vuelta completa de Nissei tiene menos de 24 h (`pypedido` ahora acepta las últimas 24 h, no sólo el mismo día). Sin vuelta fresca, a las 13 avisa una vez (`sendAlerta` info). Marca en `mlapi/pypedidoauto/<día>` ({fin, aviso}).
 - **Qué chequear:** que corran los dos después de la vuelta (Mi oficina → 📥 Para el robot) y que lo pedido por él (`!el`) quede.
 
 ### 🧾 Pedidos sin desplegable (14/11/2026, él: "esto del detalle sacar. que no haya un desplegable")
