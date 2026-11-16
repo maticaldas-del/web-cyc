@@ -1190,6 +1190,10 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🧴 Catálogos repetidos: se mide contra el más barato (16/11/2026)
+- **Qué es:** la medición de listas y Paraguay (`listamedir`/`pycatmedir`, el bucle de `_vis`) ya no se queda con el primer catálogo con vendedores: mira los (hasta 5 + hijos) que pasan el chequeo de mismo producto y usa el de precio más bajo. Caso: Sedal Rizos de Dai Nippon medido contra un catálogo viejo a $32.999 (184%) cuando el que vende está a $7.408; igual Curitas pies, Bonmetique tono 1, Patrichs.
+- **Qué chequear:** que lo que daba 100%+ en las listas baje a lo real; que el ✅ de fotos se vuelva a pedir cuando cambia el catálogo; que no agarre un catálogo más barato de OTRO tamaño.
+
 ### 🧾 El pedido de Paraguay se arma solo (16/11/2026)
 - **Qué es:** el ciclo de 2 min (`colaParaRobot`) encola `pypedido:perf;go` y `pypedido:resto;go` (cola interna, `COLA_INTERNO`) una vez por día desde las 7 y otra vez cuando se cierra una vuelta nueva, si la vuelta completa de Nissei tiene menos de 24 h (`pypedido` ahora acepta las últimas 24 h, no sólo el mismo día). Sin vuelta fresca, a las 13 avisa una vez (`sendAlerta` info). Marca en `mlapi/pypedidoauto/<día>` ({fin, aviso}).
 - **Qué chequear:** que corran los dos después de la vuelta (Mi oficina → 📥 Para el robot) y que lo pedido por él (`!el`) quede.

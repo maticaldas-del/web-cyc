@@ -14864,7 +14864,11 @@ async function correrPyCatMedir(db, products, labels, accounts, maxN, aplicar, p
         if (esLista && !_fijo && p2 && p2.precio > 0 && Number(e.p) > 0 && p2.precio > 8 * Number(e.p)) { if (prueba) console.log(`      descarto ${r.id}: se vende a ${money(p2.precio)}, más de 8 veces lo que cuesta (${money(Number(e.p))})`); p2 = null; ofs = []; continue; }
         if (prueba) console.log(`      prueba ${r.id} "${String(r.name || '').slice(0, 60)}" · ${_soloAfuera ? _nA + ' vendedor(es), todos de afuera' : _nV + ' vendedor(es) de acá' + (_nA ? ' y ' + _nA + ' de afuera' : '')}${_nA ? ' (los de afuera +' + Math.round(RECARGO_INTER * 100) + '%)' : ''}${rr.length ? ' · ' + rr.join(' · ').slice(0, 60) : ''}`);
         if (!prod) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; }
-        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = !!(p2.ref && p2.ref._afuera); nVend = _nV; break; }
+        // 🧴 CATÁLOGOS REPETIDOS (16/11/2026, él con el Sedal Rizos de Dai Nippon: "literalmente me lo pedís vos"): ML tiene varios catálogos
+        // del MISMO producto y el primero que traía la búsqueda era uno viejo con 2 vendedores a $32.999 (184%), cuando el que vende está
+        // a $7.408 (~10%). Igual Curitas pies ($29.000 contra $9.689), Bonmetique tono 1 ($18.000 contra ~$5.000), Patrichs. Ya no se queda
+        // con el primero: mira todos los que son el mismo producto y se mide contra el MÁS BARATO (el peor caso para comprar).
+        if (p2 && p2.precio > 0 && p2.ref && p2.ref.category_id) { if (!pi || p2.precio < pi.precio) { prod = r; rpBlando = rr.length ? rr.join(' · ') : null; ofertas = ofs; pi = p2; piAfuera = !!(p2.ref && p2.ref._afuera); nVend = _nV; } if (_fijo) break; continue; }
         if (!ofs.length) {
           try { const full = (Array.isArray(r.children_ids) && r.children_ids.length) || r._leido ? r : await mlGetR(`/products/${r.id}`); let pos = _iv + 1;   // la búsqueda no trae los hijos: se pide el catálogo entero
             for (const h of ((full && full.children_ids) || []).slice(0, 8)) { const H = String(h).toUpperCase();
