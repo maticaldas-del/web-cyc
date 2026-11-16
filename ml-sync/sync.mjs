@@ -14313,6 +14313,8 @@ function tiendaNombreProv(nn) {
     [/\b(azul|negro|blanco|rojo|verde|rosa|gris)\s+y\s+\1\b/gi, '$1'], [/:{2,}\.*/g, ''],
     // 15/11/2026 (ABEL semanal): la misma marca escrita dos veces distinto partía el filtro de Marca ("Aurora Scenst", "Al A'Raaf").
     [/\bscenst\b/gi, 'Scents'], [/\bal a'raaf\b/gi, "Al-A'Raaf"],
+    // 16/11/2026 (control diario de la Tienda): "Dupla Banda", "Efeito Botox", "Painel de Luz".
+    [/\bdupla\s+banda\b/gi, 'doble banda'], [/\befeito\b/gi, 'efecto'], [/\bpainel\b/gi, 'panel'],
     [/\bcondicionador(es)?\b/gi, 'acondicionador$1'], [/\btratamento(s)?\b/gi, 'tratamiento$1'], [/(?<![\p{L}])l[aá]pis(?![\p{L}])/giu, 'lápiz'],
     [/(?<![\p{L}])s[ée]rie(?![\p{L}])/giu, 'serie'], [/\bcorretivo\b/gi, 'corrector'], [/(?<![\p{L}])[áÁ]gua(?![\p{L}])/gu, 'agua'], [/\bbarra\s+de\s+som\b/gi, 'barra de sonido'],
     [/\bauto\s*-?\s*falantes?\b/gi, 'parlante para auto'], [/\bsom\b/gi, 'sonido'], [/(?<![\p{L}])trip[ée](?![\p{L}])/giu, 'trípode'], [/\bvidro\s+temperado\b/gi, 'vidrio templado'],
