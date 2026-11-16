@@ -78,6 +78,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### 🧪 Prueba barata y cara del mismo producto (16/11/2026)
+- **Qué es:** `publicar` acepta `|!segunda` (otra publicación de la misma ficha en la misma cuenta, sólo si él lo pidió) y `|u=<n>` (el cupo se mide con las que se mandan, no con toda la oficina). Primer uso: Centímetro Blanco de catálogo a ~$5.190 con stock de la oficina, al lado de la común a $17.490. `unapub` ahora dice si es de catálogo y cuál.
+- **Qué chequear:** que la vuelta no las iguale por la regla 👯 (excepción en CLAUDE.md); a las 2-3 semanas comparar el ritmo de la cara contra el de antes.
+
 ### 🗳️ Decisiones de la revisión de Precios del 16/11, contestadas el 16/11 (1b 2a* 3b 4a 5a 6b 7a 9a 10a 11a)
 - **4a:** `mantenerCaja`: si para ganar la caja hay que estar abajo de $33.000 y el escalón de 15% cae arriba, va directo a $32.990.
 - **5a:** la Premium de algo 🔒/🥊 sube sola con su Clásica (misma plata): queda como regla.

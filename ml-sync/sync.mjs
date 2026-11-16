@@ -35119,7 +35119,9 @@ async function main() {
       // ¿Ya hay una publicación viva de esta ficha (y color) en esa cuenta?
       const linksP = (await db.get('cyc/mllinks')) || {};
       const yaHay = Object.entries(linksP).filter(([m, e]) => e && e.prodId === P.id && e.cuenta === label && e.status !== 'closed' && (!color || !e.variant || nrmP(e.variant) === nrmP(color)));
-      if (yaHay.length) frenos.push(`esa ficha ya tiene publicación en ${label}: ${yaHay.slice(0, 4).map(([m, e]) => m + ' (' + (e.status || '?') + ')').join(', ')}`);
+      // 16/11/2026 (él: "en ml baratas y caras y vemos si le saca ventas a la cara"): `|!segunda` deja crear OTRA publicación de la misma ficha en
+      // la misma cuenta (la barata de catálogo al lado de la cara común), sólo si él lo pidió. Con `|u=<n>` el cupo se mide con las que se mandan.
+      if (yaHay.length && !partes.includes('!segunda')) frenos.push(`esa ficha ya tiene publicación en ${label}: ${yaHay.slice(0, 4).map(([m, e]) => m + ' (' + (e.status || '?') + ')').join(', ')}`);
       // UNA SOLA CUENTA POR PRODUCTO (29/10/2026, él: "tené en cuenta que no puede haber productos en más de una cuenta. hay excepciones,
       // que ya están creadas"): si la ficha ya tiene publicación viva en OTRA cuenta, no se crea salvo que él lo pida (`|!otracuenta`).
       // Caso: el P47 negro en Ayelen (MLA2244146707), que él después dijo que se quedaba ("esta es la buena").
@@ -35133,7 +35135,7 @@ async function main() {
         const [cfgK, envK, invK] = await Promise.all([db.get('cyc/mlconfig'), db.get('cyc/envios_full'), db.get('cyc/inventory')]);
         const prIdxK = {}; for (const x of products) if (x && x.id) prIdxK[x.id] = x;
         const cuK = cupoRestanteBot(cfgK || {}, envK || {}, label, prIdxK);
-        const entran = Math.max(0, parseInt((invK || {})[P.id + '__Oficina_Mati']) || 0);
+        const entran = kv.u != null && parseInt(kv.u) >= 0 ? parseInt(kv.u) : Math.max(0, parseInt((invK || {})[P.id + '__Oficina_Mati']) || 0);
         const grande = esGrandeFullBot(P, palabrasGrandesDe(cfgK || {}));
         const lugar = cuK ? (grande ? cuK.estGra : cuK.estPeq) : null;
         if (lugar == null) avisos.push(`no sé cuánto lugar le queda en Full a ${label} (cupo sin cargar): no lo pude chequear`);
