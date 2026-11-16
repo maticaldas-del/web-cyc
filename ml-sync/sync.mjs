@@ -15797,7 +15797,7 @@ function runFaltaHoy(buz, ahora = Date.now()) {
 }
 const COLA_OK = new Set(['listapriv', 'binancepriv', 'listawoo', 'pycat', 'pycatres', 'pyprecio', 'candprecio', 'listadato', 'lista', 'listamedir', 'listarevisar', 'faltaventas', 'faltaprecio', 'svprecio', 'pyprobadoslista', 'cupo', 'pyvisto', 'revcand', 'buzon', 'ancla', 'cajasmirar']);
 const BUZON_AUTO_DESDE = Date.parse('2026-11-14T06:00:00Z');   // 59a: lo del buzón de antes lo cargó Claude a mano
-const COLA_INTERNO = new Set(['debenmov']);   // 60a del 14/11: sólo si lo encoló el robot (mlapi/colainterna)
+const COLA_INTERNO = new Set(['debenmov', 'pypedido']);   // pypedido: 16/11, lo encola el robot al cerrar la vuelta de Nissei   // 60a del 14/11: sólo si lo encoló el robot (mlapi/colainterna)
 const COLA_DIR = '/tmp/cyc-cola';
 const RUTINA_AUTO_DESDE = Date.parse('2026-11-03T18:00:00Z');   // las RUTINA de antes las cargó Claude a mano
 async function colaParaRobot(db, labels) {
@@ -27385,7 +27385,11 @@ async function main() {
           const nis = Object.entries({ ...cat, ...upd }).filter(([k, e]) => e && pycatProvDe(k, e) === 'nissei');
           const vistos = nis.filter(([, e]) => Number(e.ts) >= desde).length, total = FIN_TOT > 0 && FIN_TOT >= 0.5 * nis.length ? FIN_TOT : nis.length;   // revisión etapa 3 (08/11): un fin= de menos de la mitad que el catálogo guardado no se cree
           const pct = total > 0 ? Math.round(vistos / total * 1000) / 10 : 0;
-          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
+          if (pct >= 90) { await db.set('cyc/mlconfig/nisseiVuelta', { fin: ahora, desde, vistos, total, pct }); msgV = `🔄 VUELTA COMPLETA de Nissei: ${vistos} de ${total} productos (${pct}%).`; cur = null; try {   // 16/11/2026, él: "¿por qué no se hace automático? ir agregando y sacando productos según convenga, todos los días": con la vuelta de HOY el robot arma los dos pedidos del momento solo (una vez por día; lo que pidió él con !el no se toca)
+            const diaV = new Date(ahora - 3 * 36e5).toISOString().slice(0, 10), yaV = (await db.get('mlapi/pypedidoauto/' + diaV)) || null;
+            if (!yaV) { let i = 0; for (const g of ['perf', 'resto']) { const idC = String(Date.now() + i++) + String(Math.floor(Math.random() * 900) + 100), t = `pypedido:${g};go`;
+              await db.set('mlapi/colainterna/' + idC, { t, ts: Date.now() }); await db.set('cyc/pararobot/' + idC, { t, por: 'vuelta completa de Nissei (solo)', estado: 'nuevo', ts: Date.now() }); }
+              await db.set('mlapi/pypedidoauto/' + diaV, { ts: Date.now() }); msgV += ' 🧾 Los dos pedidos del momento se arman solos en unos minutos.'; } } catch { /* se arma a mano */ } try { await marcarAgotadosVuelta(db, desde, ahora); } catch (eA) { console.log('⚠️ no pude marcar los agotados: ' + eA.message); } }
           else msgV = `⚠️ vuelta INCOMPLETA: ${vistos} de ${total} productos (${pct}%), hace falta el 90%. NO cuenta.`;
         } else if (cur) msgV = `🔄 vuelta en curso desde la página 1. Se cierra con "fin=<productos que dice la web>" en la última página.`;
         await db.set('mlapi/pycatvuelta', { cur });
