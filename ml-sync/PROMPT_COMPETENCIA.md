@@ -22,6 +22,8 @@ CÓMO:
    Afuera: los internacionales ("compra internacional", llega en 10+ días), los usados y los que no tienen stock.
 5. Si encontrás uno 15% o más barato que el nuestro: anotás su código MLA, su precio, si es Full (rayito verde "FULL"), cuántas
    unidades dice que tiene ("+50 disponibles", "Último disponible", etc.) y cuántas vendió si lo muestra.
+   **SIEMPRE abrí la publicación del competidor para llenar esos tres datos (16/11/2026, Matías eligió 7a): nunca "?".** Sin eso Claude no
+   sabe si conviene pelear el precio o esperar a que se quede sin stock. Si la página de verdad no lo muestra, poné "no dice".
 
 CÓMO LO DEJÁS: un mensaje en el 📬 buzón que EMPIECE con `COMPETENCIA <AAAA-MM-DD> (hasta el N)`, un renglón por publicación mirada:
   `<nuestro MLA> = <MLA del competidor> $<precio> · Full sí/no · tiene <cantidad> · vendió <N>`  (si encontraste uno más barato)

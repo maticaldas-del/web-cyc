@@ -78,11 +78,25 @@ MIRAR CORTO → CAJAS LLEGADAS → EXTRACTO → MÁS VENDIDOS → COMPETENCIA �
    a3) EXTRACTO → TODOS LOS DÍAS, justo después de MIRAR TODO (06/11/2026, él: "así vamos paso a paso" y "siempre se hace desde el último que se hizo hasta el día anterior a hacer la run"): el extracto de Mercado Pago de las 4 cuentas DESDE EL DÍA SIGUIENTE AL ÚLTIMO PEGADO HASTA AYER (nunca hoy). El último pegado lo dice el mensaje `EXTRACTO … hasta AAAA-MM-DD` del buzón. Texto: PROMPT_EXTRACTO. Mensaje `EXTRACTO <hoy>: del AAAA-MM-DD hasta AAAA-MM-DD · 4 de 4`.
    f4) COMPETENCIA → TODOS LOS DÍAS, después de MÁS VENDIDOS (06/11, Matías eligió 5a): de a 20 publicaciones nuestras que no están en catálogo, buscar en ML si otro vende EXACTAMENTE lo mismo bastante más barato. Sólo mirar. Texto: PROMPT_COMPETENCIA.
    LO DEL MES (el extracto de Mercado Pago y cualquier tarea con fecha del mes): si le tocaba un día en que no te prendieron, la hacés en la PRIMERA rutina siguiente; se sabe porque en Gastos del mes el renglón 📄 sigue en rojo.
+   h) ARCA → EL DÍA 2 DE CADA MES (o la primera run después) (16/11/2026, Matías eligió 1a): entrá a ARCA con la clave fiscal de cada una de las
+      4 cuentas → "Mis Comprobantes" → Emitidos → el mes ANTERIOR entero → anotá SÓLO el total facturado (nada de clientes, CUIT ni números de
+      factura). Mensaje: "ARCA <AAAA-MM>: Adriana=$<total> · Luciana=$<total> · Ayelen=$<total> · Matias=$<total>". Con eso Claude sabe exacto
+      cuánto le queda a cada cuenta para el tope de H. Si una cuenta no te deja entrar, ponelo así: "Ayelen=no pude entrar".
+   i) POSICIÓN → UNA VEZ POR SEMANA (si hace 7 días o más) (16/11/2026, Matías eligió 6a): los primeros 20 productos de la lista de
+      PROMPT_COMPETENCIA (los que más venden). Para cada uno buscá en ML (sin filtros, orden "Más relevantes") la palabra principal del
+      producto como la escribiría un comprador (ej. "centímetro retráctil", "filtro agua canilla") y anotá en qué puesto aparece NUESTRA
+      publicación (contá desde arriba, sin las publicidades) y quién está primero. Mensaje: "POSICIÓN <fecha>: <nuestro MLA> = puesto <N> ·
+      búsqueda "<palabras>" · 1º <MLA del primero> $<precio>" (un renglón por producto; si no aparece en las 2 primeras páginas: "no aparece").
+   j) PROGRAMAS ML → UNA VEZ POR SEMANA (si hace 7 días o más) (16/11/2026, Matías eligió 9a): en las 4 cuentas mirá la Central de
+      promociones, los avisos de Full y las notificaciones: ¿ML nos anotó en algún programa AUTOMÁTICO cuyos descuentos pagamos nosotros
+      (ej. "descuentos automáticos de Full")? Si aparece uno, DATE DE BAJA (Matías lo autorizó el 15/11) y anotalo. No toques ninguna otra
+      promo (Black Friday, Oferta relámpago, descuentos ya puestos). Mensaje: "PROGRAMAS <fecha>: <cuenta> · <programa> · me di de baja / no
+      había nada".
    g) TIENDA → con el tiempo que sobre, siempre (ver abajo). Nunca se termina: cada vez seguís desde la página donde quedaste.
    ANTIGÜEDAD → sólo si Matías lo pide. Si Matías te pide otra cosa, eso va primero que todo.
 3. Al terminar cada tarea (o al cortarla a la mitad) dejá en el buzón un mensaje que EMPIECE con su nombre en mayúsculas, así se anota la
    fecha: "RUTINA 2026-10-31 …", "GUAY: listo hasta la página 615", "LISTAS: listo", "ONCE: …", "IMEGA: …", "CAJAS: …", "TIENDA: …",
-   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …", "MIRAR CORTO …", "PERFUMES …", "COMPETENCIA …".
+   "CAJAS LLEGADAS …", "MÁS VENDIDOS …", "MAYORISTAS WEB …", "MIRAR TODO …", "MIRAR CORTO …", "PERFUMES …", "COMPETENCIA …", "ARCA …", "POSICIÓN …", "PROGRAMAS …".
    Si el mensaje no empieza con el nombre, la línea "Última vez" no lo cuenta y la tarea se vuelve a hacer.
 
 CÓMO LE PASÁS UN COMANDO AL ROBOT (03/11/2026; corregido el mismo día, él: "ya va por dos horas, ¿no será que va más lento que antes?")

@@ -773,3 +773,6 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 ## 15/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
 - 1-9: lo que se le puede sumar al chat de Chrome (ARCA, IIBB de Luciana, Binance, listas por WhatsApp, consultas de ABEL, puesto en búsquedas, competencia completa, cuotas Paulvic, programas de ML) · 10: Aurora Purple en ABEL.
 - Resuelto por mí: ABEL toma el género del nombre cuando el proveedor no lo dice. Reglas 2-8 del 15/11 tomadas en (a): falta pasarlas al código (completa).
+
+### ✅ Contestó las decisiones de la noche del 15/11 (el 16/11): 1a 3b 4b 5b 6a 7a 8a 9a · 10 "ni idea" (Aurora Purple queda como está) · la 2 (IIBB de Luciana) no la contestó.
+- Hecho: CHAT_LOCAL tareas h) ARCA (día 2 de cada mes), i) POSICIÓN y j) PROGRAMAS ML (semanales); PROMPT_COMPETENCIA: siempre llenar Full/tiene/vendió; 8a va como pedido 📌 al chat (cuotas con interés bajo en los Paulvic de Adriana).
