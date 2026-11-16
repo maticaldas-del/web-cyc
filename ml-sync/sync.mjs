@@ -2266,6 +2266,7 @@ async function mantenerCaja(db, accounts, DRY) {
     out.mirados++;
     const nom = String(e.title || mla).slice(0, 40);
     if (!e.cuenta) { out.no.push(`${nom}: sin cuenta`); continue; }
+    if (e.gemelaDe) { out.no.push(`${nom}: es una gemela (sigue a su Clásica ${e.gemelaDe}): 🥊 no la toca`); continue; }   // etapa 1 (16/11)
     const st = e.caja; const ptw = Number(e.cajaPtw) || 0;
     // Revisión etapa 4, 30/10/2026: sólo con la caja leída en ESTA vuelta (`cajaDeCompraML` corre justo antes). Si ML no contestó el
     // price_to_win queda la lectura de antes: se bajaba hasta 15% hacia un precio de hace horas aunque ya estuviéramos ganando.
@@ -2296,8 +2297,13 @@ async function mantenerCaja(db, accounts, DRY) {
       await avisar(`🥊 <b>${esc(nom)}</b> (${esc(e.cuenta)}) dejó de ganar el primer lugar del catálogo.\nEstamos a ${money(p0)}${ptw > 0 ? ` y para ganarlo ML pide ${money(ptw)}` : ''}.\n${que}`, 'perdiendo');
     };
     if (!(ptw > 0)) { out.no.push(`${nom}: la pierde y ML no dice el precio para ganarla`); await avisoPerdida(); continue; }
-    let to = Math.floor((ptw - 90) / 100) * 100 + 90; if (to > ptw) to -= 100;
-    to = Math.max(to, Math.ceil(p0 * 0.85 / 10) * 10);   // escalera: como mucho 15% por hora
+    let tw = Math.floor((ptw - 90) / 100) * 100 + 90; if (tw > ptw) tw -= 100;
+    // Revisión etapa 1 (16/11): el piso y el 35% se miran en el precio que GANA la caja, no en el escalón: si ganar pide menos que el
+    // piso o deja menos del 35%, no se arranca a bajar (antes bajaba un 15% y se quedaba ahí sin ganarla).
+    if (tw < piso) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}, abajo del piso que aceptó (${money(piso)}): se queda en ${money(p0)}`); await avisoPerdida(); continue; }
+    { const pr0 = prods.find((x) => x && x.id === e.prodId); const cu0 = pr0 && tc > 0 ? costoPesos(pr0, 1, tc).costo : 0; const mgW = mgCajaPeor(tw, np[mla], cu0, e.cuenta, monoMC);
+      if (mgW != null && mgW < Math.max(35, PISO_DURO) && tw < p0) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}: a ${money(tw)} quedaría en ${mgW.toFixed(0)}% en el peor caso (abajo del ${Math.max(35, PISO_DURO)}%): se queda en ${money(p0)}`); await avisoPerdida(); continue; } }
+    let to = Math.max(tw, Math.ceil(p0 * 0.85 / 10) * 10);   // escalera: como mucho 15% por hora
     if (to < piso) { out.no.push(`${nom}: para ganar la caja pide ${money(ptw)}, abajo del piso que aceptó (${money(piso)}): se queda en ${money(p0)}`); await avisoPerdida(); continue; }
     if (!(to < p0)) { out.no.push(`${nom}: ya está en ${money(p0)}, el precio para ganar es ${money(ptw)}`); await avisoPerdida(); continue; }
     // El % en que queda (para el piso duro de setPriceTo). Revisión etapa 8, 28/10/2026: con la cuenta de la app, en el PEOR caso
@@ -2310,6 +2316,8 @@ async function mantenerCaja(db, accounts, DRY) {
     const r = await setPriceTo(mla, null, to, toks[e.cuenta], { margen: mg, exacto: true, ganacaja: true, autorizado: `él pidió mantener la caja hasta que se venda (${g.m || ''})` });
     if (!r.ok) { out.no.push(`${nom}: no pude bajar a ${money(to)} (${r.err})`); await avisoPerdida(); continue; }
     let rel = 0; try { rel = Number((await mlGet('/items/' + mla + '?attributes=id,price', toks[e.cuenta])).price) || 0; } catch { rel = 0; }
+    // Revisión etapa 1 (16/11), regla 6: releer Y comparar. Si ML no quedó en el precio pedido, no se anota como hecho.
+    if (!(rel > 0) || Math.abs(rel - to) > 1) { out.no.push(`${nom}: ⚠️ pedí ${money(to)} y al releer ML ${rel > 0 ? 'dice ' + money(rel) : 'no contestó'}: no lo anoto como hecho`); await avisoPerdida(); continue; }
     out.bajadas.push({ mla, nom, de: p0, a: to, rel, mg });
     try { await db.patch('cyc/ganacaja/' + mla, { ult: { ts: Date.now(), de: p0, a: to, ptw } }); } catch { /* el log ya lo dice */ }
     // Revisión etapa 4, 30/10/2026: `por:'ganarcaja'` (el detector no la juzga como un `decido`: es lo que él pidió y autorizó) y si no se anota se dice.
@@ -4741,12 +4749,14 @@ function picosNavidad(vp, prodById, ahora = Date.now(), todos = false) {
   const k = (m, d) => `${y}_${String(m).padStart(2, '0')}_${String(d).padStart(2, '0')}`;
   const wA = k(12, 3), wB = k(12, 24), bA = k(10, 20), bB = k(12, 2);
   const ofer = fechasEspeciales(y).filter((f) => f.ofertas).map((f) => ({ a: dayKeyFromISO(f.ts - f.pre * 864e5), b: dayKeyFromISO(f.ts + ((f.dur || 1) - 1) * 864e5) }));
-  let dB = 0; for (let t = Date.parse(`${y}-10-20T15:00:00Z`); dayKeyFromISO(t) <= bB; t += 864e5) { const kk = dayKeyFromISO(t); if (!ofer.some((o) => kk >= o.a && kk <= o.b)) dB++; }
+  // Revisión etapa 1 (16/11): la base de cada producto arranca en su PRIMERA venta de la base (mínimo 7 días): dividir por todos los días de
+  // calendario inflaba el pico de lo que empezó a venderse tarde (×4,7 en algo parejo) y, al pasar lo viejo a `archivo/`, de todo.
+  const diasB = []; for (let t = Date.parse(`${y}-10-20T15:00:00Z`); dayKeyFromISO(t) <= bB; t += 864e5) { const kk = dayKeyFromISO(t); if (!ofer.some((o) => kk >= o.a && kk <= o.b)) diasB.push(kk); }
   const dW = 22, U = {};
   for (const [dk, ents] of Object.entries(vp || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(dk) || dk < bA || dk > wB) continue; const enW = dk >= wA; if (!enW && (dk > bB || ofer.some((o) => dk >= o.a && dk <= o.b))) continue;
-    for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId) continue; const x = (U[v.prodId] = U[v.prodId] || { w: 0, b: 0 }); if (enW) x.w += Number(v.qty) || 1; else x.b += Number(v.qty) || 1; } }
+    for (const v of Object.values(ents || {})) { if (!v || v.cancelada || !v.prodId) continue; const x = (U[v.prodId] = U[v.prodId] || { w: 0, b: 0, k0: '' }); if (enW) x.w += Number(v.qty) || 1; else { x.b += Number(v.qty) || 1; if (!x.k0 || dk < x.k0) x.k0 = dk; } } }
   const out = {};
-  for (const [pid, x] of Object.entries(U)) { const pr = (prodById || {})[pid]; if (!pr || (!todos && !RE_REGALO.test(String(pr.name || '')))) continue; if (x.w < 4 || x.b < 4 || !(dB > 0)) continue;
+  for (const [pid, x] of Object.entries(U)) { const pr = (prodById || {})[pid]; if (!pr || (!todos && !RE_REGALO.test(String(pr.name || '')))) continue; const dB = diasB.filter((kk) => kk >= x.k0).length; if (x.w < 4 || x.b < 4 || dB < 7) continue;
     const f = (x.w / dW) / (x.b / dB); if (todos || f >= 1.3) out[pid] = Math.round(Math.min(5, f) * 100) / 100; }
   return out;
 }
@@ -5463,7 +5473,7 @@ async function frenosBajas(db, decs, fzs, links, opts = {}) {
     const diasStock = () => {
       if (_dS !== undefined) return _dS;
       const k60 = kDia(ahora - 60 * 864e5); let dd = 0, uu = 0, stH = null;
-      for (const k of ks) { const x = lin[k]; if (x.st != null) stH = Number(x.st) || 0; if (k < k60 || !diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+      for (const k of ks) { const x = lin[k]; if (x.st != null) stH = Number(x.st) || 0; if (k < k60 || !diaConStock(x) || diaEnBF(k, true)) continue; dd++; uu += Number(x.u) || 0; }
       const st = Number(d.st) >= 0 && d.st != null ? Number(d.st) : stH;
       _dS = { st, dias: st == null ? null : (uu > 0 && dd > 0 ? st / (uu / dd) : (st > 0 ? 9999 : 0)) };
       return _dS;
@@ -6133,7 +6143,7 @@ function sinCambio30(cc, mla, ph, ahora = Date.now()) {
 function sobraDeLinea(lin, edad = null, ahora = Date.now()) {
   if (!lin || typeof lin !== 'object') return null;
   const k60 = dayKeyFromISO(ahora - 60 * 864e5), hoyK = dayKeyFromISO(ahora); let dd = 0, uu = 0, st = null;
-  for (const k of Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort()) { const x = lin[k]; if (!x || typeof x !== 'object') continue; if (x.st != null) st = Number(x.st) || 0; if (k < k60 || !diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+  for (const k of Object.keys(lin).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK).sort()) { const x = lin[k]; if (!x || typeof x !== 'object') continue; if (x.st != null) st = Number(x.st) || 0; if (k < k60 || !diaConStock(x) || diaEnBF(k, true)) continue; dd++; uu += Number(x.u) || 0; }
   if (st == null) return null;
   const dias = uu > 0 && dd > 0 ? st / (uu / dd) : (st > 0 ? 9999 : 0);
   return { sobra: dias > 90 || (edad != null && edad >= 90), dias: Math.round(dias), st };
@@ -6188,8 +6198,9 @@ async function ritmoSemanalGrupo(db, mla, links, prodById, dias = 60, cache = ne
     const k = dayKeyFromISO(t);
     if (!cache.has(k)) { let o = null; try { o = (await db.get('cyc/ventaprod/' + k)) || {}; } catch { o = null; } cache.set(k, o); }
     const vd = cache.get(k); if (vd == null) return null;
-    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= ahora - dias * 864e5) u += Number(v.qty) || 1; }
+    for (const v of Object.values(vd)) { if (!v || v.cancelada || !grupo.includes(v.mla)) continue; const ts = Number(v.ts) || Date.parse(v.ts || '') || 0; if (ts >= ahora - dias * 864e5 && !enBlackFriday(ts, true)) u += Number(v.qty) || 1; }
   }
+  // Revisión etapa 1 (16/11): sin las ventas ni los días del Black Friday (12a: esos días no cuentan; si no, lo lento deja de serlo 2 meses).
   // Revisión etapa 1 (24/10): el ritmo va por los días CON stock (`diaConStock` de la línea de tiempo junta con sus hermanas de stock,
   // la misma noción de F6 y techo95), no por `dias` corridos: lo que estuvo agotado no "vende poco". `info.diasSt` = cuántos días con
   // stock entraron (el freno 4a pide un mínimo). Sin días con stock medibles queda como antes. null = no leí las ventas o una línea.
@@ -6198,7 +6209,7 @@ async function ritmoSemanalGrupo(db, mla, links, prodById, dias = 60, cache = ne
   const J = await lineaJuntaStock(links, prodById, mla, lin, lineaC); if (J.sinLeer.length) return null;
   lin = J.d;
   const k0 = dayKeyFromISO(ahora - dias * 864e5), hoyK = dayKeyFromISO(ahora);
-  let dd = 0; for (const [k, x] of Object.entries(lin || {})) if (/^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k0 && k < hoyK && x && typeof x === 'object' && diaConStock(x)) dd++;
+  let dd = 0; for (const [k, x] of Object.entries(lin || {})) if (/^\d{4}_\d{2}_\d{2}$/.test(k) && k >= k0 && k < hoyK && x && typeof x === 'object' && diaConStock(x) && !diaEnBF(k, true)) dd++;
   if (info) info.diasSt = dd;
   return u / (dd > 0 ? dd : dias) * 7;
 }
@@ -7630,16 +7641,18 @@ async function calcCerebro(db, o) {
           let P = Math.round(Number(fz.p) || 0) || p0;   // 0 = dejar el precio (sólo activar)
           const motF0 = 'Claude: ' + String(fz.motivo || 'sin motivo escrito').slice(0, 240);
           if (fz.pctObj > 0 || fz.pctMult > 0) {
-            const obj = fz.pctObj > 0 ? fz.pctObj : g0.mg * fz.pctMult;
+            // Revisión etapa 1 (16/11): el % es el del PEOR caso (`mgP`, con la retención), el mismo de toda la app: con `mg` el `=%35` quedaba
+            // abajo del 35% en 56 de 94 costos probados.
+            const obj = fz.pctObj > 0 ? fz.pctObj : g0.mgP * fz.pctMult;
             const term = (x) => x >= 10000 ? Math.ceil((x + 10) / 1000) * 1000 - 10 : Math.ceil((x + 1) / 100) * 100 - 10;
             // busca el precio más bajo del tramo [lo, hi] que llega al % (la ganancia sube con el precio dentro de cada lado de la barrera)
-            const busca = async (lo, hi) => { const gh = await gan(hi); if (!gh || gh.mg < obj) return null; for (let i = 0; i < 18 && hi - lo > 50; i++) { const mid = Math.round((lo + hi) / 2); const gm = await gan(mid); if (gm && gm.mg >= obj) hi = mid; else lo = mid; } return hi; };
+            const busca = async (lo, hi) => { const gh = await gan(hi); if (!gh || gh.mgP < obj) return null; for (let i = 0; i < 18 && hi - lo > 50; i++) { const mid = Math.round((lo + hi) / 2); const gm = await gan(mid); if (gm && gm.mgP >= obj) hi = mid; else lo = mid; } return hi; };
             let hallado = null;
             if (p0 < UMBRAL_ENVIO_GRATIS) hallado = await busca(p0, UMBRAL_ENVIO_GRATIS - 10);
             if (hallado == null && (p0 >= UMBRAL_ENVIO_GRATIS || fz.cruza)) hallado = await busca(Math.max(p0, UMBRAL_ENVIO_GRATIS), TECHO_DURO);
             if (hallado == null) { nada(`${motF0} · no llego a ${obj.toFixed(0)}% de ganancia ${p0 < UMBRAL_ENVIO_GRATIS && !fz.cruza ? 'abajo de la barrera de $33.000 (para cruzar va con !cruza)' : 'ni en el techo de ' + money(TECHO_DURO)}`); continue; }
             P = term(hallado); if (p0 < UMBRAL_ENVIO_GRATIS && hallado < UMBRAL_ENVIO_GRATIS && P >= UMBRAL_ENVIO_GRATIS) P = UMBRAL_ENVIO_GRATIS - 10;
-            P = Math.min(P, TECHO_DURO); fz.p = P; fz._pctTxt = ` · a ${money(P)} deja ${obj.toFixed(0)}%${fz.pctMult > 0 ? ` (${g0.mg.toFixed(0)}% × ${fz.pctMult})` : ''}`;
+            P = Math.min(P, TECHO_DURO); fz.p = P; fz._pctTxt = ` · a ${money(P)} deja ${obj.toFixed(0)}%${fz.pctMult > 0 ? ` (${g0.mgP.toFixed(0)}% × ${fz.pctMult})` : ''}`;
           }
           const motF = motF0 + (fz._pctTxt || '');
           const r1 = (x) => Math.round(x * 10) / 10;
@@ -10598,6 +10611,7 @@ function calcRitmoNormal(o) {
       const rec = { dk, u: x.u, rem: false, fr: null, caja: diR ? diR[2] : '', p: diR ? Number(diR[1]) || 0 : 0 };
       hD.push(rec);
       if (esRemDia(k, dk)) { nR++; rec.rem = true; continue; }
+      if (diaEnBF(dk, true)) { rec.rem = true; continue; }   // etapa 1 (16/11): el Black Friday no es ritmo normal (12a)
       if (!_verK && diaNavResaca(dk, hoyTs)) { rec.rem = true; continue; }   // 📉 49a del 14/11: en la resaca de enero los días del pico de Navidad no son ritmo normal (7a del 15/11: salvo lo de verano)
       let fr = fracStock(k, dk);
       if (fr == null) { const di = diario[dk] && diario[dk][k]; if (di && di[0] != null) fr = Number(di[0]) > 0 ? 1 : 0;
@@ -12131,7 +12145,9 @@ function cruce180(f, ahora) {
   const tramo = f.tabla.find(([a]) => a === EDAD_X9) || f.tabla.find(([a, b]) => EDAD_X9 >= a && EDAD_X9 < b);
   if (!tramo || !(tramo[2] > 0)) return null;
   const tarifa = (ed) => { for (const [a, b, $] of f.tabla) if (ed >= a && ed < b) return $; return 0; };
-  const rDia = Math.max(0, Number(f.rDia) || 0), dc = Number(f.dCierre) || 12;
+  // Revisión etapa 1 (16/11): si el ritmo de 30 días es mucho más bajo que el normal (la fila trae `t30`), manda el de hoy: con el de 365
+  // días algo que dejó de venderse después de una suba "se vendía todo antes" y no avisaba los 180 días.
+  const rDia = Math.max(0, Number(f.t30 != null && f.r30 != null ? f.r30 : f.rDia) || 0), dc = Number(f.dCierre) || 12;
   const d = new Date(ahora - 3 * 3600e3); let y = d.getUTCFullYear(), m = d.getUTCMonth(); if (d.getUTCDate() >= dc) m++;
   for (let k = 0; k < 24; k++) {
     const T = Date.UTC(y, m + k, dc, 3);
@@ -22690,7 +22706,7 @@ async function main() {
             if (gH >= gC) { no('el precio de hoy deja igual o más ganancia por día que el más caro que vendió (7 del 03/11)'); continue; } } }
         const ksJ = Object.keys(J.d).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k) && k < hoyK && J.d[k] && typeof J.d[k] === 'object').sort();
         const k60 = dayKeyFromISO(ahora - 60 * 864e5); let dd = 0, uu = 0, st = null;
-        for (const k of ksJ) { const x = J.d[k]; if (x.st != null) st = Number(x.st) || 0; if (k < k60 || !diaConStock(x)) continue; dd++; uu += Number(x.u) || 0; }
+        for (const k of ksJ) { const x = J.d[k]; if (x.st != null) st = Number(x.st) || 0; if (k < k60 || !diaConStock(x) || diaEnBF(k, true)) continue; dd++; uu += Number(x.u) || 0; }
         const diasSt = st == null ? null : uu > 0 && dd > 0 ? st / (uu / dd) : (st > 0 ? 9999 : 0);
         const ed = edadViejaFull(e, null, lotes, {});
         const cb = (tablaAntiguoDe(e, pIdx[e.prodId], lotes, {}).tabla.find((t) => Number(t[2]) > 0) || [120])[0];
@@ -53247,6 +53263,7 @@ async function main() {
         // sólo se sacaba lo que decía la estrategia y algo que vendía 1 por día con 60 días liquidando quedaba en 0,84 (Pedidos compraba de menos).
         for (const m of mlas) { const lin = await lineaDe(m); if (lin == null) return null;
           for (const [k, x] of Object.entries(lin || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k < k365 || k >= dk(0) || !x || typeof x !== 'object') continue;
+            if (diaEnBF(k, true)) { conDato.add(k); remD.add(k); continue; }   // etapa 1 (16/11): el Black Friday no es ritmo normal (12a): el día y sus ventas no cuentan
             if (diaNavResaca(k, hoy) && !esVeranoNom((byId[pid] || {}).name)) { conDato.add(k); remD.add(k); continue; }   // 📉 49a del 14/11: la resaca de enero (el día y sus ventas no cuentan; 7a del 15/11: salvo lo de verano)
             if (x.st != null || x.est != null) conDato.add(k);
             if (Number(x.rem) === 1) { remD.add(k); conDato.add(k); continue; }
@@ -57884,6 +57901,8 @@ async function main() {
         const m = x.match(/^(MLA\d+)=(-|\d+)(?:\|(.*))?$/i); if (!m) { console.log(`"${x}" → se espera <MLA>=<piso>|motivo o <MLA>=-`); continue; }
         const mla = m[1].toUpperCase(); const e = links[mla]; if (!e) { console.log(`${mla}: no está en el panel`); continue; }
         if (m[2] === '-') { console.log(`${mla}: ${GOg ? 'sacado' : 'lo sacaría (falta ;go)'}`); if (GOg) await db.set('cyc/ganacaja/' + mla, null); continue; }
+        // Revisión etapa 1 (16/11): una gemela sigue a su Clásica cada hora (`alinearGemelas`): con 🥊 se peleaban (11 cambios en 6 h).
+        if (e.gemelaDe) { console.log(`${mla}: es una gemela de ${e.gemelaDe}: 🥊 va en la Clásica (la gemela la sigue sola)`); continue; }
         const piso = Number(m[2]); console.log(`${mla} · ${String(e.title || '').slice(0, 50)} · piso ${money(piso)} · caja hoy ${e.caja || '?'}${e.cajaPtw ? ' (pide ' + money(e.cajaPtw) + ')' : ''}${GOg ? '' : ' (falta ;go)'}`);
         // 5a del 28/10 (él): sin su "autorizo" vigente para ESTA publicación y ESTE piso no se prende; se guarda el pedido para pasárselo en el chat.
         if (GOg) { let autC = ''; try { const A = (await db.get('cyc/autoriza')) || {}; autC = (Object.entries(A).find(([c, r]) => !autNoVale(c, r, mla, 'ganarcaja', piso, Date.now(), false, 'ganarcaja')) || [''])[0]; } catch { autC = ''; }

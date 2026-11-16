@@ -777,3 +777,16 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 ### ✅ Contestó las decisiones de la noche del 15/11 (el 16/11): 1a 3b 4b 5b 6a 7a 8a 9a · 10 "ni idea" (Aurora Purple queda como está) · la 2 (IIBB de Luciana) no la contestó.
 - Hecho: CHAT_LOCAL tareas h) ARCA (día 2 de cada mes), i) POSICIÓN y j) PROGRAMAS ML (semanales); PROMPT_COMPETENCIA: siempre llenar Full/tiene/vendió; 8a va como pedido 📌 al chat (cuotas con interés bajo en los Paulvic de Adriana).
 - 2a (16/11): pedido 📌 al chat de Chrome para averiguar el IIBB de Luciana (sin CUIT ni domicilios); la respuesta llega al buzón como RESPUESTA.
+
+## 16/11 · Revisión de Precios (11 decisiones; para la noche)
+1. **Una venta del Black Friday, ¿frena las bajadas?** Hoy frena la liquidación de 30 días y el "lo que vendió no se baja" (10 días). (a) sugerida: no, para bajar tampoco cuenta · (b) sí, una venta es una venta.
+2. **🥊 Mantener la caja (la waflera) en el Black Friday:** si el otro vendedor baja 30%, la seguimos hasta el piso y después no vuelve a subir sola (subirla es tuyo). (a) sugerida: pausarlo del 25 al 30/11 · (b) dejarlo.
+3. **Un precio que sólo existió en el Black Friday** (promo): (a) sugerida: no cuenta como medido · (b) queda medido.
+4. **🥊 contra la barrera de $33.000:** el escalón de 15% puede caer justo arriba de $33.000 (paga el envío y queda abajo del 35%) y no baja nunca, cuando a $32.990 dejaría ~78%. (a) sugerida: ir a $32.990 aunque baje algo más de 15% · (b) dejarlo.
+5. **La Premium de algo 🔒/🥊 sube sola cuando su Clásica sube** (misma plata). (a) sugerida: dejarlo así (es la misma plata) y escribirlo en la regla · (b) sólo con tu "autorizo".
+6. **La retención de otra provincia se cuenta dos veces arriba de $33.000** (en el "peor envío visto" y en el 2%). Ejemplo: 38,6% pasa a 43,6%. (a) sugerida: contarla una vez, con el envío real de cada venta · (b) dejarlo así (más conservador).
+7. **Publicación que nunca vendió arriba de $33.000:** ¿qué envío se usa? (a) sugerida: el mayor entre la tarifa de ML y el de referencia (lo pesado toma la tarifa) · (b) sólo el de referencia, como hoy.
+8. **El 35% contra un competidor que da cuotas sin interés:** hoy el máximo de compra no las cuenta. Ejemplo: techo $24.990 con 6 cuotas → 57,9% sin contarlas, 31,2% contándolas. (a) sugerida: contarlas · (b) no contarlas en ningún lado.
+9. **La Tienda (25% sobre el costo):** después de las 3 cuotas y el monotributo queda ~10%. (a) seguir con 25% sobre el costo · (b) que el 25% sea lo que queda limpio.
+10. **"A 20 días de pagar stock antiguo"** (deja bajar algo en 🔥/⏳): hoy se abre desde el día 100 aunque ML cobre un mes después. (a) sugerida: contarlo desde el cierre en que ML cobra, como la ventana de 15 días · (b) dejarlo.
+11. **El ritmo a un precio con descuento:** hoy se mide con el precio de lista, no el que vio el comprador. (a) sugerida: con el que vio el comprador, como las rayas · (b) dejarlo.
