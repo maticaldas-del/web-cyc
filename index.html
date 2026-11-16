@@ -3717,7 +3717,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.220';
+const APP_VERSION='28.221';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3730,6 +3730,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.221',f:'16/11',h:'18:50',c:[{n:1,t:'🏷️ Inicio · tarjeta Ventas: sin el numerito azul ni "sin mirar"; muestra la ganancia de hoy en verde con el % que vamos.'}]},
   {v:'28.220',f:'16/11',h:'18:10',c:[{n:2,t:'📈 Línea de tiempo: la raya de una prueba de precio decía "no vendió" aunque sí había vendido (Centímetro Rosa a $17.490, 2 ventas). Ahora dice cuántas vendió y en cuántos días.'}]},
   {v:'28.219',f:'16/11',h:'17:30',c:[{n:2,t:'💼 Arqueo: Oficina ML, Oficina Local y En camino a Full también comparan contra el cierre anterior (▲/▼ con % y US$), como En ML. El cierre guarda el reparto de las dos oficinas desde hoy.'}]},
   {v:'28.218',f:'16/11',h:'16:40',c:[{n:2,t:'🧾 Paraguay: lo mirado en Nissei vale 48 horas (antes 24).'}]},
@@ -28647,7 +28648,7 @@ function _hoyChispas(col,txt,calma){
 // mandar ya = `cajasVerdes`, los gastos que faltan = `gastosChecklistMes`). Sin dato no se inventa: queda vacío.
 function _vivosDatos(){
   const d={};
-  try{const t=_homeDiaTot(dateToKey(new Date()));d.ventas=t.ventas||0;d.gan=t.gan||0;}catch(e){}
+  try{const t=_homeDiaTot(dateToKey(new Date()));d.ventas=t.ventas||0;d.gan=t.gan||0;d.pct=t.pct;}catch(e){}
   // DISEÑO 6 DEL 31/10 (él: "sí"): la tarjeta dice las ventas NUEVAS desde la última vez que miraste Ventas en este teléfono (la misma
   // cuenta que la rayita azul de Ventas, `ventaVistoTs`), en vez de repetir el número grande de arriba. Sin marca guardada, como antes.
   try{const vt=ventaVistoTs();if(vt){const ks=Object.keys(state.ventaprod||{}).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort().slice(-8);const gr=new Map();
@@ -28668,7 +28669,8 @@ function _homeVivos(d){
   d=d||_vivosDatos();const out={};
   if(d.ventas!=null)out.ventas=d.ventas?`<b>${fmtN(d.ventas)}</b> hoy · <span class="g">${fmt(d.gan)}</span>`:'todavía ninguna hoy';
   // 13a del Diseño 10/11: cuántas nuevas va en el numerito azul de la esquina (`hv-ven-nuevas`); acá lo que dejaron y "desde que miraste" (antes quedaba tapado).
-  if(d.nuevas!=null)out.ventas=d.nuevas?`${ocultaVendido()?'':`<span class="${d.nuevasGan>=0?'g':'r'}">${d.nuevasGan>=0?'+':''}${fmt(d.nuevasGan)}</span><br>`}<span style="color:var(--muted)" title="ganancia de las ventas nuevas desde que miraste Ventas">sin mirar</span>`:'<span style="color:var(--muted)">✓ ya viste todas</span>';
+  // 16/11/2026 (él: "en la tarjeta de ventas quiero que saques esos números y pongas la ganancia en verde con el % que vamos"): la ganancia de HOY en verde con su %, sin el numerito ni "sin mirar".
+  if(d.ventas!=null)out.ventas=d.ventas&&!ocultaVendido()?`<span class="${d.gan>=0?'g':'r'}" style="font-weight:700">${fmt(d.gan)}</span>${d.pct!=null&&isFinite(d.pct)?` <span class="${d.pct>=35?'g':d.pct>=25?'a':'r'}">· ${Math.round(d.pct)}%</span>`:''}`:(d.ventas?'':'<span style="color:var(--muted)">todavía ninguna hoy</span>');
   if(d.peds!=null)out.ped=d.peds?(d.rojo?`<span class="r">🔴 ${fmtN(d.rojo)} en rojo</span>`:(d.pedN?`${fmtN(d.pedN)} por comprar`:'<span class="g">✓ nada en rojo</span>')):'';
   if(d.cajas!=null)out.ofi=d.cajas?`<span class="g">📦 ${d.cajas} caja${d.cajas===1?'':'s'} ya</span>`:(d.mandar?`${fmtN(d.mandar)} u. para mandar`:d.casa?`${fmtN(d.casa)} u. en casa`:'nada contado');
   if(d.gastosFaltan!=null)out.gastos=d.gastosFaltan?`<span class="a">${d.gastosFaltan} sin cargar</span>`:'<span class="g">✓ todo cargado</span>';
@@ -28678,7 +28680,8 @@ function renderHomeVivos(){
   const _d=_vivosDatos(),v=_homeVivos(_d);
   [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
   // DISEÑO 5 DEL 31/10: la tarjeta Pedidos lleva una 🔴 con cuántos pedidos están en rojo (la misma cuenta del semáforo, `_pedSem`).
-  try{const r=document.getElementById('hv-ven-nuevas');if(r){const n=_d.nuevas||0;r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
+  try{const r=document.getElementById('hv-ven-nuevas');if(r){const n=0;   // 16/11/2026 (él: "sacá ese número"): sin el numerito azul
+    r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
   try{hxBadge(_d.nuevasBuenas||0);}catch(e){}   // 21a del 14/11: el numerito del ícono = ventas buenas nuevas
   try{renderHomeExtra();}catch(e){}   // 14/11: 💬 preguntas · 🗳️ decisiones · 🚚 lo que llega · 🔍 la semana
   try{const r=document.getElementById('hv-ped-rojo');if(r){const n=_d.rojo||0;r.textContent=n?String(n):'';r.title=n?`${n} pedido${n===1?'':'s'} en rojo (se cortan en 14 días o menos)`:'';r.style.display=n?'':'none';}}catch(e){}
