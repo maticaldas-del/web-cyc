@@ -28542,6 +28542,16 @@ async function main() {
         cargados.push({ tipo: 'probado', id: k, nom: p.name, u, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: !!(v && v.pidio) || elIds.includes(k), cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); }
       for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre || c.pedidoEn || c.prodId || !enG(c.nombre)) continue; const u = Number(c.pedirU) || 0; if (!u) continue;
         cargados.push({ tipo: 'nuevo', id, nom: c.nombre, u, usd: parseFloat(c.usd) || 0, cat: candCatDe(c) || catDeS(c.mlCat), visto: candVistoTsBot(c), pidio: !!c.pidioEl || elIds.includes(id), c }); }
+      // 16/11/2026 (él: "cargá los pedidos"): 1º LOS PROBADOS QUE PIDE PEDIDOS (como el botón 🪄 "Llenar con probados y nuevos" de la web,
+      // `pedLlenarTodoPlan`): de Paraguay, no Paulvic, con unidades pedidas, que Nissei tiene y mirados en Nissei hace menos de 48 h. Se miden
+      // contra ML como todo (lo que no da 35% hoy no entra) y, si quedan, se escriben en `cyc/py_armado`.
+      { const pedsPy = Object.values((await db.get('cyc/pedidos_py')) || {}); const sinSt = (await db.get('cyc/py_sinstock')) || {}; const ya = new Set(cargados.map((x) => x.id));
+        for (const ped of pedsPy) { if (!ped || ped.estado === 'suficiente') continue; const cant = parseInt(ped.cantidad) || 0; if (cant <= 0) continue;
+          const k = ped.prodId && prods[ped.prodId] ? ped.prodId : null; if (!k || ya.has(k)) continue; const p = prods[k];
+          if (!p || p.origen !== 'py' || !enG(p.name) || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || '')) || sinSt[k]) continue;
+          if (!(Date.now() - (Number(p.nisseiTs) || 0) < PY_VIEJO_DIAS * 864e5) || !(parseFloat(p.nisseiUSD) > 0)) continue;
+          ya.add(k); const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
+          cargados.unshift({ tipo: 'probado', id: k, nom: p.name, u: cant, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: false, nuevoProb: true, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); } }
       const tienda = Object.values(per).filter((v) => v && enG(v.nom)).reduce((t, v) => t + (parseInt(v.u) || 0) * (parseFloat(v.usd) || 0), 0);
       console.log(`=== 🧾 PEDIDO ${grp === 'perf' ? '🌸 PERFUMERÍA' : '📦 RESTO'} EN UN PASO · vuelta de Nissei de hoy (${nv.pct}%) · tope US$ ${TOPE}-${TOPE_MAX} · dólar ${money(tc)} · ${GOpp ? 'SE GUARDA' : 'PRUEBA'} ===`);
       console.log(`🏬 Tienda: US$ ${tienda.toFixed(2)} (queda: la pidió él)`);
@@ -28555,6 +28565,8 @@ async function main() {
         quedan.push({ ...it, r }); if (r.k === 'duda') dudas.push({ ...it, motivo: r.motivo });
       }
       let total = tienda + quedan.reduce((t, x) => t + x.u * x.usd, 0);
+      // los probados agregados por Pedidos no pasan el tope (el más barato por unidad de ganancia sale primero: se sacan desde el final)
+      for (let i = quedan.length - 1; i >= 0 && total > TOPE_MAX; i--) if (quedan[i].nuevoProb) { total -= quedan[i].u * quedan[i].usd; salen.push({ ...quedan[i], motivo: 'probado que pide Pedidos: no entra en el tope de US$ ' + TOPE_MAX }); quedan.splice(i, 1); }
       // 4) llenar con nuevos medidos
       const ahora = Date.now();
       const sal = (c) => { const v = candVentasDe(c); const r = Number(c.resCarga ?? c.res) || 0; return Math.max(v != null && isFinite(v) ? Number(v) : 0, r * 20); };
@@ -28583,6 +28595,7 @@ async function main() {
       if (!GOpp) { console.log('PRUEBA: no escribí nada. Para aplicar: agregá ;go'); return; }
       const upA = {}; for (const x of salen) if (x.tipo === 'probado') upA[x.id] = null;
       for (const id of elIds) if (arm[id]) upA[id] = { ...arm[id], pidio: true };
+      for (const x of quedan) if (x.nuevoProb) upA[x.id] = { u: x.u, ts: Date.now() };   // 16/11: los probados que pide Pedidos entran al pedido
       if (Object.keys(upA).length) await db.patch('cyc/py_armado', upA);
       for (const x of salen) if (x.tipo === 'nuevo') await db.set(`cyc/candidatos_py/${x.id}/pedirU`, 0);
       for (const id of elIds) if (cands[id]) await db.set(`cyc/candidatos_py/${id}/pidioEl`, true);
