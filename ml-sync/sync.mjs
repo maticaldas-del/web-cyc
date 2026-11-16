@@ -28516,6 +28516,7 @@ async function main() {
       const catDeS = (s) => { const m = String(s || '').match(/MLA-?\d{6,}/i); return m ? m[0].replace('-', '').toUpperCase() : ''; };
       let tcL = tc, mNoL = {}; try { mNoL = (await db.get('cyc/mlconfig/marcasNoML')) || {}; } catch { mNoL = {}; }
       // La medición contra ML de HOY: la MISMA de `pyrevisar` (más barato de todos, más barato con Full, cuotas del que hay que igualar).
+      const tokPP = {};
       const medir = async (it) => {
         const puesto = it.usd * RECARGO_PAR; let ofs = [];
         if (it.cat) { try { ofs = ((await mlGet(`/products/${it.cat}/items`, tok)).results) || []; } catch { ofs = []; } }
@@ -28524,7 +28525,10 @@ async function main() {
           // 16/11/2026 (él, con la SanDisk 128 a −6%: "los que no llegan a 35% no. eso ya lo sabemos"): un probado sin catálogo (o sin precio
           // en el catálogo hoy) se mide contra NUESTRA publicación activa más barata de esa ficha; abajo del 35% sale.
           const mlas = Object.entries(links).filter(([, l]) => l && l.prodId === it.id).map(([m]) => m); let best = null;
-          for (const m of mlas.slice(0, 8)) { try { const b = await mlGet(`/items/${m}`, tok); if (b && b.status === 'active' && Number(b.price) > 0 && b.listing_type_id !== 'gold_pro' && (!best || Number(b.price) < Number(best.price))) best = b; } catch { /* sigue */ } }
+          for (const m of mlas.slice(0, 8)) { try { const ctaM = String((links[m] || {}).cuenta || '');
+              if (!(ctaM in tokPP)) { const lab = labels.find((l) => l.toLowerCase() === ctaM.toLowerCase()); tokPP[ctaM] = null;
+                if (lab && accounts[lab]?.refresh_token) { try { const t = await mlRefresh(ML_CLIENT_ID, ML_CLIENT_SECRET, accounts[lab].refresh_token); await db.patch('mlapi/tokens/' + lab, { refresh_token: t.refresh_token, updated_ts: Date.now() }); tokPP[ctaM] = t.access_token; } catch { /* sin token */ } } }
+              const b = await mlGet(`/items/${String(m).split('__')[0]}`, tokPP[ctaM] || tok); /* 16/11: ML deja leer la publicación sólo con el token de SU cuenta */ if (b && b.status === 'active' && Number(b.price) > 0 && b.listing_type_id !== 'gold_pro' && (!best || Number(b.price) < Number(best.price))) best = b; } catch { /* sigue */ } }
           if (best) { const rP = await cuentaCandidatoMejor(Math.min(Number(best.price), TECHO_DURO), best.category_id, puesto, tc, monoP, feeAt, 0, it.cuenta || (grp === 'perf' ? 'adriana' : CUENTA_NUEVOS));
             if (!(rP && rP.margen != null)) return { k: 'duda', m: null, motivo: `sin catálogo · no pude medir nuestra publicación ${best.id} (${money(Number(best.price))})` };
             return rP.margen >= CAND_VARA_COMPRA ? { k: 'ok', m: rP.margen, motivo: `${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))})` } : { k: 'no', m: rP.margen, motivo: `hoy da ${Math.round(rP.margen)}% a nuestro precio de ML (${money(Number(best.price))}): abajo del 35% no se repone` }; }
