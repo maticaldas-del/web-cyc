@@ -33615,6 +33615,9 @@ async function main() {
         return;
       }
       const phpP = (await db.get('cyc/precios_hist_prod')) || {};
+      // poncosto:<id>|<pesos>|go|desde=AAAA_MM (16/11, él: "están ese costo desde principio de mes"): borra lo congelado de ese mes en adelante.
+      const _desdePc = ((/desde=(\d{4}_\d{2})/.exec(_pc[3] || '') || [])[1]) || '';
+      if (_desdePc) for (const x of plan) for (const ym of Object.keys(phpP)) if (ym >= _desdePc && phpP[ym] && phpP[ym][x.p.id] != null) { await db.set('cyc/precios_hist_prod/' + ym + '/' + x.p.id, null); delete phpP[ym][x.p.id]; console.log(`  🔓 ${x.p.name}: ${ym} vuelve a medir con el costo nuevo`); }
       for (const x of plan) {
         const antesUSD = parseFloat(x.p.costUSD) || 0;
         if (antesUSD > 0 && Math.abs(antesUSD - usd) > 0.005) {
@@ -33624,6 +33627,7 @@ async function main() {
           }
           let nCong = 0;
           for (const ym of meses) {
+            if (_desdePc && ym >= _desdePc) continue;   // 16/11: "desde principio de mes": esos meses van con el costo nuevo
             if (phpP[ym] && phpP[ym][x.p.id] != null) continue;
             await db.set('cyc/precios_hist_prod/' + ym + '/' + x.p.id, antesUSD); nCong++;
           }
