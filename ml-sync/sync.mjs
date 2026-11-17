@@ -28577,7 +28577,9 @@ async function main() {
         const nV = ofs.filter((o) => !o._afuera).length || ofs.length;
         const mT = rT ? rT.margen : null, mF = rF ? rF.margen : null;
         if (mT == null) return { k: 'duda', m: null, motivo: 'ML no contestó la comisión' };
-        if (mT >= CAND_VARA_COMPRA) return nV < 2 ? { k: 'duda', m: mT, motivo: `da ${Math.round(mT)}% pero hay 1 solo vendedor` } : { k: 'ok', m: mT, motivo: `${Math.round(mT)}% contra el más barato (${nV} vend.)` };
+        // 17/11: con 1 solo vendedor entra igual si se sabe que se vende (100+ vendidas o 5+ reseñas, la misma regla de siempre: `vendOk`)
+        const _vende1 = it.c && vendOk(1, candVentasDe(it.c), it.c.sinComp, it.c.resCarga ?? it.c.res);
+        if (mT >= CAND_VARA_COMPRA) return nV < 2 && !_vende1 ? { k: 'duda', m: mT, motivo: `da ${Math.round(mT)}% pero hay 1 solo vendedor` } : nV < 2 ? { k: 'ok', m: mT, motivo: `${Math.round(mT)}% contra el más barato (1 vendedor, pero se vende: ${candVentasDe(it.c) ?? '?'} vendidas · ${it.c.resCarga ?? it.c.res ?? '?'} reseñas)` } : { k: 'ok', m: mT, motivo: `${Math.round(mT)}% contra el más barato (${nV} vend.)` };
         // (4a del 15/11/2026, Reglas del cerebro): como "duda" queda sólo lo que no se sabe si es el mismo producto. Lo que da menos de 35% contra
         // el más barato de ML (con o sin Full) SALE, aunque contra el más barato CON Full dé 35% (antes quedaba como 🟡 duda).
         if (mF != null && mF >= CAND_VARA_COMPRA) return { k: 'no', m: mT, motivo: `hoy da ${Math.round(mT)}% contra el más barato (${money(pi.baratoTodos)}); contra el más barato con Full daría ${Math.round(mF)}%, pero sale igual (4a del 15/11)` };
@@ -28650,7 +28652,7 @@ async function main() {
         if (total >= TOPE || medidos >= 120) break;
         const usd = parseFloat(c.usd); const u = Math.min(maxU(c), Math.floor((TOPE_MAX - total + 1e-6) / usd)); if (u < 1) continue;
         medidos++;
-        const r = await medir({ id, nom: c.nombre, usd, cat: candCatDe(c) || catDeS(c.mlCat) });
+        const r = await medir({ id, nom: c.nombre, usd, cat: candCatDe(c) || catDeS(c.mlCat), c });
         if (r.k !== 'ok') { nuevosNo.push({ id, nom: c.nombre, motivo: r.motivo }); continue; }
         agregados.push({ id, nom: c.nombre, u, usd, r, star: star(c) }); total += u * usd;
       }
