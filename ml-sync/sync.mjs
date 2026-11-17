@@ -15977,14 +15977,18 @@ async function colaParaRobot(db, labels) {
         // también "no llega nada", "sin nada", "no viene nada" cuentan como nada (antes sólo ": nada" justo después de la cuenta).
         const viejo = (l) => /ya lleg[oó]|qued[oó] viejo|estado viejo/i.test(l);
         const esNada = (l) => /:\s*nada\b|\b(no (llega|viene|hay) nada|sin nada|nada (para recibir|hoy))\b/i.test(l);
-        const llega = (l) => !viejo(l) && ((/^HOY LLEGA/i.test(l) && (!esNada(l) || /compra|retiro|devoluci|llega (el|entre|ma[ñn]ana|hoy)/i.test(l)))
-          || /llegan hoy\s*[1-9]|retiros en camino\s*[1-9]/i.test(l) || (/⏰/.test(l) && /lleg|retiro|compra|devoluci|agencia|domicilio/i.test(l)));
+        // 17/11/2026 (él, con un aviso del 16/11 que decía "Hoy llega a Adriana: nada · código…" en las 4 cuentas: "dice hoy llega y ese día no
+        // llegó nada… si no viene nada no me des el código… el más importante es el que llega hoy, porque ML pide escanear el QR y poner ese código,
+        // tengo que tenerlo de antemano para dejarlo en la caja"): sale SÓLO lo que llega HOY (⏰, "hoy te llegará", "llega hoy", "entrega hoy",
+        // "para retirar"/agencia). Un renglón de cuenta que dice "nada" no sale nunca, aunque nombre devoluciones al depósito o compras de otro día.
+        const hoyLlega = (l) => /⏰|hoy te llegar|llega(n)? hoy|entrega(s)? (de )?hoy|lleg(a|ar[aá]) hoy|para retirar|en la agencia/i.test(l);
+        const llega = (l) => !viejo(l) && !/^HOY LLEGA\s+\d{4}-\d{2}-\d{2}\s*$/i.test(l) && !(/^HOY LLEGA/i.test(l) && esNada(l) && !/⏰|hoy te llegar/i.test(l)) && hoyLlega(l);
         // "HOY LLEGA · Matías: compra X · código Y" sale como "Hoy llega a Matías: compra X · código Y"
         rengs = L.filter(llega).slice(0, 25).map((l) => l.replace(/^HOY LLEGA\s*[·:\-]\s*(Adriana|Luciana|Ayelen|Mat[ií]as)\s*:\s*/i, 'Hoy llega a $1: ').replace(/^HOY LLEGA\s*[·:\-]\s*/i, 'Hoy llega · '));
       }
       if (!rengs.length) { await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: false }); continue; }
       const dia = new Date(tsM - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
-      const ok = await sendAlerta(`📦 <b>LLEGA / PARA RETIRAR</b> (lo vio el chat de Chrome ${dia})\n` + rengs.map((l) => '· ' + l.replace(/</g, '&lt;')).join('\n'), { directo: true });
+      const ok = await sendAlerta(`📦 <b>HOY LLEGA — dejá el código en la caja</b> (lo vio el chat de Chrome ${dia})\n` + rengs.map((l) => '· ' + l.replace(/</g, '&lt;')).join('\n'), { directo: true });
       await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: ok !== false });
     }
   } catch (e) { /* se mira en la vuelta siguiente */ }
