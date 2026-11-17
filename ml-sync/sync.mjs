@@ -45345,8 +45345,9 @@ async function main() {
           const sMPx = ds.filter((x) => !/mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0);   // con signo (etapa 9, 13/11): lo que le debemos no se tapa con $0
           const sMex = ds.filter((x) => /mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0);   // con signo (etapa 9, 13/11): lo que le debemos no se tapa con $0
           const txt = `🛍️ <b>La perfumería pagó ${money(Math.round(pagado))}</b> (${String(fecha).split('-').reverse().join('/')})\nQueda: MercadoPago ${_mPerf(sMPx)} · Mercadería ${_mPerf(sMex)}\n<b>${sMPx + sMex < 0 ? 'A favor de la perfumería' : 'Total que debe'}: ${money(Math.abs(Math.round(sMPx + sMex)))}</b>`;
-          const ok = await sendTelegram(txt, 'resumen');
-          console.log(ok ? '  ✓ aviso del pago mandado al grupo de los socios' : '  ⚠️ el aviso del pago NO salió por Telegram');
+          // 17/11: también a la cola, sale junto con los demás movimientos del rato (ver `avisoMov`)
+          const iQ = txt.indexOf('\nQueda:'); await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head: iQ > 0 ? txt.slice(0, iQ) : txt, nom: 'Perfumería', queda: '', perf: iQ > 0 ? txt.slice(iQ + 1) : '', ts: Date.now() });
+          console.log('  ✓ aviso del pago en la cola: sale junto con los demás movimientos del rato');
         } catch (e) { console.log('  ⚠️ el aviso del pago NO salió: ' + String(e.message || e).slice(0, 90)); }
       };
       // 📨 CADA MOVIMIENTO AL TELEGRAM (09/11/2026, él: "cuando vendemos algo a la perfumería o cualquier movimiento de pago, venta, cancelación,

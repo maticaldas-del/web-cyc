@@ -1290,6 +1290,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .vp-cel [id^="vpdet-"] div{flex-wrap:wrap}
   .vp-cel [id^="vpdet-"] button,.vp-cel [id^="vpdet-"] .btn{white-space:normal!important;text-align:left}
   .vp-cel span{white-space:normal!important}
+  .vp-cel [id^="vpdet-"] .vp-ngan,.vp-cel [id^="vpdet-"] .vp-ngan *{white-space:nowrap!important}
 }
 .lst-sum::-webkit-details-marker{display:none}
 .ll-wrap{background:var(--surface);border:2px solid var(--green);border-radius:var(--r);padding:12px;margin-bottom:12px}
@@ -16782,6 +16783,17 @@ function renderVentaProd(){
       const _avisoIco=(rescLabel&&rescLabel.includes('⚠️'))?' <span title="El robot no pudo subirla · mirá el detalle">⚠️</span>':'';
       const _abierto=vpDetOpen.has(grp.gid);
       const _hechoV=isCancelled?'':(()=>{try{return ventaHechoHTML(grp);}catch(e){return '';}})();   // etapa 6 (G2): 🎉 ⚡ 🔁 🏁
+      // ── LA GANANCIA DE CADA PRODUCTO DEL CARRITO (17/11/2026, él: "quiero que me muestre cada producto la ganancia y % también
+      // en ventas, porque si no no sé exacto cuánto le ganamos a cada variante/producto"). Son las MISMAS piezas con que se arma la
+      // ganancia de la venta entera (neto − efectivoCostoVP de cada renglón; el % con pctGananciaVP y el envío de Full de ESE
+      // renglón), así que la suma de los renglones da la ganancia de arriba. Los pesos se redondean y el último renglón absorbe la
+      // diferencia de redondeo (a lo sumo $1-2) para que la suma cierre exacta. Sin costo cargado no hay % que mostrar: "sin costo".
+      const _ganItem=(()=>{if(isCancelled||grp.items.length<2)return [];
+        const gs=grp.items.map(v=>(v.neto||0)-efectivoCostoVP(v)),r=gs.map(x=>Math.round(x));
+        {let j=r.length-1;while(j>0&&ventaSinCostoVP(grp.items[j]))j--;r[j]+=Math.round(gg)-r.reduce((a,b)=>a+b,0);}
+        return grp.items.map((v,i)=>{if(ventaSinCostoVP(v))return ` <span class="vp-ngan" style="color:var(--muted);white-space:nowrap">· sin costo</span>`;
+          const q=pctGananciaVP(gs[i],efectivoCostoVP(v),gestDivVP(v)),es=ventaEstimadaVP(v)?'≈ ':'';
+          return ` <span class="vp-ngan" style="white-space:nowrap">· <span style="color:${r[i]>=0?'var(--green)':'var(--red)'}">${es}gan. ${fmt(r[i])}</span>${q!=null&&isFinite(q)?` <span style="color:${pctColor(q)}">${q>=0?'+':''}${q.toFixed(0)}%</span>`:''}</span>`;});})();
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
       const _det=`<div id="vpdet-${grp.gid}" style="display:${_abierto?'block':'none'};font-size:.7rem;background:var(--surface2);border-radius:8px;padding:8px 10px;margin-top:2px">
           ${_dl('N° de venta',`<span style="font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`)}
@@ -16790,7 +16802,7 @@ function renderVentaProd(){
           ${(!isCancelled&&gc>0)?_dl('Costo',gOfi>0?fmt(gOfi)+(ggest>0?` <span style="color:var(--muted)">+ envío Full ${fmt(ggest)}</span>`:''):fmt(gc)):''}
           ${(!isCancelled&&gc>0)?_dl('Ganancia',`<span style="color:${gg>=0?'var(--green)':'var(--red)'}">${fmt(gg)}</span>${gpct!==null?` · <span style="color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}% ${pctLabel(gpct)}</span>`:''}`):''}
           ${_est?`<div style="padding:4px 0;color:var(--muted)">≈ Mercado Pago todavía no liquidó esta venta: el neto es estimado y se corrige solo.</div>`:''}
-          ${grp.items.length>1?grp.items.map(v=>_dl(`${v.qty}× ${nombreDeVenta(v)}${v.variante?' '+v.variante:''}`,`${(v.total||0)>0?fmt(v.total)+' · ':''}neto ${fmt(v.neto||0)}`)).join(''):''}
+          ${grp.items.length>1?grp.items.map((v,i)=>_dl(`${v.qty}× ${nombreDeVenta(v)}${v.variante?' '+v.variante:''}`,`${(v.total||0)>0?fmt(v.total)+' · ':''}neto ${fmt(v.neto||0)}${_ganItem[i]||''}`)).join(''):''}
           ${_hayCambio?`<div style="padding:5px 0;border-bottom:1px dashed var(--border);line-height:1.5">${_cambios.filter(x=>x).join('<br>')}</div>`:''}
           ${(entLabel||rescLabel||promoLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${promoLabel}${entLabel}${rescLabel}</div>`:''}
           ${isCancelled?reclamoMotivoHTML(grp):''}
