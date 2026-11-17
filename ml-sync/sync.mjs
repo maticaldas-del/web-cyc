@@ -28638,6 +28638,12 @@ async function main() {
         const m35 = fr.filter(([, c]) => Number(c.margen) >= CAND_VARA_COMPRA), cat = m35.filter(([, c]) => !candPorQueNoBot(c, '', tcL, mNoL)), vo = cat.filter(([, c]) => vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res));
         { const R = {}; for (const [, c] of m35) { const r = String(candPorQueNoBot(c, '', tcL, mNoL) || '').slice(0, 45); if (r) R[r] = (R[r] || 0) + 1; } { const sc = m35.filter(([, c]) => /nadie confirm/.test(String(candPorQueNoBot(c, '', tcL, mNoL) || ''))); if (sc.length) console.log('🔍 catálogo sin confirmar (' + sc.length + '): ' + sc.map(([id, c]) => id + '=' + String(c.nombre).slice(0, 45)).join(' | ')); }
         console.log('📊 por qué no pasan las reglas: ' + Object.entries(R).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([r, n]) => n + ' ' + r).join(' · ')); }
+        { // 17/11 (él: "estoy viendo que hay productos… ¿por qué no entran?"): los de más ⭐ con 35%+ que NO están en el pool, con el motivo exacto
+          const enPool = new Set(pool.map(([id]) => id)); const no = [];
+          for (const [id, c] of m35) { if (enPool.has(id)) continue; const r = candPorQueNoBot(c, '', tcL, mNoL);
+            const mot = r ? String(r).slice(0, 90) : !vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res) ? `vendedores ${c.mlVendedores ?? '?'} · vendidas ${candVentasDe(c) ?? '?'} · reseñas ${c.res ?? c.resCarga ?? '?'} (no llega a 100 vendidas ni 5 reseñas cargadas)` : !(star(c) > 0) ? 'sin ventas ni reseñas conocidas' : '?';
+            no.push([star(c) || Number(c.margen) || 0, `${String(c.nombre).slice(0, 55)} [${c.cod || id}] ${Math.round(Number(c.margen) || 0)}% → ${mot}`]); }
+          no.sort((a, b) => b[0] - a[0]); if (no.length) { console.log(`🔎 con 35%+ que no entran (${no.length}), los primeros:`); for (const [, t] of no.slice(0, 30)) console.log('   · ' + t); } }
         console.log(`📊 Nissei de este grupo: ${E.length} sin pedir · ${fr.length} vistos en 48 h · ${m35.length} con 35%+ guardado · ${cat.length} que pasan las reglas · ${vo.length} con 2+ vendedores (o 1 con 100+ ventas) · ${pool.length} con ventas o reseñas conocidas`); }
       const agregados = [], nuevosNo = []; let medidos = 0;
       for (const [id, c] of pool) {
