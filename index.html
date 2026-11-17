@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.228';
+const APP_VERSION='28.229';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.229',f:'17/11',h:'13:45',c:[{n:2,t:'🇵🇾 Paraguay: cada pedido lleva también la foto del comprobante de pago (💳 en el detalle, para subirla y verla). A los pedidos desde el 13/11 que no la tienen les sale en rojo "falta comprobante de pago" (no frena marcar que llegó).'}]},
   {v:'28.228',f:'17/11',h:'13:40',c:[{n:1,t:'🇵🇾 Paraguay: lo que el ticket dice que no había (no se cobró) ya no sale en rojo como reclamo, aunque se haya anotado como faltante al llegar.'}]},
   {v:'28.227',f:'17/11',h:'05:00',c:[{n:1,t:'Revisión de Plata en el cartel, con sus 8 decisiones.'}]},
   {v:'28.226',f:'17/11',h:'04:50',c:[{n:2,t:'Ventas: un producto sin costo cargado vuelve a decir "sin costo" aunque tenga el envío de la caja (antes contaba casi todo como ganancia).'}]},
@@ -20364,7 +20365,7 @@ function pyPedidoResumenHTML(c,enCamino,dias,tarde){
   const R=pyRecargoReal(c);
   const rec=R.r?`<span style="color:${(R.r-1)*100>(RECARGO_PY-1)*100+0.05?'var(--amber)':'var(--green)'}">+${((R.r-1)*100).toFixed(1).replace('.',',')}%</span> recargo`:`<span title="Faltan gastos: ${R.falta.join(', ').replace(/"/g,'&quot;')}">+${Math.round((RECARGO_PY-1)*100)}% estimado</span>`;
   const tk=c.ticket?(()=>{const w=Number(c.ticket.usdWeb)||0,d=w-(Number(c.ticket.usdPagado)||0);return d>0.004&&w>0?` · ticket −${(d/w*100).toFixed(1).replace('.',',')}%`:'';})():(pyTicketEstado(c).faltaReng?' · <b style="color:var(--red)">falta ticket</b>':'');
-  const tkF=pyTicketEstado(c).faltaFoto?' · <b style="color:var(--red)">falta foto del ticket</b>':'';
+  const tkF=(pyTicketEstado(c).faltaFoto?' · <b style="color:var(--red)">falta foto del ticket</b>':'')+(pyPagoEstado(c).falta?' · <b style="color:var(--red)">falta comprobante de pago</b>':'');
   const usd=(Math.round(pyBaseUSD(c)*(R.r||RECARGO_PY)*100)/100).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   return `<div style="min-width:0">
       <div style="font-size:.95rem;font-weight:800;color:var(--text)">${pedNumTag(c,'margin-right:6px')}${dm(c.fecha)}</div>
@@ -20393,16 +20394,27 @@ function pyTicketEstado(c){
   const faltaReng=!reng&&(c&&c.estado==='camino'||exige),faltaFoto=exige&&!foto;
   return{reng,foto,exige,faltaReng,faltaFoto,falta:faltaReng||faltaFoto};
 }
+// 💳 EL COMPROBANTE DE PAGO DE CADA PEDIDO DE PARAGUAY (17/11/2026, él, después de un ticket de US$ 477,45 cargado con otro monto: "por eso
+// un nuevo requisito. cargá también para que podamos ver el comprobante de transferencia"). Igual que la foto del ticket: se sube desde el
+// detalle del pedido (💳) o la subo yo cerrada (`ticketsube` con `pago*.enc`) y queda en `mlapi/pypagofoto/<id>/<ts>`; en
+// `cyc/compraspy/<id>/pagoFoto` sólo va cuántas hay. Se pide a los pedidos desde PY_PAGO_FOTO_DESDE: sale en rojo, pero NO frena "Llegó".
+const PY_PAGO_FOTO_DESDE='2026-11-13';
+function pyPagoEstado(c){
+  const n=parseInt(c&&c.pagoFoto)||0,exige=String(c&&c.fecha||'')>=PY_PAGO_FOTO_DESDE;
+  return{n,exige,falta:exige&&!n};
+}
 function pyTicketsFaltanHTML(lista){
-  const f=(lista||[]).filter(c=>pyTicketEstado(c).falta);if(!f.length)return '';
+  const f=(lista||[]).filter(c=>pyTicketEstado(c).falta||pyPagoEstado(c).falta);if(!f.length)return '';
   const dm=x=>{const m=String(x||'').match(/^\d{4}-(\d{2})-(\d{2})/);return m?m[2]+'/'+m[1]:(x||'—');};
+  const soloPago=f.every(c=>!pyTicketEstado(c).falta);
   return `<div style="background:var(--surface);border:1px solid var(--red);border-radius:var(--r);padding:12px 14px;margin-bottom:12px">
-    <div style="font-size:.84rem;font-weight:700;color:var(--red);margin-bottom:6px">❌ Falta el ticket de ${f.length} pedido${f.length>1?'s':''}</div>
-    <div style="font-size:.62rem;color:var(--muted);line-height:1.5;margin-bottom:6px">Sin el ticket no se sabe si algo que no llegó lo cobraron o no. Subí la foto acá (📷) y pasame el ticket por el chat para cargar lo que pagaste renglón por renglón.</div>
-    ${f.map(c=>{const t=pyTicketEstado(c);return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);font-size:.74rem">
+    <div style="font-size:.84rem;font-weight:700;color:var(--red);margin-bottom:6px">❌ Falta ${soloPago?'el comprobante de pago':'el ticket o el comprobante de pago'} de ${f.length} pedido${f.length>1?'s':''}</div>
+    <div style="font-size:.62rem;color:var(--muted);line-height:1.5;margin-bottom:6px">Sin el ticket no se sabe si algo que no llegó lo cobraron o no; sin el comprobante de la transferencia no se puede comparar lo que se pagó con el ticket. Subí las fotos acá (📷 ticket · 💳 comprobante) o pasámelas por el chat.</div>
+    ${f.map(c=>{const t=pyTicketEstado(c),pg=pyPagoEstado(c);return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid var(--border);font-size:.74rem">
       <span style="flex:1;min-width:140px">${pedNumTag(c,'margin-right:6px')}<b>${dm(c.fecha)}</b> <span style="color:var(--muted)">· ${c.estado==='camino'?'en camino':'llegó'}</span></span>
-      <span style="color:var(--red);font-size:.68rem">${[t.faltaFoto?'falta la foto':'',t.faltaReng?'faltan los renglones':''].filter(Boolean).join(' · ')}</span>
+      <span style="color:var(--red);font-size:.68rem">${[t.faltaFoto?'falta la foto':'',t.faltaReng?'faltan los renglones':'',pg.falta?'falta comprobante de pago':''].filter(Boolean).join(' · ')}</span>
       ${t.faltaFoto?`<button type="button" class="btn btn-sm" style="font-size:.64rem;padding:4px 9px" onclick="pyTicketSubir('${c.id}')">📷 Subir foto</button>`:''}
+      ${pg.falta?`<button type="button" class="btn btn-sm" style="font-size:.64rem;padding:4px 9px" onclick="pyPagoSubir('${c.id}')">💳 Subir comprobante</button>`:''}
     </div>`;}).join('')}
   </div>`;
 }
@@ -20443,34 +20455,43 @@ function _pyTicketAchicar(file){
         let q=0.75,u=cv.toDataURL('image/jpeg',q);while(u.length>900000&&q>0.35){q-=0.1;u=cv.toDataURL('image/jpeg',q);}res(u);};
       im.src=fr.result;};fr.readAsDataURL(file);});
 }
-function pyTicketSubir(id){
+// Lo mismo para las dos fotos de un pedido: el ticket (`pyticketfoto` → `ticketFoto`) y el comprobante de pago (`pypagofoto` → `pagoFoto`, 17/11/2026).
+const _PY_FOTO={ticket:{nodo:'mlapi/pyticketfoto/',campo:'ticketFoto',ok:'🧾 Ticket subido',nada:'Este pedido no tiene foto del ticket',leer:'el ticket',alt:'ticket'},
+  pago:{nodo:'mlapi/pypagofoto/',campo:'pagoFoto',ok:'💳 Comprobante de pago subido',nada:'Este pedido no tiene comprobante de pago',leer:'el comprobante',alt:'comprobante de pago'}};
+function _pyFotoSubir(id,tipo){
+  const K=_PY_FOTO[tipo];
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;
   inp.onchange=async()=>{
     const fs=[...(inp.files||[])];if(!fs.length)return;
     if(!db){toast('Sin conexión a la base: no se pudo subir','err');return;}
     let n=0;
     for(const f of fs){try{const img=await _pyTicketAchicar(f);const ts=Date.now()+n;
-      await db.ref('mlapi/pyticketfoto/'+id+'/'+ts).set({img,ts});n++;}catch(e){toast('⚠️ No se subió una foto: '+((e&&(e.message||e.code))||'error'),'err',6000);}}
+      await db.ref(K.nodo+id+'/'+ts).set({img,ts});n++;}catch(e){toast('⚠️ No se subió una foto: '+((e&&(e.message||e.code))||'error'),'err',6000);}}
     if(!n)return;
-    try{const sn=await db.ref('mlapi/pyticketfoto/'+id).once('value');const tot=Object.keys(sn.val()||{}).length;
-      await fbSet('compraspy/'+id+'/ticketFoto',tot);state.compraspy[id]={...(state.compraspy[id]||{}),ticketFoto:tot};}
+    try{const sn=await db.ref(K.nodo+id).once('value');const tot=Object.keys(sn.val()||{}).length;
+      await fbSet('compraspy/'+id+'/'+K.campo,tot);state.compraspy[id]={...(state.compraspy[id]||{}),[K.campo]:tot};}
     catch(e){toast('⚠️ La foto se subió pero no quedó anotada: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
-    toast(`🧾 Ticket subido (${n} foto${n>1?'s':''})`,'ok',3000);
+    toast(`${K.ok} (${n} foto${n>1?'s':''})`,'ok',3000);
     try{renderPedidos();}catch(_){}
   };
   inp.click();
 }
-async function pyTicketVer(id){
+async function _pyFotoVer(id,tipo){
+  const K=_PY_FOTO[tipo];
   if(!db)return;let fotos={};
-  try{fotos=(await db.ref('mlapi/pyticketfoto/'+id).once('value')).val()||{};}catch(e){toast('⚠️ No pude leer el ticket','err');return;}
+  try{fotos=(await db.ref(K.nodo+id).once('value')).val()||{};}catch(e){toast('⚠️ No pude leer '+K.leer,'err');return;}
   const L=Object.values(fotos).filter(x=>x&&/^data:image\//.test(x.img||'')).sort((a,b)=>(a.ts||0)-(b.ts||0));
-  if(!L.length){toast('Este pedido no tiene foto del ticket','err');return;}
+  if(!L.length){toast(K.nada,'err');return;}
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px';
-  ov.innerHTML=`<button type="button" class="btn" style="position:sticky;top:0;align-self:flex-end">✕ Cerrar</button>`+L.map(x=>`<img src="${x.img}" alt="ticket" style="max-width:100%;height:auto;border-radius:8px;background:#fff">`).join('');
+  ov.innerHTML=`<button type="button" class="btn" style="position:sticky;top:0;align-self:flex-end">✕ Cerrar</button>`+L.map(x=>`<img src="${x.img}" alt="${K.alt}" style="max-width:100%;height:auto;border-radius:8px;background:#fff">`).join('');
   ov.addEventListener('click',e=>{if(e.target===ov||e.target.tagName==='BUTTON')ov.remove();});
   document.body.appendChild(ov);
 }
+function pyTicketSubir(id){_pyFotoSubir(id,'ticket');}
+function pyTicketVer(id){return _pyFotoVer(id,'ticket');}
+function pyPagoSubir(id){_pyFotoSubir(id,'pago');}
+function pyPagoVer(id){return _pyFotoVer(id,'pago');}
 // La tarjeta de un pedido, la misma en las dos pantallas: fondo más claro, borde y una barra de color a la izquierda.
 function pyPedidoTarjeta(c,enCamino){
   const _ll=enCamino?pyLlegadaAprox(c):null,tarde=_ll?(Date.now()>_ll.d.getTime()+86400e3):false;
@@ -20501,6 +20522,8 @@ function pyPedidoDetalleHTML(c){
           // así que queda anotado que la vi yo contra los renglones (`pyticketvisto`); la imagen sigue en el chat.
           if(ch&&!(n>(Number(ch.n)||0)))return fila('📷 foto del ticket',`<b style="color:var(--green)">✓ la vio Claude en el chat</b> <span style="color:var(--muted)">(${Number(ch.n)||n} foto${(Number(ch.n)||n)>1?'s':''})</span> <button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">📷 subir igual</button>`,'Me pasaste la foto por el chat y la comparé renglón por renglón con lo cargado. La imagen no se guarda acá porque tendría que pasar por un lugar público.');
           return fila('📷 foto del ticket',`${n?`<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketVer('${c.id}')">ver${n>1?' ('+n+')':''}</button> `:`<b style="color:${t.faltaFoto?'var(--red)':'var(--muted)'}">${t.faltaFoto?'falta':'no hay'}</b> `}<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyTicketSubir('${c.id}')">${n?'+ otra':'subir'}</button>`,'La foto del ticket del mayorista. Si algo no llega, con la foto se ve si lo cobraron. Es obligatoria para cerrar el pedido (los ya llegados antes del '+PY_TICKET_FOTO_DESDE.split('-').reverse().join('/')+' no la piden).');})()}
+        ${(()=>{const pg=pyPagoEstado(c),n=pg.n;
+          return fila('💳 comprobante de pago',`${n?`<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyPagoVer('${c.id}')">ver${n>1?' ('+n+')':''}</button> `:`<b style="color:${pg.falta?'var(--red)':'var(--muted)'}">${pg.falta?'falta':'no hay'}</b> `}<button type="button" class="vbtn" style="font-size:.62rem;padding:1px 7px" onclick="pyPagoSubir('${c.id}')">${n?'+ otro':'subir'}</button>`,'La captura de la transferencia (o del envío de USDT por Binance) con la que se pagó el pedido: para comparar lo pagado con el ticket. Se pide a los pedidos desde el '+PY_PAGO_FOTO_DESDE.split('-').reverse().join('/')+'; no frena marcar que llegó.');})()}
         ${fila('mercadería cruda',fmtUS2(pyBaseUSD(c)),'El precio de comprasparaguay, sin el recargo.')}
         ${fila('con el '+(pyRecargoReal(c).r?((pyRecargoReal(c).r-1)*100).toFixed(1).replace('.',',')+'% real':Math.round((RECARGO_PY-1)*100)+'% estimado'),fmtUS2(puesto),'Incluye comprar los dólares, el correo y el que despacha. Con todos los gastos cargados es el recargo REAL de este pedido; si no, el estimado.')}
         ${tc?fila('en pesos',fmt(Math.round(puesto*tc))+' <span style="color:var(--muted);font-size:.9em">· dólar '+fmt(Math.round(tc))+'</span>','Con el dólar del DÍA del pedido, no el de hoy: lo que compraste a un precio no cambia solo.'):fila('en pesos','<span style="color:var(--amber)">no había dólar cargado ese día</span>')}

@@ -58632,7 +58632,8 @@ async function main() {
     // pública (AES-256-GCM con una clave al azar, y esa clave con RSA-OAEP), la dejo en `ml-sync/cifrado/<pedido>/*.enc` y el robot la
     // abre y la sube igual que el 📷 de la web (`mlapi/pyticketfoto/<id>/<ts>` = {img,ts}) y anota cuántas hay (`ticketFoto`).
     //   ticketllave[;go]        → muestra la llave pública (con ;go la crea si no hay)
-    //   ticketsube:<id>[;go]    → abre las fotos cerradas del pedido y las sube (sin ;go sólo dice cuántas y de qué tamaño)
+    //   ticketsube:<id>[;go]    → abre las fotos cerradas del pedido y las sube (sin ;go sólo dice cuántas y de qué tamaño);
+    //                             `pago*.enc` = el comprobante de pago (17/11) → `mlapi/pypagofoto/<id>/<ts>` + `pagoFoto`
     // Nunca imprime la foto ni su contenido: sólo tamaño y si ya estaba (misma huella = no se sube dos veces).
     if (/^ticketllave(;go)?$/.test(String(process.env.BILLING_PROBE || '').trim())) {
       const GOk = /;go$/.test(String(process.env.BILLING_PROBE).trim()) && !DRY;
@@ -58653,33 +58654,44 @@ async function main() {
       if (!c) { console.log(`No hay pedido ${id} en cyc/compraspy.`); return; }
       const dir = new URL('./cifrado/' + id + '/', import.meta.url);
       if (!existsSync(dir)) { console.log(`No hay fotos cerradas para ${id} (ml-sync/cifrado/${id}/).`); return; }
-      const archs = readdirSync(dir).filter((f) => /\.enc$/.test(f)).sort();
+      // 💳 17/11/2026 (él: "cargá también para que podamos ver el comprobante de transferencia"): los `pago*.enc` son el COMPROBANTE
+      // DE PAGO (transferencia / Binance) y van aparte: `mlapi/pypagofoto/<id>/<ts>` y `cyc/compraspy/<id>/pagoFoto` = cuántas.
+      // Todo lo demás (`ticket*.enc` y cualquier otro nombre) sigue siendo la foto del ticket, igual que antes.
+      const todos = readdirSync(dir).filter((f) => /\.enc$/.test(f)).sort();
+      const grupos = [
+        { nom: '📷 ticket', nodo: 'mlapi/pyticketfoto/', campo: 'ticketFoto', archs: todos.filter((f) => !/^pago/i.test(f)) },
+        { nom: '💳 comprobante de pago', nodo: 'mlapi/pypagofoto/', campo: 'pagoFoto', archs: todos.filter((f) => /^pago/i.test(f)) },
+      ];
       const ll = await db.get('mlapi/ticketllave');
       if (!ll || !ll.priv) { console.log('No hay llave: primero ticketllave;go.'); return; }
-      const ya = (await db.get('mlapi/pyticketfoto/' + id)) || {};
-      const huellas = new Set(Object.values(ya).map((x) => x && (x.h || (x.img ? createHash('sha256').update(String(x.img)).digest('hex') : ''))));
-      console.log(`=== 📷 ${id} · ${c.fecha} · ${c.estado} · en la base: ${Object.keys(ya).length} foto/s · cerradas en el repo: ${archs.length}${GOs ? '' : ' · (PRUEBA, agregá ;go)'} ===`);
-      let n = 0, ts0 = Date.now();
-      for (const f of archs) {
-        let img;
-        try {
-          const e = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
-          const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
-          const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
-          img = Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8');
-        } catch (err) { console.log(`  ✗ ${f}: no se pudo abrir (${err.message})`); continue; }
-        if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 1000000) { console.log(`  ✗ ${f}: no es una foto o pesa de más (${Math.round(img.length / 1024)} KB)`); continue; }
-        const h = createHash('sha256').update(img).digest('hex');
-        if (huellas.has(h)) { console.log(`  = ${f}: ya estaba en la base`); continue; }
-        console.log(`  + ${f}: foto de ${Math.round(img.length / 1024)} KB`);
+      let ts0 = Date.now(), nTot = 0;
+      for (const g of grupos) {
+        if (!g.archs.length) continue;
+        const ya = (await db.get(g.nodo + id)) || {};
+        const huellas = new Set(Object.values(ya).map((x) => x && (x.h || (x.img ? createHash('sha256').update(String(x.img)).digest('hex') : ''))));
+        console.log(`=== ${g.nom} · ${id} · ${c.fecha} · ${c.estado} · en la base: ${Object.keys(ya).length} foto/s · cerradas en el repo: ${g.archs.length}${GOs ? '' : ' · (PRUEBA, agregá ;go)'} ===`);
+        let n = 0;
+        for (const f of g.archs) {
+          let img;
+          try {
+            const e = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+            const k = privateDecrypt({ key: ll.priv, padding: cryptoK.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(e.k, 'base64'));
+            const d = createDecipheriv('aes-256-gcm', k, Buffer.from(e.iv, 'base64')); d.setAuthTag(Buffer.from(e.tag, 'base64'));
+            img = Buffer.concat([d.update(Buffer.from(e.d, 'base64')), d.final()]).toString('utf8');
+          } catch (err) { console.log(`  ✗ ${f}: no se pudo abrir (${err.message})`); continue; }
+          if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 1000000) { console.log(`  ✗ ${f}: no es una foto o pesa de más (${Math.round(img.length / 1024)} KB)`); continue; }
+          const h = createHash('sha256').update(img).digest('hex');
+          if (huellas.has(h)) { console.log(`  = ${f}: ya estaba en la base`); continue; }
+          console.log(`  + ${f}: foto de ${Math.round(img.length / 1024)} KB`);
+          if (!GOs) continue;
+          const ts = ts0 + nTot; await db.set(`${g.nodo}${id}/${ts}`, { img, ts, h, por: 'claude' }); huellas.add(h); n++; nTot++;
+        }
         if (!GOs) continue;
-        const ts = ts0 + n; await db.set(`mlapi/pyticketfoto/${id}/${ts}`, { img, ts, h, por: 'claude' }); huellas.add(h); n++;
+        const tot = Object.keys((await db.get(g.nodo + id)) || {}).length;
+        if (tot > 0) await db.patch('cyc/compraspy/' + id, { [g.campo]: tot });
+        const r = await db.get('cyc/compraspy/' + id);
+        console.log(`✓ ${n} subida/s · en la base hay ${tot} · el pedido dice ${r && r[g.campo]} foto/s. Ya se ven en el detalle (${g.nom}).`);
       }
-      if (!GOs) return;
-      const tot = Object.keys((await db.get('mlapi/pyticketfoto/' + id)) || {}).length;
-      if (tot > 0) await db.patch('cyc/compraspy/' + id, { ticketFoto: tot });
-      const r = await db.get('cyc/compraspy/' + id);
-      console.log(`✓ ${n} subida/s · en la base hay ${tot} · el pedido dice ${r && r.ticketFoto} foto/s. Ya se ven en el detalle (📷).`);
       return;
     }
     if (/^pydet:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -59666,8 +59678,9 @@ async function main() {
         // Revisión etapa 4 (09/11/2026): lo que la web pudo escribir mientras corría (la 📷 del ticket, el ✅ llegó bien, el reclamo) no se pisa
         // con lo leído al principio: se relee y esos campos quedan como están ahora.
         { let ahoraP = null; try { ahoraP = await db.get('cyc/compraspy/' + id); } catch { ahoraP = null; }
-          if (ahoraP) for (const k of ['ticketFoto', 'llegoOk', 'reclamo', 'pagado', 'fechaLlego']) if (ahoraP[k] != null && rec[k] == null) rec[k] = ahoraP[k];
-          if (ahoraP && Number(ahoraP.ticketFoto) > Number(rec.ticketFoto || 0)) rec.ticketFoto = ahoraP.ticketFoto; }
+          if (ahoraP) for (const k of ['ticketFoto', 'pagoFoto', 'llegoOk', 'reclamo', 'pagado', 'fechaLlego']) if (ahoraP[k] != null && rec[k] == null) rec[k] = ahoraP[k];
+          if (ahoraP && Number(ahoraP.ticketFoto) > Number(rec.ticketFoto || 0)) rec.ticketFoto = ahoraP.ticketFoto;
+          if (ahoraP && Number(ahoraP.pagoFoto) > Number(rec.pagoFoto || 0)) rec.pagoFoto = ahoraP.pagoFoto; }
         await db.set('cyc/compraspy/' + id, rec);
         const rel = await db.get('cyc/compraspy/' + id);
         console.log(rel && rel.usdCrudo === usd ? `\n✓ Guardado y releído: cyc/compraspy/${id}` : `\n⚠️ Se escribió pero al releer no coincide. Mirar a mano.`);
