@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.226';
+const APP_VERSION='28.227';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.227',f:'17/11',h:'05:00',c:[{n:1,t:'Revisión de Plata en el cartel, con sus 8 decisiones.'}]},
   {v:'28.226',f:'17/11',h:'04:50',c:[{n:2,t:'Ventas: un producto sin costo cargado vuelve a decir "sin costo" aunque tenga el envío de la caja (antes contaba casi todo como ganancia).'}]},
   {v:'28.225',f:'17/11',h:'23:51',c:[{n:2,t:'🛒 Ventas: al abrir una venta con varios productos, cada uno muestra ahora su ganancia y su % (verde, amarillo o rojo como la venta entera), así sabés cuánto le ganaste a cada aroma o color. La suma de todos da la ganancia de la venta. Si alguno no tiene costo cargado dice "sin costo".'}]},
   {v:'28.224',f:'17/11',h:'23:35',c:[{n:2,t:'🏷️ Inicio → Ventas de hoy y el cuadro Ventas ahora se mueven junto con Ventas x Producto: si habías tocado la casilla del dólar, Inicio se quedaba quieto creyendo que estabas escribiendo; ya no.'}]},
@@ -6182,6 +6183,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:2,t:'17/11 · 8 decisiones de Plata',que:'mes en que CYC achica · de=ninguna en mes cerrado · avisar Binance/efectivo viejos al cerrar · % de cada producto del carrito · envío de la caja en días pasados · Paulvic sin aroma en un comando · avisar correcciones de deudas · ✅ Pagó y MercadoPago',pedi:'resolvamos'},
   {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
   {etapa:9,t:'13/11 · 10 decisiones del Local',que:'ABEL y la Tienda publicadas viejas (falta el permiso) · avisos de lo tocado en la web · movimiento repetido · saldo de Binance · lo que va a la perfumería · costo de la Tienda · nombres en el registro · devolución de la Tienda · cargado tarde · precios del proveedor en el registro',pedi:'resolvamos'},
@@ -6215,7 +6217,7 @@ const REV_HIST={
      {f:'2026-10-20',t:'4 revisores en máximo (escritura en ML, cuentas del margen, listas y techo, web): ~40 arreglos (v25.60: peor caso en descuentos, 🏔️ sólo de techo95, precios exactos $32.999, plata neta en rayas, envío del lado de la barrera). Quedan 6 decisiones suyas.'},
      {f:'2026-10-24',t:'4 revisores en máximo (frenos y escritura, gemelas y publicar, techo y listas, web y vara de compra): ~45 arreglos (v26.41: frenos que no se apagan si la base no contesta, gemelas sin datos en $0 ni 🔒, publicar sin doble retención y con la barrera, rayas con toda la línea, máximo de compra sin la gemela, vara de 35% en las listas de Bs As). Quedan 11 decisiones suyas (36-46).'},
      {f:'2026-11-03',t:'4 revisores en máximo (punto medio, bajas, subas y gemelas, detector): ~11 arreglos (la vuelta ya no saltea 🔒, la 2ª suba ya no se confirma con 1 venta, el detector propone lo que decido acepta, no se vuelve a pedir un precio que falló); 11 decisiones para él.'}],
-  2:[{f:'2026-11-05',t:'4 revisores en máximo (cobro y cierre, ganancia y costos, deudas y proveedores, ARCA/MP/gastos/privacidad): ~35 hallazgos, 21 arreglados (cerrar el mes pasado después del día 5, Tienda a la Oficina ML, montos con punto decimal, cuotas por comando, saldos de MP en el registro); 16 decisiones a para_mati.'},{f:'2026-10-27',t:'4 revisores en máximo (Arqueo, Mercado Pago, gastos y cobro, dólar y tope de H): ~40 hallazgos, ~25 arreglados; 6 decisiones a para_mati.'},{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
+  2:[{f:'2026-11-17',t:'4 revisores en máximo: ventas sin costo ya no cuentan como ganancia, peajes del extracto (último día, día incompleto, sin repetir, La Pausa), mes cerrado por la fecha del cierre, capital/licua sin saldos de MP, binancesuma sin repetir; 8 decisiones a para_mati.'},{f:'2026-11-05',t:'4 revisores en máximo (cobro y cierre, ganancia y costos, deudas y proveedores, ARCA/MP/gastos/privacidad): ~35 hallazgos, 21 arreglados (cerrar el mes pasado después del día 5, Tienda a la Oficina ML, montos con punto decimal, cuotas por comando, saldos de MP en el registro); 16 decisiones a para_mati.'},{f:'2026-10-27',t:'4 revisores en máximo (Arqueo, Mercado Pago, gastos y cobro, dólar y tope de H): ~40 hallazgos, ~25 arreglados; 6 decisiones a para_mati.'},{f:'2026-09-28',t:'4 revisores (Arqueo, Mercado Pago, gastos, monedas): 17 reales, las obvias arregladas.'},
      {f:'2026-09-29',t:'Cerrada: lo vendido después del reporte de MP suma al patrimonio (A1) y el Telegram usa la misma cuenta que la web (D4).'},
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},

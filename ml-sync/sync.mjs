@@ -41497,6 +41497,12 @@ async function main() {
       const tot = ['tito'].reduce((t, c) => t + (c === cta ? nuevo : (Number(fin['bn_' + c]) || 0)), 0);
       console.log(`🪙 Binance ${cta}: + $${pesos.toLocaleString('es-AR')} = + US$ ${suma.toFixed(2)} (dólar del panel $${tc}) · el saldo no se imprime ${GOs ? '(GUARDO)' : '(prueba: agregá ;go)'}`);
       if (!GOs) return;
+      // Revisión etapa 2 (17/11): el mismo texto dos veces en 10 min no suma dos veces (como `debenmov`, 24a; si es OTRO igual: "otra" en la nota).
+      if (!/\botra\b/i.test(rawS)) { const hB = 'bs_' + createHash('sha256').update(rawS.toLowerCase().replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 24);
+        let ultB = null; try { ultB = (await db.get('cyc/debenmovult')) || {}; } catch { ultB = null; }
+        if (ultB === null) { console.log('❌ no pude leer cyc/debenmovult (para no sumar dos veces): no sumo nada'); return; }
+        if (Number(ultB[hB]) && Date.now() - Number(ultB[hB]) < 10 * 60e3) { console.log('❌ este mismo movimiento ya se sumó hace menos de 10 min: no lo sumo dos veces (si es OTRO igual, poné "otra" en la nota)'); return; }
+        await db.patch('cyc/debenmovult', { [hB]: Date.now() }); }
       await db.patch('cyc/finanzas', { ['bn_' + cta]: nuevo, binance: tot }); await db.patch('cyc/finanzas/_ts', { binance: Date.now() });
       const r = (await db.get('cyc/finanzas')) || {}; console.log(Number(r['bn_' + cta]) === nuevo ? '✓ releído de la base' : '✗ no quedó');
       return;
