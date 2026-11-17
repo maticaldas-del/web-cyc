@@ -798,7 +798,7 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 - **Para que sepas:** Pendrive 32 hace hoy el escalón a 21.390 en la vuelta de las 9:52 (antes lo frena el plazo de 48 horas). Cabotine 30: el 17/11 desde las 05:00 conviene pasarlo a la promo de ML "Potencia tus ventas" a 72.643 (ML pone 4,1 por ciento y nos queda como 76.287, más que con el descuento de hoy).
 
 ## 16/11 · Noche
-1. **Balanzas en las perfumerías:** ¿la que se vendió al precio anterior estaba en Soares o en Ceballos? (también en Inicio como tarjeta)
+1. **Balanzas en las perfumerías:** RESUELTA el 17/11 (era de Soares: 1 a $4.433, 6 de Soares y 3 de Ceballos a $5.000)
 
 - 💵 16/11: compró 103,14 USDT a 1.706,44 con los $176.000 de la perfumería. Ese es el dólar del próximo pedido de Paraguay pagado con esos USDT (regla del 15/11).
 
