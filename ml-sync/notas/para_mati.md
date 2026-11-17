@@ -819,3 +819,6 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 7. **Correcciones de una deuda (precio, inicial) no avisan al grupo** y el próximo "queda" salta sin explicación. (a) sugerida: avisarlas también · (b) como hoy.
 8. **El ✅ Pagó de la web en un producto de Mercadería** paga Mercadería aunque MercadoPago deba. (a) que cubra primero MercadoPago, como el robot · (b) como hoy (apretarlo quiere decir que el pago es de mercadería).
 (Revisá vos en Ver deudas → PERFUMERÍA · MercadoPago si del 13 al 15/11 algún día tiene "peajes" dos veces: uno a mano y otro "del extracto, solo". Si es así, uno sobra y lo saco.)
+
+## 17/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1-4 = las 30-33 de la completa · 5-12 = Revisión de Plata 1-8 · 13 = Telegram privado (sólo lo que llega hoy con código, frenos de ML y denuncias)

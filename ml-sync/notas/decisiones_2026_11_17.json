@@ -1,0 +1,158 @@
+[
+ {
+  "n": 1,
+  "grupo": "precio",
+  "tit": "🧴 Doree Oxidante Hierbas Vol 20 (Luciana): ¿cuánto costó de verdad?",
+  "txt": "Está a $3.990 como lanzamiento desde el 12/11. La ficha dice costo $1.077 y la lista de Dai Nippon decía $703. Con $1.077 deja ~$620 por unidad (lo barato pide $1.000); para llegar a $1.000 hay que ir a ~$4.790, 37% arriba de los otros con Full ($3.500).",
+  "a": {
+   "t": "Confirmás el costo y, si es $1.077, lo subo a $4.790"
+  },
+  "b": {
+   "t": "Dejarlo a $3.990"
+  }
+ },
+ {
+  "n": 2,
+  "grupo": "precio",
+  "tit": "🦶 Metatarso (Ayelen) a $19.690, el precio que elegiste el 02/11",
+  "txt": "13 días sin vender con ~6 visitas por día (1 venta en 16 días: ~$590 por día contra ~$840 por día a $5.790). Por la regla de 10 días sin vender ya es techo; techo95 todavía no da número.",
+  "a": {
+   "t": "Volver a $13.090 (ahí vendió 1, sin llegar a medirse) y seguir buscando desde ahí"
+  },
+  "b": {
+   "t": "Dejarlo a $19.690"
+  }
+ },
+ {
+  "n": 3,
+  "grupo": "precio",
+  "tit": "📏 Centímetro Rosa (Luciana, 79 en Full) a $5.190",
+  "txt": "En los 10 días de prueba vendió 2 (~$350 por día) con 9 visitas por día y ganando la caja. A $17.490 dejaba ~$2.100 por día. Bajar no trajo las ventas de octubre, igual que en los Blancos (que esperan tus códigos 6YRC y XR3R).",
+  "a": {
+   "t": "Subirlo a $10.190, el medio (ahí vendió 2 en su único día), y los Blancos con el mismo criterio"
+  },
+  "b": {
+   "t": "Dejarlo a $5.190"
+  }
+ },
+ {
+  "n": 4,
+  "grupo": "precio",
+  "tit": "🔌 Switch TP-Link (Ayelen) con descuento a $177.990 hasta el 24/11",
+  "txt": "ML ofrece su promo 'Potencia tus ventas': el comprador lo ve a $172.650 (gana la caja; ML la pide a $174.312) y a nosotros nos queda como $179.622, más que hoy (34,5% del peor caso contra 33-34%). Techo al 95%: 25 días sin vender a $177.990 o más.",
+  "a": {
+   "t": "Cambiar el descuento por esa promo"
+  },
+  "b": {
+   "t": "Seguir con el descuento hasta el 24/11"
+  }
+ },
+ {
+  "n": 5,
+  "grupo": "plata",
+  "tit": "💸 Un mes en que CYC achica",
+  "txt": "Hoy se cobra 0 y la pérdida no se descuenta después. Ejemplo: noviembre −$1.360.000 (se cobra 0) y diciembre +$6.000.000 ($2.000.000 c/u); los dos juntos darían $1.500.000 c/u.",
+  "a": {
+   "t": "Pasar lo negativo al cobro del mes siguiente"
+  },
+  "b": {
+   "t": "Dejarlo así (la pérdida la pone CYC)"
+  }
+ },
+ {
+  "n": 6,
+  "grupo": "plata",
+  "tit": "💸 Algo dejado sin ganancia propia (Tienda de Paraguay, Paulvic TODOS) cargado después de cerrar su mes",
+  "txt": "Hoy va el monto entero a 'lo viejo cargado tarde', no la ganancia. Ejemplo: 6 Paulvic, se corrige $82.500 cuando lo que cambió fue $16.500 (diciembre cobraría $22.000 menos c/u).",
+  "a": {
+   "t": "Corregir sólo la ganancia (el monto entero sólo si no tiene costo)"
+  },
+  "b": {
+   "t": "Dejarlo así"
+  }
+ },
+ {
+  "n": 7,
+  "grupo": "plata",
+  "tit": "💸 Cerrar el mes con Binance o el efectivo sin actualizar",
+  "txt": "Ejemplo: USDT que se usaron para pagar Paraguay y siguen sumando en Binance el día del cierre.",
+  "a": {
+   "t": "Que 'Cerrar el mes' avise si se cargaron hace más de 2 días"
+  },
+  "b": {
+   "t": "Nada"
+  }
+ },
+ {
+  "n": 8,
+  "grupo": "plata",
+  "tit": "🧾 El % de cada producto dentro de un carrito (lo nuevo de hoy)",
+  "txt": "Sale con la comisión fija repartida: 4 mazos de $4.290 dicen +60% cuando un mazo solo deja 16%.",
+  "a": {
+   "t": "Cada renglón con su % vendido solo y el ahorro del carrito en un renglón aparte"
+  },
+  "b": {
+   "t": "Dejarlo así"
+  }
+ },
+ {
+  "n": 9,
+  "grupo": "plata",
+  "tit": "📦 El envío real de la caja cambia la ganancia de días pasados",
+  "txt": "Pasa también de mayo a septiembre (cerrados pero no congelados).",
+  "a": {
+   "t": "Congelar mayo a septiembre como octubre y que cada venta use el envío del día en que se vendió"
+  },
+  "b": {
+   "t": "Dejarlo así"
+  }
+ },
+ {
+  "n": 10,
+  "grupo": "plata",
+  "tit": "🌸 Paulvic a la perfumería sin aroma",
+  "txt": "Hoy son dos pasos (la deuda y restar el aroma de la oficina); si se olvida el segundo queda en los dos lados.",
+  "a": {
+   "t": "Uno solo: dice 'Paulvic TODOS' en la deuda y resta el aroma que salió"
+  },
+  "b": {
+   "t": "Como hoy"
+  }
+ },
+ {
+  "n": 11,
+  "grupo": "plata",
+  "tit": "📣 Correcciones de una deuda (precio, inicial) no avisan al grupo",
+  "txt": "El próximo 'queda' salta sin explicación.",
+  "a": {
+   "t": "Avisarlas también, en el mismo mensaje juntado"
+  },
+  "b": {
+   "t": "Como hoy"
+  }
+ },
+ {
+  "n": 12,
+  "grupo": "plata",
+  "tit": "✅ El botón 'Pagó' de la web en un producto de Mercadería",
+  "txt": "Paga Mercadería aunque MercadoPago deba (el robot cubre primero MercadoPago).",
+  "a": {
+   "t": "Que cubra primero MercadoPago, como el robot"
+  },
+  "b": {
+   "t": "Como hoy (apretarlo = el pago es de mercadería)"
+  }
+ },
+ {
+  "n": 13,
+  "grupo": "avisos",
+  "tit": "📱 Telegram privado: ¿qué sigue llegando?",
+  "txt": "Te molestan los avisos que no sirven. Desde hoy 'lo que llega' sale sólo si llega HOY, con su código, y nunca un 'nada'. Propuesta: dejar sólo lo que llega hoy con código, lo que ML frena/da de baja y las denuncias de marca; el resto (dólar, recordatorios, códigos de devolución) pasa a la lista de las 12:30.",
+  "a": {
+   "t": "Dejar sólo esas tres cosas"
+  },
+  "b": {
+   "t": "Dejar todo como está"
+  }
+ }
+]
