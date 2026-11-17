@@ -12379,7 +12379,9 @@ function pyReclamosAbiertos(compras) {
   const out = [];
   for (const [id, c] of Object.entries(compras || {})) {
     if (!c || !c.ticket || (c.reclamo && c.reclamo.resuelto)) continue;
-    const f = (Array.isArray(c.falto) ? c.falto : Object.values(c.falto || {})).filter((x) => x && (Number(x.pedidas) || 0) > (Number(x.llegaron) || 0));
+    // 17/11/2026: lo que el ticket dice que NO había (no se cobró: `noHabia`) no es reclamo aunque se haya anotado como faltante al llegar.
+    const _nhN = (Array.isArray(c.noHabia) ? c.noHabia : []).map((y) => String((y && y.nom) || '').toLowerCase().slice(0, 40));
+    const f = (Array.isArray(c.falto) ? c.falto : Object.values(c.falto || {})).filter((x) => x && (Number(x.pedidas) || 0) > (Number(x.llegaron) || 0) && !_nhN.includes(String(x.nom || '').toLowerCase().slice(0, 40)));
     if (f.length) out.push({ id, c, items: f.map((x) => ({ nom: String(x.nom || '?'), v: x.v || '', falta: (Number(x.pedidas) || 0) - (Number(x.llegaron) || 0) })) });
   }
   return out.sort((a, b) => String(a.c.fecha || '').localeCompare(String(b.c.fecha || '')));

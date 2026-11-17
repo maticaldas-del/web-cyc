@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.227';
+const APP_VERSION='28.228';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.228',f:'17/11',h:'13:40',c:[{n:1,t:'🇵🇾 Paraguay: lo que el ticket dice que no había (no se cobró) ya no sale en rojo como reclamo, aunque se haya anotado como faltante al llegar.'}]},
   {v:'28.227',f:'17/11',h:'05:00',c:[{n:1,t:'Revisión de Plata en el cartel, con sus 8 decisiones.'}]},
   {v:'28.226',f:'17/11',h:'04:50',c:[{n:2,t:'Ventas: un producto sin costo cargado vuelve a decir "sin costo" aunque tenga el envío de la caja (antes contaba casi todo como ganancia).'}]},
   {v:'28.225',f:'17/11',h:'23:51',c:[{n:2,t:'🛒 Ventas: al abrir una venta con varios productos, cada uno muestra ahora su ganancia y su % (verde, amarillo o rojo como la venta entera), así sabés cuánto le ganaste a cada aroma o color. La suma de todos da la ganancia de la venta. Si alguno no tiene costo cargado dice "sin costo".'}]},
@@ -20409,7 +20410,7 @@ function pyTicketsFaltanHTML(lista){
 // si se pagó y no llegó avisar y se reclama"). Con ticket, todo lo de `items` está cobrado: lo que `falto` dice que no llegó es un reclamo
 // abierto hasta que el robot lo marca resuelto (`pyped:reclamo:<id>=<qué pasó>;go` → `reclamo.resuelto`). Lo que no se cobró ni vino es
 // `noHabia` (lo guarda `compray det=`): sólo tachado. Misma regla que `pyReclamosAbiertos` de sync.mjs: si se toca una, se toca la otra.
-function pyFaltoDe(c){return (Array.isArray(c&&c.falto)?c.falto:Object.values((c&&c.falto)||{})).filter(x=>x&&(Number(x.pedidas)||0)>(Number(x.llegaron)||0));}
+function pyFaltoDe(c){const nh=(Array.isArray(c&&c.noHabia)?c.noHabia:[]).map(y=>String((y&&y.nom)||'').toLowerCase().slice(0,40));return (Array.isArray(c&&c.falto)?c.falto:Object.values((c&&c.falto)||{})).filter(x=>x&&(Number(x.pedidas)||0)>(Number(x.llegaron)||0)&&!nh.includes(String(x.nom||'').toLowerCase().slice(0,40)));}   // 17/11: lo que no había (no se cobró) no es reclamo
 function pyReclamoAbierto(c){return !!(c&&c.ticket&&!(c.reclamo&&c.reclamo.resuelto)&&pyFaltoDe(c).length);}
 function pyReclamosHTML(lista){
   const f=(lista||[]).filter(pyReclamoAbierto);if(!f.length)return '';
