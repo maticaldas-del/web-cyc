@@ -814,7 +814,7 @@ async function armarCostoWeb(db, vp) {
       c = (baseUSD * (1 + dev / 100) + ship) * tc * (v.qty || 1) + imp;
     }
     if (v.netoEstimado) c += gest;
-    const sinCosto = !(Number(v.costo) > 0) && (!p || (!(baseUSD > 0) && !(ship > 0)));
+    const sinCosto = !(Number(v.costo) > 0) && (!p || !(baseUSD > 0));   // etapa 2 (17/11): el envío de la caja solo no es un costo
     return { costo: c, sinCosto, gest };
   };
 }
@@ -12862,7 +12862,9 @@ async function mpAutoReglas(db, cta, dias) {
   // se pega el 1 y quedaba siempre afuera. Un mes ya cerrado no se toca.
   const _pm = new Date(Date.UTC(+mesAb.slice(0, 4), +mesAb.slice(5, 7) - 2, 1)).toISOString().slice(0, 7).replace('-', '_');
   let prevAbierto = false; try { const sn = await db.get('cyc/snapshots/' + _pm); prevAbierto = !(sn && sn.total != null); } catch { prevAbierto = false; }
-  const ks = Object.keys(dias || {}).filter((k) => k >= MP_AUTO_DESDE && k < hoyK && (k.slice(0, 7) === mesAb || (prevAbierto && k.slice(0, 7) === _pm))).sort();
+  const ks = Object.keys(dias || {}).filter((k) => k >= MP_AUTO_DESDE && k < hoyK && (k.slice(0, 7) === mesAb || k.slice(0, 7) === _pm)).sort();
+  // (17/11) si el mes anterior YA cerró, lo que falte de sus últimos días (el extracto los trae el 1º) se carga con fecha del 1º del mes abierto:
+  // así la perfumería igual lo debe y el mes cerrado no se toca.
   if (!ks.length) return '';
   const ya = (await db.get('mlapi/mpauto/' + cta)) || {}; const CP = (await db.get('cyc/compraspy')) || {};
   const pagosPy = []; for (const [id, c] of Object.entries(CP)) { if (!c || !c.pagos) continue; const t = Date.parse(String(c.fecha || '') + 'T12:00:00-03:00') || 0;
@@ -12880,7 +12882,8 @@ async function mpAutoReglas(db, cta, dias) {
     if (pe > peYa) {
       const dif = pe - peYa;
       const idC = String(Date.now()) + String(Math.floor(Math.random() * 900) + 100);
-      const t = `debenmov:deuda perfumeria=+${dif}@${fecha}|peajes ${fecha.slice(8)}/${fecha.slice(5, 7)} ${cta}${peYa ? ' (lo que faltaba)' : ''} (del extracto, solo);go`;
+      const fCmd = (!prevAbierto && k.slice(0, 7) === _pm) ? mesAb.replace('_', '-') + '-01' : fecha;
+      const t = `debenmov:deuda perfumeria=+${dif}@${fCmd}|peajes ${fecha.slice(8)}/${fecha.slice(5, 7)} ${cta}${peYa ? ' (lo que faltaba)' : ''} (del extracto, solo);go`;
       await db.set('mlapi/colainterna/' + idC, { t, ts: Date.now() });
       await db.set('cyc/pararobot/' + idC, { t, por: 'extracto ' + cta, estado: 'nuevo', ts: Date.now() });
       await db.set('mlapi/mpauto/' + cta + '/' + k, { peajes: pe, ts: Date.now() }); nPe++;
@@ -45468,8 +45471,9 @@ async function main() {
       // 📅 30a del 14/11/2026 (él: "a"): lo DEJADO o DEVUELTO con fecha de un mes YA CERRADO (`cyc/snapshots/<mes>.total`) que se carga tarde no
       // entra al cobro del mes en que se carga: lo que mueve el patrimonio va a "lo viejo cargado tarde" (`cyc/cobro_corr/<próximo cierre>`, lo
       // mismo que `cobrocorr`) con `_corrCobro`. null = no se pudo leer el cierre (se avisa: la corrección hay que cargarla a mano).
+      // Revisión etapa 2 (17/11): cerrado = tiene cierre Y la fecha es del día del cierre o antes (un cierre adelantado, el 29, no vuelve "viejo" lo del 30).
       const _mesCerrado = async (fx) => { const ymX = String(fx || '').slice(0, 7).replace('-', '_'); if (!/^\d{4}_\d{2}$/.test(ymX)) return false;
-        try { const sn = await db.get('cyc/snapshots/' + ymX); return !!(sn && sn.total != null); } catch { return null; } };
+        try { const sn = await db.get('cyc/snapshots/' + ymX); if (!(sn && sn.total != null)) return false; const tS = Number(sn.ts) || 0; return !(tS > 0) || String(fx).slice(0, 10) <= new Date(tS - 3 * 3600e3).toISOString().slice(0, 10); } catch { return null; } };
       const mds = String(resto).trim().match(/^desde\s*\$?\s*([\d.,]+)$/i);
       if (mds) {
         let cand2 = lista.filter(([id]) => id === quien);
@@ -58152,6 +58156,7 @@ async function main() {
       for (const p of products) {
         if (q && !norm(p.name || '').includes(q) && p.id !== q) continue;
         const V = viajes[p.id]; if (!V || !V.length) continue;
+        if (!(parseFloat(p.costUSD) > 0) && !(Number(p.cost) > 0)) continue;   // etapa 2 (17/11): sin costo de compra no se le pone envío (la volvía "con costo" y la venta salía casi toda ganancia)
         const F = fullDe(p.id); if (!(F > 0)) continue;
         let need = F, sumE = 0, sumU = 0;
         for (const x of V.sort((a, b) => b.t - a.t)) { const u = Math.min(x.u, need); sumE += u * x.e; sumU += u; need -= u; if (need <= 0) break; }

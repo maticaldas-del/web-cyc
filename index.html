@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.225';
+const APP_VERSION='28.226';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.226',f:'17/11',h:'04:50',c:[{n:2,t:'Ventas: un producto sin costo cargado vuelve a decir "sin costo" aunque tenga el envío de la caja (antes contaba casi todo como ganancia).'}]},
   {v:'28.225',f:'17/11',h:'23:51',c:[{n:2,t:'🛒 Ventas: al abrir una venta con varios productos, cada uno muestra ahora su ganancia y su % (verde, amarillo o rojo como la venta entera), así sabés cuánto le ganaste a cada aroma o color. La suma de todos da la ganancia de la venta. Si alguno no tiene costo cargado dice "sin costo".'}]},
   {v:'28.224',f:'17/11',h:'23:35',c:[{n:2,t:'🏷️ Inicio → Ventas de hoy y el cuadro Ventas ahora se mueven junto con Ventas x Producto: si habías tocado la casilla del dólar, Inicio se quedaba quieto creyendo que estabas escribiendo; ya no.'}]},
   {v:'28.223',f:'16/11',h:'20:45',c:[{n:1,t:'🧰 Ajustes: el cartel de revisiones ya no muestra las 11 decisiones de Precios del 16/11 (contestadas).'}]},
@@ -5431,7 +5432,7 @@ const COBRO_SOLO_COBRADO_DESDE='2026_11';
 function _cobroCrec(ym){
   const S=state.snapshots||{};const B=S[ym],A=S[_puntMesPrev(ym)];
   if(!B||!A||B.total==null||A.total==null)return null;
-  const tc=parseFloat(B.tipoCambio)||curTC()||0;if(!tc)return null;
+  const tc=parseFloat(B.tipoCambio)||0;if(!tc)return null;/* etapa 2 (17/11): sin el dólar del cierre no se calcula (el robot tampoco): antes usaba el de hoy */
   const crecio=Math.round((Number(B.total)-Number(A.total))*tc);
   let retiro,retCargado,sinCobrar=[];
   if(ym>=COBRO_SOLO_COBRADO_DESDE){
@@ -16035,7 +16036,7 @@ function ventaSinCostoVP(v){
   const p=prodDeVenta(v);if(!p)return true;
   const ym=v._dateKey?v._dateKey.substring(0,7):null;
   const baseUSD=(ym?getHistCostUSDProd(p.id,ym):null)??costUSDof(p);
-  return !(baseUSD>0)&&!(parseFloat(p.shipUSD)>0);
+  return !(baseUSD>0);/* etapa 2 (17/11): sin costo de compra es "sin costo" aunque tenga envío de caja (realcaja): si no, contaba casi todo como ganancia */
 }
 // ── EL NETO ESTIMADO NO INFLA LA GANANCIA (revisión max #15, 26/09/2026, eligió la a) ──
 // Cuando Mercado Pago todavía no liquidó, el robot guarda un neto estimado (precio − comisión) que
