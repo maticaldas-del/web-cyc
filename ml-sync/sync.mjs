@@ -90,7 +90,8 @@ const EN_CONSULTA = process.env.GITHUB_WORKFLOW === 'ml-consulta' || process.env
 // 🙈 LOS SALDOS DE MERCADO PAGO NO VAN AL REGISTRO PÚBLICO (29/10/2026, él eligió 1a: "todo lo que se pueda ocultar que se oculte,
 // pero que no se vea afectado el funcionamiento"). En ancla / dispo / saldoml cada monto en pesos o dólares sale como "$•••": lo que
 // escriben en la base es igual, y cada uno ya relee y dice ✓/⚠️ sin mostrar el número.
-const _MASCARA_PLATA = /^(ancla|dispo|saldoml)(:|;|$)/.test(String(process.env.BILLING_PROBE || ''));
+// Revisión etapa 2 (17/11): `capital` y `licua` también, enteros: con el total y los otros renglones se sacaba el saldo de MP restando.
+const _MASCARA_PLATA = /^(ancla|dispo|saldoml|capital|licua)(:|;|$)/.test(String(process.env.BILLING_PROBE || ''));
 if (_MASCARA_PLATA) {
   const _ol = console.log.bind(console);
   // Revisión etapa 2 (05/11/2026): también "<cuenta>=1.250.000" (el renglón que `ancla` rechaza mostraba el saldo tal cual).
@@ -12857,7 +12858,11 @@ function mpNombresParse(txt) {
 const MP_AUTO_DESDE = '2026_11_13';   // hasta el 12/11 lo analizó Claude a mano (mp_reglas.md, "Analizado hasta")
 async function mpAutoReglas(db, cta, dias) {
   const hoyK = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '_'); const mesAb = hoyK.slice(0, 7);
-  const ks = Object.keys(dias || {}).filter((k) => k >= MP_AUTO_DESDE && k < hoyK && k.slice(0, 7) === mesAb).sort();
+  // Revisión etapa 2 (17/11): también el mes anterior mientras no tenga cierre (`cyc/snapshots/<mes>.total` vacío): el último día de cada mes
+  // se pega el 1 y quedaba siempre afuera. Un mes ya cerrado no se toca.
+  const _pm = new Date(Date.UTC(+mesAb.slice(0, 4), +mesAb.slice(5, 7) - 2, 1)).toISOString().slice(0, 7).replace('-', '_');
+  let prevAbierto = false; try { const sn = await db.get('cyc/snapshots/' + _pm); prevAbierto = !(sn && sn.total != null); } catch { prevAbierto = false; }
+  const ks = Object.keys(dias || {}).filter((k) => k >= MP_AUTO_DESDE && k < hoyK && (k.slice(0, 7) === mesAb || (prevAbierto && k.slice(0, 7) === _pm))).sort();
   if (!ks.length) return '';
   const ya = (await db.get('mlapi/mpauto/' + cta)) || {}; const CP = (await db.get('cyc/compraspy')) || {};
   const pagosPy = []; for (const [id, c] of Object.entries(CP)) { if (!c || !c.pagos) continue; const t = Date.parse(String(c.fecha || '') + 'T12:00:00-03:00') || 0;
@@ -12870,9 +12875,12 @@ async function mpAutoReglas(db, cta, dias) {
       const h = pagosPy.find((p) => Math.abs(p.v - m) <= Math.max(500, p.v * 0.03) && t0 - p.t <= 25 * 864e5 && t0 - p.t >= -3 * 864e5);
       return h ? { m, ped: String(h.num), qu: h.qu } : { m, ped: null }; });
     const res = { peajes: pe, py, per: A.personal || null, nos: A.nosotros || null, perf: A.perfumeria || null, prov: A.proveedor || null, merc: A.mercaderia || null, otro: A.otro || null, sin: A.sin || null, ts: Date.now() };
-    if (pe > 0 && !(ya[k] && ya[k].peajes)) {
+    // Revisión etapa 2 (17/11): un día que llegó incompleto y después se pegó entero manda sólo la DIFERENCIA (antes quedaba corto para siempre).
+    const peYa = ya[k] && Number(ya[k].peajes) > 0 ? Number(ya[k].peajes) : 0;
+    if (pe > peYa) {
+      const dif = pe - peYa;
       const idC = String(Date.now()) + String(Math.floor(Math.random() * 900) + 100);
-      const t = `debenmov:deuda perfumeria=+${pe}@${fecha}|peajes ${fecha.slice(8)}/${fecha.slice(5, 7)} ${cta} (del extracto, solo);go`;
+      const t = `debenmov:deuda perfumeria=+${dif}@${fecha}|peajes ${fecha.slice(8)}/${fecha.slice(5, 7)} ${cta}${peYa ? ' (lo que faltaba)' : ''} (del extracto, solo);go`;
       await db.set('mlapi/colainterna/' + idC, { t, ts: Date.now() });
       await db.set('cyc/pararobot/' + idC, { t, por: 'extracto ' + cta, estado: 'nuevo', ts: Date.now() });
       await db.set('mlapi/mpauto/' + cta + '/' + k, { peajes: pe, ts: Date.now() }); nPe++;
@@ -12896,9 +12904,9 @@ function extractoMpCat(txt, monto) {
   if (/\barca\b|\bafip\b|\bvep\b|monotribut|autonomo/.test(t)) return 'arca';
   if (/sancor/.test(t)) return 'sancor';
   // 06/11/2026 (el primer extracto real): peajes, combustible y correo salen de MP y no estaban en Gastos
-  if (/ausa|au oeste|corredor vial|rutas sur|peaje|telepase|autopista/.test(t)) return 'peajes';
+  if (/\bausa\b|au oeste|corredor vial|rutas sur|peaje|telepase|autopista/.test(t)) return 'peajes';   // etapa 2 (17/11): \b ("La Pausa Cafe" era peaje)
   if (/\bypf\b|shell|axion|puma energy|combustible|nafta/.test(t)) return 'combustible';
-  if (/andreani|correo|via cargo|oca\b/.test(t)) return 'correo';
+  if (/andreani|correo|via cargo|\boca\b/.test(t)) return 'correo';
   if (/tarjeta de credito/.test(t)) return 'tarjeta';
   if (/suscripci|anthropic|claude|google|netflix|spotify|apple|microsoft|openai|canva|youtube/.test(t)) return 'suscrip';
   if (/\bqr\b|link de pago|cobro con|\bpoint\b|cobro presencial/.test(t)) return monto >= 0 ? 'qr' : 'pagos';
@@ -45392,7 +45400,10 @@ async function main() {
         let ultDM = null; try { ultDM = (await db.get('cyc/debenmovult')) || {}; } catch { ultDM = null; }
         if (ultDM === null) { console.log('❌ no pude leer cyc/debenmovult (para no cargar dos veces el mismo movimiento): no escribo nada. Volvé a mandarlo.'); return; }
         const tU = Number(ultDM[hDM]) || 0;
-        if (tU && Date.now() - tU < 10 * 60e3) { console.log(`❌ Este mismo movimiento (misma deuda, mismo monto, misma nota) ya se cargó hace ${Math.max(1, Math.round((Date.now() - tU) / 60e3))} min: no lo cargo dos veces (24a del 14/11). Si de verdad es OTRO igual, mandalo con la palabra "otra" en la nota. No escribo nada ni mando Telegram.`); return; }
+        // Revisión etapa 2 (17/11): lo que carga solo el extracto ("del extracto, solo") se frena 24 h, no 10 min: si un comando a mano cancela
+        // el ciclo justo después, la cola lo vuelve a correr a los 40 min y el peaje se cargaba dos veces.
+        const ventDM = /del extracto, solo/i.test(cuerpo) ? 864e5 : 10 * 60e3;
+        if (tU && Date.now() - tU < ventDM) { console.log(`❌ Este mismo movimiento (misma deuda, mismo monto, misma nota) ya se cargó hace ${Math.max(1, Math.round((Date.now() - tU) / 60e3))} min: no lo cargo dos veces (24a del 14/11). Si de verdad es OTRO igual, mandalo con la palabra "otra" en la nota. No escribo nada ni mando Telegram.`); return; }
         const updDM = { [hDM]: Date.now() }; for (const [k, t] of Object.entries(ultDM)) if (Date.now() - (Number(t) || 0) > 864e5) updDM[k] = null;
         await db.patch('cyc/debenmovult', updDM);
       }
