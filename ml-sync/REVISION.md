@@ -2316,6 +2316,11 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 
+### 🏷️ Inicio → Ventas de hoy atada a las ventas (17/11/2026, v28.224; él: "el inicio sigue sin actualizar como las ventas. ¿no se puede atar?")
+- **Qué es:** la casilla del dólar de Inicio la llena el código, así que su valor nunca era igual a su `defaultValue` (vacío): con el foco ahí (en la PC el foco se queda donde tocaste) `isEditing()` daba "a medio escribir" para siempre y `renderPronto` no redibujaba Inicio con ninguna venta nueva (Ventas x Producto no tiene esa casilla: por eso sí se movía). Ahora (1) `isEditing` compara con el valor que tenía la casilla al tocarla (`_cycValFoco`, en `focusin`), (2) aunque haya algo a medio escribir, cada dato nuevo redibuja igual "Ventas de hoy" y los números de la grilla (`_homeVentasVivas`, sin tocar 💬/🗳️ que tienen casillas), (3) el tic de cada minuto también actualiza el cuadro Ventas, y (4) `_ventasHoyFrescas` no pisa con una respuesta vieja las ventas que llegaron mientras esperaba (`window._cycAplicN`).
+- **Dónde vive:** `index.html` (`isEditing`, `renderPronto`, `_homeVentasVivas`, `renderHomeVivos(soloNums)`, `_homeHoyTic`, `_ventasHoyFrescas`, `_cycAplicar`).
+- **Qué chequear:** con Inicio abierto y el dólar tocado, entra una venta → la tarjeta y el cuadro Ventas cambian en segundos, igual que Ventas x Producto; escribir en la casilla del dólar o en una respuesta de 💬 no se borra al entrar una venta.
+
 ### 🔇 Un comando con go por ml-consulta que no guarda se niega (15/11/2026)
 - **Qué es:** `listadto:pirineo;…;go` por ml-consulta mostró la cuenta y no guardó nada sin avisar (corre en sólo lectura). Ahora todo comando con `go` que no está en `CONSULTA_ESCRIBE` sale con "va por ml-sync" (sync.mjs, arriba). Pirineo (lista grande y Navidad) pasó a costo SIN IVA (él, 15/11): `listadto:pirineo;base=1.21;dto=0;go` por ml-sync, 3.447 releídos.
 - **Qué chequear:** que ninguna vuelta mande por ml-consulta `techo95;go`, `tag`, `sololocal`, `nomas`, `liquidando` o `mpnombres` con go (ahora fallan a la vista: van por ml-sync).

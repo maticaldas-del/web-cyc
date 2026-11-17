@@ -3031,7 +3031,7 @@ function startApp(){
   const CYC_KEYS=['pregpend','pregresp','decisiones','paramati','parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
-    _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;
+    _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;window._cycAplicN=(window._cycAplicN||0)+1;
     const d=_cycD;
     state.products=d.products ?Object.values(d.products).sort((a,b)=>(a.name||'').localeCompare(b.name||'','es',{sensitivity:'base'})):[];
     state.inventory=d.inventory||{};
@@ -3717,7 +3717,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.223';
+const APP_VERSION='28.224';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3730,6 +3730,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.224',f:'17/11',h:'23:35',c:[{n:2,t:'🏷️ Inicio → Ventas de hoy y el cuadro Ventas ahora se mueven junto con Ventas x Producto: si habías tocado la casilla del dólar, Inicio se quedaba quieto creyendo que estabas escribiendo; ya no.'}]},
   {v:'28.223',f:'16/11',h:'20:45',c:[{n:1,t:'🧰 Ajustes: el cartel de revisiones ya no muestra las 11 decisiones de Precios del 16/11 (contestadas).'}]},
   {v:'28.222',f:'16/11',h:'19:15',c:[{n:1,t:'🏠 Inicio: Pedidos sin el numerito rojo; Oficina ML muestra las cajas cargadas por cuenta (tocás y vas a Armar caja), las unidades en la oficina y cuántas faltan etiquetar.'}]},
   {v:'28.221',f:'16/11',h:'18:50',c:[{n:1,t:'🏷️ Inicio · tarjeta Ventas: sin el numerito azul ni "sin mirar"; muestra la ganancia de hoy en verde con el % que vamos.'}]},
@@ -5159,6 +5160,10 @@ let _finFocused=false; // hay un campo de finanzas siendo editado → congelar l
 let _ultTecla=0;
 document.addEventListener('input',()=>{_ultTecla=Date.now();},true);
 document.addEventListener('keydown',()=>{_ultTecla=Date.now();},true);
+// 17/11/2026 (él: "el inicio sigue sin actualizar como las ventas"): la casilla del dólar de Inicio la llena el código, así que su valor
+// nunca es igual al `defaultValue` (vacío) y con el foco ahí (en la PC el foco se queda donde tocaste) el panel creía que había algo a
+// medio escribir y no redibujaba Inicio NUNCA. Ahora se compara con lo que tenía la casilla al tocarla: sólo frena si la cambiaste vos.
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&/^(INPUT|TEXTAREA)$/.test(t.tagName))t._cycValFoco=t.value;},true);
 function isEditing(){
   const a=document.activeElement;if(!a||!/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return false;
   if(Date.now()-_ultTecla<20000)return true;
@@ -5167,7 +5172,7 @@ function isEditing(){
   const ty=(a.type||'').toLowerCase();
   if(/^(search|date|checkbox|radio|range|button|submit|color|file)$/.test(ty))return false;
   if(/buscar|search/i.test((a.id||'')+' '+(a.placeholder||'')))return false;
-  return a.value!==a.defaultValue;
+  return a.value!==(a._cycValFoco!=null?a._cycValFoco:a.defaultValue);
 }
 // Lo que quedó frenado se dibuja solo apenas deja de haber algo a medio escribir (antes esperaba a que
 // sacaras el foco, y en la PC eso podía no pasar nunca), y al volver a la pestaña.
@@ -5185,8 +5190,12 @@ async function _ventasHoyFrescas(forzar){
   if(!db||firstDataLoad||!state.ventaprod)return;
   if(!forzar&&Date.now()-_hoyFrescoT<20000)return;_hoyFrescoT=Date.now();
   const d=new Date(),ay=new Date();ay.setDate(ay.getDate()-1);
+  // 17/11/2026: si mientras se esperaba la respuesta llegaron las ventas por la conexión de siempre (más nuevas), no se pisan con
+  // la respuesta (que puede ser de antes): antes Inicio podía quedar con una venta menos hasta el próximo dato.
+  const n0=window._cycAplicN||0;
   for(const k of [dateToKey(d),dateToKey(ay)]){
     try{const v=(await db.ref('cyc/ventaprod/'+k).get()).val();
+      if((window._cycAplicN||0)!==n0)break;
       if(v)state.ventaprod[k]=v;else delete state.ventaprod[k];}catch(e){return;}
   }
   _netoMesMemo={};_netoAggMemo=null;
@@ -5219,11 +5228,14 @@ addEventListener('scroll',()=>{
   clearTimeout(_scrollIdle);
   _scrollIdle=setTimeout(()=>{_scrollando=false;},450);   // 450 ms sin moverse = el dedo paró
 },{passive:true});
+// 17/11/2026: "Ventas de hoy" y el cuadro Ventas de Inicio no tienen casillas para escribir: se redibujan con cada dato nuevo AUNQUE haya
+// algo a medio escribir en otra parte de la pantalla (como Ventas x Producto, que nunca quedaba frenada). Sin tocar 💬/🗳️ (tienen casillas).
+function _homeVentasVivas(){if(currentPage!=='home')return;try{renderHomeHoy();}catch(e){}try{renderHomeVivos(true);}catch(e){}}
 function renderPronto(ya){
   clearTimeout(_renderT);
   const correr=()=>{
     _renderT=null;
-    if(isEditing()){pendingRender=true;return;} // los campos de Finanzas los cuida loadFinInputs (_finFocused)
+    if(isEditing()){pendingRender=true;try{_homeVentasVivas();}catch(_){}return;} // los campos de Finanzas los cuida loadFinInputs (_finFocused)
     const y=window.scrollY;
     renderAll();
     if(!_scrollando)requestAnimationFrame(()=>window.scrollTo(0,y));
@@ -28683,14 +28695,14 @@ function _homeVivos(d){
   if(d.gastosFaltan!=null)out.gastos=d.gastosFaltan?`<span class="a">${d.gastosFaltan} sin cargar</span>`:'<span class="g">✓ todo cargado</span>';
   return out;
 }
-function renderHomeVivos(){
+function renderHomeVivos(soloNums){
   const _d=_vivosDatos(),v=_homeVivos(_d);
   [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
   // DISEÑO 5 DEL 31/10: la tarjeta Pedidos lleva una 🔴 con cuántos pedidos están en rojo (la misma cuenta del semáforo, `_pedSem`).
   try{const r=document.getElementById('hv-ven-nuevas');if(r){const n=0;   // 16/11/2026 (él: "sacá ese número"): sin el numerito azul
     r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
   try{hxBadge(_d.nuevasBuenas||0);}catch(e){}   // 21a del 14/11: el numerito del ícono = ventas buenas nuevas
-  try{renderHomeExtra();}catch(e){}   // 14/11: 💬 preguntas · 🗳️ decisiones · 🚚 lo que llega · 🔍 la semana
+  if(!soloNums)try{renderHomeExtra();}catch(e){}   // 14/11: 💬 preguntas · 🗳️ decisiones · 🚚 lo que llega · 🔍 la semana
   try{const r=document.getElementById('hv-ped-rojo');if(r){const n=0;   // 16/11/2026 (él: "sacá el número en pedidos también")
     r.textContent=n?String(n):'';r.title=n?`${n} pedido${n===1?'':'s'} en rojo (se cortan en 14 días o menos)`:'';r.style.display=n?'':'none';}}catch(e){}
   return v;
@@ -28744,7 +28756,7 @@ function _homeHoyTic(forzar){
   // no se redibujaba más: vale 15 s como mucho.
   if(_hoyTocando&&Date.now()-_hoyTocandoTs>15000)_hoyTocando=false;
   try{if(currentPage!=='home'||document.visibilityState==='hidden'||_hoyTocando)return;
-    const n=new Date(),m=dateToKey(n)+'_'+n.getHours()+':'+n.getMinutes();if(!forzar&&m===_hoyMinUlt)return;_hoyMinUlt=m;renderHomeHoy();}catch(e){}
+    const n=new Date(),m=dateToKey(n)+'_'+n.getHours()+':'+n.getMinutes();if(!forzar&&m===_hoyMinUlt)return;_hoyMinUlt=m;renderHomeHoy();try{renderHomeVivos(true);}catch(_){}}catch(e){}
 }
 setInterval(()=>_homeHoyTic(false),60000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')_homeHoyTic(true);});
