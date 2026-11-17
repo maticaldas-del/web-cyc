@@ -28591,8 +28591,11 @@ async function main() {
       // `pedLlenarTodoPlan`): de Paraguay, no Paulvic, con unidades pedidas, que Nissei tiene y mirados en Nissei hace menos de 48 h. Se miden
       // contra ML como todo (lo que no da 35% hoy no entra) y, si quedan, se escriben en `cyc/py_armado`.
       const probNo = [];   // 17/11: los probados que pide Pedidos y no entran, con su motivo
-      { const pedsPy = Object.values((await db.get('cyc/pedidos_py')) || {}); const sinSt = (await db.get('cyc/py_sinstock')) || {}; const ya = new Set(cargados.map((x) => x.id));
-        for (const ped of pedsPy) { if (!ped || ped.estado === 'suficiente') continue; const cant = parseInt(ped.cantidad) || 0; if (cant <= 0) continue;
+      // 17/11/2026: lo que pide Pedidos sale de MIS decisiones (`cyc/claudedecide/ped/<id>`: `u`, o `vars/<color>` sumados), no de
+      // `cyc/pedidos_py` (lo arma la web y quedaba viejo: el SSD 1TB y el Corsair decididos no entraban).
+      { const decP = (await db.get('cyc/claudedecide/ped')) || {}; const sinSt = (await db.get('cyc/py_sinstock')) || {}; const ya = new Set(cargados.map((x) => x.id));
+        const pedsPy = Object.entries(decP).map(([id, d]) => ({ prodId: id, cantidad: d && d.vars ? Object.values(d.vars).reduce((t, x) => t + (Number(x) || 0), 0) : Number(d && d.u) || 0 }));
+        for (const ped of pedsPy) { if (!ped) continue; const cant = parseInt(ped.cantidad) || 0; if (cant <= 0) continue;
           const k = ped.prodId && prods[ped.prodId] ? ped.prodId : null; if (!k || ya.has(k)) continue; const p = prods[k];
           const ctaP = Object.values(links).find((l) => l && l.prodId === k)?.cuenta || ''; const esPerfP = esB(p.name) || /adriana/i.test(ctaP);   // 16/11: el Ferrari Negro (perfume de Adriana sin la palabra) caía en Resto
           if (!p || (grp === 'perf') !== esPerfP || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || ''))) continue;
