@@ -1049,6 +1049,10 @@ Qué chequear: que un cambio no salga dos veces (foto + decisión) y que un `dec
 - **12/11 · 🧲 Fácil o difícil de conseguir** (él eligió la a). Qué es: `cyc/conseguir/py/<prod>/<día>` una marca por vuelta completa de Nissei (en `marcarAgotadosVuelta`) · `cyc/conseguir/bsas/<prod>` {trajo, no} por cada pedido de Pedidos (en el `desde` de `decido`) · `conseguirDe` lo clasifica · `conseguir[:palabra]` · `CONS` en `pedidostodo`. Dónde: `sync.mjs`, CEREBRO §7b. Qué chequear: que en ~5 días haya vueltas suficientes; que lo de Bs As no pedido quede ⚪; que un "no" seguido de "trajo" en el mismo pedido no confunda.
 
 ## 2 · PLATA (martes)
+### 🛒 Ventas: cada producto de un carrito con su ganancia y % (17/11/2026, v28.225)
+- **Qué es:** en el detalle de una venta con varios productos, cada renglón dice además `gan. $X +Y%` (color por nivel, como la venta entera) o "sin costo" (él: "si no no sé exacto cuánto le ganamos a cada variante/producto").
+- **Dónde vive:** `index.html`, `_ganItem` en `renderVentaProd` (detalle `vpdet-`): neto − `efectivoCostoVP` de cada renglón y el % con `pctGananciaVP` (con `gestDivVP` de ese renglón); el último renglón con costo absorbe el redondeo. CSS `.vp-ngan` para que en el teléfono no se corte. Ventas x Producto e Inicio no listan los renglones de una venta (nada que cambiar).
+- **Qué chequear:** que la suma de los renglones dé la Ganancia de la venta (prueba: 5.331 + 5.331 + 5.330 = 15.992); que en 360 px no se corra nada; con un neto estimado sale "≈".
 ### 💼 Arqueo: cada renglón del stock compara contra el cierre anterior (16/11/2026, v28.219)
 - **Qué es:** Oficina ML, Oficina Local y En camino a Full con su ▲/▼ (% y US$) como En ML (él: "quiero que compare todo"). El cierre guarda `ofiML`/`ofiLoc` desde hoy; los cierres viejos comparan Oficina ML contra `of_mia` y Local contra `of_viejo`+vendedores.
 - **Qué chequear:** que las tres variaciones + la de Full sumen la del Stock total (en el próximo cierre, con el reparto guardado).

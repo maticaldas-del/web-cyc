@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.224';
+const APP_VERSION='28.225';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.225',f:'17/11',h:'23:51',c:[{n:2,t:'🛒 Ventas: al abrir una venta con varios productos, cada uno muestra ahora su ganancia y su % (verde, amarillo o rojo como la venta entera), así sabés cuánto le ganaste a cada aroma o color. La suma de todos da la ganancia de la venta. Si alguno no tiene costo cargado dice "sin costo".'}]},
   {v:'28.224',f:'17/11',h:'23:35',c:[{n:2,t:'🏷️ Inicio → Ventas de hoy y el cuadro Ventas ahora se mueven junto con Ventas x Producto: si habías tocado la casilla del dólar, Inicio se quedaba quieto creyendo que estabas escribiendo; ya no.'}]},
   {v:'28.223',f:'16/11',h:'20:45',c:[{n:1,t:'🧰 Ajustes: el cartel de revisiones ya no muestra las 11 decisiones de Precios del 16/11 (contestadas).'}]},
   {v:'28.222',f:'16/11',h:'19:15',c:[{n:1,t:'🏠 Inicio: Pedidos sin el numerito rojo; Oficina ML muestra las cajas cargadas por cuenta (tocás y vas a Armar caja), las unidades en la oficina y cuántas faltan etiquetar.'}]},
