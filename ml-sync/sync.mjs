@@ -28626,7 +28626,8 @@ async function main() {
       { // 17/11 (él: "no llegan a 600. ¿es porque no hay más productos?"): cuántos quedan afuera en cada filtro
         const E = Object.entries(cands).filter(([id, c]) => c && c.nombre && !c.no && !c.prodId && !c.pedidoEn && !yaIds.has(id) && enG(c.nombre)); const fr = E.filter(([, c]) => (ahora - candVistoTsBot(c)) < PY_VIEJO_DIAS * 864e5);
         const m35 = fr.filter(([, c]) => Number(c.margen) >= CAND_VARA_COMPRA), cat = m35.filter(([, c]) => !candPorQueNoBot(c, '', tcL, mNoL)), vo = cat.filter(([, c]) => vendOk(c.mlVendedores, candVentasDe(c), c.sinComp, c.res));
-        { const R = {}; for (const [, c] of m35) { const r = String(candPorQueNoBot(c, '', tcL, mNoL) || '').slice(0, 45); if (r) R[r] = (R[r] || 0) + 1; } console.log('📊 por qué no pasan las reglas: ' + Object.entries(R).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([r, n]) => n + ' ' + r).join(' · ')); }
+        { const R = {}; for (const [, c] of m35) { const r = String(candPorQueNoBot(c, '', tcL, mNoL) || '').slice(0, 45); if (r) R[r] = (R[r] || 0) + 1; } { const sc = m35.filter(([, c]) => /nadie confirm/.test(String(candPorQueNoBot(c, '', tcL, mNoL) || ''))); if (sc.length) console.log('🔍 catálogo sin confirmar (' + sc.length + '): ' + sc.map(([id, c]) => id + '=' + String(c.nombre).slice(0, 45)).join(' | ')); }
+        console.log('📊 por qué no pasan las reglas: ' + Object.entries(R).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([r, n]) => n + ' ' + r).join(' · ')); }
         console.log(`📊 Nissei de este grupo: ${E.length} sin pedir · ${fr.length} vistos en 48 h · ${m35.length} con 35%+ guardado · ${cat.length} que pasan las reglas · ${vo.length} con 2+ vendedores (o 1 con 100+ ventas) · ${pool.length} con ventas o reseñas conocidas`); }
       const agregados = [], nuevosNo = []; let medidos = 0;
       for (const [id, c] of pool) {
