@@ -799,3 +799,5 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 
 ## 16/11 · Noche
 1. **Balanzas en las perfumerías:** ¿la que se vendió al precio anterior estaba en Soares o en Ceballos? (también en Inicio como tarjeta)
+
+- 💵 16/11: compró 103,14 USDT a 1.706,44 con los $176.000 de la perfumería. Ese es el dólar del próximo pedido de Paraguay pagado con esos USDT (regla del 15/11).
