@@ -28590,12 +28590,14 @@ async function main() {
       // 16/11/2026 (él: "cargá los pedidos"): 1º LOS PROBADOS QUE PIDE PEDIDOS (como el botón 🪄 "Llenar con probados y nuevos" de la web,
       // `pedLlenarTodoPlan`): de Paraguay, no Paulvic, con unidades pedidas, que Nissei tiene y mirados en Nissei hace menos de 48 h. Se miden
       // contra ML como todo (lo que no da 35% hoy no entra) y, si quedan, se escriben en `cyc/py_armado`.
+      const probNo = [];   // 17/11: los probados que pide Pedidos y no entran, con su motivo
       { const pedsPy = Object.values((await db.get('cyc/pedidos_py')) || {}); const sinSt = (await db.get('cyc/py_sinstock')) || {}; const ya = new Set(cargados.map((x) => x.id));
         for (const ped of pedsPy) { if (!ped || ped.estado === 'suficiente') continue; const cant = parseInt(ped.cantidad) || 0; if (cant <= 0) continue;
           const k = ped.prodId && prods[ped.prodId] ? ped.prodId : null; if (!k || ya.has(k)) continue; const p = prods[k];
           const ctaP = Object.values(links).find((l) => l && l.prodId === k)?.cuenta || ''; const esPerfP = esB(p.name) || /adriana/i.test(ctaP);   // 16/11: el Ferrari Negro (perfume de Adriana sin la palabra) caía en Resto
-          if (!p || p.origen !== 'py' || (grp === 'perf') !== esPerfP || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || '')) || sinSt[k]) continue;
-          if (!(Date.now() - (Number(p.nisseiTs) || 0) < PY_VIEJO_DIAS * 864e5) || !(parseFloat(p.nisseiUSD) > 0)) continue;
+          if (!p || (grp === 'perf') !== esPerfP || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || ''))) continue;
+          const _noEntra = p.origen !== 'py' ? 'la ficha no es de Paraguay' : sinSt[k] ? 'Nissei no lo tiene (no apareció en la última vuelta)' : !(parseFloat(p.nisseiUSD) > 0) ? 'sin precio de Nissei' : !(Date.now() - (Number(p.nisseiTs) || 0) < PY_VIEJO_DIAS * 864e5) ? 'no se miró en Nissei en las últimas 48 h' : '';
+          if (_noEntra) { probNo.push(`${String(p.name).slice(0, 50)} (${cant} u.): ${_noEntra}`); continue; }
           ya.add(k); const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
           cargados.unshift({ tipo: 'probado', id: k, nom: p.name, u: cant, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: false, nuevoProb: true, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); } }
       const tienda = Object.values(per).filter((v) => v && enG(v.nom)).reduce((t, v) => t + (parseInt(v.u) || 0) * (parseFloat(v.usd) || 0), 0);
@@ -28643,6 +28645,7 @@ async function main() {
       console.log(`\n➕ ENTRAN NUEVOS (${agregados.length}, medidos contra ML hoy):`); for (const x of agregados) console.log(`  ✅ ⭐${x.star.toFixed(1)} ${L(x)} · ${x.r.motivo}`);
       console.log(`\n❌ SALEN (${salen.length}):`); for (const x of salen) console.log(`  ❌ [${x.tipo}] ${L(x)} · ${x.motivo}`);
       if (nuevosNo.length) { console.log(`\n· nuevos de ⭐ alta que NO entraron al medirlos hoy (${nuevosNo.length}):`); for (const x of nuevosNo.slice(0, 20)) console.log(`  · ${String(x.nom).slice(0, 60)} [${x.id}] · ${x.motivo}`); }
+      if (probNo.length) { console.log(`\n· probados que pide Pedidos y NO entran (${probNo.length}):`); for (const x of probNo.slice(0, 25)) console.log('  · ' + x); }
       console.log(`\n🟡 PARA ANALIZAR CON ÉL (quedan en el pedido, ${dudas.length}):`); for (const x of dudas) console.log(`  🟡 ${String(x.nom).slice(0, 70)} · ${x.motivo}`);
       console.log(`\n=== TOTAL US$ ${total.toFixed(2)} (Tienda ${tienda.toFixed(2)}) · ${total >= TOPE ? (total <= TOPE_MAX ? '✓ entre ' + TOPE + ' y ' + TOPE_MAX : '⚠️ pasa ' + TOPE_MAX + ' (lo cargado de antes ya pasaba)') : `⚠️ faltan US$ ${(TOPE - total).toFixed(2)} para ${TOPE}: no hay más nuevos que den hoy (mirá "no entraron")`} ===`);
       if (!GOpp) { console.log('PRUEBA: no escribí nada. Para aplicar: agregá ;go'); return; }
