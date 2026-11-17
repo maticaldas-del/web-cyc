@@ -778,8 +778,33 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 - Hecho: CHAT_LOCAL tareas h) ARCA (día 2 de cada mes), i) POSICIÓN y j) PROGRAMAS ML (semanales); PROMPT_COMPETENCIA: siempre llenar Full/tiene/vendió; 8a va como pedido 📌 al chat (cuotas con interés bajo en los Paulvic de Adriana).
 - 2a (16/11): pedido 📌 al chat de Chrome para averiguar el IIBB de Luciana (sin CUIT ni domicilios); la respuesta llega al buzón como RESPUESTA.
 
-## 16/11 · De la completa
+## 16/11 · Revisión de Precios (11 decisiones) — RESUELTAS el 16/11 (1b 2a 3b 4a 5a 6b 7a 8 9a 10a 11a)
+1. **Una venta del Black Friday, ¿frena las bajadas?** Hoy frena la liquidación de 30 días y el "lo que vendió no se baja" (10 días). (a) sugerida: no, para bajar tampoco cuenta · (b) sí, una venta es una venta.
+2. **🥊 Mantener la caja (la waflera) en el Black Friday:** si el otro vendedor baja 30%, la seguimos hasta el piso y después no vuelve a subir sola (subirla es tuyo). (a) sugerida: pausarlo del 25 al 30/11 · (b) dejarlo.
+3. **Un precio que sólo existió en el Black Friday** (promo): (a) sugerida: no cuenta como medido · (b) queda medido.
+4. **🥊 contra la barrera de $33.000:** el escalón de 15% puede caer justo arriba de $33.000 (paga el envío y queda abajo del 35%) y no baja nunca, cuando a $32.990 dejaría ~78%. (a) sugerida: ir a $32.990 aunque baje algo más de 15% · (b) dejarlo.
+5. **La Premium de algo 🔒/🥊 sube sola cuando su Clásica sube** (misma plata). (a) sugerida: dejarlo así (es la misma plata) y escribirlo en la regla · (b) sólo con tu "autorizo".
+6. **La retención de otra provincia se cuenta dos veces arriba de $33.000** (en el "peor envío visto" y en el 2%). Ejemplo: 38,6% pasa a 43,6%. (a) sugerida: contarla una vez, con el envío real de cada venta · (b) dejarlo así (más conservador).
+7. **Publicación que nunca vendió arriba de $33.000:** ¿qué envío se usa? (a) sugerida: el mayor entre la tarifa de ML y el de referencia (lo pesado toma la tarifa) · (b) sólo el de referencia, como hoy.
+8. **El 35% contra un competidor que da cuotas sin interés:** hoy el máximo de compra no las cuenta. Ejemplo: techo $24.990 con 6 cuotas → 57,9% sin contarlas, 31,2% contándolas. (a) sugerida: contarlas · (b) no contarlas en ningún lado.
+9. **La Tienda (25% sobre el costo):** después de las 3 cuotas y el monotributo queda ~10%. (a) seguir con 25% sobre el costo · (b) que el 25% sea lo que queda limpio.
+10. **"A 20 días de pagar stock antiguo"** (deja bajar algo en 🔥/⏳): hoy se abre desde el día 100 aunque ML cobre un mes después. (a) sugerida: contarlo desde el cierre en que ML cobra, como la ventana de 15 días · (b) dejarlo.
+11. **El ritmo a un precio con descuento:** hoy se mide con el precio de lista, no el que vio el comprador. (a) sugerida: con el que vio el comprador, como las rayas · (b) dejarlo.
+
+## 16/11 · De la completa — RESUELTAS el 16/11 (Recortadora y Tendedero contestadas)
 28. **Recortadora 4 en 1 (Ayelen, MLA1474502515):** 5 en Full de 116 días, sin ventas en 60 días. Desde el 13/11 está al costo (26.590, 0 por ciento) y ni así vende; ganar la caja pide 22.966, abajo de 0. Cerca del 20/11 empieza a pagar stock antiguo (unos 1.500 el primer cierre y a los 180 días unas 9 veces más). (a) sugerida: retirar las 5 al local antes del 20/11 · (b) dejarlas en Full al costo pagando.
 29. **Tendedero 3 pisos (Luciana, MLA3576626852):** el descuento a 61.990 que elegiste el 27/10 vence el 18/11. Ahí vende 1 cada 5 días y es su precio de más plata, pero con el envío de Full de hoy (unos 19.200 por unidad) deja 14 por ciento del peor caso (a 67.990, 24). Las 7 de Full tienen 68 días. (a) sugerida: renovarlo a 61.990 hasta Navidad, porque vende y deja más que retirarlo · (b) dejarlo volver a 67.990 y que venda más lento.
 - **Con números de hoy (siguen esperando tu respuesta):** Infusor (100 en Full a 10.390, vende 1 cada 14 días, unos 230 por día contra unos 1.800 a 5.290, stock antiguo cerca del 27/12, techo95 lo da techo seguro) · Centímetro Blanco (147 en Full, más de un año a este ritmo, techo95 24 por ciento) · Pendrive 64 (29 días sin vender a 29.990, techo95 unos 76 por ciento, stock antiguo cerca del 27/12) · Paulvic Silver (180 días cerca del 25/11) · Cubreasiento (180 días cerca del 07/12, para decidir el 22/11).
 - **Para que sepas:** Pendrive 32 hace hoy el escalón a 21.390 en la vuelta de las 9:52 (antes lo frena el plazo de 48 horas). Cabotine 30: el 17/11 desde las 05:00 conviene pasarlo a la promo de ML "Potencia tus ventas" a 72.643 (ML pone 4,1 por ciento y nos queda como 76.287, más que con el descuento de hoy).
+
+## 16/11 · Noche
+1. **Balanzas en las perfumerías:** ¿la que se vendió al precio anterior estaba en Soares o en Ceballos? (también en Inicio como tarjeta)
+
+- 💵 16/11: compró 103,14 USDT a 1.706,44 con los $176.000 de la perfumería. Ese es el dólar del próximo pedido de Paraguay pagado con esos USDT (regla del 15/11).
+
+## 17/11 · De la completa
+30. Doree Crema Oxidante Hierbas Vol 20 de Luciana (MLA4156920482, lanzamiento a 3.990 desde el 12/11): el costo de la ficha dice 1.077 y la lista de Dai Nippon decía 703. Con 1.077 deja unos 620 por unidad (lo barato pide 1.000) y para llegar a 1.000 habría que ir a unos 4.790, un 37 por ciento arriba de los otros vendedores con Full (3.500). (a) sugerida: confirmame el costo real y, si es 1.077, lo subo a 4.790 · (b) dejarlo a 3.990 como está
+31. Metatarso (Ayelen, MLA2029235796) a 19.690, el precio que elegiste el 02/11: lleva 13 días sin vender con unas 6 visitas por día (1 venta en 16 días, unos 590 por día contra 840 a 5.790). Seguridad de techo: techo95 todavía sin número, pero 13 días con visitas sin vender ya es techo por la regla de 10 días. (a) volver a 13.090, donde vendió 1 sin llegar a medirse, y seguir buscando desde ahí (sugerida) (b) dejarlo a 19.690.
+32. Centímetro Rosa (Luciana, MLA3559540968, 79 en Full) a 5.190: en los 10 días de prueba vendió 2 (unos 350 por día) con 9 visitas por día y ganando la caja. A 17.490 había dejado unos 2.100 por día (1 compra de 2). Bajar no trajo las ventas de octubre, igual que en las Blancas que esperan tu respuesta. (a) subirla a 10.190, el medio (ahí vendió 2 en su único día), y decidir las Blancas con el mismo criterio (sugerida) (b) dejarla a 5.190.
+33. Switch TP-Link (Ayelen, MLA4087791306), tu escalera en descuento a 177.990 hasta el 24/11 (33 a 34 del peor caso): ML ofrece su promo Potencia tus ventas, el comprador lo vería a 172.650 (gana la caja, ML la pide a 174.312) y a nosotros nos queda como 179.622, más que hoy (34,5 del peor caso). Seguridad de techo: 95 (25 días sin vender a 177.990 o más). (a) cambiar el descuento por esa promo (sugerida) (b) seguir con el descuento hasta el 24/11.
+- Centímetro Blanco (MLA1699834745 y MLA3112784736): siguen esperando tus autorizaciones 6YRC y XR3R (volver a 5.190).
