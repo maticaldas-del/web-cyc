@@ -28599,7 +28599,8 @@ async function main() {
           const k = ped.prodId && prods[ped.prodId] ? ped.prodId : null; if (!k || ya.has(k)) continue; const p = prods[k];
           const ctaP = Object.values(links).find((l) => l && l.prodId === k)?.cuenta || ''; const esPerfP = esB(p.name) || /adriana/i.test(ctaP);   // 16/11: el Ferrari Negro (perfume de Adriana sin la palabra) caía en Resto
           if (!p || (grp === 'perf') !== esPerfP || /paulvic/i.test(String(p.name) + ' ' + String(ped.proveedor || ''))) continue;
-          const _noEntra = p.origen !== 'py' ? 'la ficha no es de Paraguay' : sinSt[k] ? 'Nissei no lo tiene (no apareció en la última vuelta)' : !(parseFloat(p.nisseiUSD) > 0) ? 'sin precio de Nissei' : !(Date.now() - (Number(p.nisseiTs) || 0) < PY_VIEJO_DIAS * 864e5) ? 'no se miró en Nissei en las últimas 48 h' : '';
+          if (p.origen !== 'py') continue;   // lo de Bs As / listas no va a Paraguay (no se lista)
+          const _noEntra = sinSt[k] ? 'Nissei no lo tiene (no apareció en la última vuelta)' : !(parseFloat(p.nisseiUSD) > 0) ? 'sin precio de Nissei' : !(Date.now() - (Number(p.nisseiTs) || 0) < PY_VIEJO_DIAS * 864e5) ? 'no se miró en Nissei en las últimas 48 h' : '';
           if (_noEntra) { probNo.push(`${String(p.name).slice(0, 50)} (${cant} u.): ${_noEntra}`); continue; }
           ya.add(k); const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
           cargados.unshift({ tipo: 'probado', id: k, nom: p.name, u: cant, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: false, nuevoProb: true, cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); } }
