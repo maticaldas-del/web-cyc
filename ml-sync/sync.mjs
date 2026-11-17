@@ -16013,6 +16013,19 @@ async function colaParaRobot(db, labels) {
       const id = String(Date.now()) + String(Math.floor(Math.random() * 90) + 10); cola[id] = { t: `binancepriv:${k};go`, por: 'saldo de Binance cerrado', estado: 'nuevo', ts: Date.now() };
       await db.set('cyc/pararobot/' + id, cola[id]); await db.patch('mlapi/privado_in/' + k, { encola: Date.now() }); } }
   catch (e) { /* la próxima vuelta */ }
+  // 📨 Los movimientos de deudas, TODOS JUNTOS en un mensaje (17/11/2026, ver `avisoMov`): cuando el último tiene 3+ min.
+  try {
+    const cola = (await db.get('mlapi/avisomovcola')) || {}; const ks = Object.keys(cola).sort();
+    if (ks.length && Date.now() - Math.max(...ks.map((k) => Number((cola[k] || {}).ts) || 0)) >= 3 * 60e3) {
+      const its = ks.map((k) => cola[k]).filter(Boolean); const ultQueda = {}; let perf = '';
+      for (const x of its) { if (x.queda) ultQueda[x.nom] = x.queda; if (x.perf) perf = x.perf; }
+      const txt = (its.length > 1 ? `📨 <b>${its.length} movimientos</b>\n\n` : '') + its.map((x) => x.head).join('\n\n')
+        + '\n\n' + Object.entries(ultQueda).map(([n, q]) => (Object.keys(ultQueda).length > 1 || its.length > 1 ? n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + ': ' : '') + q).join('\n') + (perf ? '\n\n' + perf : '');
+      const ok = await sendTelegram(txt.slice(0, 3900), 'resumen');
+      if (ok) for (const k of ks) await db.set('mlapi/avisomovcola/' + k, null);
+      console.log(ok ? `📨 ${its.length} movimiento(s) de deudas mandados juntos al Telegram de los socios` : '⚠️ los movimientos de deudas NO salieron por Telegram (se reintenta)');
+    }
+  } catch (e) { console.log('⚠️ cola de movimientos: ' + String((e && e.message) || e).slice(0, 80)); }
   // 🧾 EL PEDIDO DE PARAGUAY SIEMPRE AL DÍA (16/11/2026, él: "¿por qué no se hace automático? ir agregando y sacando productos según convenga,
   // todos los días" y "quiero que siempre esté actualizado cada 24 hrs y esté bien y listo para realizar el pedido… en cualquier momento tengo
   // que hacer el pedido"): con una vuelta completa de Nissei de las últimas 24 h, el robot corre `pypedido:perf;go` y `pypedido:resto;go`
@@ -45350,8 +45363,15 @@ async function main() {
                 const sMP = ds.filter((x) => !/mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0);   // con signo (etapa 9, 13/11): lo que le debemos no se tapa con $0
                 const sMe = ds.filter((x) => /mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0);   // con signo (etapa 9, 13/11): lo que le debemos no se tapa con $0
                 return `\n\n🛍️ Perfumería: MercadoPago ${_mPerf(sMP)} · Mercadería ${_mPerf(sMe)}\n<b>${sMP + sMe < 0 ? 'A favor de la perfumería (le debemos)' : 'Total que debe la perfumería'}: ${money(Math.abs(Math.round(sMP + sMe)))}</b>`; })();
-          const ok = await sendTelegram(txt, 'resumen');
-          console.log(ok ? '  ✓ movimiento mandado al Telegram de los socios' : '  ⚠️ el movimiento NO salió por Telegram');
+          // 17/11/2026 (él: "estás mandando muchos mensajes… cuando hay una venta manda todo junto, no varios mensajes, y al descontar lo
+          // mismo"): no sale al momento; va a `mlapi/avisomovcola` y el ciclo de 2 min lo manda TODO JUNTO en un mensaje cuando pasan 3 min
+          // sin movimientos nuevos (`avisoMovJuntar`). Cada uno guarda su cabeza (qué pasó) y su cola (cuánto queda); al juntar, los saldos
+          // salen una sola vez, los últimos de cada deuda.
+          const corte = txt.search(/\n(Le debemos|<b>Queda debiendo)/);
+          const head = corte > 0 ? txt.slice(0, corte) : txt, tail = corte > 0 ? txt.slice(corte + 1) : '';
+          const iP = tail.indexOf('\n\n🛍️ Perfumería:');
+          await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head, nom: String(dA.nom || '?'), queda: iP >= 0 ? tail.slice(0, iP) : tail, perf: iP >= 0 ? tail.slice(iP + 2) : '', ts: Date.now() });
+          console.log('  ✓ movimiento en la cola: sale al Telegram de los socios junto con los demás de este rato (en 3-5 min)');
         } catch (e) { console.log('  ⚠️ el movimiento NO salió por Telegram: ' + String(e.message || e).slice(0, 90)); }
       };
       const lista = Object.entries(D).filter(([, d]) => d && typeof d === 'object' && d.nom);
