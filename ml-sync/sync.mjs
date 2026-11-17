@@ -54195,7 +54195,7 @@ async function main() {
       }
       const cnt = {}; for (const m of Object.keys(es)) { const a = actual(m); if (a) (cnt[a.t] = cnt[a.t] || []).push(m); }
       console.log('=== 🏷 ESTRATEGIA DE CADA PRECIO, HOY ===');
-      for (const [t, l] of Object.entries(ESTRATEGIAS)) { const arr = cnt[t] || []; console.log(`${l}: ${arr.length}`); for (const m of arr.slice(0, 15)) console.log(`   · ${nomDe(m)}`); }
+      for (const [t, l] of Object.entries(ESTRATEGIAS)) { const arr = cnt[t] || []; console.log(`${l}: ${arr.length}`); for (const m of arr.slice(0, 15)) console.log(`   · ${nomDe(m)}${t === 'fecha' ? ` [${m}] · ${String((actual(m) || {}).m || '').slice(0, 140)}` : ''}`); }   // 17/11: los 🎁 con su motivo, para ver si la fecha es la estrategia de verdad
       return;
     }
     // BILLING_PROBE=decido:<MLA>=<precio>[!piso][!cruza][!salto][!sintecho]|<motivo>[;<MLA>=…][;go] → LOS PRECIOS QUE DECIDE CLAUDE
