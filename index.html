@@ -82,17 +82,28 @@ body.discreto .vp-aviso{animation:none}
 @keyframes puntRompe{0%,62%,100%{transform:none;text-shadow:none}70%{transform:translateY(-3px) scale(1.12) rotate(-3deg);text-shadow:0 0 10px currentColor}78%{transform:translateY(0) scale(1.04) rotate(2deg)}86%{transform:scale(1.08) rotate(-1deg);text-shadow:0 0 6px currentColor}}
 @media(prefers-reduced-motion:reduce){.punt-rompe{animation:none}}
 .esc-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;animation-name:escLlena;animation-timing-function:ease-out;animation-fill-mode:both}@keyframes escLlena{from{width:var(--w0)}to{width:var(--w)}}@media(prefers-reduced-motion:reduce){.esc-fill{animation:none}}
-/* 🪟 VIDRIO (18/11/2026, él: "si se pasa, que comience a romper y salirse para el costado, como si fuera de vidrio la barra"): pasada la JOYA la
-   barra se raja (rayitas blancas, más tramos cuanto más se pasa) y por la punta derecha salen volando astillas doradas. */
+/* 🫙 TUBOS DE VIDRIO CON LÍQUIDO (18/11/2026, él: "que el detalle del vidrio esté en todos los globitos de vidrio, sin romper, que se note que es
+   vidrio" y "que sea como líquido lo de adentro"): borde finito, brillo arriba y abajo; el relleno es líquido con un reflejo que corre.
+   Pasado el 10 (`.esc-rota`) el último tubo se raja en la punta y el líquido se sale para adelante. */
 .esc-barra{position:relative}
-.esc-raja{position:absolute;left:0;top:-1px;width:100%;height:calc(100% + 2px);pointer-events:none;overflow:hidden}
-.esc-raja path{fill:none;stroke:rgba(255,255,255,.85);stroke-width:.9;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.esc-astillas{position:absolute;inset:0;pointer-events:none;overflow:visible}
-.esc-ast{position:absolute;left:var(--x);top:50%;width:var(--s);height:var(--s);background:linear-gradient(135deg,#fef08a,#facc15 55%,#eab308);clip-path:polygon(50% 0,100% 70%,20% 100%);opacity:0;
-  animation:escAst var(--d) cubic-bezier(.2,.6,.4,1) var(--dl) infinite;box-shadow:0 0 4px rgba(250,204,21,.7)}
-@keyframes escAst{0%{opacity:0;transform:translate(-4px,-50%) rotate(0)}8%{opacity:1}70%{opacity:.9}
-  100%{opacity:0;transform:translate(var(--dx),calc(-50% + var(--dy))) rotate(var(--r))}}
-@media(prefers-reduced-motion:reduce){.esc-ast{animation:none;display:none}}
+.esc-tubo{box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 -2px 3px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.25)}
+.esc-tubo::after{content:'';position:absolute;left:4px;right:4px;top:1.5px;height:2.5px;border-radius:99px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55) 20%,rgba(255,255,255,.2) 70%,rgba(255,255,255,0));pointer-events:none;z-index:2}
+.esc-liq{overflow:hidden}
+.esc-liq::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0) 45%,rgba(0,0,0,.18));}
+.esc-liq::after{content:'';position:absolute;top:0;bottom:0;width:40%;left:-45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);animation:escOla 3.2s ease-in-out infinite}
+@keyframes escOla{0%{left:-45%}60%,100%{left:110%}}
+.esc-rota{margin-right:30px}
+.esc-raja{position:absolute;right:0;top:-1px;width:calc((100% - 15px) / 6);height:calc(100% + 2px);pointer-events:none;overflow:hidden;z-index:3}
+.esc-raja path{fill:none;stroke:rgba(255,255,255,.9);stroke-width:1;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.esc-derrame{position:absolute;left:100%;top:50%;width:0;height:0;pointer-events:none;overflow:visible;z-index:3}
+.esc-chorro{position:absolute;left:-2px;top:-3px;width:9px;height:7px;border-radius:0 6px 6px 0;background:linear-gradient(180deg,#fef08a,#facc15 50%,#ca8a04);animation:escChorro 1.6s ease-in-out infinite;transform-origin:left center}
+@keyframes escChorro{0%,100%{transform:scaleX(.8)}50%{transform:scaleX(1.15)}}
+.esc-gota{position:absolute;left:4px;top:-1px;width:var(--s);height:calc(var(--s) * 1.25);border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(circle at 35% 30%,#fffbe0,#facc15 45%,#ca8a04);opacity:0;
+  animation:escGota var(--d) cubic-bezier(.45,0,.9,.6) var(--dl) infinite}
+@keyframes escGota{0%{opacity:0;transform:translate(0,0)}10%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+.esc-charco{position:absolute;left:2px;top:22px;width:var(--cw);height:4px;border-radius:50%;background:radial-gradient(ellipse at 40% 40%,#fde68a,#eab308 60%,rgba(234,179,8,.0));opacity:.85;animation:escCharco 2.4s ease-in-out infinite}
+@keyframes escCharco{0%,100%{transform:scaleX(.9)}50%{transform:scaleX(1.08)}}
+@media(prefers-reduced-motion:reduce){.esc-liq::after,.esc-gota,.esc-chorro,.esc-charco{animation:none}.esc-gota{display:none}}
 .vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
 .hx-card{margin:8px auto 12px;max-width:760px;box-sizing:border-box;padding:10px 14px;border-radius:14px;border:1.5px solid var(--border2);background:var(--surface);font-size:.86rem;line-height:1.45;overflow-wrap:anywhere}
 .hx-card a{color:#38bdf8}
@@ -3729,7 +3740,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.233';
+const APP_VERSION='28.234';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3742,6 +3753,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.234',f:'18/11',h:'16:10',c:[{n:1,t:'🫙 Inicio: los tubitos de la barra del día ahora son de vidrio con líquido adentro (brillo y un reflejo que corre). Cuando el puntaje pasa de 10, el último tubo se raja en la punta y el líquido se sale para adelante: chorro, gotas y un charquito (más cuanto más pasa de 10).'}]},
   {v:'28.233',f:'18/11',h:'15:40',c:[{n:1,t:'🪟 Inicio: cuando el día pasa la 💎 JOYA, la barra se raja como vidrio y le saltan astillas doradas por el costado; cuanto más se pasa, más se rompe.'}]},
   {v:'28.232',f:'18/11',h:'15:10',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" ahora es lo que deja la caja ENTERA; lo que todavía no entró a Full va al lado, chico (antes mostraba sólo lo que faltaba entrar y parecía que la caja dejaba $600).'}]},
   {v:'28.231',f:'18/11',h:'13:15',c:[{n:3,t:'💸 Cobro del mes: si un mes CYC achica, lo negativo se descuenta del cobro del mes siguiente (antes se perdía). Desde el cierre de noviembre.'},{n:2,t:'📸 Cerrar el mes avisa si el efectivo o Binance se cargaron hace más de 2 días.'},{n:2,t:'🛒 Ventas: en un carrito, cada producto muestra su ganancia y % como si se hubiera vendido solo, y aparte el ahorro por ir en carrito.'},{n:2,t:'📦 El envío de la caja de cada venta es el del día en que se vendió, y de mayo a septiembre quedan congelados como octubre.'},{n:2,t:'📥 Ver deudas: sin botones de pago (✅ Pagó, 💵 Pagó una cuota, ↩︎ Deshacer): los pagos los carga Claude. Queda ✏️ Editar.'}]},
@@ -13670,7 +13682,7 @@ function vivaDia(h){
 // La escalerita del día: un tramo por nivel (prendido el que ya se pasó) y cuánto falta para el siguiente. Con más de un día
 // (Mes/Año) el nivel sale del promedio por día, igual que el color de la tarjeta (vivaDia), y lo que falta se dice por día.
 const _escPrev={};
-function _diaEscaleraHTML(gan,dias,quedan,esc){
+function _diaEscaleraHTML(gan,dias,quedan,esc,score){
   const n=Math.max(1,Number(dias)||1),g=(Number(gan)||0)/n;
   const niv=VIVA_DIA_NIV.slice(1);
   let sig=null;for(const x of niv)if(g<x[1]){sig=x;break;}
@@ -13685,7 +13697,7 @@ function _diaEscaleraHTML(gan,dias,quedan,esc){
   const fr=niv.map((x,i)=>{const d=i?niv[i-1][1]:0;return g>=x[1]?1:g<=d?0:(g-d)/(x[1]-d);});
   const prev=_escPrev[n]||fr.map(()=>0);_escPrev[n]=fr;
   let t=0;const segs=niv.map((x,i)=>{const w0=Math.round((prev[i]||0)*1000)/10,w=Math.round(fr[i]*1000)/10,dur=Math.max(.4,Math.abs(fr[i]-(prev[i]||0))*.9),del=t;t+=w!==w0?dur:0;
-    return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1]*n)}${n>1?' en el período ('+fmt(x[1])+' por día)':''}" style="flex:1;height:8px;border-radius:99px;position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:${x[2]};opacity:.25"></span><span class="esc-fill" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s;background:${fr[i]>=1?x[2]:colAct}"></span></span>`;}).join('');
+    return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1]*n)}${n>1?' en el período ('+fmt(x[1])+' por día)':''}" class="esc-tubo" style="flex:1;height:10px;border-radius:99px;position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:${x[2]};opacity:.18"></span><span class="esc-fill esc-liq" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s;background:${fr[i]>=1?x[2]:colAct}"></span></span>`;}).join('');
   const marcas=niv.map(x=>`<span style="flex:1;min-width:0;overflow:hidden;white-space:nowrap">${k1(x)}</span>`).join('');
   // Mes y año (24/10/2026): `dias` son los del período entero, así que lo que falta se dice en total y repartido en los que quedan.
   const q=Math.max(0,Number(quedan)||0),per=esc==='anio'?'el año':'el mes';
@@ -13693,19 +13705,19 @@ function _diaEscaleraHTML(gan,dias,quedan,esc){
         :`Faltaron <b style="color:${sig[2]}">${fmt(Math.round(sig[1]*n-(Number(gan)||0)))}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
       :`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
     :`${VIVA_DIA_NOM.joya}: arriba de todo`;
-  // 🪟 Vidrio: cuánto se pasó de la JOYA (0 = justo en la JOYA; 1 = el doble). Raja más tramos y suelta más astillas cuanto más se pasa.
-  const _top=niv[niv.length-1][1],_over=g>_top?Math.min(3,g/_top-1):-1;let vidrio='';
+  // 🫗 Se pasó del 10 (18/11/2026, él: "cuando se pasa del 10 (…) que se salga para adelante, como líquido lo de adentro"): el último tubo
+  // se raja en la punta y el líquido dorado se derrama hacia adelante (gotas que caen y un charquito). Más puntos arriba de 10 = más chorro.
+  const _sc=Number(score),_over=isFinite(_sc)&&_sc>10?Math.min(10,_sc-10):-1;let vidrio='';
   if(_over>=0){
-    const nt=niv.length,rot=Math.min(nt,1+Math.floor(_over*4)),ancho=100/nt,x0=100-rot*ancho;let pth='';
-    for(let k=0;k<rot*2+2;k++){const cx=x0+Math.random()*(100-x0);let d=`M${cx.toFixed(1)} ${(Math.random()*20).toFixed(1)}`;let yy=0,xx=cx;
-      while(yy<100){yy+=22+Math.random()*30;xx+=(Math.random()-.5)*ancho*.12;d+=` L${xx.toFixed(1)} ${Math.min(100,yy).toFixed(1)}`;}pth+=`<path d="${d}"/>`;}
-    const na=Math.min(22,6+Math.round(_over*12));let ast='';
-    for(let k=0;k<na;k++){const sz=(3+Math.random()*4).toFixed(1),xp=(x0+Math.random()*(100-x0)).toFixed(1),dx=(6+Math.random()*30).toFixed(0),dy=((Math.random()<.5?-1:1)*(8+Math.random()*26)).toFixed(0),r=((Math.random()-.5)*540).toFixed(0),
-      du=(1.4+Math.random()*1.4).toFixed(2),dl=(Math.random()*3).toFixed(2);ast+=`<i class="esc-ast" style="--x:${xp}%;--s:${sz}px;--dx:${dx}px;--dy:${dy}px;--r:${r}deg;--d:${du}s;--dl:${dl}s"></i>`;}
-    vidrio=`<svg class="esc-raja" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pth}</svg><span class="esc-astillas" aria-hidden="true">${ast}</span>`;
+    let pth='';for(let k=0;k<2+Math.round(_over);k++){let xx=97-Math.random()*6,yy=-5,d=`M${xx.toFixed(1)} ${yy}`;while(yy<105){yy+=25+Math.random()*25;xx+=(Math.random()-.5)*2.4;d+=` L${xx.toFixed(1)} ${yy.toFixed(1)}`;}pth+=`<path d="${d}"/>`;}
+    const ng=Math.min(26,6+Math.round(_over*5));let got='';
+    for(let k=0;k<ng;k++){const sz=(2.5+Math.random()*3.5).toFixed(1),dx=(4+Math.random()*(10+_over*4)).toFixed(0),dy=(14+Math.random()*22).toFixed(0),
+      du=(.9+Math.random()*.9).toFixed(2),dl=(Math.random()*2.2).toFixed(2);got+=`<i class="esc-gota" style="--s:${sz}px;--dx:${dx}px;--dy:${dy}px;--d:${du}s;--dl:${dl}s"></i>`;}
+    const charco=(10+Math.min(18,_over*4)).toFixed(0);
+    vidrio=`<svg class="esc-raja" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pth}</svg><span class="esc-derrame" aria-hidden="true"><i class="esc-chorro"></i>${got}<i class="esc-charco" style="--cw:${charco}px"></i></span>`;
   }
-  return `<div class="hoy-esc" style="margin-top:14px"><div class="esc-barra" style="display:flex;gap:3px">${segs}${vidrio}</div>
-    <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">${marcas}</div>
+  return `<div class="hoy-esc" style="margin-top:14px"><div class="esc-barra${vidrio?' esc-rota':''}" style="display:flex;gap:3px">${segs}${vidrio}</div>
+    <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace${vidrio?';margin-right:30px':''}">${marcas}</div>
     <div style="font-size:.76rem;margin-top:6px">${falta}</div></div>`;
 }
 const _viva={cards:[],on:false,last:0,tick:0,io:null};
@@ -28906,7 +28918,7 @@ function _renderHomeHoy(){
   <!-- 22/10/2026, él: "que las ventas viva sea hasta la línea roja, así lo de abajo se nota más, ya que con colores no se entiende
        mucho. Lo mismo con mes y año": la tarjeta viva (colores, burbujas, fuego) termina en los números; lo de abajo va en una común. -->
   <div style="--c:${_vd.c};margin:8px auto 18px;max-width:min(760px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 22px 14px;${ocultaVendido()?'display:none':''}">
-    ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc):''}
+    ${h.ventas>0?_diaEscaleraHTML(h.gan,_nP,_nP-h.dias,esc,(()=>{try{return (_puntajeDia(hoy,h,_nP,esc)||{}).score;}catch(e){return null;}})()):''}
     ${h.ventas>0?(esc==='dia'?_mezclaSeguro(dateToKey(hoy),_homeHoyOff===0?'de hoy':'de ese día'):esc==='mes'?_mezclaSeguro(_hf.getFullYear()+'_'+String(_hf.getMonth()+1).padStart(2,'0'),_homeHoyOff===0?'de este mes':'de ese mes'):esc==='anio'?_mezclaSeguro(String(_hf.getFullYear()),_homeHoyOff===0?'de este año':'de ese año'):''):''}
     ${esc==='dia'?(()=>{try{return _homeCurvaHTML(hoy);}catch(e){return '';}})():''}
     ${(()=>{try{return _homeGustoHTML(esc,hoy,_hf);}catch(e){return '';}})()}
