@@ -82,6 +82,17 @@ body.discreto .vp-aviso{animation:none}
 @keyframes puntRompe{0%,62%,100%{transform:none;text-shadow:none}70%{transform:translateY(-3px) scale(1.12) rotate(-3deg);text-shadow:0 0 10px currentColor}78%{transform:translateY(0) scale(1.04) rotate(2deg)}86%{transform:scale(1.08) rotate(-1deg);text-shadow:0 0 6px currentColor}}
 @media(prefers-reduced-motion:reduce){.punt-rompe{animation:none}}
 .esc-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;animation-name:escLlena;animation-timing-function:ease-out;animation-fill-mode:both}@keyframes escLlena{from{width:var(--w0)}to{width:var(--w)}}@media(prefers-reduced-motion:reduce){.esc-fill{animation:none}}
+/* 🪟 VIDRIO (18/11/2026, él: "si se pasa, que comience a romper y salirse para el costado, como si fuera de vidrio la barra"): pasada la JOYA la
+   barra se raja (rayitas blancas, más tramos cuanto más se pasa) y por la punta derecha salen volando astillas doradas. */
+.esc-barra{position:relative}
+.esc-raja{position:absolute;left:0;top:-1px;width:100%;height:calc(100% + 2px);pointer-events:none;overflow:hidden}
+.esc-raja path{fill:none;stroke:rgba(255,255,255,.85);stroke-width:.9;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.esc-astillas{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.esc-ast{position:absolute;left:var(--x);top:50%;width:var(--s);height:var(--s);background:linear-gradient(135deg,#fef08a,#facc15 55%,#eab308);clip-path:polygon(50% 0,100% 70%,20% 100%);opacity:0;
+  animation:escAst var(--d) cubic-bezier(.2,.6,.4,1) var(--dl) infinite;box-shadow:0 0 4px rgba(250,204,21,.7)}
+@keyframes escAst{0%{opacity:0;transform:translate(-4px,-50%) rotate(0)}8%{opacity:1}70%{opacity:.9}
+  100%{opacity:0;transform:translate(var(--dx),calc(-50% + var(--dy))) rotate(var(--r))}}
+@media(prefers-reduced-motion:reduce){.esc-ast{animation:none;display:none}}
 .vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
 .hx-card{margin:8px auto 12px;max-width:760px;box-sizing:border-box;padding:10px 14px;border-radius:14px;border:1.5px solid var(--border2);background:var(--surface);font-size:.86rem;line-height:1.45;overflow-wrap:anywhere}
 .hx-card a{color:#38bdf8}
@@ -3718,7 +3729,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.232';
+const APP_VERSION='28.233';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3742,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.233',f:'18/11',h:'15:40',c:[{n:1,t:'🪟 Inicio: cuando el día pasa la 💎 JOYA, la barra se raja como vidrio y le saltan astillas doradas por el costado; cuanto más se pasa, más se rompe.'}]},
   {v:'28.232',f:'18/11',h:'15:10',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" ahora es lo que deja la caja ENTERA; lo que todavía no entró a Full va al lado, chico (antes mostraba sólo lo que faltaba entrar y parecía que la caja dejaba $600).'}]},
   {v:'28.231',f:'18/11',h:'13:15',c:[{n:3,t:'💸 Cobro del mes: si un mes CYC achica, lo negativo se descuenta del cobro del mes siguiente (antes se perdía). Desde el cierre de noviembre.'},{n:2,t:'📸 Cerrar el mes avisa si el efectivo o Binance se cargaron hace más de 2 días.'},{n:2,t:'🛒 Ventas: en un carrito, cada producto muestra su ganancia y % como si se hubiera vendido solo, y aparte el ahorro por ir en carrito.'},{n:2,t:'📦 El envío de la caja de cada venta es el del día en que se vendió, y de mayo a septiembre quedan congelados como octubre.'},{n:2,t:'📥 Ver deudas: sin botones de pago (✅ Pagó, 💵 Pagó una cuota, ↩︎ Deshacer): los pagos los carga Claude. Queda ✏️ Editar.'}]},
   {v:'28.230',f:'18/11',h:'05:10',c:[{n:2,t:'Pedidos: si se compra un solo color, la tarjeta muestra el máximo de compra de ese color. Revisión de Mercadería en el cartel.'}]},
@@ -13681,7 +13693,18 @@ function _diaEscaleraHTML(gan,dias,quedan,esc){
         :`Faltaron <b style="color:${sig[2]}">${fmt(Math.round(sig[1]*n-(Number(gan)||0)))}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
       :`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
     :`${VIVA_DIA_NOM.joya}: arriba de todo`;
-  return `<div class="hoy-esc" style="margin-top:14px"><div style="display:flex;gap:3px">${segs}</div>
+  // 🪟 Vidrio: cuánto se pasó de la JOYA (0 = justo en la JOYA; 1 = el doble). Raja más tramos y suelta más astillas cuanto más se pasa.
+  const _top=niv[niv.length-1][1],_over=g>_top?Math.min(3,g/_top-1):-1;let vidrio='';
+  if(_over>=0){
+    const nt=niv.length,rot=Math.min(nt,1+Math.floor(_over*4)),ancho=100/nt,x0=100-rot*ancho;let pth='';
+    for(let k=0;k<rot*2+2;k++){const cx=x0+Math.random()*(100-x0);let d=`M${cx.toFixed(1)} ${(Math.random()*20).toFixed(1)}`;let yy=0,xx=cx;
+      while(yy<100){yy+=22+Math.random()*30;xx+=(Math.random()-.5)*ancho*.12;d+=` L${xx.toFixed(1)} ${Math.min(100,yy).toFixed(1)}`;}pth+=`<path d="${d}"/>`;}
+    const na=Math.min(22,6+Math.round(_over*12));let ast='';
+    for(let k=0;k<na;k++){const sz=(3+Math.random()*4).toFixed(1),xp=(x0+Math.random()*(100-x0)).toFixed(1),dx=(6+Math.random()*30).toFixed(0),dy=((Math.random()<.5?-1:1)*(8+Math.random()*26)).toFixed(0),r=((Math.random()-.5)*540).toFixed(0),
+      du=(1.4+Math.random()*1.4).toFixed(2),dl=(Math.random()*3).toFixed(2);ast+=`<i class="esc-ast" style="--x:${xp}%;--s:${sz}px;--dx:${dx}px;--dy:${dy}px;--r:${r}deg;--d:${du}s;--dl:${dl}s"></i>`;}
+    vidrio=`<svg class="esc-raja" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pth}</svg><span class="esc-astillas" aria-hidden="true">${ast}</span>`;
+  }
+  return `<div class="hoy-esc" style="margin-top:14px"><div class="esc-barra" style="display:flex;gap:3px">${segs}${vidrio}</div>
     <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace">${marcas}</div>
     <div style="font-size:.76rem;margin-top:6px">${falta}</div></div>`;
 }
