@@ -832,3 +832,8 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 6. **Lo que sacás a mano del pedido de Paraguay vuelve al día siguiente.** (a) sugerida: lo que sacás queda afuera hasta la próxima decisión, y lo que cargás a mano cuenta como tuyo · (b) manda el robot.
 7. **Probados en el pedido de Paraguay:** hoy salen si no dan 35% contra el más barato de ML, aunque Pedidos haya decidido reponerlos con su regla. (a) sugerida: los probados con la regla de Pedidos, los nuevos contra el más barato · (b) como hoy.
 8. **El ticket de Paraguay y la guía de Via Cargo quedan enteros en el registro público** (el texto del comando). (a) sugerida: pasarlos cerrados, como el saldo de Binance · (b) aceptarlo.
+
+## 18/11 · Black Friday de ML (25/11 al 03/12) — para la lista de las 12:30 (informativo)
+- ML no pone plata en el Black Friday "común" en ninguna de las 4 cuentas: entrar sería bajar por bajar → no entro en ninguna (pendrives, cartas, enchufes, infusores, termómetro, centímetros, Paulvic).
+- "Ofertas Compartidas BF" (ML pone 1-3%): sólo los Victoria's Secret de Adriana, y todos quedan abajo del 35% (entre −29% y 29% en el peor caso) → no.
+- Única que da: Pendrive 8GB (Matías) en "Potencia tus ventas" (no es BF): $33.090 → $31.436, ML pone 2,8%, nos queda como $32.362 y cruza abajo de la barrera (el envío lo paga el comprador): 136% en el peor caso. Falta el 🤔 de sobra para entrar.
