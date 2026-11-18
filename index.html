@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.231';
+const APP_VERSION='28.232';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.232',f:'18/11',h:'15:10',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" ahora es lo que deja la caja ENTERA; lo que todavía no entró a Full va al lado, chico (antes mostraba sólo lo que faltaba entrar y parecía que la caja dejaba $600).'}]},
   {v:'28.231',f:'18/11',h:'13:15',c:[{n:3,t:'💸 Cobro del mes: si un mes CYC achica, lo negativo se descuenta del cobro del mes siguiente (antes se perdía). Desde el cierre de noviembre.'},{n:2,t:'📸 Cerrar el mes avisa si el efectivo o Binance se cargaron hace más de 2 días.'},{n:2,t:'🛒 Ventas: en un carrito, cada producto muestra su ganancia y % como si se hubiera vendido solo, y aparte el ahorro por ir en carrito.'},{n:2,t:'📦 El envío de la caja de cada venta es el del día en que se vendió, y de mayo a septiembre quedan congelados como octubre.'},{n:2,t:'📥 Ver deudas: sin botones de pago (✅ Pagó, 💵 Pagó una cuota, ↩︎ Deshacer): los pagos los carga Claude. Queda ✏️ Editar.'}]},
   {v:'28.230',f:'18/11',h:'05:10',c:[{n:2,t:'Pedidos: si se compra un solo color, la tarjeta muestra el máximo de compra de ese color. Revisión de Mercadería en el cartel.'}]},
   {v:'28.229',f:'17/11',h:'13:45',c:[{n:2,t:'🇵🇾 Paraguay: cada pedido lleva también la foto del comprobante de pago (💳 en el detalle, para subirla y verla). A los pedidos desde el 13/11 que no la tienen les sale en rojo "falta comprobante de pago" (no frena marcar que llegó).'}]},
@@ -11962,8 +11963,10 @@ function cajaGanEsperada(items){
     if(g!=null&&isFinite(g))gan+=g*u;else sin+=u;}
   return{gan,sin};
 }
-function cajaGanHTML(items,est){const G=cajaGanEsperada(items);if(!(G.gan>0)&&!G.sin)return '';
-  return `<span style="font-size:.7rem;font-weight:700;color:var(--green);white-space:nowrap${est||''}" title="Lo que deja vender todo: unidades × ganancia por unidad de hoy de cada producto${G.sin?` · ${G.sin} u. sin ganancia medida no suman`:''}">💵 ${fmt(Math.round(G.gan))} al venderse${G.sin?` <span style="color:var(--muted);font-weight:400">(${G.sin} u. sin dato)</span>`:''}</span>`;}
+function cajaGanHTML(items,est,pend){const G=cajaGanEsperada(items);if(!(G.gan>0)&&!G.sin)return '';
+  // 18/11 (él: "¿cómo que $600 al venderse?"): el número grande es lo que deja la caja ENTERA; lo que todavía no entró a Full va aparte, chico.
+  const P=pend?cajaGanEsperada(pend):null;const parte=P&&Math.round(P.gan)<Math.round(G.gan)?` <span style="color:var(--muted);font-weight:400">(falta entrar ${fmt(Math.round(P.gan))})</span>`:'';
+  return `<span style="font-size:.7rem;font-weight:700;color:var(--green);white-space:nowrap${est||''}" title="Lo que deja vender toda la caja: unidades × ganancia por unidad de hoy de cada producto${G.sin?` · ${G.sin} u. sin ganancia medida no suman`:''}">💵 ${fmt(Math.round(G.gan))} al venderse${parte}${G.sin?` <span style="color:var(--muted);font-weight:400">(${G.sin} u. sin dato)</span>`:''}</span>`;}
 function renderCajasEnCamino(){
   const cont=document.getElementById('ofi-camino-list');if(!cont)return;
   const todos0=Object.entries(state.envios_full||{}).map(([id,e])=>({id,...e}))
@@ -12002,7 +12005,7 @@ function renderCajasEnCamino(){
         <strong style="font-family:'DM Mono',monospace;font-size:.76rem">${e.fecha||''}</strong>
         <span class="pi-qty">${cajasDe(e).length} caja(s)</span>
         <span style="color:var(--muted);font-size:.66rem">${e.correo||''}${e.sucursal?' · '+e.sucursal:''}</span>
-        ${cajaGanHTML(cajasDe(e).flatMap((c,ci)=>c.recibida?[]:(c.items||[]).map(x=>({...x,u:cajaPendU(e.id,ci,c,x)}))))}
+        ${cajaGanHTML(cajasDe(e).flatMap(c=>(c.items||[])),'',cajasDe(e).flatMap((c,ci)=>c.recibida?[]:(c.items||[]).map(x=>({...x,u:cajaPendU(e.id,ci,c,x)}))))}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${cajasDe(e).some(c=>!c.recibida)?`<button class="btn" style="padding:5px 10px;font-size:.66rem;${e.pausado?'':'background:transparent;border:1px solid var(--border2);color:var(--text)'}" onclick="setEnvioPausa('${e.id}',${e.pausado?'false':'true'})" title="${e.pausado?'Vuelve a salir: cuenta desde hoy y sale el próximo día hábil a las 12':'No la mandamos todavía: deja de contar los días de viaje hasta que la reanudes'}">${e.pausado?'▶️ Reanudar envío':'⏸️ Pausar envío'}</button>`:''}
