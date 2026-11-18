@@ -103,3 +103,4 @@ caja:p1779912655490@Adriana#Scarf=u|0|al precio de hoy vende 1 en 33 días con s
 caja:p1779912655490@Adriana#Teikirisi=u|0|💸 hoy se vende a 33% (menos de 35%): no va más a Full hasta vender lo que hay ahí (3), después se sube al 35% y se prueba 2 meses (él, 11/11) · (cuenta automática)
 caja:p1779912655490@Adriana#Transparent Mujer=u|0|al precio de hoy vende 0 en 36 días con stock (desde el último cambio de precio) · hay 6 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 0 · en la oficina 3 · (cuenta automática)
 caja:p1779912655490@Adriana#Turbulence=u|0|al precio de hoy vende 0 en 25 días con stock (desde el último cambio de precio) · hay 3 en Full y 0 en camino · para 37 dias (30 + 7 de viaje) hacen falta 0 · en la oficina 3 · (cuenta automática)
+caja:p17949311620074@Ayelen=u|1|nueva (publicada pausada el 17/11 a 355.990, 78% peor caso, nadie con Full): va la que hay · deja ~$215.000 sola
