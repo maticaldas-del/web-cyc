@@ -107,3 +107,4 @@ en que se anota en `correcciones.md`.** El número entre corchetes es de qué ca
 - (16/11) Antes de proponer una bajada grande: ¿la plata por día que uso es la de la línea de tiempo de ESE color hoy, y no un pico? ¿Miré la edad real de las unidades en Full (`antiguo`, lotes del Excel) antes de hablar de stock antiguo?
 - (17/11) Al cargar un ticket: ¿cada renglón de `det` está ESCRITO en la foto del ticket (código, unidades, precio) y el total da EXACTO el del ticket sin tocar `usd`? Si no cierra, falta o sobra un renglón: no se fuerza el total.
 - (17/11) ¿Un "no traer" que puse a mano depende de algo que cambia (precio de Nissei, stock, competencia)? Entonces no va como juicio fijo: lo decide la cuenta de cada día (py_sinstock, M35). Juicio fijo sólo para decisiones suyas o cosas que no se miden solas.
+- (18/11) Cuando le pido al chat de Chrome sumar algo a un envío de Full: ¿le dije a CUÁL (chicos o grandes)? Los grandes (Tenders/tendederos) nunca se mezclan.

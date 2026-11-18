@@ -170,3 +170,7 @@ LA TIENDA DE CYC (para saber, 30/10/2026)
 ```
 
 - **Perfumes de Nissei TODOS LOS DÍAS (02/11, Matías eligió 1a):** dentro de la RUTINA (PROMPT_RUTINA_LOCAL, parte 3, paso 7) se copia la categoría PERFUMES de Nissei entera con `pycat`, sin `fin=`. La página ABEL muestra sólo lo mirado hace 2 días o menos: si un día no se hace, al tercero se vacía.
+
+
+## ⚠️ Envíos a Full: grandes y chicos SEPARADOS (18/11)
+Los productos GRANDES (Tenders / tendederos) van SIEMPRE en su propio envío: ML no deja mezclarlos con nada. Nunca agregues un producto chico a un envío que ya tiene grandes (el 18/11 se metieron 20 Mini Cintas en el envío de los 6 tendederos de Luciana y hubo que corregirlo). Si un pedido de Claude dice "agregá al envío", es siempre al de chicos.

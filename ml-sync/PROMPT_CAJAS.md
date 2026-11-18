@@ -21,6 +21,7 @@ En Armar caja, con la cuenta elegida, anotá cada renglón que tenga unidades pa
 ETIQUETA de Full (tipo ABCD12345, no el MLA) y unidades. Lo que dice 0 o "sin decidir" no va.
 · Si un renglón dice "🏷️ N sin etiqueta": anotalo aparte (Matías los etiqueta antes de cerrar la caja).
 · Mirá las barras de cupo de abajo (chicos/medianos y grandes): si se pasa, avisale antes de cargar.
+· ⚠️ PRODUCTOS GRANDES (Tenders / tendederos) VAN SIEMPRE EN SU PROPIO ENVÍO: ML no deja mezclarlos con nada por el tamaño. Nunca agregues un producto chico a un envío que tiene grandes, ni al revés (18/11, él: "los tenders son productos grandes. no deja mezclar con cualquier otro producto"). Si para un pedido de Claude tenés que sumar algo a un envío, elegí el de chicos.
 
 == PASO 3 · CARGARLO EN MERCADO LIBRE ==
 1. Mercado Libre → Central de vendedores. Arriba a la derecha elegí LA MISMA cuenta de la caja (Adriana, Luciana, Ayelen o
