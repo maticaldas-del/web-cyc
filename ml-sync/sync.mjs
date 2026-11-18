@@ -33961,7 +33961,7 @@ async function main() {
     if (/^cajaarmar(:|;|$)/.test(String(process.env.BILLING_PROBE || ''))) {
       const raw = String(process.env.BILLING_PROBE).replace(/^cajaarmar:?/, '');
       const GO = /(^|;)go$/.test(raw);
-      const soloCta = raw.replace(/(^|;)go$/, '').trim().toLowerCase();
+      const soloCta = raw.replace(/(^|;)go$/, '').replace(/!vaciar\b/i, '').trim().toLowerCase();
       let txt = '';
       try { txt = readFileSync(new URL('./notas/cajas.txt', import.meta.url), 'utf8'); } catch { console.log('No encontré ml-sync/notas/cajas.txt'); return; }
       const inv = (await db.get('cyc/inventory')) || {};
@@ -34058,8 +34058,10 @@ async function main() {
         if (soloCta && norm(cta) !== norm(soloCta)) continue;
         if (rechazadas.has(cta)) continue;
         const nA = Object.values(c.items || {}).reduce((a, x) => a + (Number(x) || 0), 0);
-        if (c.por === 'cajaarmar') {
-          console.log(`\n── ${cta}: ya no lleva nada · se vacía la caja cargada (${nA} u.)`);
+        // 18/11/2026 (él, 5a: "vaciala"): `!vaciar` en el comando vacía también la cargada a mano (sólo de la cuenta pedida si hay una).
+        const _vaciarMano = /!vaciar\b/i.test(String(process.env.BILLING_PROBE || ''));
+        if (c.por === 'cajaarmar' || _vaciarMano) {
+          console.log(`\n── ${cta}: ya no lleva nada · se vacía la caja cargada${c.por === 'cajaarmar' ? '' : ' A MANO (!vaciar)'} (${nA} u.)`);
           if (GO) { await db.set('cyc/cajas_armando/' + cta, null); console.log(((await db.get('cyc/cajas_armando/' + cta)) == null) ? '   ✓ vaciada y releída' : '   ✗ no quedó vacía'); }
         } else console.log(`\n── ${cta}: tiene una caja cargada a mano (${nA} u.) y hoy no lleva nada: no la toco (vaciala desde Armar caja si no va)`);
       }
