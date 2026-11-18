@@ -21143,7 +21143,11 @@ async function main() {
       const nom = (pid) => String((PL.find((x) => x.id === pid) || {}).name || pid);
       const nrmQ = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
       const cajas = (Array.isArray(e.cajasDet) ? e.cajasDet : Object.values(e.cajasDet || {})).map((c) => (c ? { ...c, items: (c.items || []).map((x) => ({ ...x })) } : c));
-      const filas = []; cajas.forEach((c, ci) => { if (c && !c.recibida) (c.items || []).forEach((x, xi) => { if (x && x.prodId && x.u > 0) filas.push({ ci, xi, x, n: nrmQ(nom(x.prodId) + ' ' + (x.variante || '')) }); }); });
+      // Revisión etapa 3 (18/11): de una caja con algo ya entrado a Full no se saca nada (volvía a la oficina mercadería que ya estaba en Full).
+      let entQ = null; try { entQ = (await db.get('cyc/cajasentrado')) || {}; } catch { entQ = null; }
+      if (entQ === null) { console.log('❌ no pude leer lo entrado a Full: no saco nada'); return; }
+      const entrC = (ci) => { const r = entQ[id + '__' + ci]; return !!(r && (r.items || []).some((x) => Number(x && x.q) > 0)); };
+      const filas = []; cajas.forEach((c, ci) => { if (c && !c.recibida && !entrC(ci)) (c.items || []).forEach((x, xi) => { if (x && x.prodId && x.u > 0) filas.push({ ci, xi, x, n: nrmQ(nom(x.prodId) + ' ' + (x.variante || '')) }); }); });
       console.log(`=== SACAR DEL ENVÍO …${String(id).slice(-4)} · ${e.cuenta || '?'} ${GO ? '(APLICO)' : '(PRUEBA: agregá ;go)'} ===`);
       const mov = []; let mal = 0;
       for (const pz of partes) {
@@ -21192,7 +21196,8 @@ async function main() {
       const vuelven = []; let bloq = 0;
       cajas.forEach((c, i) => {
         if (!c) return;
-        const entrado = ent[id] ? JSON.stringify(ent[id]).length > 4 : false;
+        // Revisión etapa 3 (18/11): lo entrado se guarda por caja (`<envío>__<caja>`): con `ent[id]` el freno no saltaba nunca.
+        const kE = id + '__' + i; const entrado = !!(ent[kE] && (ent[kE].items || []).some((x) => Number(x && x.q) > 0)) || (ent[id] ? JSON.stringify(ent[id]).length > 4 : false);
         if (c.recibida || entrado) { bloq++; console.log(`  caja ${i + 1}: ${c.recibida ? 'YA LLEGÓ' : 'ya entró algo a Full'} → no se toca`); return; }
         for (const x of (c.items || [])) if (x && x.prodId && x.u > 0) { vuelven.push(x); console.log(`  vuelve a la oficina: ${nom(x.prodId)}${x.variante ? ' @' + x.variante : ''} · ${x.u} u.`); }
       });
@@ -28735,7 +28740,8 @@ async function main() {
     if (/^listaver:/.test(String(process.env.BILLING_PROBE || ''))) {
       const k = String(process.env.BILLING_PROBE).split(':')[1].trim().toLowerCase(); const pv = ((await db.get('cyc/mlconfig/listasProv')) || {})[k] || {};
       const cat = (await db.get('mlapi/listas/' + k)) || {}; console.log(`${pv.nombre || k} · fecha ${pv.fecha || '?'} · ${Object.keys(cat).length} productos`); console.log('@@LISTA');
-      for (const [cod, e] of Object.entries(cat)) if (e) console.log([cod, String(e.n || '').replace(/\|/g, '/'), Number(e.p) || 0, e.ts ? new Date(e.ts).toISOString().slice(0, 10) : '', e.m != null ? Math.round(e.m) + '%' : '', e.mp || '', e.mi || '', String(e.mt || '').replace(/\|/g, '/').slice(0, 70), e.t ? new Date(e.t).toISOString().slice(0, 16) : '', e.mv || '', e.rp ? 'rp' : ''].join('|'));
+      const privL = listaEsPrivada(k, pv);   // etapa 3 (18/11): lista privada → sin precio (1a del 08/11: ningún comando de listas imprime precios)
+      for (const [cod, e] of Object.entries(cat)) if (e) console.log([cod, String(e.n || '').replace(/\|/g, '/'), privL ? '—' : (Number(e.p) || 0), e.ts ? new Date(e.ts).toISOString().slice(0, 10) : '', e.m != null ? Math.round(e.m) + '%' : '', e.mp || '', e.mi || '', String(e.mt || '').replace(/\|/g, '/').slice(0, 70), e.t ? new Date(e.t).toISOString().slice(0, 16) : '', e.mv || '', e.rp ? 'rp' : ''].join('|'));
       console.log('@@FIN'); return;
     }
     // BILLING_PROBE=listarevisar[:<proveedor>] → SOLO LEE. La lista para el chat de compras (18/10/2026, pedido suyo: "un prompt para el chat
