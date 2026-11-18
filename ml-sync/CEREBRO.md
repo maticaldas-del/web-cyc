@@ -688,8 +688,8 @@ que nadie miró, con esfuerzo max (no se baja: el revisor en contra frenó 7 de 
   (con o sin Full) SALE del pedido, aunque contra el más barato con Full dé 35% (`pypedido`, `pyrevisar`).
 - Precios y códigos SÓLO de comprasparaguay (la fila de Nissei), nunca nissei.com. El chat local los copia en la pasada semanal de
   los sábados 9:00 (24/10, eligió 1a 2a: probados primero + catálogo entero). Nada pasa 14 días sin volver a mirarse (23/10). **⛔ Sólo
-  pasa lo mirado en Nissei hace MENOS DE 24 HORAS** (10/11, él: *"no puede haber productos que se miraron hace más de 24hr"*;
-  `PY_VIEJO_DIAS`=1; antes, 7+ días en rojo): lo más viejo no se muestra en Nuevos, baja a "Falta revisar" en Probados y ni la casilla ni
+  pasa lo mirado en Nissei hace MENOS DE 48 HORAS** (16/11, él: *"que sean 48 hr"*; el 10/11 eran 24 h;
+  `PY_VIEJO_DIAS`=2; antes, 7+ días en rojo): lo más viejo no se muestra en Nuevos, baja a "Falta revisar" en Probados y ni la casilla ni
   🪄 lo cargan hasta volver a mirarlo; lo que ya estaba cargado queda en rojo y frena el mensaje y "Ya lo pedí".
 - Para pedir: 🔒 **35%, la vara de compra (`CAND_VARA_COMPRA`, 22/10/2026, 1a)** — lo de 25-34% queda guardado y se sigue
   midiendo (el descarte del robot sigue en 25%) — **y** catálogo de ML con 2+ vendedores (o 1 vendedor con 100+ vendidas, o 🌟 sin competencia con el precio visto en ML por el chat: `svprecio`, 24/10/2026 1a 2a) **y** confirmado que es el mismo producto (✅ `mismoOk` o `revcand`

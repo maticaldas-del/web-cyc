@@ -28596,7 +28596,8 @@ async function main() {
       for (const [k, v] of Object.entries(arm)) { const p = prods[k]; if (!p || !enGP(k, p.name)) continue; const u = parseInt((v || {}).u) || 0; if (!u) continue;
         const cat = Object.values(links).find((l) => l && l.prodId === k && l.catalogo)?.catalogo || '';
         cargados.push({ tipo: 'probado', id: k, nom: p.name, u, usd: parseFloat(p.nisseiUSD) || 0, cat, visto: Number(p.nisseiTs) || 0, pidio: !!(v && v.pidio) || elIds.includes(k), cuenta: Object.values(links).find((l) => l && l.prodId === k)?.cuenta || null }); }
-      for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre || c.pedidoEn || c.prodId || !enG(c.nombre)) continue; const u = Number(c.pedirU) || 0; if (!u) continue;
+      // etapa 3 (18/11): sin los descartados (`c.no`, "Nissei ya no lo ofrece"…): la web no los muestra ni los manda, y sumaban al tope.
+      for (const [id, c] of Object.entries(cands)) { if (!c || !c.nombre || c.pedidoEn || c.prodId || c.no || !enG(c.nombre)) continue; const u = Number(c.pedirU) || 0; if (!u) continue;
         cargados.push({ tipo: 'nuevo', id, nom: c.nombre, u, usd: parseFloat(c.usd) || 0, cat: candCatDe(c) || catDeS(c.mlCat), visto: candVistoTsBot(c), pidio: !!c.pidioEl || elIds.includes(id), c }); }
       // 16/11/2026 (él: "cargá los pedidos"): 1º LOS PROBADOS QUE PIDE PEDIDOS (como el botón 🪄 "Llenar con probados y nuevos" de la web,
       // `pedLlenarTodoPlan`): de Paraguay, no Paulvic, con unidades pedidas, que Nissei tiene y mirados en Nissei hace menos de 48 h. Se miden
