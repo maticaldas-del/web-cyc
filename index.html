@@ -82,28 +82,41 @@ body.discreto .vp-aviso{animation:none}
 @keyframes puntRompe{0%,62%,100%{transform:none;text-shadow:none}70%{transform:translateY(-3px) scale(1.12) rotate(-3deg);text-shadow:0 0 10px currentColor}78%{transform:translateY(0) scale(1.04) rotate(2deg)}86%{transform:scale(1.08) rotate(-1deg);text-shadow:0 0 6px currentColor}}
 @media(prefers-reduced-motion:reduce){.punt-rompe{animation:none}}
 .esc-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;animation-name:escLlena;animation-timing-function:ease-out;animation-fill-mode:both}@keyframes escLlena{from{width:var(--w0)}to{width:var(--w)}}@media(prefers-reduced-motion:reduce){.esc-fill{animation:none}}
-/* 🫙 TUBOS DE VIDRIO CON LÍQUIDO (18/11/2026, él: "que el detalle del vidrio esté en todos los globitos de vidrio, sin romper, que se note que es
-   vidrio" y "que sea como líquido lo de adentro"): borde finito, brillo arriba y abajo; el relleno es líquido con un reflejo que corre.
-   Pasado el 10 (`.esc-rota`) el último tubo se raja en la punta y el líquido se sale para adelante. */
+/* ⚡ NEÓN (18/11/2026, él eligió la C de 4 ideas: "hacé el C, bien pulido todo"): cada tramo de la barra del día es un tubo de neón de su
+   color. Apagado se ve el tubo vacío (contorno y un tinte); lo que se llenó se prende con brillo (núcleo claro + halo) y zumba suave,
+   cada tubo a su ritmo. Cuando un tramo se completa se "enciende" con el parpadeo de un neón que arranca. Con el puntaje arriba de 10
+   el tubo de la punta parpadea fuerte y tira chispas para adelante desde donde llega lo prendido: más puntos = más chispas y más lejos. */
 .esc-barra{position:relative}
-.esc-tubo{box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 -2px 3px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.25)}
-.esc-tubo::after{content:'';position:absolute;left:4px;right:4px;top:1.5px;height:2.5px;border-radius:99px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.55) 20%,rgba(255,255,255,.2) 70%,rgba(255,255,255,0));pointer-events:none;z-index:2}
-.esc-liq{overflow:hidden}
-.esc-liq::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.25),rgba(255,255,255,0) 45%,rgba(0,0,0,.18));}
-.esc-liq::after{content:'';position:absolute;top:0;bottom:0;width:40%;left:-45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);animation:escOla 3.2s ease-in-out infinite}
-@keyframes escOla{0%{left:-45%}60%,100%{left:110%}}
-.esc-rota{margin-right:30px}
-.esc-raja{position:absolute;right:0;top:-1px;width:calc((100% - 15px) / 6);height:calc(100% + 2px);pointer-events:none;overflow:hidden;z-index:3}
-.esc-raja path{fill:none;stroke:rgba(255,255,255,.9);stroke-width:1;stroke-linecap:round;vector-effect:non-scaling-stroke}
-.esc-derrame{position:absolute;left:100%;top:50%;width:0;height:0;pointer-events:none;overflow:visible;z-index:3}
-.esc-chorro{position:absolute;left:-2px;top:-3px;width:9px;height:7px;border-radius:0 6px 6px 0;background:linear-gradient(180deg,#fef08a,#facc15 50%,#ca8a04);animation:escChorro 1.6s ease-in-out infinite;transform-origin:left center}
-@keyframes escChorro{0%,100%{transform:scaleX(.8)}50%{transform:scaleX(1.15)}}
-.esc-gota{position:absolute;left:4px;top:-1px;width:var(--s);height:calc(var(--s) * 1.25);border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(circle at 35% 30%,#fffbe0,#facc15 45%,#ca8a04);opacity:0;
-  animation:escGota var(--d) cubic-bezier(.45,0,.9,.6) var(--dl) infinite}
-@keyframes escGota{0%{opacity:0;transform:translate(0,0)}10%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
-.esc-charco{position:absolute;left:2px;top:22px;width:var(--cw);height:4px;border-radius:50%;background:radial-gradient(ellipse at 40% 40%,#fde68a,#eab308 60%,rgba(234,179,8,.0));opacity:.85;animation:escCharco 2.4s ease-in-out infinite}
-@keyframes escCharco{0%,100%{transform:scaleX(.9)}50%{transform:scaleX(1.08)}}
-@media(prefers-reduced-motion:reduce){.esc-liq::after,.esc-gota,.esc-chorro,.esc-charco{animation:none}.esc-gota{display:none}}
+.esc-neon{flex:1;min-width:0;height:8px;border-radius:99px;position:relative;
+  background:color-mix(in srgb,var(--nt) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nt) 32%,transparent)}
+.esc-neon>.esc-fill{background:linear-gradient(180deg,var(--nc) 0%,color-mix(in srgb,var(--nc) 42%,#fff) 50%,var(--nc) 100%);
+  box-shadow:0 0 3px var(--nc),0 0 9px color-mix(in srgb,var(--nc) 65%,transparent)}
+.esc-neon.on>.esc-fill::after{content:'';position:absolute;inset:-1px;border-radius:inherit;box-shadow:0 0 12px 1px var(--nc);opacity:.35;
+  animation:escZumba 2.8s ease-in-out var(--hd) infinite;pointer-events:none}
+@keyframes escZumba{0%,100%{opacity:.22}50%{opacity:.6}}
+.esc-neon.prende{animation:escPrende .9s linear var(--ed) 1}
+@keyframes escPrende{0%{filter:brightness(1)}8%{filter:brightness(2.1)}16%{filter:brightness(.55)}26%{filter:brightness(1.9)}36%{filter:brightness(.8)}50%{filter:brightness(1.5)}100%{filter:brightness(1)}}
+.esc-neon.chispea{animation:escParpadeo var(--fp) linear var(--ed) infinite}
+.esc-neon.prende.chispea{animation:escPrende .9s linear var(--ed) 1,escParpadeo var(--fp) linear calc(var(--ed) + .9s) infinite}
+@keyframes escParpadeo{0%,17%,21%,24%,52%,58%,100%{opacity:1;filter:brightness(1.3)}19%,22.5%,55%{opacity:.4;filter:brightness(.75)}}
+.esc-neon.chispea>.esc-fill::after{box-shadow:0 0 16px 3px var(--nc);opacity:.75}
+.esc-chispas{position:absolute;top:50%;width:0;height:0;pointer-events:none;z-index:2;opacity:0;animation:escAparece .3s ease-out var(--ed) forwards}
+@keyframes escAparece{to{opacity:1}}
+.esc-foco{position:absolute;left:-7px;top:-7px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#fff 0,var(--nc) 42%,transparent 72%);
+  animation:escFoco 1.3s linear infinite}
+@keyframes escFoco{0%,100%{opacity:.95;transform:scale(1)}30%{opacity:.5;transform:scale(.7)}34%{opacity:1;transform:scale(1.25)}60%{opacity:.75;transform:scale(.9)}}
+.esc-chispa{position:absolute;left:0;top:-1.25px;width:var(--l);height:2.5px;border-radius:2px;transform-origin:left center;opacity:0;
+  background:linear-gradient(90deg,rgba(255,255,255,0),#fff 45%,var(--nc));box-shadow:0 0 4px var(--nc),0 0 8px color-mix(in srgb,var(--nc) 70%,transparent);
+  animation:escChispa var(--d) cubic-bezier(.12,.6,.3,1) var(--dl) infinite}
+@keyframes escChispa{0%{opacity:0;transform:translate(0,0) rotate(var(--a)) scaleX(.4)}6%{opacity:1;transform:translate(calc(var(--dx) * .12),calc(var(--dy) * .12)) rotate(var(--a)) scaleX(1)}
+  55%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + var(--g))) rotate(var(--a2)) scaleX(.35)}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + var(--g))) rotate(var(--a2)) scaleX(.35)}}
+.esc-barra.chisporrotea,.esc-marcas.chisporrotea{margin-right:18px}
+body.light .esc-neon{background:color-mix(in srgb,var(--nt) 11%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--nt) 38%,transparent)}
+body.light .esc-neon>.esc-fill{background:linear-gradient(180deg,var(--nc) 0%,color-mix(in srgb,var(--nc) 70%,#fff) 50%,var(--nc) 100%);box-shadow:0 0 2px var(--nc),0 0 5px color-mix(in srgb,var(--nc) 45%,transparent)}
+body.light .esc-neon.on>.esc-fill::after{box-shadow:0 0 7px 0 var(--nc)}
+body.light .esc-chispa{background:linear-gradient(90deg,transparent,var(--nc));box-shadow:0 0 3px color-mix(in srgb,var(--nc) 70%,transparent)}
+body.light .esc-foco{background:radial-gradient(circle,var(--nc) 0,color-mix(in srgb,var(--nc) 50%,transparent) 45%,transparent 72%)}
+@media(prefers-reduced-motion:reduce){.esc-neon.on>.esc-fill::after,.esc-neon.prende,.esc-neon.chispea,.esc-neon.prende.chispea{animation:none}.esc-chispas{display:none}}
 .vp-aviso-tag{flex-shrink:0;font-size:.62rem;font-weight:700;color:var(--avc,var(--green));border:1px solid currentColor;border-radius:999px;padding:1px 7px;white-space:nowrap}
 .hx-card{margin:8px auto 12px;max-width:760px;box-sizing:border-box;padding:10px 14px;border-radius:14px;border:1.5px solid var(--border2);background:var(--surface);font-size:.86rem;line-height:1.45;overflow-wrap:anywhere}
 .hx-card a{color:#38bdf8}
@@ -3740,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.234';
+const APP_VERSION='28.235';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3753,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.235',f:'18/11',h:'16:40',c:[{n:2,t:'⚡ Inicio: la barra del día ahora es de NEÓN. Cada tramo es un tubo de su color: apagado se ve vacío, lo ganado se prende y brilla, y cuando un tramo se completa se enciende con el parpadeo de un neón. Si el puntaje pasa de 10, el tubo de la punta parpadea fuerte y tira chispas para adelante (más puntos, más chispas). Se fue lo de vidrio y líquido.'}]},
   {v:'28.234',f:'18/11',h:'16:10',c:[{n:1,t:'🫙 Inicio: los tubitos de la barra del día ahora son de vidrio con líquido adentro (brillo y un reflejo que corre). Cuando el puntaje pasa de 10, el último tubo se raja en la punta y el líquido se sale para adelante: chorro, gotas y un charquito (más cuanto más pasa de 10).'}]},
   {v:'28.233',f:'18/11',h:'15:40',c:[{n:1,t:'🪟 Inicio: cuando el día pasa la 💎 JOYA, la barra se raja como vidrio y le saltan astillas doradas por el costado; cuanto más se pasa, más se rompe.'}]},
   {v:'28.232',f:'18/11',h:'15:10',c:[{n:2,t:'💵 Envíos a Full: el "al venderse" ahora es lo que deja la caja ENTERA; lo que todavía no entró a Full va al lado, chico (antes mostraba sólo lo que faltaba entrar y parecía que la caja dejaba $600).'}]},
@@ -13696,28 +13710,31 @@ function _diaEscaleraHTML(gan,dias,quedan,esc,score){
   let colAct=VIVA_DIA_NIV[0][2];for(const x of niv)if(g>=x[1])colAct=x[2];
   const fr=niv.map((x,i)=>{const d=i?niv[i-1][1]:0;return g>=x[1]?1:g<=d?0:(g-d)/(x[1]-d);});
   const prev=_escPrev[n]||fr.map(()=>0);_escPrev[n]=fr;
+  // ⚡ Neón (18/11/2026, él eligió la C): ver el CSS `.esc-neon`. `ip` = el tramo donde llega lo prendido (de ahí salen las chispas si el
+  // puntaje pasó de 10: no siempre es el último, porque el 10 está en $230.000 y la JOYA en $300.000). `--ed` = cuándo termina de llenarse
+  // ese tramo en la animación, para que se encienda / chisporrotee recién ahí.
+  const _sc=Number(score),_over=isFinite(_sc)&&_sc>10?Math.min(10,_sc-10):-1;
+  let ip=-1;fr.forEach((f,i)=>{if(f>0)ip=i;});
+  const chispasHTML=(over)=>{const nC=Math.round(Math.min(22,9+over*3));let ch='';
+    for(let k=0;k<nC;k++){const ang=(Math.random()-.5)*80,rad=ang*Math.PI/180,sp=10+Math.random()*Math.min(18,8+over*2.5),dx=Math.cos(rad)*sp,dy=Math.sin(rad)*sp,
+      g=3+Math.random()*7,a2=Math.atan2(dy+g,dx)*180/Math.PI,l=5+Math.random()*6,d=1.1+Math.random()*1.1,dl=Math.random()*2;
+      ch+=`<i class="esc-chispa" style="--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;--g:${g.toFixed(1)}px;--a:${ang.toFixed(0)}deg;--a2:${a2.toFixed(0)}deg;--l:${l.toFixed(1)}px;--d:${d.toFixed(2)}s;--dl:${dl.toFixed(2)}s"></i>`;}
+    return ch;};
   let t=0;const segs=niv.map((x,i)=>{const w0=Math.round((prev[i]||0)*1000)/10,w=Math.round(fr[i]*1000)/10,dur=Math.max(.4,Math.abs(fr[i]-(prev[i]||0))*.9),del=t;t+=w!==w0?dur:0;
-    return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1]*n)}${n>1?' en el período ('+fmt(x[1])+' por día)':''}" class="esc-tubo" style="flex:1;height:10px;border-radius:99px;position:relative;overflow:hidden"><span style="position:absolute;inset:0;background:${x[2]};opacity:.18"></span><span class="esc-fill esc-liq" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s;background:${fr[i]>=1?x[2]:colAct}"></span></span>`;}).join('');
+    const fin=del+(w!==w0?dur:0),nc=fr[i]>=1?x[2]:colAct,on=fr[i]>0,prende=fr[i]>=1&&(prev[i]||0)<1,chisp=_over>=0&&i===ip;
+    const cls='esc-neon'+(on?' on':'')+(prende?' prende':'')+(chisp?' chispea':'');
+    const vars=`--nt:${x[2]};--nc:${nc};--hd:-${(Math.random()*2.8).toFixed(2)}s;--ed:${fin.toFixed(2)}s`+(chisp?`;--fp:${Math.max(1.3,3.2-_over*.25).toFixed(2)}s`:'');
+    return `<span title="${VIVA_DIA_NOM[x[0]]} desde ${fmt(x[1]*n)}${n>1?' en el período ('+fmt(x[1])+' por día)':''}" class="${cls}" style="${vars}"><span class="esc-fill" style="--w0:${w0}%;--w:${w}%;width:${w}%;animation-duration:${dur.toFixed(2)}s;animation-delay:${del.toFixed(2)}s"></span>${chisp?`<span class="esc-chispas" aria-hidden="true" style="left:${w}%"><i class="esc-foco"></i>${chispasHTML(_over)}</span>`:''}</span>`;}).join('');
   const marcas=niv.map(x=>`<span style="flex:1;min-width:0;overflow:hidden;white-space:nowrap">${k1(x)}</span>`).join('');
   // Mes y año (24/10/2026): `dias` son los del período entero, así que lo que falta se dice en total y repartido en los que quedan.
   const q=Math.max(0,Number(quedan)||0),per=esc==='anio'?'el año':'el mes';
   const falta=sig?(n>1?(q>0?`Faltan <b style="color:${sig[2]}">${fmt(Math.round(sig[1]*n-(Number(gan)||0)))}</b> en ${per} para ${VIVA_DIA_NOM[sig[0]]} <span style="color:var(--muted)">(${fmt(Math.round((sig[1]*n-(Number(gan)||0))/q))} por día en los ${q} día${q===1?'':'s'} que quedan)</span>`
         :`Faltaron <b style="color:${sig[2]}">${fmt(Math.round(sig[1]*n-(Number(gan)||0)))}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
       :`Faltan <b style="color:${sig[2]}">${fmt(sig[1]-g)}</b> para ${VIVA_DIA_NOM[sig[0]]}`)
-    :`${VIVA_DIA_NOM.joya}: arriba de todo`;
-  // 🫗 Se pasó del 10 (18/11/2026, él: "cuando se pasa del 10 (…) que se salga para adelante, como líquido lo de adentro"): el último tubo
-  // se raja en la punta y el líquido dorado se derrama hacia adelante (gotas que caen y un charquito). Más puntos arriba de 10 = más chorro.
-  const _sc=Number(score),_over=isFinite(_sc)&&_sc>10?Math.min(10,_sc-10):-1;let vidrio='';
-  if(_over>=0){
-    let pth='';for(let k=0;k<2+Math.round(_over);k++){let xx=97-Math.random()*6,yy=-5,d=`M${xx.toFixed(1)} ${yy}`;while(yy<105){yy+=25+Math.random()*25;xx+=(Math.random()-.5)*2.4;d+=` L${xx.toFixed(1)} ${yy.toFixed(1)}`;}pth+=`<path d="${d}"/>`;}
-    const ng=Math.min(26,6+Math.round(_over*5));let got='';
-    for(let k=0;k<ng;k++){const sz=(2.5+Math.random()*3.5).toFixed(1),dx=(4+Math.random()*(10+_over*4)).toFixed(0),dy=(14+Math.random()*22).toFixed(0),
-      du=(.9+Math.random()*.9).toFixed(2),dl=(Math.random()*2.2).toFixed(2);got+=`<i class="esc-gota" style="--s:${sz}px;--dx:${dx}px;--dy:${dy}px;--d:${du}s;--dl:${dl}s"></i>`;}
-    const charco=(10+Math.min(18,_over*4)).toFixed(0);
-    vidrio=`<svg class="esc-raja" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${pth}</svg><span class="esc-derrame" aria-hidden="true"><i class="esc-chorro"></i>${got}<i class="esc-charco" style="--cw:${charco}px"></i></span>`;
-  }
-  return `<div class="hoy-esc" style="margin-top:14px"><div class="esc-barra${vidrio?' esc-rota':''}" style="display:flex;gap:3px">${segs}${vidrio}</div>
-    <div style="display:flex;gap:3px;font-size:.6rem;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace${vidrio?';margin-right:30px':''}">${marcas}</div>
+    :`${VIVA_DIA_NOM.joya}: arriba de todo${isFinite(Number(score))&&Number(score)>10?` <span style="color:var(--lv-joya);font-weight:700">· ⚡ pasó el 10</span>`:''}`;
+  const _ch=_over>=0?' chisporrotea':'';
+  return `<div class="hoy-esc" style="margin-top:14px"><div class="esc-barra${_ch}" style="display:flex;gap:5px">${segs}</div>
+    <div class="esc-marcas${_ch}" style="display:flex;gap:5px;font-size:.6rem;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace">${marcas}</div>
     <div style="font-size:.76rem;margin-top:6px">${falta}</div></div>`;
 }
 const _viva={cards:[],on:false,last:0,tick:0,io:null};
