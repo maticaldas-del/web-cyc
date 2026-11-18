@@ -174,3 +174,7 @@ LA TIENDA DE CYC (para saber, 30/10/2026)
 
 ## ⚠️ Envíos a Full: grandes y chicos SEPARADOS (18/11)
 Los productos GRANDES (Tenders / tendederos) van SIEMPRE en su propio envío: ML no deja mezclarlos con nada. Nunca agregues un producto chico a un envío que ya tiene grandes (el 18/11 se metieron 20 Mini Cintas en el envío de los 6 tendederos de Luciana y hubo que corregirlo). Si un pedido de Claude dice "agregá al envío", es siempre al de chicos.
+
+## 💳 Envíos pagados que no salieron: se REUSAN (18/11)
+- **Luciana #80494328** (grandes, ya pagado; tenía 6 tendederos que NO van): NO se cancela ni se confirma. Se usa en la PRÓXIMA caja de grandes de Luciana (cargar ahí lo que diga el panel). En el panel sale arriba de todo en Cajas en camino como "💳 PAGADO · ⏸️ EN PAUSA".
+- Todo envío que el panel muestre así es para reusar: antes de crear uno nuevo para esa cuenta, usá ése.
