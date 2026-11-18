@@ -822,3 +822,13 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 
 ## 17/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
 - 1-4 = las 30-33 de la completa · 5-12 = Revisión de Plata 1-8 · 13 = Telegram privado (sólo lo que llega hoy con código, frenos de ML y denuncias)
+
+## 18/11 · Revisión de Mercadería (8 decisiones; para las 12:30 y la noche)
+1. **Del 03/12 al 24/12 el pico de Navidad se cuenta dos veces en Pedidos** (el ritmo ya trae diciembre y además se multiplica). Ejemplo: perfume de regalo que vende 15/mes, pedido del 17/12: 49 u. (contando el pico una vez serían 31). (a) sugerida: esos días salen del ritmo y el pico lo pone sólo el multiplicador · (b) dejarlo (queda más stock para enero).
+2. **Redondeo por color:** hoy se redondea para arriba el total. Paulvic del 08/11: 26 u.; redondeando cada aroma serían 29, y un aroma que necesita 0,5 hoy queda en 0. (a) cada color para arriba · (b) como está (con 30 aromas de 1 venta pedía 30).
+3. **Si el envío de la caja saca un producto, su lugar en el cupo queda vacío** aunque otro haya quedado recortado. (a) sugerida: ese lugar va a lo recortado, por plata · (b) dejarlo.
+4. **Pirineo sin IVA:** hoy se cargó a mano y si alguien repite el descuento le vuelve a sacar 17%. (a) sugerida: anotar "Pirineo se paga sin IVA" y que la lista lo aplique sola al cargarla · (b) cargarla siempre a mano sin IVA.
+5. **Pedido de Paraguay automático: probados de hoy contra nuevos de ayer.** Hoy los nuevos que cargó ayer el robot se quedan y el tope recorta los probados (un Joystick probado salió). (a) sugerida: cada día primero los probados y los nuevos vuelven a competir por ⭐ · (b) como hoy.
+6. **Lo que sacás a mano del pedido de Paraguay vuelve al día siguiente.** (a) sugerida: lo que sacás queda afuera hasta la próxima decisión, y lo que cargás a mano cuenta como tuyo · (b) manda el robot.
+7. **Probados en el pedido de Paraguay:** hoy salen si no dan 35% contra el más barato de ML, aunque Pedidos haya decidido reponerlos con su regla. (a) sugerida: los probados con la regla de Pedidos, los nuevos contra el más barato · (b) como hoy.
+8. **El ticket de Paraguay y la guía de Via Cargo quedan enteros en el registro público** (el texto del comando). (a) sugerida: pasarlos cerrados, como el saldo de Binance · (b) aceptarlo.

@@ -1225,6 +1225,17 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 ## 3 · MERCADERÍA (miércoles)
+### 🔎 Revisión del 18/11/2026 (4 revisores en máximo: pedidos, cajas, Paraguay, oficina/stock/listas)
+**Medido y bien:** agotado, precio recién cambiado, remate y sobra fuera del ritmo, perfumería que pide de algo que sobra, Navidad, oficina/camino restados una vez por color; la web y decide_cajas llenan igual con el mismo cupo (1.637 renglones); 48 h, `candMaxU` y recargo iguales en web y robot; Tienda no toca la ficha; etiquetas sin `dijo=` no pasan; cajas no se marcan dos veces; fotos ✅ antes de Pedidos.
+**Arreglado:**
+- `decide_pedidos.py`: la compra de prueba usa el precio de la prueba (el que deja 35%) para el máximo de compra (20 de 28 de hoy lo calculaban más bajo, 8 más alto); lee lo FIJO de la base (`FIJO|…`, 61a) para no apartar para la perfumería lo que va a Full (volvía el bug del Persea); la unidad de más del redondeo va al color con la fracción más grande; un color sin M35 propio usa el del producto; aviso si todo lo vendido es sin color.
+- Web: con UN color a comprar, la cabecera de la tarjeta muestra el máximo de ese color (`maxCompraChipPed`/`maxCompraChip(p,color)`), no el del producto.
+- `decide_cajas.py`: el relleno no cuenta los Tenders; un color sin % propio usa el del producto para la regla 💸.
+- `enviovacio`/`envioquitar`: una caja con algo ya entrado a Full no vuelve a la oficina (el freno buscaba la clave equivocada).
+- `listaver`: sin precios de listas privadas.
+- `pypedido`: sin los candidatos descartados (`c.no`). CEREBRO: 48 h (16/11).
+**Queda para después:** la caja de los grandes no paga su envío en ningún lado · `cajafijo` "van N" cuenta recién cuando la caja SALE (desatascador y Centímetro Blanco) · `_base_motivo` sin 🟥/➕ · producto contado sin color va sin color a la caja · 🎯 de la web no sabe qué es FIJO; `convieneCaja` con Tenders en la caja de chicos · `cajafijo` sin color en un producto con colores · `listaped:llego` puede sumar la oficina dos veces si se corta · otros precios de listas privadas en el registro (`listaped:llego`, `listasvale`, `lista:` mal escritos) · unidades "sin color" fantasma en la oficina (`ofiSinVar` sin usar) · filas de listas anteriores en `listafotos`/`faltaventas`/`listapedmedir` · `pypedido`: ticket viejo que pisa el costo nuevo, pierde colores y lo puesto a mano, pierde "lo pidió él", 🌸/📦 distinto de la web · descuento cortado 1 día = "precio cambiado" en `norDe`.
+
 ### 📦 Lo FIJO que ya salió no vuelve como "decisión anterior" (16/11/2026)
 - **Qué es:** `decide_cajas.py` guarda en `FIJO_CUMPL` las claves de lo FIJO (código o base) que ya salió entero y no lo mantiene como decisión anterior: la caja de Ayelen volvía a cargar 35 u. ya despachadas el 15/11 (él: "eso está enviado ya").
 - **Qué chequear:** después de despachar una caja con FIJO, la próxima corrida cuenta lo de esa cuenta en automático (con lo en camino restado).

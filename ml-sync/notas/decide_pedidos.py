@@ -216,6 +216,15 @@ for gr in ('BSAS','PY','PAULVIC'):
     elif sum(1 for p in prods if p['g']==gr)!=esper[gr]: malo.append(f'{gr} no cierra')
 if not cuentaOk: malo.append('falta la línea final "CUENTA: … ✓" (el log está cortado o pedidostodo no cerró)')
 if malo: print('⚠️ NO ARMO PEDIDOS: '+' · '.join(malo)); sys.exit(1)
+_FDB={}
+for _l in L:
+    if not _l.startswith('FIJO|'): continue
+    _pp=_l.split('|')
+    if len(_pp)>=8:
+        try: _FDB[(_pp[1],_pp[2],_pp[3])]=max(0,int(_pp[4])-int(_pp[5]))
+        except ValueError: pass
+def fijo_q(pid,v):
+    return max([_fijo_resta(a,b,_c,q) for (a,b,_c),(q,_m) in _FIJO.items() if a==pid and b==v and (a,b,_c) not in _FDB]+[q for (a,b,_c),q in _FDB.items() if a==pid and b==v] or [0])
 RITMO_POR_PRECIO=False
 def ritmo(x,dcs=30):
     # 🛒 A PRECIO NORMAL (27/10/2026, él eligió 1a): si pedidostodo trae `NOR u30/d30 u/d@ventana`, el ritmo sale SÓLO de los días con
@@ -427,6 +436,7 @@ for p in prods:
                 if sum(pesos)>0:
                     for v,w in zip(p['vars'],pesos): v[f]=v[f]+sobra*w/sum(pesos)
                 p['sinColorV_'+f]=sobra
+                if sum(pesos)<=0 and f=='v30': p['_sinColorSolo']=sobra
         dets=[]
         for v in p['vars']:
             # EL 35% COLOR POR COLOR (revisión etapa 3, 29/10/2026): cada color con lo que deja SU publicación (`netoC/precioC/envC` del log).
@@ -436,7 +446,8 @@ for p in prods:
                 vm=margen(v['netoC'],p['costo'],v.get('precioC') or p.get('precio') or p.get('med60') or 0,v.get('envC') or 0)
                 v['rent']=p['costo']>0 and vm>=0.35; v['motNoRenta']=mot_no_renta(p['costo'],v['netoC'],vm)
             else: vm=_m; v['rent']=rentable; v['motNoRenta']=p['motNoRenta']
-            if v.get('m35'): v['rent'],v['motNoRenta']=m35_rent(v['m35'])
+            _m35v=v.get('m35') or p.get('m35')
+            if _m35v: v['rent'],v['motNoRenta']=m35_rent(_m35v)
             if p.get('soloPerf'): v['rent'],v['motNoRenta']=False,p['motNoRenta']   # 30/10/2026: ningún color para ML (ver SOLO_PERF_TXT)
             # lo que "no viene más" (Paulvic, `cyc/noconsigo/<prod>/nunca`) no se pide: antes lo tapaba el 35% del producto entero (29/10, Invictus y Phantom)
             if v.get('nunca'): v['rent'],v['motNoRenta']=False,'no viene más (el proveedor no lo manda)'
@@ -460,7 +471,8 @@ for p in prods:
         # Revisión etapa 3, 29/10/2026: alcanza con que UN color llegue al 35% (los que no llegan ya tienen 0 de necesidad).
         rentable=any(v['rent'] for v in p['vars'])
         tot=max(0,math.ceil(sum(d[1] for d in dets)-1e-9)) if rentable else 0   # 14/11: siempre para arriba (él)
-        qs=reparto(tot,[d[1] for d in dets])
+        _nec=[max(0.0,d[1]) for d in dets]; qs=[int(math.floor(n+1e-9)) for n in _nec]
+        for i in sorted(range(len(_nec)),key=lambda i:_nec[i]-qs[i],reverse=True)[:max(0,tot-sum(qs))]: qs[i]+=1
         dets=[(d[0],q,d[2],d[3],d[4],d[5]) for d,q in zip(dets,qs)]
         res.append((p,tot,dets,rentable))
     else:
@@ -543,6 +555,7 @@ def venta(p):
     if p['id'] in VM: return VM[p['id']]
     # 29/10/2026: el precio con el que se decidió que se repone (competencia o venta más cara de 365 días) es el del máximo de compra.
     if p.get('m35') and p['m35']['f']!='no': return p['m35']['p']
+    if p.get('prueba'): return p['prueba']
     # SI YA VENDIÓ, MANDA EL PRECIO DE LA ÚLTIMA VENTA (23/10/2026, él: *"si nunca vendió toma el % que decís vos. si ya vendió no
     # importa si fue sólo 1 unidad. tomar ese %"*): una suba que ya vendió vale para el máximo de compra aunque sea 1 unidad (antes la
     # mediana de 60 d la tapaba con las ventas viejas, más baratas). Sin pasar el precio de hoy: si después lo bajé, se vende a ése.
@@ -567,6 +580,7 @@ def ventas_color(p):
         mm=v.get('m35')
         if mm and mm['f']!='no':
             out.append(f"ped:{p['id']}#{v['v']}=venta|{mm['p']}|precio {'de la competencia' if mm['f']=='comp' else 'de la venta mas cara de 365 dias'} de ese color (deja {mm['pct']}%) para el maximo de compra"); continue
+        if v.get('prueba'): out.append(f"ped:{p['id']}#{v['v']}=venta|{v['prueba']}|precio de la prueba de ese color (el que deja 35%) para el maximo de compra"); continue
         u=v.get('ultv')
         if not u: continue
         hoy=v.get('hoy') or p['precio']   # el precio de hoy de ESE color (sin dato, el del producto)
@@ -576,6 +590,7 @@ def ventas_color(p):
 def venta_mot(p):
     if p['id'] in VM: return 'precio de venta que fijé a mano para el maximo de compra'
     if p.get('m35') and p['m35']['f']!='no': return f"precio {'de la competencia' if p['m35']['f']=='comp' else 'de la venta mas cara de 365 dias'} (deja {p['m35']['pct']}%) para el maximo de compra"
+    if p.get('prueba'): return f"precio de la prueba (${p['prueba']}, el que deja 35%) para el maximo de compra"
     if p.get('ultv') and (not p['precio'] or p['ultv']<=p['precio']): return f"precio de la ultima venta (${p['ultv']}) para el maximo de compra"
     if p.get('ultv'): return f"precio de hoy para el maximo de compra (la ultima venta fue a ${p['ultv']}, mas cara)"
     if p['v180']==0: return 'nunca vendio: precio de hoy para el maximo de compra'
@@ -642,6 +657,7 @@ def juicioQ(nJ,tiene,mo,quien=''):
     return q,("Hola Tito! "+mo if q==nJ else f"Hola Tito! Te pido {q}: quiero tener {nJ} y ya hay {round(tiene)}. ({mo})")
 for p,q,d,rent in res:
     pid=p['id']
+    if p.get('_sinColorSolo'): avisos.append(f"{p['n']}: vendió {round(p['_sinColorSolo'])} en 30 d sin color y ningún color tiene ventas propias: no sé de qué color pedir, decidilo a mano")
     if isinstance(d,list):
         ex=f"Ya desconté {p['sinColor']} que están sin color." if p.get('sinColor') else ''
         filas=[]

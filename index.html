@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.229';
+const APP_VERSION='28.230';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.230',f:'18/11',h:'05:10',c:[{n:2,t:'Pedidos: si se compra un solo color, la tarjeta muestra el máximo de compra de ese color. Revisión de Mercadería en el cartel.'}]},
   {v:'28.229',f:'17/11',h:'13:45',c:[{n:2,t:'🇵🇾 Paraguay: cada pedido lleva también la foto del comprobante de pago (💳 en el detalle, para subirla y verla). A los pedidos desde el 13/11 que no la tienen les sale en rojo "falta comprobante de pago" (no frena marcar que llegó).'}]},
   {v:'28.228',f:'17/11',h:'13:40',c:[{n:1,t:'🇵🇾 Paraguay: lo que el ticket dice que no había (no se cobró) ya no sale en rojo como reclamo, aunque se haya anotado como faltante al llegar.'}]},
   {v:'28.227',f:'17/11',h:'05:00',c:[{n:1,t:'Revisión de Plata en el cartel, con sus 8 decisiones.'}]},
@@ -6185,6 +6186,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:3,t:'18/11 · 8 decisiones de Mercadería',que:'Navidad contada dos veces en Pedidos · redondeo por color · lugar vacío en la caja · Pirineo sin IVA · probados contra nuevos en Paraguay · lo sacado a mano vuelve · probados medidos contra el más barato · ticket y guía en el registro',pedi:'resolvamos'},
   {etapa:2,t:'17/11 · 8 decisiones de Plata',que:'mes en que CYC achica · de=ninguna en mes cerrado · avisar Binance/efectivo viejos al cerrar · % de cada producto del carrito · envío de la caja en días pasados · Paulvic sin aroma en un comando · avisar correcciones de deudas · ✅ Pagó y MercadoPago',pedi:'resolvamos'},
   {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
@@ -6224,7 +6226,7 @@ const REV_HIST={
      {f:'2026-09-30',t:'Revisión completa final: lo de plata quedó sin pendientes.'},
      {f:'2026-10-20',t:'Primera del calendario (máximo): Arqueo, cierre, cobro, monedas y robot de MP. Lo obvio arreglado (v25.23 a v25.26), 8 decisiones suyas.'},
      {f:'2026-10-20',t:'Cerrada: él eligió 1b 2b 3a 4a 5a 6a 7a 8a (listas como deuda al llegar, recargo contra la web, filas de MP sin venta = ya en la cuenta). v25.33.'}],
-  3:[{f:'2026-11-08',t:'4 revisores en máximo (pedidos, cajas, Paraguay, listas/Paulvic/oficina): ~40 hallazgos, 20 arreglados (los juicios no se aplicaban sin aviso, ritmo M35 con sus frenos, tope US$600, Paulvic ×100, perfumería en la caja); 14 decisiones a para_mati.'},{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
+  3:[{f:'2026-11-18',t:'4 revisores en máximo: compra de prueba con el precio de la prueba, FIJO de la base en Pedidos, redondeo al color correcto, máximo de compra del color en la web, relleno sin Tenders, regla 💸 por color, cajas con algo entrado no vuelven a la oficina, listaver sin precios privados, pedido de Paraguay sin descartados; 8 decisiones a para_mati.'},{f:'2026-11-08',t:'4 revisores en máximo (pedidos, cajas, Paraguay, listas/Paulvic/oficina): ~40 hallazgos, 20 arreglados (los juicios no se aplicaban sin aviso, ritmo M35 con sus frenos, tope US$600, Paulvic ×100, perfumería en la caja); 14 decisiones a para_mati.'},{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'},
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
   4:[{f:'2026-11-09',t:'4 revisores en máximo (web contra robot, fallas mudas, tareas, pendientes): ~25 hallazgos, 13 arreglados (pedidos y cajas frenados por un ;, M35 sin aviso compraba de más, guardar durante la copia, gemelas, barrera, ciclo en rojo); 7 decisiones a para_mati.'},{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
@@ -24357,17 +24359,18 @@ function maxCompraHTML(p){
 function maxCompraChipPed(pr,ped){
   try{
     const cols=(ped&&ped.variantesNec||[]).filter(x=>x&&x.v&&(parseInt(x.q)||0)>0).map(x=>x.v);
-    if(cols.length>=2){
+    if(cols.length>=1){/* etapa 3 (18/11): con UN color a comprar (o todos con el mismo máximo) se muestra el máximo de ESE color, no el del producto */
       const vs=cols.map(c=>{const r=maxCompraDe(pr,pr.origen==='py'?PY_PROB_PISO:undefined,c);return r&&!r.motivo&&r.usd>0?r.usd:null;});
       const ok=vs.filter(v=>v!=null);
       if(ok.length!==vs.length||(ok.length&&Math.max(...ok)>Math.min(...ok)*1.02))
         return `<span class="ped-max" style="color:var(--amber)" title="Cada color tiene su propio precio máximo: miralo adentro, color por color, antes de comprar."><b style="font-size:.95rem">👉 mirá cada color</b><i>máx. compra distinto por color</i></span>`;
+      return maxCompraChip(pr,cols[0]);
     }
   }catch(e){}
   return maxCompraChip(pr);
 }
-function maxCompraChip(p){
-  const r=maxCompraDe(p); if(!r||r.motivo)return'';
+function maxCompraChip(p,color){
+  const r=color?maxCompraDe(p,p.origen==='py'?PY_PROB_PISO:undefined,color):maxCompraDe(p); if(!r||r.motivo)return'';
   if(!(r.merc>0)||!(r.usd>0))return `<span class="ped-max" style="color:var(--red)" title="Vendiendo a ${fmt(r.P)} no hay precio de compra que deje ${r.meta}%."><b>no llega</b><i>máx. compra</i></span>`;
   const tc=curTC();
   const ars=tc>0?fmt(Math.round(r.usd*tc)):'';
