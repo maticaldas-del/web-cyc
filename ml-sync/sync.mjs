@@ -21204,6 +21204,28 @@ async function main() {
       console.log(`✓ envío releído: ${(Array.isArray(rel) ? rel : Object.values(rel)).reduce((a, c) => a + ((c && c.items) || []).reduce((b, x) => b + (Number(x && x.u) || 0), 0), 0)} u. quedan en el envío`);
       return;
     }
+    // BILLING_PROBE=envioreserva:<cuenta>=<nº de envío de ML>[|<nota>][;go] (18/11/2026, él con el envío de los 6 tendederos de Luciana:
+    // "ya el envío se pagó y no se puede cancelar, entonces ese número de envío se va a utilizar en la próxima caja. pero quiero verla así me
+    // acuerdo") → anota en el panel un envío PAGADO en ML que no sale y no lleva nada (`vacioPago` + `pausado`, sin cajas): la web lo muestra
+    // arriba de todo en "Cajas en camino" (💳 PAGADO · ⏸️ EN PAUSA); no cuenta como en camino ni ocupa cupo. Se saca con el ✕ de la web.
+    if (/^envioreserva:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('envioreserva:'.length);
+      const GO = /;go$/i.test(_r) && !DRY; const body = _r.replace(/;go$/i, '');
+      const m = body.match(/^\s*([a-záéíóú]+)\s*=\s*#?(\d{5,})\s*(?:\|(.*))?$/i);
+      if (!m) { console.log('Usá: envioreserva:<cuenta>=<nº de envío de ML>[|<nota>];go'); return; }
+      const cta = ['Adriana', 'Luciana', 'Ayelen', 'Matias'].find((c) => c.toLowerCase() === m[1].toLowerCase().replace('í', 'i'));
+      if (!cta) { console.log('Cuenta desconocida: ' + m[1]); return; }
+      const nro = m[2], nota = (m[3] || '').trim().slice(0, 240);
+      const id = 'res' + nro, hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const val = { cuenta: cta, fecha: hoy, ts: Date.now(), cajas: 0, nroML: nro, vacioPago: Date.now(), pausado: Date.now(),
+        vacioMotivo: nota || 'Envío pagado en ML que no salió: se usa en la próxima caja de esta cuenta.' };
+      console.log(`=== ENVÍO PAGADO PARA REUSAR · ${cta} · #${nro} ${GO ? '(APLICO)' : '(PRUEBA: agregá ;go)'} ===\n  ${val.vacioMotivo}`);
+      if (!GO) return;
+      await db.set('cyc/envios_full/' + id, val);
+      const rel = (await db.get('cyc/envios_full/' + id)) || {};
+      console.log(rel.vacioPago && rel.nroML === nro ? '✓ guardado y releído: sale arriba de todo en Cajas en camino' : '✗ no quedó');
+      return;
+    }
     // BILLING_PROBE=enviovacio:<últimos dígitos del envío>[:go] (12/11/2026, él: "el envío de Matías que termina en 641 nunca se mandó y está
     // completamente desarmado… sólo está pago el envío… y el nuevo tampoco lo mandé… el próximo envío de Matías que sea al 641") → UN ENVÍO
     // QUE NO SALIÓ Y SE DESARMÓ: sus cajas no recibidas (y sin nada entrado a Full) vuelven a la Oficina ML como YA ETIQUETADAS (`!ok`: es la
