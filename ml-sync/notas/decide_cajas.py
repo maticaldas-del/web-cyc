@@ -374,7 +374,8 @@ for p in P:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=0,cola=f"En {c} no hay publicación de este color ({x['v']}): sin publicación de ese color no va (lo de la oficina espera){perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                                 cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             fd=x['fullC'].get(c,0);cd=x['camC'].get(c,0);otras=max(0,(x['full']+x['cam'])-(fd+cd));sinPubOtras=(c not in p['pub']) and otras>0
-            _b35=bajo35(x.get('ph'),x['full'],x['cam'],x['casa'],x.get('p35'))
+            # etapa 3 (18/11): un color sin % propio usa el del producto (si no, se escapaba de la regla 💸 aunque el producto esté al 20%)
+            _b35=bajo35(x.get('ph') if x.get('ph') is not None else p.get('ph'),x['full'],x['cam'],x['casa'],x.get('p35') if x.get('p35') is not None else p.get('p35'))
             if _b35:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=_b35[0],cola=_b35[1]+perf_txt(x.get('perfR',0))+AUTO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
@@ -580,7 +581,7 @@ for c in sorted(set(o['cta'] for o in out)):
         # juntos pueden llenarse entre sí. Para cada grupo: envío máximo por unidad = el del más exigente; unidades que hacen falta =
         # 17.500 ÷ ese envío; se completan con unidades de más (de lo que va en la caja o de los mismos del grupo) sin pasar los tapes.
         # Gana el grupo que más plata deja (ganancia de todo lo que va − el envío entero).
-        V0=[o for o in out if o['cta']==c and (o.get('q') or 0)>0]; U0=sum(o['q'] for o in V0)
+        V0=[o for o in out if o['cta']==c and (o.get('q') or 0)>0 and not o['grande']]; U0=sum(o['q'] for o in V0)   # etapa 3 (18/11): sin los Tenders (van en su caja)
         def _emax(o):
             g,d,sh=_pcOf(o); return (g+sh-0.35*(d-sh))/1.35
         def _gan(o): g,d,sh=_pcOf(o); return g+sh
