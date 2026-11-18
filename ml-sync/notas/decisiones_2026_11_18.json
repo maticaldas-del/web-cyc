@@ -1,0 +1,110 @@
+[
+ {
+  "n": 1,
+  "grupo": "mercaderia",
+  "tit": "🎄 Navidad contada dos veces en Pedidos",
+  "txt": "Del 03/12 al 24/12 el ritmo de venta ya trae lo de diciembre y además se multiplica por el pico. Ejemplo: un perfume de regalo que vende 15 por mes, pedido del 17/12: hoy pide 49 u.; contando el pico una sola vez serían 31.",
+  "a": {
+   "t": "Esos días salen del ritmo y el pico lo pone sólo el multiplicador (pide ~31)"
+  },
+  "b": {
+   "t": "Dejarlo así (pide ~49, queda más stock para enero)"
+  }
+ },
+ {
+  "n": 2,
+  "grupo": "mercaderia",
+  "tit": "🔢 Redondeo por color en Pedidos",
+  "txt": "Hoy se redondea para arriba el TOTAL. Paulvic del 08/11: 26 u.; redondeando cada aroma para arriba serían 29, y un aroma que necesita 0,5 hoy queda en 0.",
+  "a": {
+   "t": "Cada color/aroma para arriba (ninguno queda en 0 si necesita algo)"
+  },
+  "b": {
+   "t": "Como está (con 30 aromas de 1 venta pedía 30)"
+  }
+ },
+ {
+  "n": 3,
+  "grupo": "mercaderia",
+  "tit": "📦 Lugar que queda vacío en la caja",
+  "txt": "Si el costo del envío saca un producto de la caja, su lugar en el cupo queda vacío aunque otro producto haya quedado recortado por falta de lugar.",
+  "a": {
+   "t": "Ese lugar va a lo recortado, al que más plata deja"
+  },
+  "b": {
+   "t": "Dejarlo vacío"
+  }
+ },
+ {
+  "n": 4,
+  "grupo": "mercaderia",
+  "tit": "🧾 Pirineo sin IVA",
+  "txt": "Hoy la lista de Pirineo se cargó a mano sin IVA; si alguien la vuelve a cargar y aplica el descuento otra vez, le saca 17% de más.",
+  "a": {
+   "t": "Anotarlo en la lista de Pirineo y que se aplique solo al cargarla"
+  },
+  "b": {
+   "t": "Cargarla siempre a mano sin IVA"
+  }
+ },
+ {
+  "n": 5,
+  "grupo": "mercaderia",
+  "tit": "🇵🇾 Pedido automático: probados de hoy contra nuevos de ayer",
+  "txt": "Hoy los nuevos que el robot cargó ayer se quedan y el tope de US$ 660 recorta a los probados (ej.: un Joystick probado salió del pedido).",
+  "a": {
+   "t": "Cada día primero los probados y los nuevos vuelven a competir por ⭐ para llenar"
+  },
+  "b": {
+   "t": "Como hoy (lo cargado ayer se queda)"
+  }
+ },
+ {
+  "n": 6,
+  "grupo": "mercaderia",
+  "tit": "✋ Lo que sacás a mano del pedido de Paraguay vuelve al día siguiente",
+  "txt": "El robot rearma el pedido cada día y vuelve a meter lo que vos sacaste.",
+  "a": {
+   "t": "Lo que sacás queda afuera hasta que decidas otra cosa, y lo que cargás a mano cuenta como tuyo (no se saca)"
+  },
+  "b": {
+   "t": "Manda el robot"
+  }
+ },
+ {
+  "n": 7,
+  "grupo": "mercaderia",
+  "tit": "✅ Probados en el pedido de Paraguay",
+  "txt": "Hoy un probado sale del pedido si no da 35% contra el más barato de ML, aunque Pedidos haya decidido reponerlo con su regla (35% al precio de la competencia o a la venta más cara de 365 días).",
+  "a": {
+   "t": "Los probados con la regla de Pedidos; los nuevos contra el más barato de ML"
+  },
+  "b": {
+   "t": "Como hoy (todos contra el más barato)"
+  }
+ },
+ {
+  "n": 8,
+  "grupo": "mercaderia",
+  "tit": "🔒 Ticket de Paraguay y guía de Via Cargo en el registro público",
+  "txt": "El texto del comando que carga el ticket (montos por código) y el código de la guía queda entero en el registro público de GitHub.",
+  "a": {
+   "t": "Pasarlos cerrados, como el saldo de Binance (nadie de afuera los lee)"
+  },
+  "b": {
+   "t": "Aceptarlo como está"
+  }
+ },
+ {
+  "n": 9,
+  "grupo": "ideas",
+  "tit": "💡 Vender lo de Nissei por pedido en ML (prueba)",
+  "txt": "Productos de Nissei que en ML vende 1 solo vendedor y hoy no compramos por no saber si se venden (ej.: Aris Poison 290%, Medicube Pore Zero 271%, Aris Safari 254%, Sahari Bint Hooran 229%, Babaria Retinol 160%). Se publican con 25-30 días de demora, se compran sólo cuando se venden y se despachan por correo (fuera de Full). Riesgos: cancelar si Nissei se queda sin stock (reputación) y llevar cada venta al correo.",
+  "a": {
+   "t": "Prueba chica con estos 5: antes confirmo en ML el plazo máximo que deja poner"
+  },
+  "b": {
+   "t": "No por ahora"
+  }
+ }
+]

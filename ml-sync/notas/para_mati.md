@@ -837,3 +837,6 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 - ML no pone plata en el Black Friday "común" en ninguna de las 4 cuentas: entrar sería bajar por bajar → no entro en ninguna (pendrives, cartas, enchufes, infusores, termómetro, centímetros, Paulvic).
 - "Ofertas Compartidas BF" (ML pone 1-3%): sólo los Victoria's Secret de Adriana, y todos quedan abajo del 35% (entre −29% y 29% en el peor caso) → no.
 - Única que da: Pendrive 8GB (Matías) en "Potencia tus ventas" (no es BF): $33.090 → $31.436, ML pone 2,8%, nos queda como $32.362 y cruza abajo de la barrera (el envío lo paga el comprador): 136% en el peor caso. Falta el 🤔 de sobra para entrar.
+
+## 18/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1-8 = Revisión de Mercadería del 18/11 · 9 = prueba de vender lo de Nissei por pedido (ejemplos ya pasados en el chat).
