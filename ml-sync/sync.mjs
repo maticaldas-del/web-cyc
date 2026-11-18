@@ -3173,7 +3173,7 @@ async function avisoVentaFueraFull(db, tokensRun, DRY) {
       const mla = String(((o.order_items || [])[0] || {}).item?.id || '');
       const txt = `🚨 URGENTE: venta que NO sale por Full en ${label} · ${tit} (${mla}) · hay que despacharla a mano · estado ${st}${sh.substatus ? '/' + sh.substatus : ''}`;
       console.log('   ' + txt);
-      if (!DRY) { try { await sendAlerta(txt, { directo: true }); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = Date.now(); }   // directo: con SOLO_DATOS sin esto no salía (arreglado con la 56a)
+      if (!DRY) { try { await sendAlerta(txt, { directo: true, tipo: 'urgente' }); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = Date.now(); }   // directo: con SOLO_DATOS sin esto no salía (arreglado con la 56a)
     }
   }
   for (const [k, t] of Object.entries(mem)) if (Date.now() - (Number(t) || 0) > 10 * 864e5) nuevo[k] = null;
@@ -15804,6 +15804,7 @@ function _tapaCodigo(t) { return String(t).replace(/(c[oó]digo[^:\n]{0,30}:\s*)
 // y (d) el `pregunto:URGENTE:` que manda Claude (`urgente`). Todo lo demás (dólar, `recordar:`, códigos de devolución —siguen guardados en
 // `mlapi/devcodigo`—, 🥊 caja ganada/perdida, venta fuera de Full, informativos, el chat nuevo del bot…) NO sale: queda en
 // `mlapi/cerebroavisos` y Claude lo lee en el `informe` (sección 1, "🔇 no salió") a las 12:30. Lista cerrada: un aviso nuevo sin `tipo` no sale.
+// 18/11 (Claude): la venta que no sale por Full (hay que despacharla a mano: cuesta reputación si espera) va como 'urgente' y el código de una devolución o compra que viene a la oficina como 'llega'.
 const ALERTA_TIPOS_OK = new Set(['llega', 'baja', 'denuncia', 'urgente']);
 function cerebroDeAvisos(text, opt = {}) {
   const t = String(text || '');
@@ -16167,7 +16168,7 @@ async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accoun
         let tit = ''; try { const o = await mlGet('/orders/' + c.resource_id, tok); tit = String((o?.order_items || [])[0]?.item?.title || '').slice(0, 70); } catch { /* sin título */ }
         const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
         const txt = `📦 <b>Te llega una devolución</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
-        const ok = await sendAlerta(txt, { directo: true });
+        const ok = await sendAlerta(txt, { directo: true, tipo: 'llega' });
         if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod }); } catch { /* se vuelve a mandar: mejor dos que ninguno */ } }
         else R.fallas++;
       }
@@ -16193,7 +16194,7 @@ async function avisoDevCodigo(db, labels, tokensRun, DRY, forzar = false, accoun
       const tit = String((o.order_items || [])[0]?.item?.title || '').slice(0, 70);
       const llega = sh.shipping_option?.estimated_delivery_time?.date ? new Date(Date.parse(sh.shipping_option.estimated_delivery_time.date) - 3 * 3600e3).toISOString().slice(5, 10).split('-').reverse().join('/') : '';
       const txt = `🛒 <b>${String(sh.status) === 'delivered' ? 'Compra ya entregada' : 'Te llega una compra'}</b> (${l})${tit ? '\n' + tit.replace(/[<>&]/g, '') : ''}${llega ? '\nLlega: ' + llega : ''}\nCódigo para recibirla: <b>${cod.replace(/[<>&]/g, '')}</b>`;
-      const ok = await sendAlerta(txt, { directo: true });
+      const ok = await sendAlerta(txt, { directo: true, tipo: 'llega' });
       if (ok) { R.mandados++; try { await db.patch('mlapi/devcodigo/' + sid, { ok: true, ts: Date.now(), cuenta: l, cod, compra: true }); } catch { /* */ } }
       else R.fallas++;
     }
