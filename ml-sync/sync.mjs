@@ -633,6 +633,24 @@ function setDevLive(vp, prods) {
 // 7a del 08/11/2026 (él): el % del monotributo de una venta = el que quedó guardado en ella el día que se vendió (`v.monoPct`); las ventas
 // de antes de esta regla siguen con el del mes (`respaldo`). Igual que `monoDeVenta` de la web.
 function monoDeVentaBot(v, respaldo) { const m = v && v.monoPct != null ? Number(v.monoPct) : NaN; return isFinite(m) && m >= 0 && v.monoPct !== '' ? m : respaldo; }
+// 📦 EL ENVÍO QUE REGÍA EL DÍA DE LA VENTA (9a de la revisión de Plata, 18/11/2026, él: "que cada venta use el envío del día en que se vendió").
+// `cyc/shiphist/<prodId>/<AAAA_MM_DD>` = el envío por unidad (US$) desde ese día ('0000_00_00' = el de antes de guardar). Desde el último cambio
+// manda el de la ficha (`p.shipUSD`). Igual que `shipDeVentaUSD` de la web. `anotarShipHist` lo escribe en cada cambio de `shipUSD`.
+function shipDeVentaBot(p, dk, sh) {
+  const cur = parseFloat(p && p.shipUSD) || 0; const h = p && sh && sh[p.id]; if (!h || !dk) return cur;
+  const ks = Object.keys(h).filter((k) => /^\d{4}_\d{2}_\d{2}$/.test(k)).sort(); if (!ks.length || dk >= ks[ks.length - 1]) return cur;
+  let k = ks[0]; for (const x of ks) { if (x <= dk) k = x; else break; }
+  const n = parseFloat(h[k]); return Number.isFinite(n) && n >= 0 ? n : cur;
+}
+async function anotarShipHist(db, pid, shipOld, shipNew) {
+  try {
+    const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '_');
+    const h = (await db.get('cyc/shiphist/' + pid)) || {}; const upd = {};
+    if (!Object.keys(h).length) upd['0000_00_00'] = Math.round((Number(shipOld) || 0) * 100) / 100;
+    upd[hoy] = Math.round((Number(shipNew) || 0) * 100) / 100;
+    await db.patch('cyc/shiphist/' + pid, upd);
+  } catch (e) { console.log('  ⚠️ no pude guardar la historia del envío de ' + pid + ' (cyc/shiphist): ' + (e && e.message || e)); }
+}
 function costoEnPesosBot(p) { return !!(p && p.costoPesos && Number(p.cost) > 0); }
 function costoPesos(p, qty, tc) {
   if (!p) return { costo: 0, costBaseUSD: 0, shipUSD: 0 };
@@ -787,6 +805,7 @@ async function armarCostoWeb(db, vp) {
   const _ct = cartTotDeVp(vp);
   const gestDe = (v, p, dk) => envioDeVentaBot(v, p, { links: _lnk, netopub: _npb, cartTot: (x) => _ct(x, dk) });
   // Revisión etapa 2 (05/11/2026): si no se pudo leer lo congelado NO se sigue como si no hubiera (los meses cerrados se recalculaban sin avisar).
+  let shHist = {}; try { shHist = (await db.get('cyc/shiphist')) || {}; } catch { console.log('  ⚠️ no pude leer cyc/shiphist: el envío de ventas viejas sale con el de hoy'); shHist = {}; }   // 9a del 18/11
   let congel; try { congel = (await db.get('cyc/costocongelado')) || {}; } catch (e) { console.log('  ⚠️ no pude leer los meses cerrados congelados (cyc/costocongelado): los números de meses cerrados pueden salir distintos de la web'); congel = {}; }
   // Revisión etapa 2 (05/11/2026): sin el % de reclamos cargado (el `timbre` de cada hora, `widgethoy`) el costo salía sin los reclamos y una venta
   // de 31-34% en la web se leía 35%+. Se carga acá con TODAS las ventas, igual que el ciclo.
@@ -807,7 +826,7 @@ async function armarCostoWeb(db, vp) {
     // Comprado en pesos (`costoEnPesosBot`, 27/10/2026): los pesos pagados ÷ ese dólar, como `costoEnPesos` de la web.
     // 8a del 08/11/2026: lo comprado en pesos usa el costo en pesos que tenía el día de la venta (`v.costoPesosU`), como `_efectivoCostoVP`.
     const baseUSD = p ? (costoEnPesosBot(p) && Number(v.costoPesosU) > 0 && tc > 0 ? Number(v.costoPesosU) / tc : hist[ym] && hist[ym][p.id] != null ? parseFloat(hist[ym][p.id]) || 0 : (costoEnPesosBot(p) && tc > 0 ? Number(p.cost) / tc : (parseFloat(p.costUSD) || 0))) : 0;
-    const ship = p ? (parseFloat(p.shipUSD) || 0) : 0;
+    const ship = p ? shipDeVentaBot(p, dk, shHist) : 0;   // 9a del 18/11: el envío del día de la venta
     if (!p || (!baseUSD && !ship)) c = (Number(v.costo) || 0) + imp;
     else {
       const dev = DEV_LIVE[p.id] || 0;
@@ -3205,7 +3224,7 @@ async function avisoDenunciasMarca(db, tokensRun, DRY) {
       const txt = `🚨 URGENTE: ${esMarca ? 'denuncia de MARCA' : 'infracción con fecha límite'} en ${label}${mla ? ' · ' + mla : ''} · ${mot}${lim ? ' · hay que contestar antes del ' + fd(lim) : ' · sin fecha límite a la vista: mirarla hoy'} // si no se contesta, ML borra la publicación`;
       console.log('   ' + txt);
       avisadas++;
-      if (!DRY) { try { await sendAlerta(txt, { directo: true }); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = ahora; }
+      if (!DRY) { try { await sendAlerta(txt, { directo: true, tipo: 'denuncia' }); } catch (e) { console.log('   ⚠️ no pude mandar el aviso: ' + (e && e.message || e)); } nuevo[k] = ahora; }
     }
   }
   for (const [k, t] of Object.entries(mem)) if (ahora - (Number(t) || 0) > 120 * 864e5) nuevo[k] = null;
@@ -11884,7 +11903,7 @@ async function sendTelegram(text, tipo) {
   // 29/10/2026 (él: "en el CYC Avisos que mandás los resúmenes diarios, a partir de ahora SOLO mandar resúmenes diarios. El resto
   // importante al otro"): al grupo de los resúmenes va SÓLO el resumen; las bajas/altas de ML, el dólar y la venta van al canal
   // privado (el de los avisos urgentes, `sendAlerta` directo).
-  if (tipo !== 'resumen') return sendAlerta(text, { directo: true });
+  if (tipo !== 'resumen') return sendAlerta(text, { directo: true, tipo: tipo === 'baja' ? 'baja' : String(tipo || '') });   // 13a del 18/11: de acá sólo pasa 'baja'
   return tgEnviar(text);
 }
 // Descubre y ACUMULA todos los chats: cada persona que le manda "hola" al bot queda
@@ -15780,8 +15799,15 @@ async function correrCandidatos(db, products, labels, accounts, soloPrueba, prue
 // `alertaslog`) las reimprimen `informe` y `alertas` en el registro público: ahí se guarda tapado.
 function _tapaCodigo(t) { return String(t).replace(/(c[oó]digo[^:\n]{0,30}:\s*)\S+/gi, '$1•••'); }
 // Cada aviso (vaya o no) queda en `mlapi/cerebroavisos/<ts>` para poder mirar qué se tragó el cerebro.
+// 🔕 13a de la revisión de Plata (18/11/2026, él): al canal privado (`TG_ALERTAS`) SÓLO van: (a) lo que llega HOY con su código (`llega`,
+// del buzón), (b) ML dio de baja/frenó una publicación y ✅ cuando la vuelve a habilitar (`baja`), (c) cada denuncia de marca (`denuncia`)
+// y (d) el `pregunto:URGENTE:` que manda Claude (`urgente`). Todo lo demás (dólar, `recordar:`, códigos de devolución —siguen guardados en
+// `mlapi/devcodigo`—, 🥊 caja ganada/perdida, venta fuera de Full, informativos, el chat nuevo del bot…) NO sale: queda en
+// `mlapi/cerebroavisos` y Claude lo lee en el `informe` (sección 1, "🔇 no salió") a las 12:30. Lista cerrada: un aviso nuevo sin `tipo` no sale.
+const ALERTA_TIPOS_OK = new Set(['llega', 'baja', 'denuncia', 'urgente']);
 function cerebroDeAvisos(text, opt = {}) {
   const t = String(text || '');
+  if (!ALERTA_TIPOS_OK.has(opt && opt.tipo)) return { va: false, por: 'canal privado: sólo lo que llega hoy, bajas de ML, denuncias y lo URGENTE (13a del 18/11)' };
   if (SOLO_DATOS && !(opt && opt.directo)) return { va: false, por: 'el robot sólo junta datos: lo mira Claude en su revisión' };
   if (opt && opt.info) return { va: false, por: 'es informativo: no pide ninguna decisión' };
   if (/^⏸️ <b>Con stock en Full y siguen pausadas<\/b>/.test(t)) return { va: false, por: 'la noche las lleva al precio que deja ganar y se activan solas' };
@@ -15988,7 +16014,7 @@ async function colaParaRobot(db, labels) {
       }
       if (!rengs.length) { await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: false }); continue; }
       const dia = new Date(tsM - 3 * 36e5).toISOString().slice(5, 16).replace('T', ' ');
-      const ok = await sendAlerta(`📦 <b>HOY LLEGA — dejá el código en la caja</b> (lo vio el chat de Chrome ${dia})\n` + rengs.map((l) => '· ' + l.replace(/</g, '&lt;')).join('\n'), { directo: true });
+      const ok = await sendAlerta(`📦 <b>HOY LLEGA — dejá el código en la caja</b> (lo vio el chat de Chrome ${dia})\n` + rengs.map((l) => '· ' + l.replace(/</g, '&lt;')).join('\n'), { directo: true, tipo: 'llega' });
       await db.set('mlapi/llegaaviso/' + ts, { ts: Date.now(), mandado: ok !== false });
     }
   } catch (e) { /* se mira en la vuelta siguiente */ }
@@ -19395,8 +19421,10 @@ async function main() {
       const cuerpo = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').split(/(?<!:)\/\//).map((x) => x.trim()).join('\n'); // `//` = salto, pero no el de https:// (13/10/2026, revisión 9)
       const txt = (esPreg ? '🤔 <b>Para decidir vos</b>\n' : esRes ? '🧠 <b>Lo que hizo el cerebro</b>\n' : '⏰ <b>Recordatorio</b>\n') + cuerpo;
       let ok = false;
-      try { ok = await sendAlerta(txt, { directo: true }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
-      if (ok) console.log('✓ recordatorio mandado al canal privado'); else { console.log('❌ NO salió el recordatorio'); process.exitCode = 1; }
+      // 13a del 18/11/2026 (él): al canal privado sólo el pregunto:URGENTE (`urgente`); el recordar: ya no sale (queda guardado para Claude).
+      if (!esPreg) { try { await sendAlerta(txt, { directo: true, tipo: 'recordar' }); } catch { /* */ } console.log('🔕 recordar: ya NO sale por Telegram (13a del 18/11: sólo lo que llega hoy, bajas de ML, denuncias y lo URGENTE). Quedó guardado en el informe (sección 1).'); return; }
+      try { ok = await sendAlerta(txt, { directo: true, tipo: 'urgente' }); } catch (e) { console.log('✗ sendAlerta tiró: ' + e.message); }
+      if (ok) console.log('✓ URGENTE mandado al canal privado'); else { console.log('❌ NO salió el URGENTE'); process.exitCode = 1; }
       return;
     }
     // BILLING_PROBE=avisonoche → LO CORRE `ml-daily` AL FINAL cuando algún paso falló (revisión max
@@ -32826,6 +32854,7 @@ async function main() {
         const fullUSD = Math.round((costUSD * (1 + dev / 100) + usd) * 100) / 100;
         const antesFull = costoPesos(p, 1, tcE).costo;
         const despuesFull = costoPesos({ ...p, shipUSD: usd, costFullUSD: fullUSD }, 1, tcE).costo;
+        await anotarShipHist(db, p.id, parseFloat(p.shipUSD) || 0, usd);   // 9a del 18/11
         await db.set('cyc/products/' + p.id + '/shipUSD', usd);
         await db.set('cyc/products/' + p.id + '/costFullUSD', fullUSD);
         // Releer de la base: que el comando diga "guardado" no alcanza.
@@ -33471,6 +33500,7 @@ async function main() {
       }
       if (!APLICAR) { console.log(`\nPRUEBA: no escribí nada. Para aplicar: ponenvio:${quien}|${usdArg}|go`); return; }
       for (const x of plan) {
+        await anotarShipHist(db, x.p.id, parseFloat(x.p.shipUSD) || 0, usdArg);   // 9a del 18/11
         await db.set('cyc/products/' + x.p.id + '/shipUSD', usdArg);
         await db.set('cyc/products/' + x.p.id + '/costFullUSD', x.fullUSD);
       }
@@ -41579,8 +41609,12 @@ async function main() {
       const retiroMesVal = (ym) => { const au = retiroAuto(ym); if (au != null) return au; const r = retM[ym]; return r != null && r !== '' ? Math.round(Number(r) || 0) : null; };
       function cobroCrec(ym) { const B = snaps[ym], A = snaps[prevYM(ym)]; if (!B || !A || B.total == null || A.total == null) return null;
         const tc = parseFloat(B.tipoCambio) || 0; if (!tc) return null; const crecio = Math.round((Number(B.total) - Number(A.total)) * tc);
-        const retiro = ym >= SOLO_COBRADO_DESDE ? retiroCobradoVal(ym) : retiroMesVal(ym); if (retiro == null) return null; const corr = Number((corrA[ym] || {}).ars) || 0; const base = crecio + retiro - corr;
-        return { crecio, retiro, corr, base, porSocio: base > 0 ? Math.floor(base / 3 / 100000) * 100000 : 0 }; }
+        const retiro = ym >= SOLO_COBRADO_DESDE ? retiroCobradoVal(ym) : retiroMesVal(ym); if (retiro == null) return null; const corr = Number((corrA[ym] || {}).ars) || 0;
+        // 5a de la revisión de Plata (18/11/2026, él): el Total negativo del cierre anterior pasa a este (se resta antes de ÷ 3; si sigue negativo,
+        // sigue pasando). Desde el cierre de noviembre. Igual que `_cobroCrec` de la web (COBRO_ARRASTRE_DESDE).
+        let arrastre = 0; if (ym >= '2026_11' && prevYM(ym) >= DESDE) { const cp = cobroCrec(prevYM(ym)); if (cp && cp.base < 0) arrastre = cp.base; }
+        const base = crecio + retiro - corr + arrastre;
+        return { crecio, retiro, corr, arrastre, base, porSocio: base > 0 ? Math.floor(base / 3 / 100000) * 100000 : 0 }; }
       // Revisión etapa 2 (05/11/2026): el de adentro va SIN el piso de 0 (`crudo`): si el mes pasado debía dar negativo, esa parte se descuenta
       // del siguiente; antes se perdía (quedaba en 0 y el mes de después cobraba de más). Igual que `_retiroCalc` de la web.
       function retiroCalc(ym, prof = 0, crudo = false) { if (prof > 24) return null; const pr = prevYM(ym); if (pr < DESDE) return null; const c = cobroCrec(pr); if (!c) return null;
@@ -41597,7 +41631,7 @@ async function main() {
       const ym = mFix ? mFix[1] : curYM;
       const calc = retiroCalc(ym), fz = congV(ym), c = cobroCrec(prevYM(ym));
       console.log(`=== 💸 RETIRO DE ${ym.replace('_', '/')} ${GOr ? '· APLICANDO' : '· PRUEBA'} ===`);
-      if (c) console.log(`  cierre de ${prevYM(ym).replace('_', '/')}: creció ${money(c.crecio)} + ya retirado ${money(c.retiro)} − lo viejo cargado tarde ${money(c.corr)} = ${money(c.base)} ÷ 3 → ${money(c.porSocio)} c/u`);
+      if (c) console.log(`  cierre de ${prevYM(ym).replace('_', '/')}: creció ${money(c.crecio)} + ya retirado ${money(c.retiro)} − lo viejo cargado tarde ${money(c.corr)}${c.arrastre ? ' − lo que achicó el cierre anterior ' + money(-c.arrastre) : ''} = ${money(c.base)} ÷ 3 → ${money(c.porSocio)} c/u`);
       console.log(`  la cuenta da: ${calc == null ? '(sin cierre todavía)' : money(calc) + ' (' + money(Math.round(calc / 2)) + ' c/u)'} · congelado: ${fz == null ? '(nada)' : money(fz)}`);
       let v = null, nota = '';
       if (mFix) { v = Math.round(pesosArg(mFix[2])); nota = String(mFix[3]).slice(0, 120); if (!Number.isFinite(v)) { console.log('❌ monto inválido'); return; } }
@@ -45528,6 +45562,8 @@ async function main() {
         const r2 = await db.get(`cyc/debencuotas/${id}`);
         console.log(r2 && Number(r2.monto) === nD && !r2.movs ? `  ✓ guardado y releído: falta ${money(nD)}` : '  ⚠️ no lo pude releer bien');
         if (r2 && Number(r2.monto) === nD) await _corrCobro(_difD, `deuda ${id} arrancó de cero`);
+        // 11a de la revisión de Plata (18/11/2026, él): las correcciones también al grupo de los socios (si no, el próximo "queda" salta sin explicación).
+        if (r2 && Number(r2.monto) === nD) await avisoMov(id, `✏️ <b>Corrección: la deuda arranca de cero</b>`, [`antes faltaba ${money(Math.round(saldo(d)))} · ahora ${money(nD)}`]);
         return;
       }
       // VER Y CORREGIR LA DEUDA INICIAL (31/10/2026, él: "1.907.400 ahí saqué bien la cuenta y eso nos debe la perfumería de mercadería… hoy
@@ -45555,6 +45591,7 @@ async function main() {
         const rI = await db.get(`cyc/debencuotas/${id}`);
         console.log(rI && Number(rI.monto) === nI && Number(rI.costo) === cI2 ? `  ✓ guardado y releído: falta ${money(Math.round(saldo(rI)))}` : '  ⚠️ no lo pude releer bien');
         if (rI && Number(rI.monto) === nI) await _corrCobro(dif, `deuda inicial ${id} corregida`);
+        if (rI && Number(rI.monto) === nI) await avisoMov(id, `✏️ <b>Corrección de la deuda inicial</b>`, [`${money(Math.round(Number(d.monto) || 0))} → ${money(nI)} (${dif >= 0 ? '+' : '−'}${money(Math.abs(Math.round(dif)))})`, `ganancia ${gP}% = ${money(nI - cI2)}`]);   // 11a del 18/11
         return;
       }
       // VENTA O PRÉSTAMO (29/10/2026, él: "los que tienen ganancia son Ventas y los que no tienen son deudores… primo, gastón, seba son ventas
@@ -45585,6 +45622,7 @@ async function main() {
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
         const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
         console.log((rv || null) === val ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if ((rv || null) === val) await avisoMov(id, `✏️ <b>Corrección: ${campo === 'nom' ? 'el nombre' : 'qué se llevó'}</b>`, [campo === 'det' && val ? 'se llevó: ' + String(val).slice(0, 120) : '']);   // 11a del 18/11
         return;
       }
       const mc = String(resto).trim().match(/^costo\s*\$?\s*([\d.,]+)\s*(usd|us\$|u\$s|dolares|dólares)?$/i);
@@ -45602,6 +45640,7 @@ async function main() {
         await db.patch(`cyc/debencuotas/${id}`, { costo, sinGan: null });
         const rc = await db.get(`cyc/debencuotas/${id}/costo`);
         console.log(Number(rc) === costo ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
+        if (Number(rc) === costo) await avisoMov(id, `✏️ <b>Corrección del costo</b>`, [`costo ${Number(d.costo) > 0 ? money(Math.round(d.costo)) + ' → ' : ''}${money(costo)} · ganancia ${money(Math.round((Number(d.monto) || 0) - costo))}`]);   // 11a del 18/11
         return;
       }
       // MERCADERÍA DEJADA EN UNA PERFUMERÍA (28/10/2026, él: "mercadería que dejé en los negocios locales… dejé el xiaomi watch 5 lite en soares
@@ -45712,6 +45751,7 @@ async function main() {
         const okP = ren.every(([kx]) => rr[kx] && Number(rr[kx].pu) === pu);
         console.log(okP ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
         if (okP && renC.length) await _corrCobro(deltaC, 'precio corregido de lo dejado en la perfumería');
+        if (okP) await avisoMov(idP, `✏️ <b>Corrección de precio</b>`, [`${String(ren[0][1].prodNom || extra.prod).slice(0, 70)}${locP ? ' · ' + locP : ''}: ahora ${money(pu)} c/u (${ren.length} renglón/es)`, `la deuda ${money(Math.round(antes))} → ${money(Math.round(despues))}`]);   // 11a del 18/11
         return;
       }
       if (/^repartir$/i.test(String(numF).trim())) {
@@ -45823,6 +45863,9 @@ async function main() {
       // correr `ofi:…=-N` aparte y se olvidaba: quedaba en la oficina Y en la deuda). Con colores: `|color=<color>`, o si no dice, de a una de los
       // colores con más unidades (como `ofi:…!gral`). Si en la oficina no alcanzan, no se escribe NADA (ni la deuda).
       let ofiML = null;
+      // 10 de la revisión de Plata (18/11/2026, él: "va con aroma siempre así descontamos en oficina"): Paulvic que sale de la Oficina ML va
+      // SIEMPRE con su aroma (|color=), y el aroma queda escrito en el renglón de la deuda (reemplaza el "Paulvic TODOS sin aroma" del 15/11).
+      if (signo > 0 && prodF && /paulvic/i.test(String(prodF.name || '')) && Array.isArray(prodF.variantes) && prodF.variantes.length && !extra.color && extra.de && /mati|ml/i.test(extra.de) && !/cyc|local/i.test(extra.de)) { console.log('❌ Paulvic va siempre con su aroma: agregá |color=<aroma> (el que salió de la Oficina ML). No escribo nada.'); return; }
       if (signo > 0 && prodF && extra.de && !/cyc|local/i.test(extra.de) && /mati|ml/i.test(extra.de)) {
         const OK = 'Oficina_Mati', invO = (await db.get('cyc/inventory')) || {}; const kT = prodF.id + '__' + OK, kV = (v) => kT + '__v__' + sid(v);
         const vs = Array.isArray(prodF.variantes) ? prodF.variantes : []; const saca = {};
@@ -45846,16 +45889,17 @@ async function main() {
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de) && (await db.get('cyc/mlconfig/oficycPorUnidades')) === true) {
         const xL = (await db.get('cyc/oficyc/' + prodF.id)) || {}; const tL = parseInt(xL.t) || 0, vL = Object.values(xL.v || {}).reduce((t2, q2) => t2 + (parseInt(q2) || 0), 0);
         if (tL < u) { console.log(`❌ en la Oficina Local hay ${tL} de ${prodF.name} sin color${vL ? ` (y ${vL} contadas por color, que esta resta no toca: cargalo con |de=ninguna y restá el color con oficyc:)` : ''}: no alcanzan para ${u}. Si salió de la Oficina ML usá |de=ml; si de ningún lado, |de=ninguna. No escribo nada.`); return; } }
-      // 30a del 14/11: lo dejado con fecha de un mes cerrado → lo que sube el patrimonio (la ganancia si salió de una oficina; todo si de=ninguna)
-      // va a "lo viejo cargado tarde" y no al cobro de este mes.
+      // 30a del 14/11: lo dejado con fecha de un mes cerrado → lo que sube el patrimonio va a "lo viejo cargado tarde" y no al cobro de este mes.
+      // 6a de la revisión de Plata (18/11/2026, él): va SÓLO LA GANANCIA también con de=ninguna (Tienda de Paraguay, Paulvic: su costo ya se pagó
+      // en el pedido); el monto entero sólo si no tiene costo. Antes con de=ninguna iba el monto entero (6 Paulvic: $82.500 en vez de $16.500).
       let corrV = 0;
       if (signo > 0 && prodF) { const cerV = await _mesCerrado(f);
         if (cerV === null) console.log(`  ⚠️ no pude leer si ${f.slice(0, 7)} está cerrado: si lo está, cargá la corrección con cobrocorr.`);
-        else if (cerV) { corrV = Math.round(/ningun|nada/i.test(String(extra.de || '')) || costoU == null ? monto : (montoU - costoU) * u);
-          console.log(`  📅 ${f.slice(0, 7)} ya está cerrado: ${money(corrV)} van a "lo viejo cargado tarde", no al cobro de este mes (30a del 14/11)${costoU == null && !/ningun|nada/i.test(String(extra.de || '')) ? ' · ⚠️ sin costo: va el monto entero' : ''}`); } }
+        else if (cerV) { corrV = Math.round(costoU == null ? monto : (montoU - costoU) * u);
+          console.log(`  📅 ${f.slice(0, 7)} ya está cerrado: ${money(corrV)} van a "lo viejo cargado tarde", no al cobro de este mes (30a del 14/11 · 6a del 18/11: la ganancia)${costoU == null ? ' · ⚠️ sin costo: va el monto entero' : ''}`); } }
       if (!GO) { if (corrV) await _corrCobro(corrV, ''); console.log('No se guardó nada (falta ;go).'); return; }
       const k = String(Date.now()); const mv = { m: signo * monto, f, ...(nota ? { nota } : {}), quien: 'robot',
-        ...(prodF ? { prod: prodF.id, prodNom: String(prodF.name).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
+        ...(prodF ? { prod: prodF.id, prodNom: (String(prodF.name) + (() => { const sq = ofiML && Object.keys(ofiML.saca || {}); return sq && sq.length === 1 ? ' · ' + sq[0] : extra.color ? ' · ' + extra.color : ''; })()).slice(0, 90), u, pu: montoU, ...(costoU != null ? { costoU, gan: (montoU - costoU) * u } : {}) } : {}), ...(local ? { local } : {}) };
       // `local=reparto` (30/10/2026, él: "cuando es así, repartilas lo más equitativas posible y listo"): las unidades se reparten de a una
       // entre las tres perfumerías, cada una a la que menos tiene de lo repartido (`reparto:true`); queda un renglón por perfumería.
       if (sinLocal && signo > 0 && prodF && u > 0) {
@@ -52191,8 +52235,8 @@ async function main() {
       const cav = [];
       for (const dd of diasAv) { try { for (const x of Object.values((await db.get('mlapi/cerebroavisos/' + dd)) || {})) if (x && x.ts >= desde) cav.push(x); } catch { /* */ } }
       const al = cav.length ? cav.sort((a, b) => a.ts - b.ts) : Object.values(alog).filter((x) => x && x.ts >= desde).sort((a, b) => a.ts - b.ts).map((x) => ({ ...x, va: true }));
-      console.log(`\n── 1 · AVISOS DEL ROBOT (${al.length} · ${al.filter((x) => x.va).length} salieron por Telegram)${al.length > 25 ? ` · muestro los últimos 25 de ${al.length}` : ''} ──`);
-      for (const x of al.slice(-25)) console.log(`${x.va ? '📨' : '🔇'} ${hl(x.ts)} ${corta(String(x.t || '').replace(/<[^>]+>/g, ''), 220)}${x.va ? '' : ' · (no salió: ' + corta(x.por, 40) + ')'}`);
+      console.log(`\n── 1 · AVISOS DEL ROBOT (${al.length} · ${al.filter((x) => x.va).length} salieron por Telegram)${al.length > 40 ? ` · muestro los últimos 40 de ${al.length}` : ''} ──`);
+      for (const x of al.slice(-40)) console.log(`${x.va ? '📨' : '🔇'} ${hl(x.ts)} ${corta(String(x.t || '').replace(/<[^>]+>/g, ''), 220)}${x.va ? '' : ' · (no salió: ' + corta(x.por, 40) + ')'}`);
       // 2) Ventas
       const ventasMla = {}; const vtsTodas = [];
       for (const ents of Object.values(vp)) for (const v of Object.values(ents || {})) {
@@ -58209,6 +58253,7 @@ async function main() {
       if (plan.length > 80) console.log(`  … y ${plan.length - 80} más`);
       const sube = plan.filter((x) => x.despues > x.antes).length; console.log(`  suben ${sube} · bajan ${plan.length - sube}`);
       if (!GOe) { console.log('PRUEBA: no escribí nada. Para aplicar: realcaja;go'); return; }
+      for (const x of plan) await anotarShipHist(db, x.p.id, x.shipOld, x.shipNew);   // 9a del 18/11: el envío de antes queda para las ventas de antes
       for (const x of plan) await db.patch('cyc/products/' + x.p.id, { shipUSD: x.shipNew, costFullUSD: x.fullUSD, shipReal: { pesos: Math.round(x.ePesos), u: x.sumU, ts: Date.now() } });
       const desp = (await db.get('cyc/products')) || {}; let ok = 0;
       for (const x of plan) { const p2 = Object.values(desp).find((z) => z && z.id === x.p.id) || {}; if (Math.abs((parseFloat(p2.shipUSD) || 0) - x.shipNew) < 0.005) ok++; }
@@ -58234,7 +58279,17 @@ async function main() {
       const upd = { monto, n, pagadas: pag }; for (const t of sacar) upd['movs/' + t] = null;
       await db.patch('cyc/debencuotas/' + id, upd);
       const r = await db.get('cyc/debencuotas/' + id);
-      console.log(Number(r.monto) === monto && Number(r.n) === n && (Number(r.pagadas) || 0) === pag && sacar.every((t) => !(r.movs || {})[t]) ? '✓ guardado y releído' : '✗ no quedó');
+      const okFx = Number(r.monto) === monto && Number(r.n) === n && (Number(r.pagadas) || 0) === pag && sacar.every((t) => !(r.movs || {})[t]);
+      console.log(okFx ? '✓ guardado y releído' : '✗ no quedó');
+      // 11a de la revisión de Plata (18/11/2026, él): la corrección también al grupo de los socios, en la misma cola que los movimientos
+      // (`mlapi/avisomovcola`, sale junta con los demás del rato). El texto no se imprime (registro público).
+      if (okFx) { try {
+        const escF = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const nF = Math.max(1, Number(r.n) || 1), mF = Number(r.monto) || 0, sF = Math.round(mF - Math.min(nF, Number(r.pagadas) || 0) * (mF / nF) + Object.values(r.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0));
+        const ren = [Number(d.monto) !== monto ? `total ${money(Number(d.monto) || 0)} → ${money(monto)}` : '', (Number(d.n) || 1) !== n ? `cuotas ${Number(d.n) || 1} → ${n}` : '', (Number(d.pagadas) || 0) !== pag ? `cuotas pagadas ${Number(d.pagadas) || 0} → ${pag}` : '', sacar.length ? `se sacaron ${sacar.length} movimiento(s) mal cargado(s)` : ''].filter(Boolean);
+        await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head: `✏️ <b>Corrección de la deuda</b>\n<b>${escF(r.nom || '?')}</b>\n` + ren.map((x) => '· ' + escF(x)).join('\n'), nom: String(r.nom || '?'), queda: sF < 0 ? 'Le debemos ' + money(-sF) : '<b>Queda debiendo: ' + money(sF) + '</b>', perf: '', ts: Date.now() });
+        console.log('  ✓ corrección en la cola: sale al Telegram de los socios junto con los demás movimientos (3-5 min)');
+      } catch (e) { console.log('  ⚠️ la corrección NO salió por Telegram: ' + String(e.message || e).slice(0, 90)); } }
       return;
     }
     // BILLING_PROBE=debendia:<id de la deuda>=<0 dom|1 lun|…|6 sáb|->;go (13/11/2026, él con Germán: "el pago de él vence el lunes… paga siempre
@@ -61370,7 +61425,7 @@ async function main() {
     // "A liquidar" (mp_liq) tiene su PROPIA fecha (24/09/2026). Estaba en el grupo 'mp' con el
     // disponible, y como `saldoml` lo reescribe todas las noches, la fecha del DISPONIBLE decía
     // "hoy" siempre aunque él no lo cargara hace semanas: el ámbar de "número viejo" no salía nunca.
-    const GRUPO = { efectivo: 'efectivo', mp_disp: 'mp', mp_liq: 'liq' };
+    const GRUPO = { efectivo: 'efectivo', mp_disp: 'mp', mp_liq: 'liq', binance: 'binance' };   // binance: 7a del 18/11/2026 (aviso de "Cerrar el mes" con más de 2 días)
     const visto = finanzas._seen || {};
     const primeraVez = !finanzas._seen;   // arranque: se anota lo que hay, sin inventar una fecha
     const ahora = Date.now();

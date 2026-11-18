@@ -480,7 +480,6 @@ body.light [style*="color:#22c55e"],body.light [style*="color:#4ade80"]{color:#1
 .casc-row .cv{min-width:0;overflow:hidden;flex:0 1 auto}
 .summary-cards .sc{min-width:0}.summary-cards .sc-val{overflow:hidden;white-space:nowrap}
 /* 1a del Diseño 10/11 · Mercadería Perfumería: en el teléfono el botón es sólo ✅ y el 2º renglón (fecha · perfumería · ganancia) entra entero */
-@media(max-width:420px){.dl-pago{display:none}}
 .prod-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px 10px;align-items:center}
 .prod-top-f:empty{margin-right:-10px}
 .prod-cer-hueco{display:inline-block;width:40px}
@@ -3029,7 +3028,7 @@ function startApp(){
   // Lo que hace cada pasada es EXACTAMENTE lo de antes (`_cycAplicar`, con `d` = las partes recibidas). Una parte nueva que lea la web
   // tiene que sumarse a CYC_KEYS (si no, llega vacía).
   const CYC_LAZY={'candidatos_py': 'pedidos'};
-  const CYC_KEYS=['pregpend','pregresp','decisiones','paramati','parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
+  const CYC_KEYS=['pregpend','pregresp','decisiones','paramati','parachat','recon_vivo','prompts','pedperf','oficyc','autoprecio','avisoventa_ult','buzon','cajas_armando','cajasentrado','claudecambios','claudedecide','cobro_corr','retiro_cobrado','compras','costocongelado','compraslista','compraspy','daily','debencuotas','dolarref','entregas','envios_full','estrategia','fact_arca','fact_cancel','fact_fuera','fact_mes','facturas','facturas_desde','facturas_recibidas','facturas_sin','afip_fact','finanzas','fullreco','gastos_nova','history','ingresos','inventory','listas_local','listas_pedido','listas_pedido_prob','local','lotesfull','metricas','mlconfig','mllinks','monotributo','netopub','noconsigo','norepo','nosubir','notraer','oficinas','ofientro','pausado_precio','pedidos','pedidos_papelera','pedidos_py','pedidospv','precios_hist_prod','products','promoclaude','promohist','promoventa','proveedores','puntaje','pushsubs','py_armado','py_personal','py_sinstock','pycatres','pycatres_el','rayas','reclamomotivo','repoextra','reponer','reputacion','rescateventa','retiro_congelado','retiro_mes','revision','ritmonormal','saldoancla','shiphist','sinetiq','snapshots','stockDiario','stockhist','stockoculto','supervisor','tc_mes','techo95pct','techofreno','techofull','ventaanalisis','ventaprod','ventaremate','vigilancia','visitas'];
   const _cycD={},_cycFalta=new Set(CYC_KEYS);window._cycDRef=_cycD;window._cycFaltaVer=()=>[..._cycFalta];let _cycT=null,_cycPend=false,_cycDesde=0;
   const _cycAplicar=()=>{
     _cycPend=false;clearTimeout(_cycT);_cycT=null;_cycDesde=0;window._cycAplicN=(window._cycAplicN||0)+1;
@@ -3089,6 +3088,7 @@ function startApp(){
     state.rendimientos_mp=window._rMpV||{};   // 05/11/2026: totales que saca el robot del extracto cerrado (🔒)   // 05/11/2026: ✅ extracto de MP pasado a Claude (Gastos del mes)
     state.afip_fact=d.afip_fact||{};   // revisión etapa 4, 30/10/2026: "Facturado real AFIP" de Ajustes se guardaba y nunca se volvía a leer   // 9a del 30/10: el retiro de un mes ya empezado no se mueve
     state.cobro_corr=d.cobro_corr||{};
+    state.shiphist=d.shiphist||{};   // 9a del 18/11/2026: el envío por unidad de cada día (`shipDeVentaUSD`)
     state.costocongelado=d.costocongelado||{};   // 29/10: lo viejo que se cargó tarde en un cierre (no es crecimiento), en pesos
     state.stockDiario=d.stockDiario||{};
     state.mllinks=d.mllinks||{};     // publicaciones ML a mapear (activas + inactivas)
@@ -3718,7 +3718,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.230';
+const APP_VERSION='28.231';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3731,6 +3731,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.231',f:'18/11',h:'13:15',c:[{n:3,t:'💸 Cobro del mes: si un mes CYC achica, lo negativo se descuenta del cobro del mes siguiente (antes se perdía). Desde el cierre de noviembre.'},{n:2,t:'📸 Cerrar el mes avisa si el efectivo o Binance se cargaron hace más de 2 días.'},{n:2,t:'🛒 Ventas: en un carrito, cada producto muestra su ganancia y % como si se hubiera vendido solo, y aparte el ahorro por ir en carrito.'},{n:2,t:'📦 El envío de la caja de cada venta es el del día en que se vendió, y de mayo a septiembre quedan congelados como octubre.'},{n:2,t:'📥 Ver deudas: sin botones de pago (✅ Pagó, 💵 Pagó una cuota, ↩︎ Deshacer): los pagos los carga Claude. Queda ✏️ Editar.'}]},
   {v:'28.230',f:'18/11',h:'05:10',c:[{n:2,t:'Pedidos: si se compra un solo color, la tarjeta muestra el máximo de compra de ese color. Revisión de Mercadería en el cartel.'}]},
   {v:'28.229',f:'17/11',h:'13:45',c:[{n:2,t:'🇵🇾 Paraguay: cada pedido lleva también la foto del comprobante de pago (💳 en el detalle, para subirla y verla). A los pedidos desde el 13/11 que no la tienen les sale en rojo "falta comprobante de pago" (no frena marcar que llegó).'}]},
   {v:'28.228',f:'17/11',h:'13:40',c:[{n:1,t:'🇵🇾 Paraguay: lo que el ticket dice que no había (no se cobró) ya no sale en rojo como reclamo, aunque se haya anotado como faltante al llegar.'}]},
@@ -5433,6 +5434,10 @@ const COBRO_CRECE_DESDE='2026_10';   // primer cierre que se cobra así (se cobr
 // 3b del 08/11/2026: desde el cierre de noviembre (el primer mes con el ✅ "Ya lo cobró" en Gastos) lo ya retirado son sólo los marcados.
 // Octubre queda con la cuenta de antes: su cobro ya se usó para el retiro de noviembre, que está congelado.
 const COBRO_SOLO_COBRADO_DESDE='2026_11';
+// 9a del 18/11/2026 (él): de mayo en adelante los meses cerrados quedan CONGELADOS (`costocongelado`), como octubre (antes desde octubre).
+const CONGELAR_DESDE='2026_05';
+// 5a del 18/11/2026: desde este cierre, el Total negativo del cierre anterior se resta (`arrastre`).
+const COBRO_ARRASTRE_DESDE='2026_11';
 function _cobroCrec(ym){
   const S=state.snapshots||{};const B=S[ym],A=S[_puntMesPrev(ym)];
   if(!B||!A||B.total==null||A.total==null)return null;
@@ -5454,14 +5459,18 @@ function _cobroCrec(ym){
     retiro=retCargado?rv:retiroDefMes(ym,0);
   }
   const cc=(state.cobro_corr||{})[ym]||{};const corr=Number(cc.ars)||0;
-  const base=crecio+retiro-corr;
+  // 5a de la revisión de Plata (18/11/2026, él): un mes en que CYC achica (Total negativo) NO se olvida: lo negativo pasa al cobro del cierre
+  // siguiente y se resta antes de dividir por 3 (si sigue negativo, sigue pasando). Desde el cierre de noviembre (los retiros congelados no se tocan).
+  let arrastre=0;
+  if(ym>=COBRO_ARRASTRE_DESDE){const pr=_puntMesPrev(ym);if(pr>=COBRO_CRECE_DESDE){const cp=_cobroCrec(pr);if(cp&&cp.base<0)arrastre=cp.base;}}
+  const base=crecio+retiro-corr+arrastre;
   // Redondo para abajo, de a $100.000 (29/10/2026, él: "1.699 → 1.6m"): lo que sobra queda en CYC y entra en el crecimiento del mes que viene.
   const porSocio=base>0?Math.floor(base/3/100000)*100000:0;
-  return{ym,crecio,crecioUSD:Number(B.total)-Number(A.total),tc,retiro,retCargado,sinCobrar,corr,corrNota:cc.nota||'',base,porSocio};
+  return{ym,crecio,crecioUSD:Number(B.total)-Number(A.total),tc,retiro,retCargado,sinCobrar,corr,corrNota:cc.nota||'',arrastre,base,porSocio};
 }
 function renderCobroCrec(){
   try{_retiroAutoGuardar();}catch(_){}
-  try{if(!_arqViewYM&&!(window._deCopia&&window._deCopia()))Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE&&!(window._congHecho=window._congHecho||{})[k]).forEach(k=>{if((state.costocongelado||{})[k]&&k<_curYM())window._congHecho[k]=1;congelarMes(k);});}catch(_){}   // una vez por mes terminado al abrir la app
+  try{if(!_arqViewYM&&!(window._deCopia&&window._deCopia()))Object.keys(state.snapshots||{}).filter(k=>k>=CONGELAR_DESDE&&!(window._congHecho=window._congHecho||{})[k]).forEach(k=>{if((state.costocongelado||{})[k]&&k<_curYM())window._congHecho[k]=1;congelarMes(k);});}catch(_){}   // una vez por mes terminado al abrir la app
   const el=document.getElementById('arq-cobro-crec');if(!el)return;
   if(_arqViewYM){el.innerHTML='';return;}
   const ks=Object.keys(state.snapshots||{}).filter(k=>k>=COBRO_CRECE_DESDE).sort();
@@ -5484,11 +5493,13 @@ function renderCobroCrec(){
     +fila('','Creció CYC en '+_ymLabel(k),$(c.crecio),'todo: ML, local, perfumerías, deudas · US$ '+Math.round(c.crecioUSD).toLocaleString('es-AR')+' al dólar '+c.tc)
     +fila('+','Ya sacaron ese mes',$(c.retiro),[c.retCargado?'':'supuesto',k>=COBRO_SOLO_COBRADO_DESDE?'sólo los marcados ✅ Ya lo cobró':''].filter(Boolean).join(' · '))
     +(c.corr?fila('−','Lo viejo cargado tarde',$(c.corr),c.corrNota?_esc(c.corrNota):''):'')
+    +(c.arrastre?fila('−','Lo que achicó CYC en '+_ymLabel(_puntMesPrev(k)),$(-c.arrastre),'el cierre anterior dio negativo: se descuenta acá'):'')
     +'<hr>'
     +fila('=','Total',$(c.base))
     +fila('÷','Entre 3',$(c.base>0?tercio:c.base))
     +fila('↓','Redondo de a $100.000',$(c.porSocio)+' c/u')
     +(c.base>0?fila('','Sobra del redondeo (queda en CYC)',$(sobra),'',' tk-sobra'):'')
+    +(c.base<0?'<div class="tk-av">📉 Dio negativo: no se cobra y '+$(-c.base)+' se descuentan del cobro del cierre de '+_ymLabel(_mesSigYM(k))+'.</div>':'')
     +'<hr class="tk-doble">'
     +'<div class="tk-tot"><div>Cobra cada uno</div><div class="tk-big">'+$(r/2)+'</div></div>'
     +'<div class="tk-ret"><span>Retiro de '+_ymLabel(sig)+' (los dos)</span><span>'+$(r)+'</span></div>'
@@ -6187,7 +6198,6 @@ const REV_HORA='04:00';
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
   {etapa:3,t:'18/11 · 8 decisiones de Mercadería',que:'Navidad contada dos veces en Pedidos · redondeo por color · lugar vacío en la caja · Pirineo sin IVA · probados contra nuevos en Paraguay · lo sacado a mano vuelve · probados medidos contra el más barato · ticket y guía en el registro',pedi:'resolvamos'},
-  {etapa:2,t:'17/11 · 8 decisiones de Plata',que:'mes en que CYC achica · de=ninguna en mes cerrado · avisar Binance/efectivo viejos al cerrar · % de cada producto del carrito · envío de la caja en días pasados · Paulvic sin aroma en un comando · avisar correcciones de deudas · ✅ Pagó y MercadoPago',pedi:'resolvamos'},
   {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
   {etapa:9,t:'13/11 · 10 decisiones del Local',que:'ABEL y la Tienda publicadas viejas (falta el permiso) · avisos de lo tocado en la web · movimiento repetido · saldo de Binance · lo que va a la perfumería · costo de la Tienda · nombres en el registro · devolución de la Tienda · cargado tarde · precios del proveedor en el registro',pedi:'resolvamos'},
@@ -6212,7 +6222,7 @@ const REV_PENDIENTE=[
 // por una nota vieja.
 // 30/09 a la tarde: la revisión completa final (6 revisores) cubrió precios, plata, mercadería, ventas,
 // corridas del robot y la web; lo obvio quedó arreglado en la v20.88.
-const REV_HECHAS={1:'2026-10-24',2:'2026-10-20',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-11-08'};
+const REV_HECHAS={1:'2026-10-24',2:'2026-11-18',3:'2026-10-20',4:'2026-10-20',5:'2026-10-12',6:'2026-10-15',7:'2026-10-01',8:'2026-11-08'};
 // LO QUE PASÓ EN CADA ETAPA (15/10/2026, para el panel de Ajustes). Lo escribe Claude al cerrar cada vuelta: fecha y una línea.
 const REV_HIST={
   1:[{f:'2026-11-16',t:'4 revisores en máximo: 🥊 mantener la caja (piso en el precio que gana, relee y compara, no en gemelas), =%N con el peor caso, Black Friday fuera de sobra/lento/ritmo normal/Pedidos, pico de Navidad sin inflar, 180 días con el ritmo de hoy, máximo de compra de la web con el envío normal; 11 decisiones a para_mati.'},{f:'2026-09-24',t:'Primera vuelta: el rescate, la espera de las bajas y los frenos de suba.'},
@@ -7838,7 +7848,20 @@ const MP_LABEL={mp_adriana:'Adriana',mp_luciana:'Luciana',mp_ayelen:'Ayelen',mp_
 // mp_liq va aparte: el robot lo reescribe cada noche y, junto con el disponible, hacía decir
 // "hoy" a la fecha del disponible aunque nadie lo cargara hace semanas (24/09/2026).
 const FIN_TS_GRUPO={efectivo:'efectivo',mp_disp:'mp',mp_liq:'liq',
-  mp_adriana:'mp',mp_luciana:'mp',mp_ayelen:'mp',mp_matias:'mp'};
+  mp_adriana:'mp',mp_luciana:'mp',mp_ayelen:'mp',mp_matias:'mp',
+  bn_tito:'binance'};   // 7a del 18/11/2026: Binance con su fecha (la escribe también el robot con binance/binancepriv) para el aviso de "Cerrar el mes"
+// 7a de la revisión de Plata (18/11/2026, él): "Cerrar el mes" avisa si el efectivo o Binance se cargaron hace más de 2 días
+// (ej.: USDT usados para pagar Paraguay que siguen sumando en Binance). Sólo avisa: se puede cerrar igual.
+const CIERRE_FIN_MAX_DIAS=2;
+function _cierreFinViejos(){
+  const ts=(state.finanzas&&state.finanzas._ts)||{},f=state.finanzas||{},out=[];
+  const chk=(grupo,nom,hay)=>{if(!hay)return;const t=parseFloat(ts[grupo]);
+    if(!(t>0)){out.push(nom+' (no sé cuándo se cargó)');return;}
+    const d=Math.floor((Date.now()-t)/864e5);if(d>CIERRE_FIN_MAX_DIAS)out.push(nom+' (se cargó hace '+d+' días)');};
+  chk('efectivo','el efectivo',true);
+  chk('binance','Binance',BN_CUENTAS.some(k=>parseFloat(f[k])>0)||parseFloat(f.binance)>0);
+  return out;
+}
 function _finTsTxt(ts){
   const d=new Date(ts),ahora=new Date();
   const p2=n=>String(n).padStart(2,'0');
@@ -8223,7 +8246,7 @@ function renderCuotas(){
     const adentro=ab?`<div onclick="event.stopPropagation()" style="padding:6px 12px 0;border-top:1px dashed var(--border);font-size:.7rem;color:var(--muted);display:flex;flex-direction:column;gap:3px">
         ${d.det?`<div style="word-break:break-word">🛍️ se llevó: <span style="color:var(--text)">${_escC(d.det)}</span></div>`:''}
         <div>${lin1}</div>${lin2?`<div style="font-size:.66rem">${lin2}</div>`:''}${venceTxt?`<div style="font-size:.66rem">${venceTxt}</div>`:''}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${fin?'':cq?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',1)">💵 Pagó una cuota</button>`:''}${cq&&d.pagadas>0?`<button class="btn" style="font-size:.68rem" onclick="cuotasPago('${d.id}',-1)">↩︎ Deshacer</button>`:''}<button class="btn" style="font-size:.68rem" onclick="cuotasEditar('${d.id}')">✏️ Editar</button></div></div>`:'';
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><!-- 12 de la revisión de Plata (18/11/2026, él: "sacá los botones, total hacemos todo por acá"): sin 💵 Pagó una cuota ni ↩︎ Deshacer; los pagos los carga Claude con debenmov --><button class="btn" style="font-size:.68rem" onclick="cuotasEditar('${d.id}')">✏️ Editar</button></div></div>`:'';
     return `<div style="border:1px solid ${bord};${bg}border-radius:var(--r)">
       <div onclick="cuotaToggle('${d.id}')" class="deu-f" title="${_escC(d.nom)} · tocá para ver el detalle y la historia">
       <!-- 8a del Diseño 10/11: en DOS PISOS, todos del mismo alto (el nombre partido letra por letra hacía renglones de 33 a 237 px):
@@ -8311,14 +8334,14 @@ function cuotaDetalleHTML(d){
   // 29/10/2026 (él: "ese detalle abajo del nombre ponerlo todo al abrir la tarjeta haciendo click. en la misma"): la fila muestra sólo el nombre;
   // tocándola se abre ahí mismo el detalle (nombre entero, paga, costo, ganancia, nota).
   // PAGO A MEDIAS (30/10/2026, pago por plata, `deudaFifo`): el producto al que llegó la plata sin cubrirlo entero se llena de verde hasta el % que
-  // se pagó y dice cuánto lleva; los cubiertos enteros quedan en verde con ✅. ✅ Pagó = "pagaron hasta acá" (de abajo hacia arriba, `cuotaProdPago`).
+  // se pagó y dice cuánto lleva; los cubiertos enteros quedan en verde con ✅. El botón ✅ Pagó se sacó (12 de la revisión de Plata, 18/11/2026): los pagos los carga Claude.
   const _filaProd=x=>{const ab=window._cuotaMovAb===x.mov,pm=!x.pagado&&x.pagadoM>0.5?x.pagadoM:0,pp=Math.round(x.pagPct||0);return `<div style="border-top:1px solid var(--border);${x.pagado?'background:rgba(34,197,94,.09);':pm?`background:linear-gradient(90deg,rgba(34,197,94,.13) ${pp}%,transparent ${pp}%);`:''}border-radius:6px">
     <!-- DISEÑO 10 DEL 31/10 (él: "sí"): en DOS renglones de alto fijo. Arriba el producto (antes, a 360 px, la columna del nombre quedaba en
          ~30 px y no se veía qué era) y el total; abajo fecha · perfumería · ganancia y el ✅ Pagó grande. Mismas cuentas y mismos botones. -->
     <div onclick="event.stopPropagation();window._cuotaMovAb=window._cuotaMovAb==='${x.mov}'?null:'${x.mov}';renderCuotas()" style="cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;column-gap:8px;row-gap:3px;height:52px;align-content:center;padding:0 6px;font-size:.7rem">
       <span style="min-width:0;${_cel};font-weight:600;color:var(--text)">🛍️ ${x.u>1?'<b>'+x.u+' ×</b> ':''}${_escC(x.nom)}</span>
       <b style="text-align:right;font-family:'DM Mono',monospace;white-space:nowrap;color:var(--text)">${_pesos(x.m)}</b>
-      <span style="text-align:right;grid-row:1/3;grid-column:3">${x.pagado?`<span style="font-size:.66rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.7rem;padding:4px 12px;min-height:28px;white-space:nowrap;font-weight:700" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="Pagaron hasta este producto (de abajo hacia arriba): se carga la plata que falta para cubrirlo a él y a los más viejos">✅<span class="dl-pago"> Pagó</span></button>`}</span>
+      <span style="text-align:right;grid-row:1/3;grid-column:3">${x.pagado?`<span style="font-size:.66rem;color:var(--green);white-space:nowrap">✅ ${_isoDM(x.pagado)}</span>`:''}</span>
       <span style="min-width:0;${_cel};color:var(--muted);font-size:.6rem;letter-spacing:-.2px;grid-column:1/3;grid-row:2"><span style="font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span> · <span style="color:${_locColor(x.loc)};font-weight:700">${_escC(x.loc||'—')}</span> · <span style="color:${x.gan==null?'var(--muted)':colPctLocal(x.gan,x.m-x.gan)}">${x.gan==null?'sin costo':(x.gan>=0?'+':'−')+_pesos(Math.abs(x.gan))+(x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':'')}</span>${pm?` · <span style="color:var(--amber)">pagó ${_pesos(pm)} · ${pp}%</span>`:''}</span></div>
     ${ab?`<div style="padding:2px 6px 8px 12px;font-size:.66rem;color:var(--muted);line-height:1.55;word-break:break-word">
       <div style="color:var(--text)">${x.u>1?x.u+' × ':''}${_escC(x.nom)}${x.loc?' · '+_escC(x.loc):''}</div>
@@ -8330,7 +8353,7 @@ function cuotaDetalleHTML(d){
       <span style="width:3.4em;color:var(--muted);font-family:'DM Mono',monospace">${x.f?_isoDM(x.f):'—'}</span>
       <span style="flex:1;min-width:0;word-break:break-word${_esDev(x)?';color:#38bdf8':''}">${_escC(x.txt)}${x.gan!=null?`<div style="font-size:.64rem;color:var(--muted)">paga ${_pesos(x.pu)} c/u · costo ${_pesos(x.costoU)} c/u · ganancia <b style="color:${colPctLocal(x.gan,x.m-x.gan)}">${_pesos(x.gan)}</b></div>`:''}</span>
       ${x.gan!=null&&x.m>0?`<span style="white-space:nowrap;text-align:right;font-family:'DM Mono',monospace;line-height:1.25"><b style="color:var(--text)">${_pesos(x.m)}</b><br><span style="font-size:.64rem;color:${colPctLocal(x.gan,x.m-x.gan)}">${x.gan>=0?'+':'−'}${_pesos(Math.abs(x.gan))}${x.m-x.gan>0?' · '+Math.round(x.gan/(x.m-x.gan)*100)+'%':''}</span></span>`:`<b style="white-space:nowrap;font-family:'DM Mono',monospace;color:${_esDev(x)?'#38bdf8':x.m>0?'var(--green)':'var(--red)'}">${x.m>0?'+':'−'}${_pesos(Math.abs(x.m))}</b>`}
-      ${x.prod?(x.pagado?`<span style="font-size:.64rem;color:var(--green);white-space:nowrap">✅ pagado ${_isoDM(x.pagado)}</span>`:`<button class="btn" style="font-size:.62rem;padding:2px 8px" onclick="event.stopPropagation();cuotaProdPago('${d.id}','${x.mov}')" title="La perfumería pagó este producto">✅ Pagó</button>`):''}</div>`).join('');
+      ${x.prod&&x.pagado?`<span style="font-size:.64rem;color:var(--green);white-space:nowrap">✅ pagado ${_isoDM(x.pagado)}</span>`:''}</div>`).join('');
   const nav=pags>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${Array.from({length:pags},(_,i)=>`<button class="btn" style="font-size:.64rem;padding:3px 9px;${i+1===pg?'background:var(--sel-bg);color:#fff;border-color:var(--sel-bg)':''}" onclick="event.stopPropagation();cuotaPagina(${i+1})">${i+1}</button>`).join('')}</div>`:'';
   return `<div onclick="event.stopPropagation()" style="padding:4px 12px 12px;border-top:1px dashed var(--border)">
     <!-- BÁSICO (30/10/2026, él: "se puede poner en otro lado todo eso? quiero bien básico sino me pierdo"): a la vista sólo cuánto falta;
@@ -8370,19 +8393,8 @@ async function cuotaMovGuardar(id,signo){
   window._cuotaPag=1;renderCuotas();cuotasSync();log(`${d.nom}: ${signo>0?'suma':'devolvió'} ${_pesos(m)}${nota?' · '+nota:''}`).catch(()=>{});
   toast(`✓ ${d.nom}: ${signo>0?'+':'−'}${_pesos(m)}${signo<0?' · acordate de sumar la plata donde entró (efectivo o MP)':''}`);
 }
-// ✅ PAGÓ EN UN PRODUCTO = "PAGARON HASTA ACÁ" (30/10/2026, pago por plata): carga UN movimiento de plata (`−`) por lo que falta para cubrir ese
-// producto y todos los más viejos (los de abajo); `deudaFifo` lo reparte. Ya no marca el producto a mano (antes `pagado`/`pagadoM`/`pagaDe`).
-async function cuotaProdPago(id,k){
-  const d=(state.debencuotas||{})[id];const mv=d&&d.movs&&d.movs[k];if(!mv)return;
-  const F=deudaFifo(d);const pos=F.orden.indexOf(k);if(pos<0||(F.por[k]&&F.por[k].full))return;
-  const falta=Math.round(F.orden.slice(0,pos+1).reduce((t,kk)=>t+Math.max(0,F.por[kk].m-F.por[kk].pag),0));if(!(falta>0))return;
-  const r=prompt(`Pagaron hasta ${mv.prodNom||'este producto'} (de abajo hacia arriba): ${_pesos(falta)}.\n¿Qué día? (día/mes/año)`,_isoDM(_isoHoy())+'/'+new Date().getFullYear());if(r===null)return;
-  const m=String(r).trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);if(!m){toast('No entendí la fecha (va día/mes/año)','err');return;}
-  const y=m[3]?(m[3].length===2?2000+Number(m[3]):Number(m[3])):new Date().getFullYear(),f=y+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
-  const kk=String(Date.now()),pago={m:-falta,f,nota:`pagó hasta ${mv.prodNom||'producto'}${mv.local?' ('+mv.local+')':''}`,quien:whoAmI||''};
-  try{await fbSet('debencuotas/'+id+'/movs/'+kk,pago);d.movs[kk]=pago;}catch(e){toast('No se guardó: '+e.message,'err');return;}
-  renderCuotas();cuotasSync();log(`${d.nom}: pagó ${_pesos(falta)} (hasta ${mv.prodNom||'producto'})`).catch(()=>{});toast(`✓ pagó ${_pesos(falta)} · cubre hasta ${mv.prodNom||'ese producto'} · acordate de sumar la plata donde entró`);
-}
+// ✅ Pagó en un producto (`cuotaProdPago`) y 💵 Pagó una cuota / ↩︎ Deshacer (`cuotasPago`): SACADOS (12 de la revisión de Plata, 18/11/2026, él:
+// "sacá los botones, total hacemos todo por acá"). Los pagos los carga Claude con `debenmov` (cubre primero MercadoPago, como manda el robot).
 async function cuotaMovBorrar(id,k){
   const d=(state.debencuotas||{})[id];const mv=d&&d.movs&&d.movs[k];if(!mv)return;
   if(!confirm(`¿Borrar el movimiento ${Number(mv.m)>0?'+':'−'}${_pesos(Math.abs(mv.m))}${mv.nota?' ('+mv.nota+')':''}?`))return;
@@ -8429,18 +8441,6 @@ async function cuotasGuardar(){
   Object.keys(d).forEach(k=>{if(d[k]===null||d[k]===undefined)delete d[k];});
   try{await fbSet('debencuotas/'+id,d);state.debencuotas={...(state.debencuotas||{}),[id]:d};}catch(e){toast('No se guardó: '+e.message,'err');return;}
   g('cuotas-form').style.display='none';renderCuotas();cuotasSync();log(`${ya?'Edité la deuda':'Deuda a CYC'}: ${nom} · ${_pesos(monto)}${n>1?' en '+n+' cuotas '+cuotaFrecTxt(frec,cadaDias):''}`).catch(()=>{});toast('✓ Guardada');
-}
-async function cuotasPago(id,delta){
-  const d=(state.debencuotas||{})[id];if(!d)return;const n=Math.max(1,Number(d.n)||1),p=Math.max(0,Math.min(n,(Number(d.pagadas)||0)+delta));if(p===(Number(d.pagadas)||0))return;
-  const pagos={...(d.pagos||{})};
-  if(delta>0){const r=prompt('¿Qué día pagó? (día/mes/año)',_isoDM(_isoHoy())+'/'+new Date().getFullYear());if(r===null)return;
-    const m=String(r).trim().match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);if(!m){toast('No entendí la fecha (va día/mes/año)','err');return;}
-    const y=m[3]?(m[3].length===2?2000+Number(m[3]):Number(m[3])):new Date().getFullYear(),f=y+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
-    pagos[Date.now()]={f};}
-  else{const ks=Object.keys(pagos).sort((a,b)=>Number(a)-Number(b));if(ks.length)delete pagos[ks[ks.length-1]];}
-  try{await fbUpdate({['debencuotas/'+id+'/pagadas']:p,['debencuotas/'+id+'/pagos']:Object.keys(pagos).length?pagos:null});d.pagadas=p;d.pagos=pagos;}catch(e){toast('No se guardó: '+e.message,'err');return;}
-  renderCuotas();cuotasSync();log(`${d.nom}: ${delta>0?'pagó':'deshice un pago'}${n>1?` (${p} de ${n})`:''}`).catch(()=>{});
-  toast(delta>0?`✓ ${d.nom}: ${n>1?`va ${p} de ${n}`:'pagada'}${p>=n&&n>1?' · ¡pagada entera!':''} · acordate de sumar la plata donde entró (efectivo o MP)`:`↩︎ ${d.nom}${n>1?`: ${p} de ${n}`:''}`);
 }
 async function cuotasBorrar(id){
   const d=(state.debencuotas||{})[id];if(!d)return;const L=cuotasLista().find(x=>x.id===id);const falta=L?L.resta:0;
@@ -12841,7 +12841,9 @@ async function saveSnapshot(){
   const _avisoAncla=_ancNuevas.length
     ?'⚠️ Cargaste el disponible de '+_ancNuevas.join(', ')+' después del último "a liquidar" ('+new Date(_corteC).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'): lo liberado entre medio puede estar contado dos veces. Esperá a la próxima corrida del robot (o pedime que lo cargue con ancla, que recalcula todo en el momento) antes de cerrar.\n\n'
     :'';
-  if(!confirm(_avisoAncla+(_mc.anterior
+  const _finV=_cierreFinViejos();
+  const _avisoFin=_finV.length?'⚠️ Antes de cerrar, fijate: '+_finV.join(' y ')+'. Si cambió (por ejemplo, dólares de Binance que ya se usaron para pagar Paraguay), cargalo primero; si no, el cierre queda con el número viejo.\n\n':'';
+  if(!confirm(_avisoAncla+_avisoFin+(_mc.anterior
     ?'¿Cerrar '+label+' con los valores de HOY del arqueo?\n\nEstamos en el día '+_mc.dia+' del mes nuevo: lo que se movió en estos días queda adentro del cierre de '+label+'. Conviene cargar antes el disponible de MP y lo demás que leés a mano.'
     :'¿Cerrar '+label+' y guardar los valores actuales del arqueo?')))return;
   const c=calcArqueo();
@@ -16062,6 +16064,16 @@ function efectivoCostoVP(v){
   const c=_efectivoCostoVP(v)+(ventaEstimadaVP(v)?gestDeVenta(v):0);
   return ventaSinCostoVP(v)?Math.max(Number(v.neto)||0,c):c;
 }
+// 📦 EL ENVÍO QUE REGÍA EL DÍA DE LA VENTA (9a de la revisión de Plata, 18/11/2026, él: "que cada venta use el envío del día en que se vendió").
+// `cyc/shiphist/<prodId>/<AAAA_MM_DD>` = el envío por unidad (US$) desde ese día; lo escribe el robot cada vez que cambia `shipUSD`
+// (`realcaja`, `ponenvio`). '0000_00_00' = el que tenía antes de empezar a guardar. Desde el último cambio en adelante manda el de la ficha
+// (`p.shipUSD`), así un producto sin historia sigue igual que siempre. La MISMA cuenta en el robot (`shipDeVentaBot`).
+function shipDeVentaUSD(p,dk){
+  const cur=parseFloat(p&&p.shipUSD)||0;const h=p&&(state.shiphist||{})[p.id];if(!h||!dk)return cur;
+  const ks=Object.keys(h).filter(k=>/^\d{4}_\d{2}_\d{2}$/.test(k)).sort();if(!ks.length||dk>=ks[ks.length-1])return cur;
+  let k=ks[0];for(const x of ks){if(x<=dk)k=x;else break;}
+  const n=parseFloat(h[k]);return isFinite(n)&&n>=0?n:cur;
+}
 function _costoPesosVentaUSD(v,p,tc){const c=Number(v&&v.costoPesosU);return costoEnPesos(p)&&c>0&&tc>0?c/tc:null;}
 function _efectivoCostoVP(v){
   if(v&&v.cancelada)return 0; // canceladas y reclamos no tienen costo (no afectan finanzas)
@@ -16085,7 +16097,9 @@ function _efectivoCostoVP(v){
   // Envío/embalaje: usar SIEMPRE el valor actual del producto (no el congelado por venta).
   // Antes se usaba v.shipUSD congelado, así que ventas viejas cargadas cuando el producto no
   // tenía envío quedaban con envío 0 y el mismo producto mostraba costos distintos. Ver arqueo.
-  const ship=parseFloat(p.shipUSD)||0;
+  // 9a de la revisión de Plata (18/11/2026, él): el envío del DÍA de la venta (`shipDeVentaUSD`): el envío real de la caja (`realcaja`)
+  // ya no mueve la ganancia de días que pasaron.
+  const ship=shipDeVentaUSD(p,v._dateKey);
   if(!baseUSD&&!ship)return (v.costo||0)+mlExtra; // producto sin costo cargado → guardado + cargo ML
   const fullUSD=baseUSD*(1+dev/100)+ship;
   return fullUSD*tc*(v.qty||1)+mlExtra;
@@ -16098,7 +16112,7 @@ function costoMercaVP(v){
   const p=v._dateKey&&prodDeVenta(v);if(!p)return 0;
   const ym=v._dateKey.substring(0,7),tc=tcDeVenta(v,ym);
   const baseUSD=_costoPesosVentaUSD(v,p,tc)??getHistCostUSDProd(p.id,ym)??(costoEnPesos(p)&&tc>0?Number(p.cost)/tc:costUSDof(p));
-  const ship=parseFloat(p.shipUSD)||0;
+  const ship=shipDeVentaUSD(p,v._dateKey);
   return ((baseUSD||0)+ship)*tc*(v.qty||1);
 }
 function vpEntries(keys){const out=[];keys.forEach(k=>{const o=state.ventaprod[k];if(o)Object.values(o).forEach(v=>out.push({...v,_dateKey:k}));});return out;}
@@ -16796,12 +16810,15 @@ function renderVentaProd(){
       // ganancia de la venta entera (neto − efectivoCostoVP de cada renglón; el % con pctGananciaVP y el envío de Full de ESE
       // renglón), así que la suma de los renglones da la ganancia de arriba. Los pesos se redondean y el último renglón absorbe la
       // diferencia de redondeo (a lo sumo $1-2) para que la suma cierre exacta. Sin costo cargado no hay % que mostrar: "sin costo".
+      // 8a de la revisión de Plata (18/11/2026, él): cada renglón muestra su ganancia y % COMO SI SE HUBIERA VENDIDO SOLO (con el cargo fijo
+      // entero de ML: `netoProductoVP`, la misma cuenta de la línea de tiempo y el ranking por producto), así 4 mazos de $4.290 no dicen +60%
+      // cuando uno solo deja 16%. Lo que ahorra el carrito (el cargo fijo que ML cobra una sola vez) va en un renglón aparte (`_ahorroCarr`):
+      // la ganancia de arriba (la real de la compra) = la suma de los renglones + ese ahorro.
       const _ganItem=(()=>{if(isCancelled||grp.items.length<2)return [];
-        const gs=grp.items.map(v=>(v.neto||0)-efectivoCostoVP(v)),r=gs.map(x=>Math.round(x));
-        {let j=r.length-1;while(j>0&&ventaSinCostoVP(grp.items[j]))j--;r[j]+=Math.round(gg)-r.reduce((a,b)=>a+b,0);}
-        return grp.items.map((v,i)=>{if(ventaSinCostoVP(v))return ` <span class="vp-ngan" style="color:var(--muted);white-space:nowrap">· sin costo</span>`;
-          const q=pctGananciaVP(gs[i],efectivoCostoVP(v),gestDivVP(v)),es=ventaEstimadaVP(v)?'≈ ':'';
-          return ` <span class="vp-ngan" style="white-space:nowrap">· <span style="color:${r[i]>=0?'var(--green)':'var(--red)'}">${es}gan. ${fmt(r[i])}</span>${q!=null&&isFinite(q)?` <span style="color:${pctColor(q)}">${q>=0?'+':''}${q.toFixed(0)}%</span>`:''}</span>`;});})();
+        return grp.items.map(v=>{if(ventaSinCostoVP(v))return ` <span class="vp-ngan" style="color:var(--muted);white-space:nowrap">· sin costo</span>`;
+          const g=Math.round(netoProductoVP(v)-efectivoCostoVP(v)),q=pctGananciaVP(g,efectivoCostoVP(v),gestDivVP(v)),es=ventaEstimadaVP(v)?'≈ ':'';
+          return ` <span class="vp-ngan" style="white-space:nowrap" title="Lo que deja vendido solo (con el cargo fijo de ML entero)">· <span style="color:${g>=0?'var(--green)':'var(--red)'}">${es}gan. ${fmt(g)}</span>${q!=null&&isFinite(q)?` <span style="color:${pctColor(q)}">${q>=0?'+':''}${q.toFixed(0)}%</span>`:''} <span style="color:var(--muted)">solo</span></span>`;});})();
+      const _ahorroCarr=(isCancelled||grp.items.length<2)?0:Math.round(grp.items.reduce((a,v)=>a+((Number(v.neto)||0)-netoProductoVP(v)),0));
       const _dl=(k,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)"><span style="color:var(--muted)">${k}</span><span style="text-align:right">${val}</span></div>`;
       const _det=`<div id="vpdet-${grp.gid}" style="display:${_abierto?'block':'none'};font-size:.7rem;background:var(--surface2);border-radius:8px;padding:8px 10px;margin-top:2px">
           ${_dl('N° de venta',`<span style="font-family:'DM Mono',monospace">${numVenta?'#'+numVenta:'sin N°'}</span>`)}
@@ -16811,6 +16828,7 @@ function renderVentaProd(){
           ${(!isCancelled&&gc>0)?_dl('Ganancia',`<span style="color:${gg>=0?'var(--green)':'var(--red)'}">${fmt(gg)}</span>${gpct!==null?` · <span style="color:${pctColor(gpct)}">${gpct>=0?'+':''}${gpct.toFixed(0)}% ${pctLabel(gpct)}</span>`:''}`):''}
           ${_est?`<div style="padding:4px 0;color:var(--muted)">≈ Mercado Pago todavía no liquidó esta venta: el neto es estimado y se corrige solo.</div>`:''}
           ${grp.items.length>1?grp.items.map((v,i)=>_dl(`${v.qty}× ${nombreDeVenta(v)}${v.variante?' '+v.variante:''}`,`${(v.total||0)>0?fmt(v.total)+' · ':''}neto ${fmt(v.neto||0)}${_ganItem[i]||''}`)).join(''):''}
+          ${(grp.items.length>1&&_ahorroCarr)?_dl('🛒 ahorro por ir en carrito',`<span style="color:${_ahorroCarr>=0?'var(--green)':'var(--red)'}">${_ahorroCarr>=0?'+':'−'}${fmt(Math.abs(_ahorroCarr))}</span> <span style="color:var(--muted)">(ML cobra el cargo fijo una vez)</span>`):''}
           ${_hayCambio?`<div style="padding:5px 0;border-bottom:1px dashed var(--border);line-height:1.5">${_cambios.filter(x=>x).join('<br>')}</div>`:''}
           ${(entLabel||rescLabel||promoLabel)?`<div style="padding:5px 0;display:flex;gap:10px;flex-wrap:wrap">${promoLabel}${entLabel}${rescLabel}</div>`:''}
           ${isCancelled?reclamoMotivoHTML(grp):''}
