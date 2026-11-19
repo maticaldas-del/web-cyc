@@ -860,3 +860,6 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 7. **GoPro The Handler (Ayelen, 139.990):** 0 visitas en 10 días (igual que la Emeet C980, que ya estaba en la lista). (a) sugerida: revisar título y fotos en ML · (b) arrancar igual la escalera de lanzamiento.
 8. **Filtro de agua (Matías):** el 14/11 entraron 126 a la oficina, así que dejó de ser "sin reposición" y hoy volvió a 4.790 (su precio de más plata). ¿Ese proveedor sirve para reponer? (a) sí, Pedidos lo repone normal · (b) fue una compra de una vez.
 9. **Aer Berry Rush:** el 12/11 subió a 49.490 por una venta a 32.990 que no existe (la última fue a 24.990 cerca del 30/10). La vuelta del punto medio llega sola el 22/11. (a) sugerida: dejar que vuelva el 22/11 · (b) volverlo ya a 24.990 (salida tuya, precio mal puesto).
+
+## 19/11 · Para la lista de las 12:30 (informativo)
+- 🧇 Waflera Atma Disney (Ayelen): el vendedor de $115.000 sin Full ya no gana la caja. La Clásica MLA4087803354 la GANA a $269.990 (162% en el peor caso; vendió 2, la última el 26/10). La Premium MLA4121580528 a $329.990 la pierde (para ganar haría falta $297.780, 146%); queda como está (las Premium se quedan aunque no vendan). Nada que decidir. Quedan 4 en Full y 0 en la oficina (2 se dejaron en Soares y Ceballos a $90.000).
