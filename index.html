@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.237';
+const APP_VERSION='28.238';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.238',f:'19/11',h:'05:05',c:[{n:1,t:'Revisión de Choques y fallas mudas en el cartel, con sus 7 decisiones.'}]},
   {v:'28.237',f:'19/11',h:'04:55',c:[{n:1,t:'Gastos: apretar dos veces "Agregar" con internet lento ya no carga el gasto dos veces.'}]},
   {v:'28.236',f:'18/11',h:'19:45',c:[{n:2,t:'💳 Cajas en camino: un envío ya PAGADO en ML que no salió (para usar en la próxima caja) se ve arriba de todo en azul, "💳 PAGADO · ⏸️ EN PAUSA", con su número y para qué es. No cuenta como caja en camino.'}]},
   {v:'28.235',f:'18/11',h:'16:40',c:[{n:2,t:'⚡ Inicio: la barra del día ahora es de NEÓN. Cada tramo es un tubo de su color: apagado se ve vacío, lo ganado se prende y brilla, y cuando un tramo se completa se enciende con el parpadeo de un neón. Si el puntaje pasa de 10, el tubo de la punta parpadea fuerte y tira chispas para adelante (más puntos, más chispas). Se fue lo de vidrio y líquido.'}]},
@@ -6238,6 +6239,7 @@ const REV_HORA='04:00';
 //   · REV_HECHAS    → última vez que cada etapa quedó resuelta. Sin pendientes, el cartel dice la etapa
 //                     de HOY (una por día de la semana, corre sola a las REV_HORA) y si ya quedó hecha.
 const REV_PENDIENTE=[
+  {etapa:4,t:'19/11 · 7 decisiones de Choques y fallas mudas',que:'tarjetas de decisiones que se pisan · caja del robot retocada · avisos callados (permiso de ML, barrera) · venta fuera de Full y códigos · no escribir con lecturas fallidas · sumas a la vez · textos de las tareas',pedi:'resolvamos'},
   {etapa:3,t:'18/11 · 8 decisiones de Mercadería',que:'Navidad contada dos veces en Pedidos · redondeo por color · lugar vacío en la caja · Pirineo sin IVA · probados contra nuevos en Paraguay · lo sacado a mano vuelve · probados medidos contra el más barato · ticket y guía en el registro',pedi:'resolvamos'},
   {etapa:8,t:'15/11 · 8 decisiones de las Reglas del cerebro',que:'lo fácil de conseguir y los precios · cuánto dura la prueba al 35% · redondeo de Paulvic · dudas del pedido de Paraguay · subas que esperan confirmación · Navidad medida sin pico · lo de verano en enero · ventana para elegir cuenta',pedi:'resolvamos'},
   {etapa:10,t:'14/11 · 8 decisiones de la Tienda',que:'subir las páginas hoy · rastro hasta el panel · fotos del proveedor · estados viejos · perfumes sin tamaño · teclados en portugués y comida · precio de ML de 18 días · dólar sin actualizar',pedi:'resolvamos'},
@@ -6280,7 +6282,7 @@ const REV_HIST={
   3:[{f:'2026-11-18',t:'4 revisores en máximo: compra de prueba con el precio de la prueba, FIJO de la base en Pedidos, redondeo al color correcto, máximo de compra del color en la web, relleno sin Tenders, regla 💸 por color, cajas con algo entrado no vuelven a la oficina, listaver sin precios privados, pedido de Paraguay sin descartados; 8 decisiones a para_mati.'},{f:'2026-11-08',t:'4 revisores en máximo (pedidos, cajas, Paraguay, listas/Paulvic/oficina): ~40 hallazgos, 20 arreglados (los juicios no se aplicaban sin aviso, ritmo M35 con sus frenos, tope US$600, Paulvic ×100, perfumería en la caja); 14 decisiones a para_mati.'},{f:'2026-10-29',t:'4 revisores en máximo (pedidos, cajas a Full, oficina y etiquetas, Paraguay/listas/Paulvic): ~45 reales, todos arreglados y probados; 8 decisiones a para_mati.'},{f:'2026-09-29',t:'4 revisores (cajas, stock, pedidos, Paraguay): 29 hallazgos, las obvias hechas y 6 decididas por él.'},
      {f:'2026-09-30',t:'Cerrada: el aviso de renglón que no cierra se mide color por color.'},
      {f:'2026-10-20',t:'4 revisores (cajas, pedidos, Paraguay, escasez y patrimonio), máximo: 33 arreglos (v25.40). Eligió 2a (lo grande paga desde 60 d) y 1a (lo probado de una lista entra a su pedido como Paraguay, v25.41). Cerrada.'}],
-  4:[{f:'2026-11-09',t:'4 revisores en máximo (web contra robot, fallas mudas, tareas, pendientes): ~25 hallazgos, 13 arreglados (pedidos y cajas frenados por un ;, M35 sin aviso compraba de más, guardar durante la copia, gemelas, barrera, ciclo en rojo); 7 decisiones a para_mati.'},{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
+  4:[{f:'2026-11-19',t:'4 revisores en máximo: bajas frenan sin línea/fichas/dólar, techo y subas sin la línea de la gemela, avisos sin memoria no repiten, marcas prohibidas sin leer frenan, Via Cargo sin falsos, movimientos al grupo partidos, decido y publicar paran si los cancelan, gastos sin duplicar; 7 decisiones a para_mati.'},{f:'2026-11-09',t:'4 revisores en máximo (web contra robot, fallas mudas, tareas, pendientes): ~25 hallazgos, 13 arreglados (pedidos y cajas frenados por un ;, M35 sin aviso compraba de más, guardar durante la copia, gemelas, barrera, ciclo en rojo); 7 decisiones a para_mati.'},{f:'2026-09-30',t:'Choques web/robot y corridas a la vez: ~30 reales, todas arregladas (transacciones, relecturas, candados).'},
      {f:'2026-09-30',t:'Fallas mudas y privacidad: ~35 reales arregladas; él decidió aprobar a mano los chats nuevos de Telegram y cómo contar días con stock.'},
      {f:'2026-10-20',t:'Choques y fallas mudas: 4 revisores; arreglados doble toque, ventas borradas que volvían, descuentos mudos, corridas canceladas que seguían escribiendo, errores de ML sin código y ml-daily dos veces por noche. Sus 2 decisiones: listas de proveedores cifradas (1a) y lo que cancela ML no se reactiva.'},
      {f:'2026-10-30',t:'Choques y fallas mudas: 4 revisores en máximo; ~17 arreglos (caja vieja que bajaba precios, gemela de envío que se reactivaba, el 35% de Pedidos con datos que faltan, código de devolución tapado, retiro a mano que la web pisaba, comando para lo viejo cargado tarde, formulario de deudas que pisaba al robot); 4 decisiones para él.'}],

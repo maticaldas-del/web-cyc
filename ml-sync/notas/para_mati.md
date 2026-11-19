@@ -840,3 +840,12 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 
 ## 18/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
 - 1-8 = Revisión de Mercadería del 18/11 · 9 = prueba de vender lo de Nissei por pedido (ejemplos ya pasados en el chat).
+
+## 19/11 · Revisión de Choques y fallas mudas (7 decisiones; para las 12:30 y la noche)
+1. **Las tarjetas de decisiones del panel:** una tanda nueva del mismo día borra lo que tocaste (a)/(b) y no mandaste, y puede pisar los números de la tanda anterior. (a) sugerida: lo tocado y no mandado se manda solo al buzón antes de cargar la nueva, y cada tanda lleva su hora · (b) dejarlo (hay que apretar Mandar antes de la próxima).
+2. **Una caja armada por el robot que retocás a mano** queda como "armada a mano" y el robot ya no la vuelve a tocar (ni a vaciar). (a) sugerida: que siga siendo del robot aunque la retoques · (b) como hoy.
+3. **Avisos que quedaron callados con la regla del 18/11** ("sólo 4 cosas"): una cuenta que pierde el permiso de ML (deja de leer ventas y precios) y ML moviendo la barrera de $33.000. (a) sugerida: esas dos salen como urgentes; lo demás (lo que le falta a la run, pasos de la noche que fallaron) al informe · (b) todo al informe.
+4. **Venta que no sale por Full y códigos de lo que llega** (los sumé el 18/11 a las 4 cosas). (a) sugerida: siguen saliendo (son plata o algo que llega) y corrijo el texto de la regla · (b) se callan.
+5. **Comandos que escriben con una lectura fallida:** hoy el aviso "datos incompletos" sale al final, cuando ya escribieron. (a) sugerida: todo comando que escribe mira si falló alguna lectura antes de escribir, y si falló no escribe · (b) arreglar caso por caso.
+6. **Dos cobros de la perfumería o dos sumas a Binance a la vez** pueden pisarse (se pierde una suma). (a) sugerida: que la base no deje escribir si alguien cambió el saldo en el medio (y se reintente) · (b) sólo la regla de mandarlos de a uno.
+7. **Los textos de las tareas automáticas tienen reglas viejas** (techo a 30 días, decisiones de caja en el código, `pregunto:` de decisiones) y la de las 12:30 no mira lo que pasó a la tarde. (a) sugerida: los actualizo · (b) dejarlos.

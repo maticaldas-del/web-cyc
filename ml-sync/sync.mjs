@@ -8066,6 +8066,7 @@ async function aplicarCerebro(db, cz, o) {
     return false;
   };
   for (const d of cz.dec.filter((x) => x.accion !== 'nada')) {
+    if (CORTAR) { console.log('⏹ me cancelaron: no cambio más precios en esta tanda (lo que falta queda para la próxima)'); break; }   // etapa 4 (19/11)
     const t = { tipo: 'cerebro', motivo: d.motivo, tipoMot: d.tipoMot, f: { mla: d.mla, nom: d.nom, cuenta: d.cuenta, precio: d.p0 }, a: d.a };
     const ren = `${d.nom} (${d.cuenta}) ${money(d.p0)} → ${money(d.a)} · ${d.motivo}${d.mgA != null ? ` · margen ${d.mg0}% → ${d.mgA}%` : ''}`;
     if (!aplica) { console.log(`   · haría ${d.accion === 'sube' ? 'SUBIR' : 'BAJAR'} ${ren}`); continue; }
@@ -24211,6 +24212,9 @@ async function main() {
         console.log(`     Si es el mismo comprobante, NO lo cargues de nuevo.`);
       }
       if (!GO) { console.log(`\nPRUEBA: no se escribió nada. Agregá "|go" para cargarlo.`); return; }
+      // Revisión etapa 4 (19/11): el MISMO gasto (fecha, monto, categoría y descripción) cargado hace menos de 1 h no se carga otra vez (una
+      // corrida cancelada y repetida lo duplicaba). Si de verdad es otro igual, va con "otra" en la descripción.
+      if (!/\botra\b/i.test(desc || '') && Object.values(compras).some((g) => g && g.dayKey === dayKey && Math.round(g.monto || 0) === monto && (g.cat || '') === cat && String(g.desc || '') === String(desc || '') && Date.now() - (Number(g.ts) || 0) < 3600e3)) { console.log('❌ este mismo gasto ya se cargó hace menos de 1 hora: no lo cargo dos veces (si es otro igual, poné "otra" en la descripción)'); return; }
       const clave = 'c' + Date.now();
       const obj = { id: clave, dayKey, monto, cat, desc, ts: Date.now(), ...extra };
       await db.set('cyc/compras/' + clave, obj);
@@ -35473,6 +35477,7 @@ async function main() {
       if (val === 400) { try { const j = JSON.parse(valTxt); const cs = Array.isArray(j.cause) ? j.cause : []; if (cs.length && cs.every((c) => c && c.type === 'warning')) { val = 204; console.log(`   ✓ ML sólo da avisos, no errores: ${cs.map((c) => c.message || c.code).join(' · ')}`); } } catch { /* no es JSON: queda como error */ } }
       if (!(val === 204 || val === 200)) { console.log('\n🛑 NO SE PUBLICA: ML no valida el pedido (arriba dice qué falta).'); return; }
       if (!GO) { console.log('\n(prueba: sin |go no se crea nada)'); return; }
+      if (CORTAR) { console.log('⏹ me cancelaron antes de crear la publicación: no la creo (repetí el comando)'); return; }   // etapa 4 (19/11): cortado entre el POST y el vínculo quedaba una publicación sin vincular y al repetir se duplicaba
       const r = await fetch(ML_API + '/items', { method: 'POST', headers: { Authorization: 'Bearer ' + tokP, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
       const txt = await r.text(); _anotarEscrituraML(r, P.id, 'publicar un producto nuevo', txt);
       if (!r.ok) { console.log(`\n❌ ML no la creó: ${r.status} ${txt.slice(0, 1500)}`); return; }
