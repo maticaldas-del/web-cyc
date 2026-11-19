@@ -84,6 +84,16 @@ def nav_extra(nav,D):
     sol=max(0,(min(fin,b)-max(ini,a)).days+1)
     if sol<=0: return 0,''
     return round((nav-1)*sol),f"🎄 pico de Navidad ×{nav:.1f}: {sol} días de esta caja caen del 03/12 al 24/12".replace('.',',')
+# 📅 11a del 19/11/2026 (revisión de Mercadería del 18/11, él: "a"): LO QUE YA TIENE 40+ DÍAS NO SE MANDA. Si lo que hay en Full + en camino (las
+# 4 cuentas, como la cobertura de `calc`) ya alcanza para 40 días a su ritmo, esta caja no lleva nada de ese producto/color y su lugar en el cupo
+# va a lo que se corta (el recorte del cupo ya da primero a lo que está en 0 o se corta). En la ventana de Navidad los 40 días cuentan el pico
+# (`nav_extra`): 40 días de diciembre piden más unidades. Lo FIJO de él manda igual (no pasa por acá).
+CAJA_YA_DIAS=40
+def ya_tiene(r,t,nav):
+    if not (r>0) or t<=0: return None
+    ext,_=nav_extra(nav,CAJA_YA_DIAS)
+    if t>=r*(CAJA_YA_DIAS+ext)-1e-9: return t/r
+    return None
 PISO_CERO=4     # cuenta en cero que vende: mínimo para no quedar sin vender
 TOPE_LENTO=90   # lo que se manda nunca pasa los 90 días de venta (Full cobra a los 120 en lo chico). Eligió la a, 15/10/2026
 def calc(v30,v60,v180,full,cam,casa,dcs=30,dias=T,hoy=None,tDest=None,sinPubOtras=False,nav=0):
@@ -125,6 +135,12 @@ CUPO={}
 for l in L:
     m=re.match(r'^CUPO (\w+) peq (\d+|\?) gra (\d+|\?)',l)
     if m: CUPO[m.group(1)]={'peq':None if m.group(2)=='?' else int(m.group(2)),'gra':None if m.group(3)=='?' else int(m.group(3))}
+# 💵 10a del 19/11/2026 (él: "menos de 200.000 no sirve mandar caja"): lo mínimo que tiene que dejar una caja AL VENDERSE (ganancia de lo que
+# lleva sin el envío de la ficha, menos el envío entero de la caja). pedidostodo imprime `CAJAMIN <n> · COSTOCAJA <n>` (`cyc/mlconfig/cajaMinGan`,
+# por defecto 200.000 = CAJA_MIN_GAN_DEF de sync.mjs e index.html). Un log viejo sin la línea usa el de acá.
+CAJA_MIN_GAN=200000
+_cm=next((m_ for l in L for m_ in [re.match(r'^CAJAMIN (\d+) · COSTOCAJA (\d+)',l)] if m_),None)
+if _cm: CAJA_MIN_GAN=int(_cm.group(1))
 # LO DE CADA CUENTA (revisión etapa 3, 29/10/2026): pedidostodo trae, por producto y por color, el Full de cada cuenta (`[Ad3 Lu12]` del
 # producto, `fullcta [..]` del color), lo que va en camino a cada una (`camcta [..]`), dónde está publicado de verdad (`pub [..]` el
 # producto y `pubV [..]` el color; sin `pasara`) y lo que dice HOY mi decisión de caja en la base (`cajadec [..]`: la web le resta lo
@@ -380,6 +396,8 @@ for p in P:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=_b35[0],cola=_b35[1]+perf_txt(x.get('perfR',0))+AUTO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
+            _yt=ya_tiene(r,x['full']+x['cam'],p.get('nav',0))   # 📅 11a del 19/11
+            if _yt is not None and q>0: b=f"📅 ya tiene {_yt:.0f} días entre Full y en camino ({x['full']+x['cam']} u.): no va en esta caja, su lugar va a lo que se corta (11a del 19/11) · "+b; q=0
             q,b=sube_mlsug(q,r,x['full']+x['cam'],x['casa'],x.get('mlsug',{}).get(c),b)   # 🏷️ 55a
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
                             cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((x['full']+x['cam'])/r if r>0 else None),casa=x['casa'],dec=x['dec'].get(c)))
@@ -396,6 +414,8 @@ for p in P:
             out.append(dict(cab=f"caja:{p['id']}@{cta}",q=_b35[0],cola=_b35[1]+perf_txt(p.get('perfR',0))+AUTO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],dec=p['dec'].get(cta))); continue
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
+        _yt=ya_tiene(r,p['full']+p['cam'],p.get('nav',0))   # 📅 11a del 19/11
+        if _yt is not None and q>0: b=f"📅 ya tiene {_yt:.0f} días entre Full y en camino ({p['full']+p['cam']} u.): no va en esta caja, su lugar va a lo que se corta (11a del 19/11) · "+b; q=0
         q,b=sube_mlsug(q,r,p['full']+p['cam'],p['casa'],p.get('mlsug',{}).get(cta),b)   # 🏷️ 55a
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,
                         cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=(fd+cd)==0 and not sinPubOtras,r=r,dias=((p['full']+p['cam'])/r if r>0 else None),casa=p['casa'],dec=p['dec'].get(cta)))
@@ -427,6 +447,11 @@ def _base_motivo(mot):
     while True:
         mm=re.match(r'^📦 grande: (?:va en caja aparte \(ML no deja mezclarlo con chicos\)|espera a juntar una caja llena \([^)]*\)), quedan (\d+) para esa caja · (.*)$',mot) or re.match(r'^✂️ por el cupo de Full de \w+ \([^)]*\) entran \d+ de (\d+) \(faltan \d+\) · (.*)$',mot)
         if not mm:
+            # 19/11/2026: la caja chica (10a) guarda cuántas eran ("quedaban N"); el ↩️ del lugar que liberó el envío (3a) sólo se saca
+            mc_=re.match(r'^💵 caja chica: .*? · quedaban (\d+) · (.*)$',mot)
+            if mc_: q0=int(mc_.group(1)); mot=mc_.group(2); continue
+            mr_=re.match(r'^↩️ \+\d+ con el lugar que dejó lo que salió por el envío \(3a del 19/11\) · (.*)$',mot)
+            if mr_: mot=mr_.group(1); continue
             # 30/10/2026: el grande que sale en su propia caja no cambia las unidades (sólo se saca el prefijo para no repetirlo)
             ms=re.match(r'^📦 grande: sale en SU PROPIA caja \(ML no deja mezclarlo con chicos\), porque .*? · (.*)$',mot) or re.match(r'^📦 grande: sale porque .*? · (.*)$',mot)
             if not ms: return mot,q0
@@ -498,6 +523,7 @@ for cta in sorted({o['cta'] for o in out}):
             b='grandes' if o['grande'] else 'chicos y medianos';k='gra' if o['grande'] else 'peq'
             o['cola']=f"✂️ por el cupo de Full de {cta} ({top[k]} {b}{' después de lo fijo de él' if resv[k] else ''}) entran {d} de {o['q']} (faltan {o['q']-d}) · "+o['cola']
             recortes.append(f"{o['nom']} → {cta}: {o['q']} → {d}")
+            o['_cupoQ0']=o['q']   # 3a del 19/11: lo que pedía antes del recorte (si el envío saca algo, el lugar vuelve acá)
             o['q']=d
 # LOS GRANDES VAN EN CAJA APARTE (28/10/2026, él: "los tenders son productos grandes, ML no permite mandar juntos. los tenders se mandan
 # en cajas solos"). Hasta el 30/10 quedaban en 0 mientras la cuenta tuviera algo chico para mandar, y como casi siempre hay chicos, los
@@ -535,7 +561,8 @@ for cta in set(o['cta'] for o in out):
 # al 35% sale de la caja (queda en la oficina) y se vuelve a contar con las unidades que quedan, hasta que todos den. Lo FIJO de él no sale.
 RELLENO_DIAS=60     # con lo de más, ningún producto pasa 60 días de stock (lo que vende parejo ya se estira a 60)
 RELLENO_MAX=20      # como mucho 20 unidades de más por caja
-COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); si cambia, cambiarlo acá también
+COSTO_CAJA=17500   # = cyc/mlconfig/costoCaja (`cajacosto`); 19/11: si el log trae `COSTOCAJA`, manda ése
+if _cm: COSTO_CAJA=int(_cm.group(2)) or COSTO_CAJA
 _PCX={}
 for p in P:
     _PCX[(p['id'],'')]=p.get('pcx')
@@ -619,6 +646,28 @@ for c in sorted(set(o['cta'] for o in out)):
             if o['cta']==c and o.get('_rel'):
                 dd=(o.get('dias') or 0)+o['q']/o['r']
                 o['cola']=f"➕ relleno: {o['_rel']} de más para que el envío por unidad baje y entre lo que no llegaba al 35% (queda para {dd:.0f} días, tope {RELLENO_DIAS}) · "+o['cola']
+    # ↩️ 3a del 19/11/2026 (revisión de Mercadería del 18/11, él: "a"): EL LUGAR QUE DEJA LO QUE SALIÓ POR EL ENVÍO va a lo que el cupo recortó
+    # ("✂️ … faltan N"), primero lo que más deja por unidad. Antes ese lugar quedaba vacío. Sumar unidades sólo baja el envío por unidad de los
+    # demás; el que entra tiene que dar 35%+ con el envío nuevo (si no, se saltea). La web (`cajaLlenarCupoPlan`) hace lo mismo.
+    devueltos=[]
+    cuR=CUPO.get(c) or {}
+    if sacados and cuR.get('peq') is not None:
+        libre=cuR['peq']-sum(o['q'] for o in out if o['cta']==c and o['q']>0 and not o['grande'])
+        cand=[o for o in out if o['cta']==c and not o['grande'] and o.get('_cupoQ0') and o['_cupoQ0']>o['q'] and not (o.get('_q0') and not o['q'])]
+        cand.sort(key=lambda o:-(o['gan'] if o['gan'] is not None else -1))
+        U1=sum(o['q'] for o in out if o['cta']==c and o['q']>0 and not o['grande'])
+        for o in cand:
+            if libre<=0: break
+            t=min(libre,o['_cupoQ0']-o['q']); pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
+            if pc:
+                e1=COSTO_CAJA/max(1,U1+t)
+                if (pc[0]+pc[2]-e1)/max(1,(pc[1]-pc[2]+e1))*100<35: continue
+            o['q']+=t; libre-=t; U1+=t; falta=o['_cupoQ0']-o['q']
+            mm_=re.match(r'^✂️ por el cupo de Full de \w+ \([^)]*\) entran \d+ de \d+ \(faltan \d+\) · (.*)$',o['cola'])
+            resto_=mm_.group(1) if mm_ else o['cola']
+            pre=(re.sub(r'entran \d+ de (\d+) \(faltan \d+\)',f"entran {o['q']} de \\1 (faltan {falta})",o['cola'][:len(o['cola'])-len(resto_)]) if (mm_ and falta>0) else '')
+            o['cola']=pre+f"↩️ +{t} con el lugar que dejó lo que salió por el envío (3a del 19/11) · "+resto_
+            devueltos.append(f"+{t} {o['nom'][:34]}")
     V=[o for o in out if o['cta']==c and (o.get('q') or 0)>0 and not o['grande']]; U=sum(o['q'] for o in V)
     for o in V:   # el % con el envío que queda al final (después del relleno)
         pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
@@ -628,7 +677,27 @@ for c in sorted(set(o['cta'] for o in out)):
         cajaPct.append(f"📦 caja de {c}: {U} u. · envío ${COSTO_CAJA/U if U else 0:,.0f} por unidad".replace(',','.')+(f" · el que menos deja: {min(pcts):.0f}%" if pcts else '')+
                        (f" · sin dato de % (van igual): {sum(1 for o in V if o.get('_pct') is None)}" if any(o.get('_pct') is None for o in V) else '')+
                        (f"\n    🟥 SALIERON por no llegar al 35% con el envío: "+' · '.join(sacados) if sacados else '')+
-                       (f"\n    ➕ RELLENO: "+' · '.join(rellenoTxt) if rellenoTxt else ''))
+                       (f"\n    ➕ RELLENO: "+' · '.join(rellenoTxt) if rellenoTxt else '')+
+                       (f"\n    ↩️ EL LUGAR QUE LIBERÓ EL ENVÍO fue a lo recortado por el cupo: "+' · '.join(devueltos) if devueltos else ''))
+# 💵 10a del 19/11/2026 (él: "menos de 200.000 no sirve mandar caja"): UNA CAJA QUE AL VENDERSE DEJA MENOS DE CAJA_MIN_GAN NO SE ARMA. Por cuenta y por
+# caja (los chicos en una, los grandes —Tenders— en la suya): deja = Σ unidades × lo que deja cada una SIN el envío de la ficha (`PC gan+ship`, la
+# misma base que la regla 💸 del envío; sin `PC`, neto − costo) − el envío entero de la caja. Si no llega, todos sus renglones van a 0 y esperan a
+# juntar más. Lo FIJO de él suma para llegar; si ni con eso llega, también espera (y el motivo lo dice).
+cajasChicas=[]
+for c in sorted(set(o['cta'] for o in out)):
+    for gr in (False,True):
+        V=[o for o in out if o['cta']==c and o['q']>0 and bool(o['grande'])==gr]
+        if not V: continue
+        deja=-COSTO_CAJA
+        for o in V:
+            pc=_PCX.get(_cabk(o['cab'])) or _PCX.get((_cabk(o['cab'])[0],''))
+            g=(pc[0]+pc[2]) if pc else o.get('gan')
+            if g is not None: deja+=max(0,g)*o['q']
+        if deja>=CAJA_MIN_GAN: continue
+        hayF=any(o.get('fijo') for o in V); dt=f"{max(0,deja):,.0f}".replace(',','.'); mt=f"{CAJA_MIN_GAN:,}".replace(',','.')
+        for o in V:
+            o['cola']=f"💵 caja chica: deja ${dt}, mínimo ${mt} — espera a juntar más (él 19/11)"+(" · lo fijo de él también espera: ni sumándolo llega" if hayF else '')+f" · quedaban {o['q']} · "+o['cola']; o['q']=0
+        cajasChicas.append(f"{c}{' (grandes)' if gr else ''}: {sum(1 for _ in V)} renglones, dejaba ${dt} (mínimo ${mt}){' · incluye lo fijo de él' if hayF else ''}")
 # (Las decisiones a mano de la vuelta se aplican ANTES del recorte del cupo y de los grandes: ver "LAS DECISIONES A MANO" más arriba.)
 for o in out:
     if o['q']: res.append(f"{o['nom']} → {o['cta']}: {o['q']}")
@@ -654,3 +723,4 @@ if soloPerfFuera: print('🛍️ PEDIDO SÓLO PARA LA PERFUMERÍA (papelera / s�
 if sin: print('SIN CUENTA:',*sin,sep='\n  ')
 if amano: print('DECIDIR A MANO (más de una cuenta):',*amano,sep='\n  ')
 for x in cajaPct: print(x)
+if cajasChicas: print(f'💵 CAJAS QUE NO SE ARMAN (dejan menos de ${CAJA_MIN_GAN:,}'.replace(',','.')+f' · 10a del 19/11) · {len(cajasChicas)}:',*cajasChicas,sep='\n  ')

@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.239';
+const APP_VERSION='28.240';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.240',f:'19/11',h:'13:02',c:[{n:3,t:'📦 Armar caja: una caja que al venderse deja menos de $200.000 dice "Todavía no: deja $X (mínimo $200.000)" y espera a juntar más. Si un producto sale de la caja porque con su parte del envío no da 35%, su lugar en el cupo va a lo que el cupo dejaba afuera (primero lo que más deja por unidad).'},{n:2,t:'🔒 Archivo para Claude: ahora también el ticket de Paraguay y la guía de Via Cargo se guardan cerrados (no quedan en el registro público) y se siguen viendo en el detalle del pedido.'}]},
   {v:'28.239',f:'19/11',h:'12:45',c:[{n:2,t:'📦 Armar caja: al lado de "mandar N u." dice el % de ganancia sin el envío, cuánto le toca de envío a cada unidad (el de la caja repartido entre las unidades cargadas, en vivo) y el % después de pagar el envío (rojo si queda abajo del 35%).'}]},
   {v:'28.238',f:'19/11',h:'05:05',c:[{n:1,t:'Revisión de Choques y fallas mudas en el cartel, con sus 7 decisiones.'}]},
   {v:'28.237',f:'19/11',h:'04:55',c:[{n:1,t:'Gastos: apretar dos veces "Agregar" con internet lento ya no carga el gasto dos veces.'}]},
@@ -8885,6 +8886,11 @@ async function cajaSugerida(){
 let _cajaCupoFuera=null;
 const CAJA_CORTE_DIAS=14;   // 26/10/2026: la próxima caja llega en ~2 semanas (sale lun-vie 12 + ~7 de viaje)
 const CAJA_VIAJE_DIAS=7;    // 27/10/2026: lo que tarda en entrar a Full la caja que se está armando
+// 3a del 19/11/2026: lo que deja y lo que cuesta una unidad SIN el envío+embalaje de la ficha (para cargarle su parte del envío de la caja;
+// la misma cuenta que `_cajaPctEnvio`). Sin datos: {} (no sale por el envío: no se inventa).
+function _cajaGpCp(p){try{const g=gananciaUnidad(p),m=margenMLDe(p);if(g==null||!m||!(m.costoBase>0))return{};const sh=(parseFloat(p.shipUSD)||0)*curTC();const cp=m.costoBase-sh;return cp>0?{gp:g+sh,cp}:{};}catch(_){return{};}}
+// Lo FIJO de él (decide_cajas lo marca "(fijo de él)" en el motivo): no sale por el envío.
+function _cajaEsFijo(x){return /\(fijo de él\)/.test(String((x&&x.cl&&x.cl.mot)||''));}
 function cajaLlenarCupoPlan(cands,topePeq,topeGra){
   const dado={};
   const lib={peq:(topePeq==null?Infinity:Math.max(0,topePeq)),gra:(topeGra==null?Infinity:Math.max(0,topeGra))};
@@ -8941,11 +8947,25 @@ function cajaLlenarCupoPlan(cands,topePeq,topeGra){
     if(!(c.u>0))continue;
     sumar(c,c.u-(dado[c.key]||0));
   }
+  // ↩️ 3a DEL 19/11/2026 (revisión de Mercadería del 18/11, él: "a"): EL ENVÍO DE LA CAJA, PRODUCTO POR PRODUCTO, y EL LUGAR QUE DEJA va a lo
+  // recortado. Cada unidad de chicos paga costoCaja() ÷ las unidades de la caja (`gp`/`cp` = lo que deja y lo que cuesta sin el envío de la
+  // ficha, la misma cuenta que `_cajaPctEnvio`); el que no llega al 35% sale (de a uno, el peor primero; lo FIJO de él no) y su lugar en el cupo
+  // va a lo que el cupo dejó afuera, en el MISMO orden (lo que más deja por unidad primero). Igual que decide_cajas.py (3a).
+  {const _cc=costoCaja();
+   for(let it=0;it<60;it++){
+     const V=orden.filter(c=>!c.grande&&!c._env&&(dado[c.key]||0)>0);const U=V.reduce((a,c)=>a+dado[c.key],0);if(!U)break;
+     const e=_cc/U;let peor=null,pp=Infinity;
+     for(const c of V){if(c.gp==null||!(c.cp>0)||c.fijo)continue;const p=(c.gp-e)/(c.cp+e)*100;if(p<35&&p<pp){pp=p;peor=c;}}
+     if(!peor)break;
+     lib.peq+=dado[peor.key];delete dado[peor.key];peor._env=Math.round(pp);
+     for(const c of orden){if(c.grande||c._env||!(c.u>0))continue;sumar(c,c.u-(dado[c.key]||0));}
+   }}
   // LO QUE QUEDÓ AFUERA SE DICE. Una lista que recorta renglones sin avisar es una lista que
   // miente, y acá encima lo recortado es mercadería que sí hacía falta mandar.
   const fuera=[];
   for(const c of orden){
     const d=dado[c.key]||0;
+    if(c._env!=null){fuera.push({nombre:c.nombre,falta:c.u,dado:0,grande:false,aparte:true,envio:c._env});continue;}   // 3a del 19/11: salió por el envío
     if(d<c.u)fuera.push({nombre:c.nombre,falta:c.u-d,dado:d,grande:!!c.grande});
   }
   // LOS GRANDES VAN EN CAJA APARTE (28/10/2026, él: "los tenders son productos grandes, ML no permite mandar juntos. los tenders se mandan en
@@ -8995,7 +9015,7 @@ async function cajaSugeridaCupo(){
     const u=Math.min(x.mandar,f.hay);
     if(u<=0)return;
     cands.push({key:_ck(f.p.id,f.variante),u,ganU:cajaGanUnidad(f.p,cache),enCero:!!x.enCero,
-      vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p),
+      vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p),..._cajaGpCp(f.p),fijo:_cajaEsFijo(x),
       nombre:f.p.name+(f.variante?' · '+f.variante:'')});
   }));
   if(!cands.length){toast(_cajaNadaMsg(ofiFiltroCuenta),'info');return renderOfiCaja();}   // no vacía lo cargado (09/10/2026)
@@ -9098,7 +9118,7 @@ function renderOfiCaja(){
       }else{
         const cands=[];
         filas.forEach(f=>(f.sug||[]).forEach(x=>{if(x.cuenta!==l||!(x.mandar>0))return;const u=Math.min(x.mandar,f.hay);if(u<=0)return;
-          cands.push({key:_ck(f.p.id,f.variante),p:f.p,u,ganU:cajaGanUnidad(f.p,_cache),enCero:!!x.enCero,vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p)});}));
+          cands.push({key:_ck(f.p.id,f.variante),p:f.p,u,ganU:cajaGanUnidad(f.p,_cache),enCero:!!x.enCero,vDia:x.vDia||0,dias:x.dias,grande:esGrandeFull(f.p),..._cajaGpCp(f.p),fijo:_cajaEsFijo(x)});}));
         const cu=cupoRestante(l);
         const items=cu?cajaLlenarCupoPlan(cands,cu.estPeq,cu.estGra).items:Object.fromEntries(cands.map(c=>[c.key,c.u]));
         for(const c of cands){const u=items[c.key]||0;if(!(u>0))continue;const g=_gU(c.p);if(g!=null&&isFinite(g))gan+=g*u;}
@@ -9115,7 +9135,7 @@ function renderOfiCaja(){
       const vr=_ver[l];
       const col=vr?vr.col:'';
       const _corte=porCta[l]>nC?` · se sugieren ${porCta[l]} pero el cupo de Full deja mandar ${nC}`:'';
-      const tit=vr?(`${vr.txt} · ${vr.k==='pasa'?`no entra en el cupo de Full de ${l}: ${vr.det}`:vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':vr.noConviene?'se manda cuando lleve más (35% o más contando el envío entero)':`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
+      const tit=vr?(`${vr.txt} · ${vr.k==='pasa'?`no entra en el cupo de Full de ${l}: ${vr.det}`:vr.k==='verde'?`la caja de ${l} ya se justifica`:vr.k==='naranja'?'se paga en menos de una semana':vr.noConviene?'se manda cuando lleve más (35% o más contando el envío entero)':vr.chica?`se manda cuando deje ${fmt(cajaMinGan())} o más al venderse (él, 19/11)`:`todavía no da: juntá más antes de pagar los ${fmt(costoCaja())} del envío`}`+_corte):'';
       const gC=_ganCta[l]||0;
       return `<button class="pf-btn${ofiFiltroCuenta===l?' active-all':''}" style="${col?`--cv:${col};`:''}padding:8px 14px;min-width:118px;text-align:left;line-height:1.35" title="${tit}" onclick="setOfiFiltro('${l}')"><div style="font-size:.8rem;font-weight:700">${l}${u?`<span class="pf-badge" title="caja a medio armar${vr?' · '+vr.txt:''}">📦${u}</span>`:''}</div>`
         +`<div style="font-size:.7rem">${nC?`<strong style="color:${col||'inherit'}">${nC} u.</strong> a mandar`:'<span style="color:var(--muted)">nada a mandar</span>'}</div>`
@@ -9266,9 +9286,13 @@ function renderOfiCaja(){
         if(_cajaCupoFuera&&_cajaCupoFuera.cta===ofiFiltroCuenta&&_cajaCupoFuera.fuera.length){
           // 30/10/2026: los grandes que van en SU PROPIA caja (`aparte`) no son "no entraron por el cupo": se dicen en su renglón.
           const _f=_cajaCupoFuera.fuera.filter(x=>!x.aparte), _tot=_f.reduce((a,x)=>a+x.falta,0);
-          const _fa=_cajaCupoFuera.fuera.filter(x=>x.aparte), _totA=_fa.reduce((a,x)=>a+x.falta,0);
+          const _fa=_cajaCupoFuera.fuera.filter(x=>x.aparte&&x.envio==null), _totA=_fa.reduce((a,x)=>a+x.falta,0);
+          const _fe=_cajaCupoFuera.fuera.filter(x=>x.envio!=null);   // 3a del 19/11: salieron por no dar 35% con su parte del envío
           if(_f.length)_fueraHTML=`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.62rem;color:var(--amber)">⚠️ No entraron ${fmtN(_tot)} u. de ${_f.length} producto${_f.length===1?'':'s'} por el cupo — quedan para la caja siguiente</summary>
             <div style="font-size:.6rem;color:var(--muted);line-height:1.7;margin-top:4px">${_f.map(x=>`· ${x.nombre.replace(/</g,'&lt;')} — faltan ${fmtN(x.falta)} u.${x.dado>0?` (van ${fmtN(x.dado)})`:' (no entró ninguna)'}`).join('<br>')}</div>
+          </details>`;
+          if(_fe.length)_fueraHTML+=`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.62rem;color:var(--red)">🟥 ${_fe.length} producto${_fe.length===1?'':'s'} no van: con su parte del envío no dan 35% (su lugar fue a lo que el cupo dejaba afuera)</summary>
+            <div style="font-size:.6rem;color:var(--muted);line-height:1.7;margin-top:4px">${_fe.map(x=>`· ${x.nombre.replace(/</g,'&lt;')} — ${fmtN(x.falta)} u. (${x.envio}%)`).join('<br>')}</div>
           </details>`;
           if(_fa.length)_fueraHTML+=`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.62rem;color:var(--accent2)">📦 ${fmtN(_totA)} u. grandes van en su propia caja (ML no deja mezclarlas con chicos) — cargalas cuando despaches ésta</summary>
             <div style="font-size:.6rem;color:var(--muted);line-height:1.7;margin-top:4px">${_fa.map(x=>`· ${x.nombre.replace(/</g,'&lt;')} — ${fmtN(x.falta)} u.`).join('<br>')}</div>
@@ -9930,6 +9954,19 @@ async function privadoGuardar(){
     if(ta)ta.value='';if(fi)fi.value='';
     toast('🔒 Saldo de Binance guardado cerrado. El robot lo carga en unos minutos (sale en 📥 Para el robot, sin el número).','ok',6000);return;
   }
+  // 🔒 TICKET DE PARAGUAY Y GUÍA DE VIA CARGO (8a del 19/11/2026, él: "a" — que no queden en el registro público, "pero que lo podamos ver de la
+  // web"): el comando entero (`compray:<fecha>|usd=…|det=<código>*<u>*<pagado>;…` o `pyguia:<pedido>=<código>`) queda cerrado; el robot lo carga
+  // solo en unos minutos (`compraypriv`/`pyguiapriv`) y escribe lo de siempre en el pedido (se sigue viendo en Pedidos → Paraguay).
+  {const tp=document.getElementById('priv-tipo')?.value||'';
+   if(tp==='compray'||tp==='pyguia'){
+    const t1=txt.replace(/^\uFEFF/,'').trim();
+    if(!new RegExp('^'+tp+':').test(t1)){toast(tp==='compray'?'Va el comando entero: compray:<fecha>|usd=…|merc=…|envio=…|det=<código>*<u>*<pagado>;…':'Va el comando entero: pyguia:<id o fecha del pedido>=<código>','err',7000);return;}
+    if(t1.length>200000){toast('Muy largo','err');return;}
+    const tsT=Date.now();
+    try{const e=await privadoCerrar(t1);await db.ref('mlapi/privado_in/'+tsT).set({...e,tipo:tp,ts:tsT});}
+    catch(e){toast('⚠️ No se guardó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
+    if(ta)ta.value='';if(fi)fi.value='';
+    toast(tp==='compray'?'🔒 Ticket guardado cerrado. El robot lo carga en unos minutos y se ve en el detalle del pedido (el resultado sale en 📥 Para el robot, sin montos).':'🔒 Guía guardada cerrada. El robot la carga en unos minutos.','ok',6000);return;}}
   if(!cta){toast('Elegí de qué cuenta es','err');return;}
   if(txt.length<50){toast('Pegá el contenido del archivo (o elegilo)','err');return;}
   if(txt.length>6e6){toast('Muy grande: partilo en dos (por meses)','err',6000);return;}
@@ -9943,9 +9980,9 @@ function renderPrivadoCard(){
   const el=document.getElementById('ofi-privado-card');if(!el||el.dataset.ok)return;el.dataset.ok='1';
   el.innerHTML=`<details style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:10px 14px;margin-bottom:12px">
     <summary style="cursor:pointer;font-size:.8rem;font-weight:700">🔒 Archivo para Claude (queda cerrado)</summary>
-    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el saldo de Binance (en dólares, ej. <code>tito=19,72</code> o sólo el número), el extracto de Mercado Pago ("Todas las transacciones") y la lista de precios de un mayorista que llega en PDF o WhatsApp (Pirineo, Dai Nippon…). Se cierra con candado acá mismo: sólo el robot lo puede abrir. El extracto guarda únicamente los totales (rendimientos, saldo) y trae nombres de otras personas: nunca lo pegues en otro lado. La lista va como el comando entero (<code>lista:&lt;mayorista&gt;|fecha=AAAA-MM-DD;&lt;producto&gt;=&lt;pesos&gt;@&lt;código&gt;;…</code>) y se carga sola en unos minutos, sin que sus precios aparezcan en ningún registro.</div>
+    <div style="font-size:.62rem;color:var(--muted);margin:6px 0;line-height:1.45">Para el saldo de Binance (en dólares, ej. <code>tito=19,72</code> o sólo el número), el extracto de Mercado Pago ("Todas las transacciones") y la lista de precios de un mayorista que llega en PDF o WhatsApp (Pirineo, Dai Nippon…). Se cierra con candado acá mismo: sólo el robot lo puede abrir. El extracto guarda únicamente los totales (rendimientos, saldo) y trae nombres de otras personas: nunca lo pegues en otro lado. La lista va como el comando entero (<code>lista:&lt;mayorista&gt;|fecha=AAAA-MM-DD;&lt;producto&gt;=&lt;pesos&gt;@&lt;código&gt;;…</code>) y se carga sola en unos minutos, sin que sus precios aparezcan en ningún registro. El ticket de Paraguay y la guía de Via Cargo también van como el comando entero (<code>compray:…|det=…</code> · <code>pyguia:&lt;pedido&gt;=&lt;código&gt;</code>): se cargan solos y se siguen viendo en el detalle del pedido.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-      <select id="priv-tipo" class="cal-select" style="font-size:.72rem"><option value="extracto">Extracto de Mercado Pago</option><option value="lista">Lista de un mayorista</option><option value="binance">Saldo de Binance</option></select>
+      <select id="priv-tipo" class="cal-select" style="font-size:.72rem"><option value="extracto">Extracto de Mercado Pago</option><option value="lista">Lista de un mayorista</option><option value="binance">Saldo de Binance</option><option value="compray">Ticket de Paraguay (compray)</option><option value="pyguia">Guía de Via Cargo (pyguia)</option></select>
       <select id="priv-cta" class="cal-select" style="font-size:.72rem"><option value="">¿De qué cuenta?</option><option>Adriana</option><option>Luciana</option><option>Ayelen</option><option>Matias</option></select>
       <input id="priv-per" class="fin-input" placeholder="período (ej. 2026-10)" style="width:150px;font-size:.72rem">
       <input id="priv-file" type="file" accept=".csv,.txt,text/csv,text/plain" style="font-size:.66rem">
@@ -11148,6 +11185,9 @@ const REPO_PISO_CERO=4;
 // Si la lectura falla cae en el número ALTO, que es el lado seguro: con una caja más cara, el
 // envío por unidad sube, el costo sube y el margen se ve MENOR — nunca al revés.
 const COSTO_CAJA_FALLBACK=17500;
+// 💵 10a del 19/11/2026: lo mínimo que tiene que dejar una caja al venderse (`cyc/mlconfig/cajaMinGan`; = CAJA_MIN_GAN_DEF de sync.mjs y decide_cajas.py).
+const CAJA_MIN_GAN_DEF=200000;
+const cajaMinGan=()=>{const v=parseFloat((state.mlconfig||{}).cajaMinGan);return (isFinite(v)&&v>0)?v:CAJA_MIN_GAN_DEF;};
 const costoCaja=()=>{
   const v=parseFloat((state.mlconfig||{}).costoCaja);
   return (isFinite(v)&&v>0)?v:COSTO_CAJA_FALLBACK;
@@ -11532,6 +11572,9 @@ function cajaVeredicto(cv){
   if(cv.sePasa){const s=cv.sePasa;return{k:'pasa',col:'var(--amber)',txt:'Se pasa del cupo',
     det:[s.peq?`sobran ${s.peq} chicos/medianos (quedan ${s.estPeq})`:'',s.gra?`sobran ${s.gra} grandes (quedan ${s.estGra})`:''].filter(Boolean).join(' · ')+(s.viejo?` · el cupo es de hace ${s.dias} días: miralo de nuevo`:'')};}
   if(cv.pctCaja!=null&&cv.pctCaja<35)return{k:'rojo',col:'var(--red)',txt:`No conviene: con el envío entero (${fmt(costoCaja())}) la caja deja ${Math.round(cv.pctCaja)}%`,noConviene:true};
+  // 💵 10a del 19/11/2026 (él: "menos de 200.000 no sirve mandar caja"): lo que deja la caja al venderse (sin el envío de la ficha, menos el envío
+  // entero) tiene que llegar a cajaMinGan(); si no, espera a juntar más. La misma vara que decide_cajas.py (CAJA_MIN_GAN).
+  if(cv.deja!=null&&cv.deja<cajaMinGan())return{k:'rojo',col:'var(--red)',txt:`Todavía no: deja ${fmt(Math.max(0,Math.round(cv.deja)))} (mínimo ${fmt(cajaMinGan())})`,chica:true};
   if(cv.llena||cv.perdida>=cv.extra)return{k:'verde',col:'var(--green)',txt:'MANDALA YA'};
   if(cv.perdida>=cv.extra*0.5)return{k:'naranja',col:'var(--lv-justo)',txt:'Podés mandarla'};
   return{k:'rojo',col:'var(--red)',txt:'Podés esperar y juntar más'};
@@ -11551,7 +11594,7 @@ function renderNcOfi(filas){
   }catch(e){}
 }
 function convieneCaja(filas,cuenta){
-  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0,perdida=0,gCaja=0,cCaja=0;
+  let gCero=0,gRelleno=0,gTotal=0,nCero=0,uCero=0,uTot=0,sinDato=0,perdida=0,gCaja=0,cCaja=0,gSinBase=0;
   const detalle=[],cortan=[],items={};
   const puestos=cajaDe(cuenta);
   const hayPuesto=Object.values(puestos).some(n=>n>0);
@@ -11575,7 +11618,7 @@ function convieneCaja(filas,cuenta){
       uTot+=u;
       const gu=Math.max(0,g);
       gTotal+=gu*u;
-      {const _m=margenMLDe(f.p);if(_m&&_m.costoBase>0){const _sh=(parseFloat(f.p.shipUSD)||0)*curTC();gCaja+=(g+_sh)*u;cCaja+=(_m.costoBase-_sh)*u;}}   // sin el envío+embalaje de la ficha: el de la caja va entero abajo (revisión 12/11: se contaba dos veces)
+      {const _m=margenMLDe(f.p);if(_m&&_m.costoBase>0){const _sh=(parseFloat(f.p.shipUSD)||0)*curTC();gCaja+=(g+_sh)*u;cCaja+=(_m.costoBase-_sh)*u;}else gSinBase+=Math.max(0,g)*u;}   // sin el envío+embalaje de la ficha: el de la caja va entero abajo (revisión 12/11: se contaba dos veces)
       const vD=Math.max(0,s.vDia||0);
       const porDia=gu*vD;
       if(s.enCero){gCero+=porDia;nCero++;uCero+=u;detalle.push({p:f.p,variante:f.variante,porDia,mandar:u,gan:gu*u});}
@@ -11620,7 +11663,8 @@ function convieneCaja(filas,cuenta){
   // (neto de ML − costo) trae adentro el envío+embalaje de la ficha (una caja llena de ese producto); acá se saca y se pone el de ESTA caja entero. `pctCaja` = lo que deja la
   // caja después de pagar el envío ÷ (lo que costó la mercadería + el envío). Abajo del 35% la caja no sale (ni aunque use todo el cupo).
   const pctCaja=cCaja>0?(gCaja-_cc)/(cCaja+_cc)*100:null;
-  return{gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,pctCaja,gCaja,cCaja,
+  const deja=uTot>0?gCaja+gSinBase-_cc:null;   // 10a del 19/11: lo que deja la caja al venderse, con el envío entero
+  return{deja,gCero,gRelleno,gTotal,nCero,uCero,uTot,sinDato,detalle,diasPago,sobreLoCargado:hayPuesto,pctCaja,gCaja,cCaja,
     perdida,cortan,lleno,uLlena,extra,llena:lleno>=0.9||topeCupo,topeCupo,sePasa,costo:_cc,espera:D,
     sinMedida:oc.sinDim,
     vecesElEnvio:_cc>0?gTotal/_cc:0};

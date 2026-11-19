@@ -342,6 +342,8 @@ def Tde(p,x,r,m=None):
     # Paulvic): hasta el 24/12 cada pedido lleva el pico de Navidad del producto (`NAV x` de pedidostodo = cuánto más vendió del 03/12 al
     # 24/12 del año pasado, sólo regalable, ×1,3 a ×5). Lo que llega (Paraguay ~16 días de viaje, Bs As y Paulvic ~7) y se vende en los días
     # del pedido (30 · 60 · 45) dentro de esa ventana cuenta x veces: se suman (x-1) × esos días a los días del pedido.
+    # 1a del 19/11/2026: el pico se cuenta UNA vez. Del 03/12 al 24/12 `pedidostodo` ya saca del ritmo los días del pico que pasaron (NOR/HOY
+    # sin esos días, v30/v60/v180 con lo vendido ÷ NAV, `diaNavPico`), así el ritmo `r` es el normal y el pico lo pone sólo este multiplicador.
     Tb,por=_TdeBase(p,x,r,m)
     if p['g'] in('PY','BSAS','PAULVIC') and r>0 and p.get('nav',0)>1:
         import datetime as _dt
@@ -467,12 +469,14 @@ for p in prods:
         while sc>0 and any(d[1]>0 for d in dets):
             d=max(dets,key=lambda d:d[1]); u=min(1,d[1],sc); d[1]-=u; sc-=u
         p['sinColor']=round(sc0-sc)   # lo que de verdad se descontó
-        # Total del producto con UN redondeo y reparto por resto mayor (antes cada color redondeaba para arriba y se inflaba).
+        # (Hasta el 19/11 el total se redondeaba UNA vez y se repartía por resto mayor; ver 2a del 19/11 abajo.)
         # Revisión etapa 3, 29/10/2026: alcanza con que UN color llegue al 35% (los que no llegan ya tienen 0 de necesidad).
         rentable=any(v['rent'] for v in p['vars'])
-        tot=max(0,math.ceil(sum(d[1] for d in dets)-1e-9)) if rentable else 0   # 14/11: siempre para arriba (él)
-        _nec=[max(0.0,d[1]) for d in dets]; qs=[int(math.floor(n+1e-9)) for n in _nec]
-        for i in sorted(range(len(_nec)),key=lambda i:_nec[i]-qs[i],reverse=True)[:max(0,tot-sum(qs))]: qs[i]+=1
+        # 🎨 2a del 19/11/2026 (revisión de Mercadería del 18/11; él: "a"): CADA COLOR PARA ARRIBA. Antes se redondeaba sólo el total y se
+        # repartía: un aroma que necesitaba 0,5 quedaba en 0 (Paulvic del 08/11: 26 u.; color por color, 29). El total = la suma de los colores.
+        _nec=[max(0.0,d[1]) for d in dets]
+        qs=[max(0,math.ceil(n-1e-9)) if (rentable and n>1e-9) else 0 for n in _nec]
+        tot=sum(qs)
         dets=[(d[0],q,d[2],d[3],d[4],d[5]) for d,q in zip(dets,qs)]
         res.append((p,tot,dets,rentable))
     else:
