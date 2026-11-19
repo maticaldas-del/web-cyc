@@ -21,6 +21,13 @@ export async function fbSignIn(apiKey, email, password) {
 // pasamos `reauth` (una función que vuelve a loguear y devuelve un idToken
 // nuevo): ante un 401, renovamos el token y reintentamos una vez.
 export const dbConteo = { get: 0, reint: 0, fallos: 0, rutas: [] };
+// 🛑 NO ESCRIBIR CON UNA LECTURA FALLIDA (Choques 5a del 19/11/2026, él eligió la a): el aviso "DATOS INCOMPLETOS" salía al FINAL, cuando
+// el comando ya había escrito con datos a medias. Ahora, en un COMANDO (`BILLING_PROBE`; sync.mjs prende `dbGuarda.activa`), toda escritura
+// a la base mira antes si falló alguna lectura (aun reintentando) y, si falló, NO escribe: avisa una vez y tira error. El ciclo de 2 min
+// (sin BILLING_PROBE) no se toca. Quedan afuera el token de ML que rota (`mlapi/tokens/`, si no se pierde el permiso de la cuenta) y la
+// cola de Telegram (`mlapi/telegram/`, la vacía el arranque de toda corrida).
+export const dbGuarda = { activa: false, negadas: 0 };
+const _DB_GUARDA_LIBRE = /^mlapi\/(tokens|telegram)(\/|$)/;
 export function makeDB(dbUrl, idToken, reauth) {
   const base = dbUrl.replace(/\/$/, '');
   let token = idToken;
@@ -31,6 +38,10 @@ export function makeDB(dbUrl, idToken, reauth) {
   // no se reintentan solas (podrían duplicarse).
   async function req(path, opts, method) {
     const esLect = method === 'get'; let r = null, err = null;
+    if (!esLect && dbGuarda.activa && dbConteo.fallos > 0 && !_DB_GUARDA_LIBRE.test(String(path))) {
+      if (!dbGuarda.negadas++) console.log(`❌ NO ESCRIBO NADA: ${dbConteo.fallos} lectura(s) de la base fallaron aun reintentando (${dbConteo.rutas.join(' · ')}) y con datos a medias no se escribe (Choques 5a, 19/11). Volver a correr el comando.`);
+      throw new Error(`DB ${method} ${path}: frenado, falló una lectura antes (datos incompletos)`);
+    }
     for (const espera of esLect ? [0, 1000, 3000, 7000] : [0]) {
       if (espera) { dbConteo.reint++; await new Promise((ok) => setTimeout(ok, espera)); }
       try {
@@ -45,11 +56,54 @@ export function makeDB(dbUrl, idToken, reauth) {
     return r.json();
   }
   const body = (value) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  // 🔁 ESCRIBIR SÓLO SI NADIE CAMBIÓ EL VALOR EN EL MEDIO (Choques 6a del 19/11/2026, él eligió la a): dos cobros de la perfumería o dos sumas a
+  // Binance a la vez leían el mismo saldo y el segundo PISABA al primero (se perdía una suma). La base (REST de Firebase) da una "huella" (ETag)
+  // de lo leído: `getEtag` lee valor + huella y `setSi` escribe con `if-match`; si alguien escribió en el medio contesta 412 y `setSi`
+  // devuelve false (no escribió): el que llama vuelve a leer, recalcula y reintenta (`casEscribir`, hasta 3 veces).
+  async function getEtag(path) {
+    let r = null;
+    for (const espera of [0, 1000, 3000]) {
+      if (espera) { dbConteo.reint++; await new Promise((ok) => setTimeout(ok, espera)); }
+      try { r = await fetch(url(path), { headers: { 'X-Firebase-ETag': 'true' } });
+        if (r.status === 401 && reauth) { token = await reauth(); r = await fetch(url(path), { headers: { 'X-Firebase-ETag': 'true' } }); }
+        if (r.ok || r.status < 500) break; } catch { r = null; }
+    }
+    dbConteo.get++;
+    if (!r || !r.ok) { dbConteo.fallos++; if (dbConteo.rutas.length < 15) dbConteo.rutas.push(String(path).split('/').slice(0, 3).join('/') + ' (' + (r ? r.status : 'red') + ')'); throw new Error(`DB get ${path}: ${r ? r.status : 'sin respuesta'}`); }
+    const etag = r.headers.get('etag'); if (!etag) throw new Error(`DB get ${path}: la base no devolvió la huella (ETag)`);
+    return { val: await r.json(), etag };
+  }
+  async function setSi(path, value, etag) {
+    if (dbGuarda.activa && dbConteo.fallos > 0 && !_DB_GUARDA_LIBRE.test(String(path))) {
+      if (!dbGuarda.negadas++) console.log(`❌ NO ESCRIBO NADA: ${dbConteo.fallos} lectura(s) de la base fallaron aun reintentando (${dbConteo.rutas.join(' · ')}) y con datos a medias no se escribe (Choques 5a, 19/11). Volver a correr el comando.`);
+      throw new Error(`DB set ${path}: frenado, falló una lectura antes (datos incompletos)`);
+    }
+    const op = () => ({ method: 'PUT', headers: { 'Content-Type': 'application/json', 'if-match': etag }, body: JSON.stringify(value) });
+    let r = await fetch(url(path), op());
+    if (r.status === 401 && reauth) { token = await reauth(); r = await fetch(url(path), op()); }
+    if (r.status === 412) return false;
+    if (!r.ok) throw new Error(`DB set ${path}: ${r.status}`);
+    return true;
+  }
   return {
     get: (path) => req(path, {}, 'get'),
     set: (path, value) => req(path, { method: 'PUT', ...body(value) }, 'set'),
     patch: (path, value) => req(path, { method: 'PATCH', ...body(value) }, 'patch'),
+    getEtag, setSi,
   };
+}
+
+// Choques 6a del 19/11/2026: lee `path` con su huella, `calc(valorLeído)` arma el valor nuevo (o null = no escribir nada) y se escribe sólo si
+// nadie lo cambió en el medio; si lo cambiaron, se relee y se recalcula (hasta `veces`). Devuelve { ok, val (el escrito), ant (el leído), intentos }.
+export async function casEscribir(db, path, calc, veces = 3) {
+  for (let i = 1; i <= veces; i++) {
+    const { val: ant, etag } = await db.getEtag(path);
+    const nuevo = await calc(ant);
+    if (nuevo === null || nuevo === undefined) return { ok: false, nada: true, ant, intentos: i };
+    if (await db.setSi(path, nuevo, etag)) return { ok: true, val: nuevo, ant, intentos: i };
+    console.log(`  🔁 ${String(path).split('/').slice(0, 2).join('/')}…: alguien lo cambió mientras calculaba (intento ${i} de ${veces}): releo y recalculo`);
+  }
+  return { ok: false, ant: null, intentos: veces };
 }
 
 // ── MercadoLibre: intercambiar el "code" de autorización por tokens (una sola vez) ──

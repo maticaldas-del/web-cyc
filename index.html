@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.241';
+const APP_VERSION='28.242';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.242',f:'19/11',h:'20:46',c:[{n:2,t:'🗳️ Inicio: cada tanda de decisiones dice su hora y el mensaje a Claude la lleva; si llega una tanda nueva, lo que tocaste y no mandaste se manda solo antes (Choques 1a).'},{n:2,t:'📦 Armar caja: una caja que cargó el robot y retocás a mano sigue siendo del robot (la puede volver a cargar o vaciar) (Choques 2a).'}]},
   {v:'28.241',f:'19/11',h:'13:59',c:[{n:2,t:'📋 Dai Nippon (y las listas de Bs As): ya no es por pedido. Los probados se ven como en De siempre, con hasta cuánto pagar y cuántas comprar, y abajo el precio de la lista del mes (sin casilla de pedir). Los nuevos que dan dicen "pagá hasta $X · comprá N u.". Se sacó la solapa 🧾 Pedido.'}]},
   {v:'28.240',f:'19/11',h:'13:02',c:[{n:3,t:'📦 Armar caja: una caja que al venderse deja menos de $200.000 dice "Todavía no: deja $X (mínimo $200.000)" y espera a juntar más. Si un producto sale de la caja porque con su parte del envío no da 35%, su lugar en el cupo va a lo que el cupo dejaba afuera (primero lo que más deja por unidad).'},{n:2,t:'🔒 Archivo para Claude: ahora también el ticket de Paraguay y la guía de Via Cargo se guardan cerrados (no quedan en el registro público) y se siguen viendo en el detalle del pedido.'}]},
   {v:'28.239',f:'19/11',h:'12:45',c:[{n:2,t:'📦 Armar caja: al lado de "mandar N u." dice el % de ganancia sin el envío, cuánto le toca de envío a cada unidad (el de la caja repartido entre las unidades cargadas, en vivo) y el % después de pagar el envío (rojo si queda abajo del 35%).'}]},
@@ -8605,10 +8606,14 @@ async function _guardarCajaArmando(cta,items){
   const hay=Object.keys(items||{}).length;
   const antes=state.cajas_armando[cta];
   const ts=Date.now();   // la MISMA hora en pantalla y en la base: el cierre compara las dos (N5)
-  if(hay)state.cajas_armando[cta]={items,ts};
+  // Choques 2a del 19/11/2026 (él eligió la a): una caja que cargó el robot (`cajaarmar`, `por:'cajaarmar'`) y que se RETOCA a mano sigue siendo
+  // del robot. Antes este guardado escribía sólo {items,ts}, se perdía el `por` y la caja quedaba "a mano": el robot ya no la volvía a cargar
+  // ni a vaciar. Ahora se conserva el `por` (y queda `retocada` con la hora, para saber que se tocó).
+  const val=hay?{items,ts,...(antes&&antes.por?{por:antes.por,retocada:ts}:{})}:null;
+  if(hay)state.cajas_armando[cta]=val;
   else delete state.cajas_armando[cta];
   try{
-    await fbSet('cajas_armando/'+cta,hay?{items,ts}:null);
+    await fbSet('cajas_armando/'+cta,val);
   }catch(e){
     // Se deshace lo que se había cambiado en memoria: si no, la pantalla mostraría una caja
     // armada que en la base no existe, y al recargar desaparecería sin aviso.
@@ -11426,7 +11431,7 @@ function _hxDecisiones(){
   const item=([id,x])=>{const L=x.mla?(state.mllinks||{})[x.mla]||{}:{};const foto=L.foto||'';
     return `<div class="hx-item"><div style="display:flex;gap:10px;align-items:flex-start">${foto?`<img src="${_esc(foto)}" alt="" class="hx-foto" loading="lazy">`:''}<div style="min-width:0;flex:1">
       <div class="hx-q" style="font-style:normal"><b>${_esc(x.n)}.</b> ${_esc(x.tit)}</div>
-      <div class="hx-mini" style="color:var(--muted)">${x.pctHoy!=null?`hoy <b style="color:${x.pctHoy>=35?'var(--green)':'var(--red)'}">${Math.round(x.pctHoy)}%</b> · `:''}${x.stock?_esc(x.stock)+' · ':''}${x.techo?'techo: '+_esc(x.techo):''}</div>
+      <div class="hx-mini" style="color:var(--muted)">${x.tanda?`🕐 tanda de las ${_esc(x.tanda)}${x.ts?' del '+_esc(new Date(Number(x.ts)).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})):''} · `:''}${x.pctHoy!=null?`hoy <b style="color:${x.pctHoy>=35?'var(--green)':'var(--red)'}">${Math.round(x.pctHoy)}%</b> · `:''}${x.stock?_esc(x.stock)+' · ':''}${x.techo?'techo: '+_esc(x.techo):''}</div>
       ${x.txt?`<div class="hx-mini" style="white-space:pre-wrap">${_esc(x.txt)}</div>`:''}</div></div>
       <div class="hx-ops">${op(id,x,'a')}${op(id,x,'b')}</div></div>`;};
   return `<div class="hx-card" style="border-color:rgba(168,85,247,.6)">${_hxCab('dec','🗳️',`${D.length} decisi${D.length===1?'ón':'ones'} para vos`,`elegidas ${eleg} de ${D.length}`,'#a855f7',true)}
@@ -11437,7 +11442,11 @@ async function hxDecElegir(id,k){const x=(state.decisiones||{})[id];if(!x)return
 async function hxDecMandar(){
   const D=Object.entries(state.decisiones||{}).filter(([,x])=>x&&!x.enviada&&x.elegida).sort((a,b)=>(Number(a[1].n)||0)-(Number(b[1].n)||0));if(!D.length)return;
   const hoy=new Date(),f=hoy.getFullYear()+'-'+_hxP2(hoy.getMonth()+1)+'-'+_hxP2(hoy.getDate());
-  const t='DECISIONES '+f+': '+D.map(([,x])=>x.n+x.elegida).join(' ');const ts=Date.now();
+  // Choques 1a del 19/11/2026: cada tanda lleva su hora (`tanda`, la pone el robot): el mensaje dice de qué tanda es cada número, así "3a" no se
+  // confunde entre dos tandas del mismo día. Las viejas sin `tanda` van como antes.
+  const porT={};D.forEach(([,x])=>{(porT[x.tanda||'']=porT[x.tanda||'']||[]).push(x.n+x.elegida);});
+  const tT=Object.keys(porT);
+  const t='DECISIONES '+f+': '+tT.map(k=>(k?'(tanda '+k+') ':'')+porT[k].join(' ')).join(' · ');const ts=Date.now();
   try{await fbSet('buzon/'+ts,{t,ts});for(const [id] of D){await fbSet('decisiones/'+id+'/enviada',ts);state.decisiones[id].enviada=ts;}}
   catch(e){toast('⚠️ No se mandó: '+((e&&(e.message||e.code))||'error'),'err',6000);return;}
   toast('📨 Mandado a Claude: '+D.map(([,x])=>x.n+x.elegida).join(' '));renderHomeExtra();

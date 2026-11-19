@@ -6,7 +6,9 @@
 // Requiere secrets: ML_CLIENT_ID, ML_CLIENT_SECRET,
 //   FIREBASE_API_KEY, FIREBASE_DB_URL, FIREBASE_BOT_EMAIL, FIREBASE_BOT_PASSWORD
 
-import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt, dbConteo } from './lib.mjs';
+import { fbSignIn, makeDB, mlRefresh, mlGet, ML_API, tapaIdsLargos, mlConteo, mlConteoTxt, dbConteo, dbGuarda, casEscribir } from './lib.mjs';
+// Choques 5a del 19/11/2026: en un comando, ninguna escritura a la base después de una lectura fallida (ver `dbGuarda` en lib.mjs).
+if (process.env.BILLING_PROBE) dbGuarda.activa = true;
 import { writeFileSync, mkdirSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { createHmac, randomInt, generateKeyPairSync, privateDecrypt, createDecipheriv, createHash, publicEncrypt, createCipheriv, randomBytes, constants as cryptoK } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
@@ -28628,15 +28630,40 @@ async function main() {
       if (!Array.isArray(L) || !L.length) { console.log('❌ el archivo tiene que ser una lista [ {n, tit, txt, a:{t}, b:{t}}, … ]'); return; }
       const malas = L.filter((x) => !x || !x.n || !x.tit || !x.a || !x.a.t || !x.b || !x.b.t); if (malas.length) { console.log(`❌ ${malas.length} sin n, tit, a.t o b.t: no cargo nada`); return; }
       const dia = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10).replace(/-/g, '');
+      // Choques 1a del 19/11/2026: cada tanda lleva su HORA (de acá) en la clave y en `tanda`. Antes la clave era <día>_<n> y una tanda nueva
+      // del mismo día con el mismo número PISABA la anterior (también una ya mandada). La web muestra "tanda de las HH:MM" y el mensaje del
+      // buzón la lleva, así "3a" no se confunde entre dos tandas del mismo día.
+      const hAr = new Date(Date.now() - 3 * 36e5).toISOString(); const tanda = hAr.slice(11, 16); const tandaK = tanda.replace(':', '');
+      const keyDe = (x) => dia + '_' + tandaK + '_' + String(x.n).replace(/[^\w]/g, '');
       const up = {}; for (const [k, x] of Object.entries(cur)) if (x && !x.enviada) up[k] = null;
+      // Choques 1a del 19/11/2026: lo que TOCÓ (a)/(b) y no mandó NO se pierde. `elegida` vive en la base (`cyc/decisiones/<id>/elegida`, la
+      // web lo guarda al tocar), así que lo manda el robot: antes de reemplazar, un mensaje al buzón "DECISIONES <fecha> (tanda HH:MM, mandadas
+      // solas antes de la tanda nueva): 3a 4b" y quedan como mandadas (no se borran). Se relee justo antes por si tocó algo en el medio.
+      const curF = GOd ? ((await db.get('cyc/decisiones')) || {}) : cur;
+      const tocadas = Object.entries(curF).filter(([, x]) => x && !x.enviada && (x.elegida === 'a' || x.elegida === 'b')).sort((a, b) => (Number(a[1].n) || 0) - (Number(b[1].n) || 0));
+      for (const [k] of tocadas) delete up[k];
+      for (const [k, x] of Object.entries(curF)) if (x && !x.enviada && !(x.elegida === 'a' || x.elegida === 'b')) up[k] = null;
       const lim = (v, n) => (v == null ? null : String(v).slice(0, n));
-      for (const x of L) { const id = dia + '_' + String(x.n).replace(/[^\w]/g, ''); up[id] = { n: Number(x.n) || x.n, grupo: lim(x.grupo || '1230', 12), tit: lim(x.tit, 140), txt: lim(x.txt, 1200), mla: x.mla ? String(x.mla).toUpperCase() : null,
-        pctHoy: x.pctHoy != null ? Number(x.pctHoy) : null, stock: lim(x.stock, 60), techo: lim(x.techo, 80), a: { t: lim(x.a.t, 300), precio: x.a.precio || null, pct: x.a.pct != null ? Number(x.a.pct) : null }, b: { t: lim(x.b.t, 300), precio: x.b.precio || null, pct: x.b.pct != null ? Number(x.b.pct) : null }, ts: Date.now() }; }
-      console.log(`🗳️ ${L.length} decisión(es) al panel (se van ${Object.values(up).filter((v) => v === null).length} sin mandar de antes) ${GOd ? '' : '· PRUEBA: agregá ;go'}`);
+      for (const x of L) { const id = keyDe(x); up[id] = { n: Number(x.n) || x.n, grupo: lim(x.grupo || '1230', 12), tit: lim(x.tit, 140), txt: lim(x.txt, 1200), mla: x.mla ? String(x.mla).toUpperCase() : null,
+        pctHoy: x.pctHoy != null ? Number(x.pctHoy) : null, stock: lim(x.stock, 60), techo: lim(x.techo, 80), a: { t: lim(x.a.t, 300), precio: x.a.precio || null, pct: x.a.pct != null ? Number(x.a.pct) : null }, b: { t: lim(x.b.t, 300), precio: x.b.precio || null, pct: x.b.pct != null ? Number(x.b.pct) : null }, ts: Date.now(), tanda }; }
+      console.log(`🗳️ ${L.length} decisión(es) al panel, tanda de las ${tanda} (se van ${Object.values(up).filter((v) => v === null).length} sin elegir de antes${tocadas.length ? ` · ${tocadas.length} tocada(s) y sin mandar se mandan solas al buzón: ${tocadas.map(([, x]) => x.n + x.elegida).join(' ')}` : ''}) ${GOd ? '' : '· PRUEBA: agregá ;go'}`);
       for (const x of L) console.log(`  ${x.n}. ${String(x.tit).slice(0, 80)} · (a) ${String(x.a.t).slice(0, 50)} · (b) ${String(x.b.t).slice(0, 50)}`);
       if (!GOd) return;
+      if (tocadas.length) {
+        // agrupadas por tanda (las viejas sin `tanda` van sin hora)
+        const porT = {}; for (const [k, x] of tocadas) (porT[x.tanda || ''] = porT[x.tanda || ''] || []).push([k, x]);
+        const tsB = Date.now(); let i = 0;
+        for (const [tt, arr] of Object.entries(porT)) {
+          const f = (arr[0][0].match(/^(\d{4})(\d{2})(\d{2})/) || []).slice(1).join('-') || hAr.slice(0, 10);
+          const t = `DECISIONES ${f}${tt ? ' (tanda ' + tt + ')' : ''} (mandadas solas antes de la tanda nueva): ${arr.map(([, x]) => x.n + x.elegida).join(' ')}`;
+          await db.set('cyc/buzon/' + (tsB + i), { t, ts: tsB + i }); i++;
+          for (const [k] of arr) up[k + '/enviada'] = tsB;
+        }
+        const RB = (await db.get('cyc/buzon/' + tsB)) || null; console.log(RB ? `📨 ${tocadas.length} elegida(s) mandada(s) al buzón ✓` : '✗ el mensaje al buzón no quedó: NO cargo la tanda nueva (se perderían)');
+        if (!RB) return;
+      }
       await db.patch('cyc/decisiones', up); const R = (await db.get('cyc/decisiones')) || {};
-      console.log(L.every((x) => R[dia + '_' + String(x.n).replace(/[^\w]/g, '')]) ? '✓ guardado y releído' : '✗ no quedó');
+      console.log(L.every((x) => R[keyDe(x)]) ? '✓ guardado y releído' : '✗ no quedó');
       return;
     }
     // BILLING_PROBE=pypedido:<resto|perf>[:<tope US$>][|el=<id>,<id>…][;go] (57a del 14/11/2026, idea 11 del 12/11: "el pedido de Paraguay en un
@@ -41690,8 +41717,13 @@ async function main() {
         if (ultB === null) { console.log('❌ no pude leer cyc/debenmovult (para no sumar dos veces): no sumo nada'); return; }
         if (Number(ultB[hB]) && Date.now() - Number(ultB[hB]) < 10 * 60e3) { console.log('❌ este mismo movimiento ya se sumó hace menos de 10 min: no lo sumo dos veces (si es OTRO igual, poné "otra" en la nota)'); return; }
         await db.patch('cyc/debenmovult', { [hB]: Date.now() }); }
-      await db.patch('cyc/finanzas', { ['bn_' + cta]: nuevo, binance: tot }); await db.patch('cyc/finanzas/_ts', { binance: Date.now() });
-      const r = (await db.get('cyc/finanzas')) || {}; console.log(Number(r['bn_' + cta]) === nuevo ? '✓ releído de la base' : '✗ no quedó');
+      // Choques 6a del 19/11/2026: la suma se escribe SÓLO si el saldo no cambió desde que lo leí (otra suma o un `binance:` a la vez lo pisaban y
+      // se perdía una). `casEscribir` relee el saldo con su huella, suma sobre ESE valor y escribe con `if-match`; si cambió, reintenta (3 veces).
+      const cas = await casEscribir(db, 'cyc/finanzas/bn_' + cta, (a) => Math.round(((Number(a) || 0) + suma) * 100) / 100);
+      if (!cas.ok) { console.log('❌ el saldo de Binance cambió 3 veces mientras sumaba: no sumé nada, volver a correrlo'); return; }
+      const finN = (await db.get('cyc/finanzas')) || {}; const totN = ['tito'].reduce((t, c) => t + (Number(finN['bn_' + c]) || 0), 0);
+      await db.patch('cyc/finanzas', { binance: Math.round(totN * 100) / 100 }); await db.patch('cyc/finanzas/_ts', { binance: Date.now() });
+      const r = (await db.get('cyc/finanzas')) || {}; console.log(Number(r['bn_' + cta]) === cas.val ? `✓ releído de la base${cas.intentos > 1 ? ` (sumado sobre el saldo releído, intento ${cas.intentos})` : ''}` : '✗ no quedó (o alguien lo cambió recién: mirarlo)');
       return;
     }
     if (/^binance:/.test(String(process.env.BILLING_PROBE || ''))) {
@@ -45989,9 +46021,21 @@ async function main() {
         console.log(`  2º ${_tapaNom(dMe[1])}: ${aMe > 0 ? `paga ${money(aMe)} · falta ${money(Math.round(saldo(dMe[1])))} → ${money(Math.round(saldo(dMe[1]) - aMe))}` : 'no le toca nada'}`);
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         const k0 = Date.now(), notaC = (nota || 'cobro perfumería').slice(0, 100);
-        if (aMP > 0) await db.patch(`cyc/debencuotas/${dMP[0]}/movs/${k0}`, { m: -aMP, f, nota: notaC, quien: 'robot' });
-        if (aMe > 0) await db.patch(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`, { m: -aMe, f, nota: notaC, quien: 'robot' });
-        const r1 = aMP > 0 ? await db.get(`cyc/debencuotas/${dMP[0]}/movs/${k0}`) : true, r2 = aMe > 0 ? await db.get(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`) : true;
+        // Choques 6a del 19/11/2026: dos cobros a la vez leían el MISMO saldo de MercadoPago y los dos le mandaban plata (MercadoPago quedaba a
+        // favor de ella y Mercadería sin bajar). Ahora la parte de MercadoPago se decide sobre la deuda RELEÍDA con su huella y se escribe sólo si
+        // nadie la tocó en el medio (`casEscribir`, 3 intentos): si cambió, se recalcula cuánto va a cada una. Lo que va a Mercadería es un
+        // movimiento nuevo con su propia clave (no pisa nada).
+        let aMPr = 0, aMer = monto;
+        const cas = await casEscribir(db, `cyc/debencuotas/${dMP[0]}`, (dAct) => {
+          if (!dAct) return null;
+          const sAct = Math.max(0, Math.round(saldo(dAct))); aMPr = Math.min(monto, sAct); aMer = monto - aMPr;
+          if (!(aMPr > 0)) return null;   // MercadoPago en 0: todo a Mercadería (no hace falta escribir MercadoPago)
+          return { ...dAct, movs: { ...(dAct.movs || {}), [k0]: { m: -aMPr, f, nota: notaC, quien: 'robot' } } };
+        });
+        if (!cas.ok && !cas.nada) { console.log('❌ la deuda de MercadoPago cambió 3 veces mientras cobraba: no guardé nada, volver a correrlo'); return; }
+        if (aMPr !== aMP) console.log(`  🔁 otro movimiento la cambió en el medio: van ${money(aMPr)} a MercadoPago y ${money(aMer)} a Mercadería`);
+        if (aMer > 0) await db.patch(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`, { m: -aMer, f, nota: notaC, quien: 'robot' });
+        const r1 = aMPr > 0 ? await db.get(`cyc/debencuotas/${dMP[0]}/movs/${k0}`) : true, r2 = aMer > 0 ? await db.get(`cyc/debencuotas/${dMe[0]}/movs/${k0 + 1}`) : true;
         console.log(r1 && r2 ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
         if (r1 && r2) await avisoPagoPerf(monto, f);
         return;
