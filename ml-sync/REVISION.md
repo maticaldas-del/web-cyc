@@ -4806,7 +4806,7 @@ sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia
 
 ## 9 · LOCAL (cada 7 días, nació el 29/10/2026)
 
-- **19/11 · Mensaje corto de deudas (B)** · la cola `mlapi/avisomovcola` guarda los números sueltos (`v`, `sal`, `pmp`/`pme`) y el ciclo arma: ventas por perfumería/persona y día, lo igual sumado, total y ganancia, y una línea por deuda al final. Cola vieja sin números sale como antes. **Chequear:** el próximo movimiento real sale corto (probado con datos de mentira en el scratchpad).
+- **19/11 · Mensaje corto de deudas (A, 19/11; primero eligió B)** · la cola `mlapi/avisomovcola` guarda los números sueltos (`v`, `sal`, `pmp`/`pme`) y el ciclo arma: ventas por perfumería/persona y día, un renglón por venta, total y ganancia, y una línea por deuda al final. Cola vieja sin números sale como antes. **Chequear:** el próximo movimiento real sale corto (probado con datos de mentira en el scratchpad).
 
 - **19/11 · A qué perfumería fue** (él con los Victoria's Secret: *"4 ceballos era"*): `debenmov:mercaderia perfumeria=local@AAAA-MM-DD|prod=<ficha>|a=<perfumería>;go` cambia la perfumería de los renglones de ese producto dejados ese día (sin plata, unidades, oficina ni aviso; saca `reparto`). Y `=nombre <Nombre>|sinaviso` completa un nombre sin volver a mandar al grupo; a una persona va el nombre de pila. **Chequear:** Métricas → Perfumería muestra los 4 VS del 19/11 en Ceballos.
 ### 🔤 Ventas a personas: en el comando sólo la inicial (28a del 14/11/2026)

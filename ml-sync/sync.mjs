@@ -16091,8 +16091,8 @@ async function colaParaRobot(db, labels) {
     if (ks.length && Date.now() - Math.max(...ks.map((k) => Number((cola[k] || {}).ts) || 0)) >= 3 * 60e3) {
       const its = ks.map((k) => cola[k]).filter(Boolean); const ultQueda = {}; let perf = '';
       for (const x of its) { if (x.queda) ultQueda[x.nom] = x.queda; if (x.perf) perf = x.perf; }
-      // B del 19/11/2026 (él: "pueden ser más resumidos los mensajes? sólo lo importante" → eligió la B): las ventas juntas por perfumería
-      // (o persona) y día, lo igual sumado ("4 × Victoria's Secret (Mango, Pure Seduction…)"), total y ganancia, y al final una sola línea
+      // 19/11/2026 (él: "pueden ser más resumidos los mensajes? sólo lo importante" → eligió la A): las ventas juntas por perfumería
+      // (o persona) y día, un renglón por venta, total y ganancia, y al final una sola línea
       // de lo que queda debiendo cada uno. Lo que no tiene los números sueltos (cola vieja) sale como antes.
       const escB = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const fmtF = (f) => { const m = String(f || '').match(/^\d{4}-(\d{2})-(\d{2})$/); return m ? `${m[2]}/${m[1]}` : ''; };
@@ -16106,10 +16106,10 @@ async function colaParaRobot(db, labels) {
         for (const b of bloques) {
           if (b.x) { const x = b.x; const nomX = /perfumer/i.test(x.nom) ? '' : ' · ' + escB(x.nom); out.push(`${escB(x.t)}${nomX}${x.ren && x.ren.length ? '\n' + x.ren.map((r) => escB(r)).join(' · ') : ''}`); continue; }
           const vs = grp.get(b.g); const v0 = vs[0];
-          const porP = new Map(); for (const v of vs) { const kP = v.prod; if (!porP.has(kP)) porP.set(kP, { u: 0, col: [] }); const e = porP.get(kP); e.u += Number(v.u) || 0; if (v.color && !e.col.includes(v.color)) e.col.push(v.color); }
+          // A del 19/11/2026 (él: "perdón la A mejor"): un renglón por venta (producto, color, precio y ganancia) y abajo el total si hay más de una.
           const tot = vs.reduce((t, v) => t + (Number(v.m) || 0), 0), gan = vs.every((v) => v.g != null) ? vs.reduce((t, v) => t + Number(v.g), 0) : null;
-          const lin = [...porP.entries()].map(([pN, e]) => `${e.u > 0 ? e.u + ' × ' : ''}${escB(pN)}${e.col.length ? ' (' + e.col.map(escB).join(', ') + ')' : ''}`);
-          out.push(`${v0.persona ? '🆕' : '🛍️'} <b>${escB(v0.loc)}</b>${fmtF(v0.f) ? ' · ' + fmtF(v0.f) : ''}\n${lin.join('\n')}\n${money(tot)}${gan != null ? ' · ganancia ' + money(gan) : ''}`);
+          const lin = vs.map((v) => `· ${Number(v.u) > 1 ? v.u + ' × ' : ''}${escB(v.prod)}${v.color ? ' ' + escB(v.color) : ''} · ${money(Number(v.m) || 0)}${v.g != null ? ' (+' + money(Number(v.g)) + ')' : ''}`);
+          out.push(`${v0.persona ? '🆕' : '🛍️'} <b>${escB(v0.loc)}</b>${fmtF(v0.f) ? ' · ' + fmtF(v0.f) : ''}\n${lin.join('\n')}${vs.length > 1 ? `\nTotal ${money(tot)}${gan != null ? ' · ganancia ' + money(gan) : ''}` : ''}`);
         }
         // lo que queda: una línea por deuda (la última de cada una); las dos de la perfumería juntas en "Perfumería debe"
         const qued = new Map(); let pf = null;
