@@ -45764,6 +45764,30 @@ async function main() {
       // (unidades, plata y ganancia: la deuda baja y esa ganancia sale de Ver deudas, Métricas Local y ¿Cierra el mes?), del más viejo sin pagar de
       // ESA perfumería, y la mercadería vuelve a la oficina que dice `a=`: Oficina Local (se suma acá a `cyc/oficyc`) u Oficina ML (se le avisa el
       // `ofi:` que hay que correr, como `de=mati`). Lo ya pagado no se devuelve por acá.
+      // A QUÉ PERFUMERÍA FUE (19/11/2026, él con los Victoria's Secret: "4 ceballos era"): `debenmov:mercaderia perfumeria=local@AAAA-MM-DD
+      // |prod=<ficha>|a=<soares|sarmiento|ceballos>;go` → los renglones de ESE producto dejados ese día pasan a esa perfumería (sin tocar
+      // plata, unidades ni oficina; deja de ser "repartido"). Sin aviso al grupo: no cambia lo que se debe.
+      const mLoc = String(numF).trim().match(/^local@(\d{4}-\d{2}-\d{2})$/i);
+      if (mLoc) {
+        const LOCl = ['soares', 'sarmiento', 'ceballos']; const aL = extra.a ? LOCl.find((l) => _n(extra.a).includes(l)) : null;
+        if (!extra.prod || !aL) { console.log('❌ Usá: debenmov:mercaderia perfumeria=local@AAAA-MM-DD|prod=<ficha>|a=<soares|sarmiento|ceballos>;go. No escribo nada.'); return; }
+        let cL = lista.filter(([id]) => id === quien);
+        if (!cL.length) { const pal = _n(quien).split(' ').filter(Boolean); cL = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
+        if (cL.length !== 1) { console.log(`❌ "${quien}" agarra ${cL.length} deudas. No escribo nada.`); return; }
+        const [idL, dL] = cL[0];
+        let pL = products.filter((x) => x.id === extra.prod);
+        if (!pL.length) { const pw = _n(extra.prod).split(' ').filter(Boolean); pL = products.filter((x) => pw.every((w) => (' ' + _n(x.name) + ' ').includes(w))); }
+        if (pL.length !== 1) { console.log(`❌ producto "${extra.prod}" agarra ${pL.length} fichas. No escribo nada.`); return; }
+        const regs = Object.entries(dL.movs || {}).filter(([, x]) => x && Number(x.m) > 0 && x.prod === pL[0].id && String(x.f || '') === mLoc[1]);
+        if (!regs.length) { console.log(`❌ no hay renglones de ${pL[0].name} dejados el ${mLoc[1]}. No escribo nada.`); return; }
+        console.log(`=== A QUÉ PERFUMERÍA · ${pL[0].name} del ${mLoc[1]} ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
+        for (const [k, x] of regs) console.log(`  ${x.u || '?'} u.${x.color ? ' · ' + x.color : ''}: ${x.local || 'sin perfumería'} → ${aL}`);
+        if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
+        for (const [k] of regs) await db.patch(`cyc/debencuotas/${idL}/movs/${k}`, { local: aL, reparto: null });
+        const ok = await Promise.all(regs.map(([k]) => db.get(`cyc/debencuotas/${idL}/movs/${k}/local`)));
+        console.log(ok.every((v) => v === aL) ? `  ✓ ${regs.length} renglón/es guardados y releídos` : '  ⚠️ no pude releer alguno');
+        return;
+      }
       const mDev = String(numF).trim().match(/^devuelve(?:@(\d{4}-\d{2}-\d{2}))?$/i);
       if (mDev) {
         const LOCd = ['soares', 'sarmiento', 'ceballos']; const locD = extra.local ? LOCd.find((l) => _n(extra.local).includes(l)) : null;

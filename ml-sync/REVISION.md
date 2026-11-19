@@ -4805,6 +4805,8 @@ sólo en HISTORIA.md; que CLAUDE.md no vuelva a crecer con historia (la historia
 - Probado: `node --check` de `sync.mjs` y de los 4 `<script>` de la web, `py_compile` de los dos .py, `pvRedondo` (1→5, 21→25, 101→105) y `picosNavidadTemp` con datos inventados.
 
 ## 9 · LOCAL (cada 7 días, nació el 29/10/2026)
+
+- **19/11 · A qué perfumería fue** (él con los Victoria's Secret: *"4 ceballos era"*): `debenmov:mercaderia perfumeria=local@AAAA-MM-DD|prod=<ficha>|a=<perfumería>;go` cambia la perfumería de los renglones de ese producto dejados ese día (sin plata, unidades, oficina ni aviso; saca `reparto`). Y `=nombre <Nombre>|sinaviso` completa un nombre sin volver a mandar al grupo; a una persona va el nombre de pila. **Chequear:** Métricas → Perfumería muestra los 4 VS del 19/11 en Ceballos.
 ### 🔤 Ventas a personas: en el comando sólo la inicial (28a del 14/11/2026)
 - **Qué es:** `debenmov:nueva=<quién>|…` y `debenmov:<deuda>=nombre <texto>` se niegan si el nombre trae dos o más palabras de 3+ letras (nombre y apellido: el texto del comando queda en el registro público); una sola palabra larga pasa con aviso. Con la inicial (ej. `nueva=G|det=…`) la deuda queda con `nomCompletar` y la web la muestra con "✏️ completá el nombre"; al guardar el nombre en ✏️ Editar deuda se borra la marca. Si ya hay otra con la misma inicial, queda "G 2". Lo de la perfumería no se toca.
 - **Dónde vive:** `sync.mjs` (`debenmov`, ramas `nueva` y `=nombre`) · `index.html` (`renderCuotas`, `cuotasGuardar`).
