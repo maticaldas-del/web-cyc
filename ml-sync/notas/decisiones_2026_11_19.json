@@ -1,0 +1,110 @@
+[
+ {
+  "n": 1,
+  "grupo": "avisos",
+  "tit": "🔔 Dos avisos que se callaron con la regla del 18/11",
+  "txt": "Desde el 18/11 al canal privado van sólo 4 cosas. Quedaron callados: cuando una cuenta pierde el permiso de ML (el robot deja de leer ventas y precios de esa cuenta) y cuando ML mueve la barrera de $33.000 (cambia quién paga el envío).",
+  "a": {
+   "t": "Esas dos salen como urgentes; lo demás (lo que le falta a la run, pasos de la noche que fallaron) va al informe y te lo paso yo"
+  },
+  "b": {
+   "t": "Todo al informe, nada al privado"
+  }
+ },
+ {
+  "n": 2,
+  "grupo": "avisos",
+  "tit": "🚨 Venta fuera de Full y códigos de lo que llega",
+  "txt": "El 18/11 sumé a las 4 cosas del canal privado la venta que no sale por Full (hay que despacharla a mano) y el código de una devolución o compra que viene a la oficina. No me lo pediste vos.",
+  "a": {
+   "t": "Siguen saliendo (son plata o algo que llega) y lo dejo escrito así en la regla"
+  },
+  "b": {
+   "t": "Se callan: te los paso yo a las 12:30"
+  }
+ },
+ {
+  "n": 3,
+  "grupo": "precios",
+  "tit": "🧔 Leyton (Paulvic de hombre, 4 en Full)",
+  "txt": "33 días sin vender y la prueba del mes a $32.990 lleva 17 días sin vender. Choca la liquidación de 30 días con tu regla de dejar los Paulvic hasta Navidad (la Navidad pasada no vendió más). Seguridad de techo: techo en $32.990 con 17 días; techo95 seguro recién a los 30.",
+  "a": {
+   "t": "Primer escalón como descuento a $28.090 en las dos publicaciones (sigue arriba de $21.990 y del 35%)"
+  },
+  "b": {
+   "t": "Dejarlo a $32.990 hasta después de Navidad"
+  }
+ },
+ {
+  "n": 4,
+  "grupo": "precios",
+  "tit": "🌸 Paulvic Dream Way (29 en Full)",
+  "txt": "La tanda más vieja paga stock antiguo cerca del 18/12, antes de Navidad; vende 2 por mes. Choca con dejar los Paulvic a $21.990 hasta Navidad. Sin línea de techo en $21.990 (la baja sería por stock antiguo).",
+  "a": {
+   "t": "Desde el 03/12, escalera hasta ganar la caja (sin bajar de 0%)"
+  },
+  "b": {
+   "t": "Dejarlo a $21.990 y pagar el stock antiguo"
+  }
+ },
+ {
+  "n": 5,
+  "grupo": "ml",
+  "tit": "🥤 Licuadora Ninja en Luciana (1 en Full)",
+  "txt": "Apareció en Luciana una Licuadora Portátil Ninja BC151BK con 1 u. en Full. ML la frenó pidiendo la factura de compra (quedan 29 días). No está cargada en el panel. ¿Sabés qué es?",
+  "a": {
+   "t": "Mandarle a ML la factura de compra desde la cuenta de Luciana (decime de dónde salió y la cargo)"
+  },
+  "b": {
+   "t": "Si no se libera en 7 días, retirarla a la oficina"
+  }
+ },
+ {
+  "n": 6,
+  "grupo": "ml",
+  "tit": "📡 Routers con ficha incompleta y Powerbank sin visitas",
+  "txt": "Los routers nuevos (Huawei AX2S, TP-Link XX230v, Huawei BE3, Mercusys MR60X) tienen la ficha técnica incompleta en ML y el Powerbank Baseus lleva 10 días con 0 visitas. Bajar el precio no lo arregla.",
+  "a": {
+   "t": "Completar la ficha técnica de los routers en ML y revisar título y fotos del Baseus (lo hacés vos o se lo paso al chat local)"
+  },
+  "b": {
+   "t": "Dejarlos así"
+  }
+ },
+ {
+  "n": 7,
+  "grupo": "ml",
+  "tit": "🎥 GoPro The Handler (Ayelen, $139.990)",
+  "txt": "0 visitas en 10 días, igual que la Emeet C980. Sin visitas no se puede medir nada de precio.",
+  "a": {
+   "t": "Revisar título y fotos en ML"
+  },
+  "b": {
+   "t": "Arrancar igual la escalera de lanzamiento"
+  }
+ },
+ {
+  "n": 8,
+  "grupo": "mercaderia",
+  "tit": "💧 Filtro de agua (Matías)",
+  "txt": "El 14/11 entraron 126 a la oficina, así que dejó de ser \"sin reposición\" y hoy volvió a $4.790 (su precio de más plata). ¿Ese proveedor sirve para reponer?",
+  "a": {
+   "t": "Sí: Pedidos lo repone normal"
+  },
+  "b": {
+   "t": "Fue una compra de una vez (queda sin reposición cuando se termine)"
+  }
+ },
+ {
+  "n": 9,
+  "grupo": "mercaderia",
+  "tit": "🧴 Doree Crema Oxidante Hierbas Vol 20 (Luciana, $3.990)",
+  "txt": "El costo de la ficha dice $1.077 y la lista de Dai Nippon decía $703. Con $1.077 deja unos $620 por unidad (lo barato pide $1.000) y para llegar a $1.000 habría que ir a ~$4.790, 37% arriba de los otros con Full ($3.500).",
+  "a": {
+   "t": "Confirmame el costo real; si es $1.077 lo subo a $4.790"
+  },
+  "b": {
+   "t": "Dejarlo a $3.990 como está"
+  }
+ }
+]

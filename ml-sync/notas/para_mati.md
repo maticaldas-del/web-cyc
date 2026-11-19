@@ -867,3 +867,7 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 ### ✅ Contestó la lista del 19/11 a las 12:30: 1a 2a 3a 4a 5b 6b 7a 8a ("que lo podamos ver de la web, si no dejalo así") 9a 10a 11a 12a 13b
 - Hecho por mí: 9a (la completa del 19/11 ya armó Ayelen sin las trabas del 14/11: Lupa 90 8, Espejo redondo 7, Lupa 100 4, Cinta 5M 4, Cortapelo 2, Lupa 60 1) · 12a (cajafijo esponja@luciana=4; precio de lanzamiento 3.990, 115% peor caso) · 5b y 6b quedan como hoy · 13b no se hace la venta por pedido.
 - En curso (código): 1a 2a 3a 4a 7a 8a 10a 11a.
+
+## 19/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1 = Choques 3 · 2 = Choques 4 · 3 = Leyton · 4 = Dream Way · 5 = Licuadora Ninja · 6 = Routers/Baseus · 7 = GoPro Handler · 8 = Filtro de agua · 9 = Doree Vol 20 (la 30 del 17/11)
+- Resueltas por mí: Choques 1 2 5 6 7 en (a) (internas, chicas, se vuelven atrás; como el 09/11) · Infusores por regla (stock antiguo 15 días antes y liquidación de 30 días) · Cable Beats sigue el lanzamiento · Aer Berry Rush vuelve solo el 22/11 · Metatarso, Centímetro Rosa y Switch del 17/11 ya resueltos el 18-19/11.
