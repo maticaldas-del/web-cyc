@@ -396,7 +396,7 @@ for p in P:
                 out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=_b35[0],cola=_b35[1]+perf_txt(x.get('perfR',0))+AUTO_TAG,cta=c,nom=f"{p['n'][:38]} · {x['v']}",gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=x['casa'],dec=x['dec'].get(c))); continue
             D,por=dias_de(p['n'],x['s'][0],x['s'][1],x['dcs'])
             q,r,b=calc(*x['s'],x['full'],x['cam'],x['casa'],x['dcs'],D,x.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
-            _yt=ya_tiene(r,x['full']+x['cam'],p.get('nav',0))   # 📅 11a del 19/11
+            _yt=ya_tiene(r,x['full']+x['cam'],p.get('nav',0)) if (fd+cd)>0 else None   # una cuenta en 0 sigue recibiendo su mínimo (la mercadería no se mueve entre cuentas)   # 📅 11a del 19/11
             if _yt is not None and q>0: b=f"📅 ya tiene {_yt:.0f} días entre Full y en camino ({x['full']+x['cam']} u.): no va en esta caja, su lugar va a lo que se corta (11a del 19/11) · "+b; q=0
             q,b=sube_mlsug(q,r,x['full']+x['cam'],x['casa'],x.get('mlsug',{}).get(c),b)   # 🏷️ 55a
             out.append(dict(cab=f"caja:{p['id']}@{c}#{x['v']}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {x['casa']}{perf_txt(x.get('perfR',0))}"+AUTO_TAG,
@@ -414,7 +414,7 @@ for p in P:
             out.append(dict(cab=f"caja:{p['id']}@{cta}",q=_b35[0],cola=_b35[1]+perf_txt(p.get('perfR',0))+AUTO_TAG,cta=cta,nom=p['n'][:38],gan=p['gan'],grande=p['grande'],enCero=False,dias=None,casa=p['casa'],dec=p['dec'].get(cta))); continue
         D,por=dias_de(p['n'],p['v'][0],p['v'][1],p['dcs'])
         q,r,b=calc(*p['v'],p['full'],p['cam'],p['casa'],p['dcs'],D,p.get('hoy'),tDest=fd+cd,sinPubOtras=sinPubOtras,nav=p.get('nav',0))
-        _yt=ya_tiene(r,p['full']+p['cam'],p.get('nav',0))   # 📅 11a del 19/11
+        _yt=ya_tiene(r,p['full']+p['cam'],p.get('nav',0)) if (fd+cd)>0 else None   # una cuenta en 0 sigue recibiendo su mínimo   # 📅 11a del 19/11
         if _yt is not None and q>0: b=f"📅 ya tiene {_yt:.0f} días entre Full y en camino ({p['full']+p['cam']} u.): no va en esta caja, su lugar va a lo que se corta (11a del 19/11) · "+b; q=0
         q,b=sube_mlsug(q,r,p['full']+p['cam'],p['casa'],p.get('mlsug',{}).get(cta),b)   # 🏷️ 55a
         out.append(dict(cab=f"caja:{p['id']}@{cta}",q=q,cola=f"{b} · {txt_stock(fd,cd,otras)} · {txt_dias(D,por)} hacen falta {r*(D+(nav_extra(p.get('nav',0),D)[0] if r>0 else 0)):.0f} · en la oficina {p['casa']}{perf_txt(p.get('perfR',0))}"+AUTO_TAG,
