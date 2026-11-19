@@ -16091,7 +16091,33 @@ async function colaParaRobot(db, labels) {
     if (ks.length && Date.now() - Math.max(...ks.map((k) => Number((cola[k] || {}).ts) || 0)) >= 3 * 60e3) {
       const its = ks.map((k) => cola[k]).filter(Boolean); const ultQueda = {}; let perf = '';
       for (const x of its) { if (x.queda) ultQueda[x.nom] = x.queda; if (x.perf) perf = x.perf; }
-      const txt = (its.length > 1 ? `📨 <b>${its.length} movimientos</b>\n\n` : '') + its.map((x) => x.head).join('\n\n')
+      // B del 19/11/2026 (él: "pueden ser más resumidos los mensajes? sólo lo importante" → eligió la B): las ventas juntas por perfumería
+      // (o persona) y día, lo igual sumado ("4 × Victoria's Secret (Mango, Pure Seduction…)"), total y ganancia, y al final una sola línea
+      // de lo que queda debiendo cada uno. Lo que no tiene los números sueltos (cola vieja) sale como antes.
+      const escB = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const fmtF = (f) => { const m = String(f || '').match(/^\d{4}-(\d{2})-(\d{2})$/); return m ? `${m[2]}/${m[1]}` : ''; };
+      const nuevos = its.every((x) => x.t != null);
+      let txt;
+      if (nuevos) {
+        const bloques = []; const grp = new Map();
+        for (const x of its) { if (x.v) { const kG = (x.v.persona ? 'p|' : 'l|') + x.v.loc + '|' + x.v.f; if (!grp.has(kG)) { grp.set(kG, []); bloques.push({ g: kG }); } grp.get(kG).push(x.v); }
+          else bloques.push({ x }); }
+        const out = [];
+        for (const b of bloques) {
+          if (b.x) { const x = b.x; const nomX = /perfumer/i.test(x.nom) ? '' : ' · ' + escB(x.nom); out.push(`${escB(x.t)}${nomX}${x.ren && x.ren.length ? '\n' + x.ren.map((r) => escB(r)).join(' · ') : ''}`); continue; }
+          const vs = grp.get(b.g); const v0 = vs[0];
+          const porP = new Map(); for (const v of vs) { const kP = v.prod; if (!porP.has(kP)) porP.set(kP, { u: 0, col: [] }); const e = porP.get(kP); e.u += Number(v.u) || 0; if (v.color && !e.col.includes(v.color)) e.col.push(v.color); }
+          const tot = vs.reduce((t, v) => t + (Number(v.m) || 0), 0), gan = vs.every((v) => v.g != null) ? vs.reduce((t, v) => t + Number(v.g), 0) : null;
+          const lin = [...porP.entries()].map(([pN, e]) => `${e.u > 0 ? e.u + ' × ' : ''}${escB(pN)}${e.col.length ? ' (' + e.col.map(escB).join(', ') + ')' : ''}`);
+          out.push(`${v0.persona ? '🆕' : '🛍️'} <b>${escB(v0.loc)}</b>${fmtF(v0.f) ? ' · ' + fmtF(v0.f) : ''}\n${lin.join('\n')}\n${money(tot)}${gan != null ? ' · ganancia ' + money(gan) : ''}`);
+        }
+        // lo que queda: una línea por deuda (la última de cada una); las dos de la perfumería juntas en "Perfumería debe"
+        const qued = new Map(); let pf = null;
+        for (const x of its) { if (x.pmp != null) pf = { mp: x.pmp, me: x.pme }; else if (x.sal != null && !/perfumer/i.test(x.nom)) qued.set(x.nom, x.sal); }
+        const fin = [...qued.entries()].map(([n2, sl]) => sl < 0 ? `A ${escB(n2)} le debemos ${money(-sl)}` : `${escB(n2)} debe ${money(sl)}`);
+        if (pf) { const tP = pf.mp + pf.me; fin.push(tP < 0 ? `A la perfumería le debemos ${money(-tP)}` : `Perfumería debe ${money(tP)}${pf.mp ? ` (MercadoPago ${money(pf.mp)} · Mercadería ${money(pf.me)})` : ''}`); }
+        txt = out.join('\n\n') + (fin.length ? '\n\n<b>' + fin.join('\n') + '</b>' : '');
+      } else txt = (its.length > 1 ? `📨 <b>${its.length} movimientos</b>\n\n` : '') + its.map((x) => x.head).join('\n\n')
         + '\n\n' + Object.entries(ultQueda).map(([n, q]) => (Object.keys(ultQueda).length > 1 || its.length > 1 ? n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + ': ' : '') + q).join('\n') + (perf ? '\n\n' + perf : '');
       // Revisión etapa 4 (19/11): cortar a 3.900 a ciegas dejaba un <b> abierto → Telegram lo rechazaba y la cola reintentaba para siempre.
       // Se parte por renglones en mensajes de hasta 3.800 (los saldos van en el último) y se borra la cola sólo si salieron todos.
@@ -45528,14 +45554,15 @@ async function main() {
           const sMex = ds.filter((x) => /mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0);   // con signo (etapa 9, 13/11): lo que le debemos no se tapa con $0
           const txt = `🛍️ <b>La perfumería pagó ${money(Math.round(pagado))}</b> (${String(fecha).split('-').reverse().join('/')})\nQueda: MercadoPago ${_mPerf(sMPx)} · Mercadería ${_mPerf(sMex)}\n<b>${sMPx + sMex < 0 ? 'A favor de la perfumería' : 'Total que debe'}: ${money(Math.abs(Math.round(sMPx + sMex)))}</b>`;
           // 17/11: también a la cola, sale junto con los demás movimientos del rato (ver `avisoMov`)
-          const iQ = txt.indexOf('\nQueda:'); await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head: iQ > 0 ? txt.slice(0, iQ) : txt, nom: 'Perfumería', queda: '', perf: iQ > 0 ? txt.slice(iQ + 1) : '', ts: Date.now() });
+          const iQ = txt.indexOf('\nQueda:'); await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head: iQ > 0 ? txt.slice(0, iQ) : txt, nom: 'Perfumería', queda: '', perf: iQ > 0 ? txt.slice(iQ + 1) : '', ts: Date.now(),
+            t: `💵 La perfumería pagó ${money(Math.round(pagado))}`, ren: [], pmp: Math.round(sMPx), pme: Math.round(sMex) });
           console.log('  ✓ aviso del pago en la cola: sale junto con los demás movimientos del rato');
         } catch (e) { console.log('  ⚠️ el aviso del pago NO salió: ' + String(e.message || e).slice(0, 90)); }
       };
       // 📨 CADA MOVIMIENTO AL TELEGRAM (09/11/2026, él: "cuando vendemos algo a la perfumería o cualquier movimiento de pago, venta, cancelación,
       // mandar el movimiento con detalle al telegram"): al grupo de los socios (él y Tito, el mismo de los pagos), con qué fue (producto, unidades,
       // precio, costo, ganancia, perfumería, nota) y cuánto queda, releído de la base. El texto no se imprime (el registro es público).
-      const avisoMov = async (idA, titulo, renglones) => {
+      const avisoMov = async (idA, titulo, renglones, vtaB) => {
         try {
           const dA = (await db.get('cyc/debencuotas/' + idA)) || {};
           const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -45558,7 +45585,12 @@ async function main() {
           const corte = txt.search(/\n(Le debemos|<b>Queda debiendo)/);
           const head = corte > 0 ? txt.slice(0, corte) : txt, tail = corte > 0 ? txt.slice(corte + 1) : '';
           const iP = tail.indexOf('\n\n🛍️ Perfumería:');
-          await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head, nom: String(dA.nom || '?'), queda: iP >= 0 ? tail.slice(0, iP) : tail, perf: iP >= 0 ? tail.slice(iP + 2) : '', ts: Date.now() });
+          // B del 19/11/2026 (él: "pueden ser más resumidos los mensajes? sólo lo importante"): además del texto largo, los números sueltos
+          // (`v` = la venta, `sal` = lo que queda, `pmp`/`pme` = las dos de la perfumería) para que el ciclo arme el mensaje corto.
+          let pmp = null, pme = null; if (/perfumer/.test(_n(dA.nom || ''))) { const ds = Object.values((await db.get('cyc/debencuotas')) || {}).filter((x) => x && /perfumer/.test(_n(x.nom || '')));
+            pmp = Math.round(ds.filter((x) => !/mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0)); pme = Math.round(ds.filter((x) => /mercader/.test(_n(x.nom))).reduce((t, x) => t + saldo(x), 0)); }
+          await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head, nom: String(dA.nom || '?'), queda: iP >= 0 ? tail.slice(0, iP) : tail, perf: iP >= 0 ? tail.slice(iP + 2) : '', ts: Date.now(),
+            t: String(titulo).replace(/<[^>]+>/g, ''), ren: renglones.filter(Boolean).slice(0, 4), sal: sA, ...(pmp != null ? { pmp, pme } : {}), ...(vtaB ? { v: vtaB } : {}) });
           console.log('  ✓ movimiento en la cola: sale al Telegram de los socios junto con los demás de este rato (en 3-5 min)');
         } catch (e) { console.log('  ⚠️ el movimiento NO salió por Telegram: ' + String(e.message || e).slice(0, 90)); }
       };
@@ -45616,7 +45648,7 @@ async function main() {
         const idN = 'c' + ts0; await db.set('cyc/debencuotas/' + idN, dN);
         const rN = await db.get('cyc/debencuotas/' + idN);
         console.log(rN && Number(rN.monto) === dN.monto ? `  ✓ guardada y releída (${idN})` : '  ⚠️ no la pude releer');
-        if (rN) await avisoMov(idN, `🆕 <b>Venta nueva: ${money(dN.monto)}</b> (${f0N.split('-').reverse().join('/')})`, [kv.det ? 'se llevó: ' + kv.det.slice(0, 120) : '', `${nC} cuota(s) de ${money(cuota)}${frec ? ' (' + frec + ')' : ''}`, costo > 0 ? `costo ${money(costo)} · ganancia ${money(dN.monto - costo)}` : '', pagosF.length ? `ya pagó ${pagosF.length}` : '']);
+        if (rN) await avisoMov(idN, `🆕 <b>Venta nueva: ${money(dN.monto)}</b> (${f0N.split('-').reverse().join('/')})`, [kv.det ? 'se llevó: ' + kv.det.slice(0, 120) : '', `${nC} cuota(s) de ${money(cuota)}${frec ? ' (' + frec + ')' : ''}`, costo > 0 ? `costo ${money(costo)} · ganancia ${money(dN.monto - costo)}` : '', pagosF.length ? `ya pagó ${pagosF.length}` : ''], { loc: String(dN.nom), f: f0N, prod: String(kv.det || 'venta').slice(0, 60), color: '', u: 0, m: dN.monto, g: costo > 0 ? dN.monto - costo : null, persona: true });
         return;
       }
       // CUÁNTO NOS COSTÓ UNA DEUDA (28/10/2026, él con la Notebook Tati: "costo 330 dolares"): `=costo <N>[usd]` → `costo` en pesos (con usd,
@@ -46053,7 +46085,8 @@ async function main() {
         await avisoMov(id, signo > 0 ? (prodF ? `🛍️ <b>Venta: ${money(Math.round(monto))}</b> (${fD2})` : `➕ <b>Nos debe ${money(Math.round(monto))} más</b> (${fD2})`) : `💵 <b>Pagó ${money(Math.round(monto))}</b> (${fD2})`,
           [prodF ? `${u} × ${String(prodF.name).slice(0, 70)}${extra.color ? ' · ' + extra.color : ''} a ${money(Math.round(montoU))} c/u` : '',
            prodF && costoU != null ? `costo ${money(Math.round(costoU))} c/u · ganancia ${money(Math.round((montoU - costoU) * u))}` : '',
-           local ? 'perfumería: ' + local : (sinLocal && prodF ? 'repartido entre las tres perfumerías' : ''), nota ? 'nota: ' + nota : '']); }
+           local ? 'perfumería: ' + local : (sinLocal && prodF ? 'repartido entre las tres perfumerías' : ''), nota ? 'nota: ' + nota : ''],
+          signo > 0 && prodF ? { loc: local ? local.charAt(0).toUpperCase() + local.slice(1) : (sinLocal ? 'Perfumería (repartido)' : String(d.nom || '?')), f, prod: String(prodF.name).slice(0, 60), color: extra.color || '', u, m: Math.round(monto), g: costoU != null ? Math.round((montoU - costoU) * u) : null } : null); }
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
         const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
