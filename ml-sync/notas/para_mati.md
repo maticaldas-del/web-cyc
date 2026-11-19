@@ -863,3 +863,7 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 
 ## 19/11 · Para la lista de las 12:30 (informativo)
 - 🧇 Waflera Atma Disney (Ayelen): el vendedor de $115.000 sin Full ya no gana la caja. La Clásica MLA4087803354 la GANA a $269.990 (162% en el peor caso; vendió 2, la última el 26/10). La Premium MLA4121580528 a $329.990 la pierde (para ganar haría falta $297.780, 146%); queda como está (las Premium se quedan aunque no vendan). Nada que decidir. Quedan 4 en Full y 0 en la oficina (2 se dejaron en Soares y Ceballos a $90.000).
+
+### ✅ Contestó la lista del 19/11 a las 12:30: 1a 2a 3a 4a 5b 6b 7a 8a ("que lo podamos ver de la web, si no dejalo así") 9a 10a 11a 12a 13b
+- Hecho por mí: 9a (la completa del 19/11 ya armó Ayelen sin las trabas del 14/11: Lupa 90 8, Espejo redondo 7, Lupa 100 4, Cinta 5M 4, Cortapelo 2, Lupa 60 1) · 12a (cajafijo esponja@luciana=4; precio de lanzamiento 3.990, 115% peor caso) · 5b y 6b quedan como hoy · 13b no se hace la venta por pedido.
+- En curso (código): 1a 2a 3a 4a 7a 8a 10a 11a.
