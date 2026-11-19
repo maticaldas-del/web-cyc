@@ -45710,7 +45710,10 @@ async function main() {
         await db.patch(`cyc/debencuotas/${id}`, { tipo: tv }); const rt = await db.get(`cyc/debencuotas/${id}/tipo`);
         console.log((rt || null) === tv ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer'); return;
       }
-      const mnd = String(resto).trim().match(/^(nombre|det)\s+(.+)$/i);
+      // `|sinaviso` (19/11/2026, él con los ventiladores: "quiero que diga el nombre no J. no vuelva a mandar"): completar el nombre de
+      // una deuda que ya salió al grupo sin mandar otro mensaje.
+      const _sinAvisoNom = /\|\s*sinaviso\s*$/i.test(String(resto));
+      const mnd = String(resto).replace(/\|\s*sinaviso\s*$/i, '').trim().match(/^(nombre|det)\s+(.+)$/i);
       if (mnd) {
         let cand1 = lista.filter(([id]) => id === quien);
         if (!cand1.length) { const pal = _n(quien).split(' ').filter(Boolean); cand1 = lista.filter(([, d]) => pal.every((w) => (' ' + _n(d.nom) + ' ').includes(w))); }
@@ -45721,10 +45724,11 @@ async function main() {
         if (campo === 'nom' && !/perfumer/i.test(String(val || '')) && String(val || '').split(/[\s.,]+/).filter((w) => w.replace(/[^\p{L}]/gu, '').length > 2).length > 1) { console.log('❌ El nombre completo de una persona no va en el comando (queda en el registro público): completalo en la web (✏️ Editar deuda). No escribo nada.'); return; }
         console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] ? '(texto de ' + String(d[campo]).length + ' letras)' : '—')} → ${campo === 'nom' ? _tapaNom({ nom: val }) : (val ? '(texto de ' + val.length + ' letras)' : '—')}`);   // revisión etapa 9 (06/11): "qué se llevó" puede traer nombres: no va al registro   // revisión etapa 9, 30/10/2026: el nombre nuevo con la misma regla (antes `!d.fija`)
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
-        await db.patch(`cyc/debencuotas/${id}`, { [campo]: val });
+        await db.patch(`cyc/debencuotas/${id}`, { [campo]: val, ...(campo === 'nom' ? { nomCompletar: null } : {}) });
         const rv = await db.get(`cyc/debencuotas/${id}/${campo}`);
         console.log((rv || null) === val ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
-        if ((rv || null) === val) await avisoMov(id, `✏️ <b>Corrección: ${campo === 'nom' ? 'el nombre' : 'qué se llevó'}</b>`, [campo === 'det' && val ? 'se llevó: ' + String(val).slice(0, 120) : '']);   // 11a del 18/11
+        if ((rv || null) === val && _sinAvisoNom) console.log('  (sin aviso al grupo: |sinaviso)');
+        else if ((rv || null) === val) await avisoMov(id, `✏️ <b>Corrección: ${campo === 'nom' ? 'el nombre' : 'qué se llevó'}</b>`, [campo === 'det' && val ? 'se llevó: ' + String(val).slice(0, 120) : '']);   // 11a del 18/11
         return;
       }
       const mc = String(resto).trim().match(/^costo\s*\$?\s*([\d.,]+)\s*(usd|us\$|u\$s|dolares|dólares)?$/i);
