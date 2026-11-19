@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.240';
+const APP_VERSION='28.241';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.241',f:'19/11',h:'13:59',c:[{n:2,t:'📋 Dai Nippon (y las listas de Bs As): ya no es por pedido. Los probados se ven como en De siempre, con hasta cuánto pagar y cuántas comprar, y abajo el precio de la lista del mes (sin casilla de pedir). Los nuevos que dan dicen "pagá hasta $X · comprá N u.". Se sacó la solapa 🧾 Pedido.'}]},
   {v:'28.240',f:'19/11',h:'13:02',c:[{n:3,t:'📦 Armar caja: una caja que al venderse deja menos de $200.000 dice "Todavía no: deja $X (mínimo $200.000)" y espera a juntar más. Si un producto sale de la caja porque con su parte del envío no da 35%, su lugar en el cupo va a lo que el cupo dejaba afuera (primero lo que más deja por unidad).'},{n:2,t:'🔒 Archivo para Claude: ahora también el ticket de Paraguay y la guía de Via Cargo se guardan cerrados (no quedan en el registro público) y se siguen viendo en el detalle del pedido.'}]},
   {v:'28.239',f:'19/11',h:'12:45',c:[{n:2,t:'📦 Armar caja: al lado de "mandar N u." dice el % de ganancia sin el envío, cuánto le toca de envío a cada unidad (el de la caja repartido entre las unidades cargadas, en vivo) y el % después de pagar el envío (rojo si queda abajo del 35%).'}]},
   {v:'28.238',f:'19/11',h:'05:05',c:[{n:1,t:'Revisión de Choques y fallas mudas en el cartel, con sus 7 decisiones.'}]},
@@ -25104,7 +25105,10 @@ function listaProbCasillaHTML(p,pr){
     const it=M.porProd[pr.id];
     if(!it){const cur0=_listaProbDe(k)[pr.id];
       return _caja(`<span style="color:var(--amber);font-weight:700">📋 no está en la lista de ${escHtml(pv.nombre||k)} del ${_fm}: este mes no se puede pedir</span>${cur0&&(parseInt(cur0.u)||0)>0?` · <span style="color:var(--red)">había ${parseInt(cur0.u)} u. cargadas</span> <button class="btn" style="font-size:.64rem;padding:2px 8px" onclick="listaProbSet('${k}','${pr.id}',0)">sacarlas</button>`:''}`);}
-    p={...p,_precioMes:it.p,_fechaMes:_fm};}
+    // 19/11/2026, él: "en nippon no es por pedido, lo ve mi viejo, así que hace lo mismo que en lo de siempre. pone el máximo, las
+    // unidades a comprar": en las listas de Bs As no hay casilla de pedir. La tarjeta ya dice el máximo y las unidades (como De siempre);
+    // abajo sólo el precio de la lista del mes, para que Tito lo compare en el local.
+    return _caja(`<span style="color:var(--muted)">📋 en la lista de ${escHtml(pv.nombre||k)} del ${_fm}: <b style="color:var(--text)">${fmt(it.p)}</b> c/u</span>`);}
   return _listaProbCasillaHTML(p,pr,k,pv);
 }
 function _listaProbCasillaHTML(p,pr,k,pv){
@@ -25531,11 +25535,20 @@ function _listaProvSel(vis,sel){const provs=(state.mlconfig&&state.mlconfig.list
   return `<select class="cal-select" style="font-size:.76rem;max-width:100%" onchange="_listaSel=this.value;_listaQ='';renderListas()">${vis.map(x=>`<option value="${x}"${x===sel?' selected':''}>${escHtml(t(x))}</option>`).join('')}</select>`;}
 function _listaOrdV(){try{return localStorage.getItem('cycListaOrd')||'pct';}catch(e){return 'pct';}}
 function listaSetOrd(v){try{localStorage.setItem('cycListaOrd',v);}catch(e){}renderListas();}
+// 🆕 NUEVO DE UNA LISTA DE BS AS: HASTA CUÁNTO PAGAR Y CUÁNTAS COMPRAR (19/11/2026, él con Dai Nippon: "no es por pedido, lo ve mi viejo,
+// así que hace lo mismo que en lo de siempre. pone el máximo, las unidades a comprar"). Máximo = el precio de la lista que deja 35% en ML en
+// el peor caso (`_llMaxNuevo`, el mismo de "Para comprar en el local"). Unidades = compra de prueba como Paraguay: hasta US$ 20 al dólar de
+// hoy, entre 1 y 4 (`PED_UNI_USD`/`PED_UNI_MAX`); si Claude cargó otra cantidad en `listaPed`, manda ésa.
+function _llUNuevo(k,cod,e){const a=parseInt((((state.listaPed||{})[k])||{})[cod])||0;if(a>0)return a;
+  const pc=_listaPuesto(k,e),tc=curTC();if(!(pc>0)||!(tc>0))return 1;return Math.max(1,Math.min(PED_UNI_MAX,Math.ceil(PED_UNI_USD*tc/pc-1e-9)));}
+function _llCompraNuevoHTML(k,cod,e){const mx=_llMaxNuevo(k,e,LL_META);const u=_llUNuevo(k,cod,e);
+  return `<div style="margin-top:4px;font-size:.66rem;line-height:1.5;color:var(--muted)">${mx.max?`pagá hasta <b style="color:var(--text)">${fmt(mx.max)}</b>`:`<span style="color:var(--amber)">${escHtml(mx.motivo||'sin máximo')}</span>`}<br>comprá <b style="color:var(--green);font-size:.9rem">${u}</b> u.</div>`;}
 async function renderListas(){
   const _enB=pedidoSection==='bsas';
   if(_enB&&_bsasVista!=='listas'){window._nipAbierto=false;const b=document.getElementById('bsas-listas-body');if(b)b.innerHTML='';return;}
   // AL ABRIR DAI NIPPON, SIEMPRE PROBADOS (21/10/2026, pedido suyo): cada vez que se entra (venía de otra solapa o sección).
   if(_enB&&!window._nipAbierto)_listaVista='probados';
+  if(_enB&&_listaVista==='hechos')_listaVista='probados';   // 19/11/2026: en Bs As no hay 🧾 Pedido
   window._nipAbierto=_enB;
   const el=document.getElementById(_enB?'bsas-listas-body':'listas-body');if(!el)return;
   {const otro=document.getElementById(_enB?'listas-body':'bsas-listas-body');if(otro)otro.innerHTML='';}
@@ -25577,7 +25590,7 @@ async function renderListas(){
   // lista abierta) que buscaban lo mismo con dos resultados distintos. Queda éste, arriba, también en la solapa Dai Nippon de Bs As.
   let cab=_revTabs+(_enB?'<div style="height:10px"></div>':'')+`<div style="margin-bottom:10px"><input id="lista-buscar" type="search" value="${escHtml(window._listaQ||'')}" placeholder="🔎 Buscar un producto en ${_enB?'las listas de Bs As':'TODAS las listas'}…" oninput="listaBuscar(this.value)" style="width:100%;padding:9px 12px;font-size:.85rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text)"><div id="lista-busq"></div></div>`+`
     ${(_enB&&visibles.length===1)?'':`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><span style="font-size:.68rem;color:var(--muted)">Proveedor:</span>${_listaProvSel(visibles,k)}${_enB?'':`<button class="btn" style="font-size:.64rem;padding:4px 10px;opacity:.8" title="La esconde de acá hasta que la vuelvas a poner (desde ⏸️ sacadas por ahora). No borra nada." onclick="listaPausar('${k}',true)">⏸️ sacar ${escHtml(nom)} por ahora</button>`}</div>`}${_volverHtml}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${_tab('probados','✅ Productos probados','Lo que ya le compraste a este proveedor: cuánto reponer.')}${_tab('nuevos','🆕 Productos nuevos','Lo de su lista que todavía no vendés y da 25% o más en ML.')}${_enB?'':_tab('hechos','🧾 Pedido'+(nArm?' ('+nArm+' cargados)':''),'El pedido del momento, el mensaje con código y unidades, y los pedidos ya hechos.')}</div>`;
   // 📍 LA DIRECCIÓN DEL MAYORISTA ELEGIDO, AHÍ MISMO (28/10/2026, él: "que estén todos en un desplegable. al clickear que tenga la dirección ahí dentro").
   if(v.dir)cab=cab.replace('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">',`<div style="font-size:.72rem;margin:-4px 0 10px">📍 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.dir)}" target="_blank" rel="noopener" style="color:var(--accent2)">${escHtml(v.dir)}</a> <span style="color:var(--muted)">· tocá para abrir el mapa</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">`);
   _listaCacheRevisar();   // etapa 4 (20/10/2026): la que cambió el robot se vuelve a bajar
@@ -25596,7 +25609,7 @@ async function renderListas(){
   if(_listaVista==='probados'){
     const ids=new Set((state.products||[]).filter(p=>p.listaProv===k).map(p=>p.id));
     const peds=(state.pedidos||[]).filter(p=>ids.has(p.prodId)).sort(_pedSortFnRiesgo);
-    el.innerHTML=cab+(ids.size?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición · cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta y tocá 🛒 Agregar al pedido: van al 🧾 Pedido</div>`+(()=>{const PC=_pedPartirCargado(peds,pid=>_listaProbDe(k)[pid]);
+    el.innerHTML=cab+(ids.size?`<div style="font-size:.66rem;color:var(--muted);margin-bottom:8px">${ids.size} producto${ids.size===1?'':'s'} de ${escHtml(nom)} · ${peds.length} con pedido de reposición${_enB?' · cada tarjeta dice hasta cuánto pagar y cuántas comprar':` · cargalos con "📋 pedir a ${escHtml(nom)}" debajo de cada tarjeta y tocá 🛒 Agregar al pedido: van al 🧾 Pedido`}</div>`+(()=>{const PC=_pedPartirCargado(peds,pid=>_listaProbDe(k)[pid]);
         return (PC.quedan.length?PC.quedan.map(p=>_pedidoItemHtml(p,{showRiesgo:true})).join(''):`<div class="empty-msg">${PC.ya.length?'Todo lo recomendado ya está cargado en el 🧾 Pedido.':'Ninguno necesita reposición hoy.'}</div>`)+_pedYaCargadosHTML(PC.ya,p=>_pedidoItemHtml(p,{showRiesgo:true}));})()
       :`<div class="empty-msg">Todavía no le compraste nada a ${escHtml(nom)}: lo que llegue de un pedido suyo aparece acá como probado.</div>`);
     return;
@@ -25608,6 +25621,7 @@ async function renderListas(){
       :e.sc?'<span style="font-size:.62rem;color:var(--muted)">sin catálogo exacto en ML</span>':e.sv?'<span style="font-size:.62rem;color:var(--muted)">en ML no lo vende nadie</span>':e.fz?`<span style="font-size:.62rem;color:var(--muted)">afuera: ${escHtml(e.fz)}</span>`:'<span style="font-size:.62rem;color:var(--muted)">⏳ sin medir</span>';
     const fML=/^https:\/\//.test(e.mf||'')?e.mf:'';const vj=viaj.has(String(cod)),fi=yaFicha.has(String(cod));
     const uBox=!conU?'':fi?'<div style="font-size:.6rem;color:var(--green)" title="Ya es una ficha: se pide desde la tarjeta de Pedidos (📋 pedir a la lista) o en ✅ Probados">ya es probado</div>':vj?'<div style="font-size:.6rem;color:var(--amber)">🚚 viajando</div>'
+      :(_enB&&_listaDa(e,k))?_llCompraNuevoHTML(k,cod,e)
       :(_listaDa(e,k)||Number(arm[cod])>0)?`<div style="margin-top:4px;font-size:.62rem;color:var(--muted)">pedir <input type="number" min="0" inputmode="numeric" value="${arm[cod]||''}" placeholder="0" onchange="listaSetU('${k}','${String(cod).replace(/'/g,"\\'")}',this.value)" style="width:52px;padding:3px 5px;font-size:.8rem;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text)"> u.</div>`:'';   // ya cargado y que dejó de dar (lista anterior, sin stock): la casilla queda para ponerlo en 0 (revisión etapa 3, 29/10/2026)
     // LA TARJETA ENTERA ABRE EL DETALLE (21/10/2026, él: "quiero que salga donde dice detalle y la flechita. que se abra directamente al
     // clickear en cualquier parte de la tarjeta del producto"). Sin el código a la vista ("no nos basamos con eso"; queda en "verlo en
