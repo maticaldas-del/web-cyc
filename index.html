@@ -3768,6 +3768,7 @@ const LISTA_NOMBRE_VER=1;
 const APP_CAMBIOS=[
   {v:'28.238',f:'19/11',h:'05:05',c:[{n:1,t:'Revisión de Choques y fallas mudas en el cartel, con sus 7 decisiones.'}]},
   {v:'28.237',f:'19/11',h:'04:55',c:[{n:1,t:'Gastos: apretar dos veces "Agregar" con internet lento ya no carga el gasto dos veces.'}]},
+  {v:'28.237',f:'19/11',h:'12:45',c:[{n:2,t:'📦 Armar caja: al lado de "mandar N u." dice el % de ganancia sin el envío, cuánto le toca de envío a cada unidad (el de la caja repartido entre las unidades cargadas, en vivo) y el % después de pagar el envío (rojo si queda abajo del 35%).'}]},
   {v:'28.236',f:'18/11',h:'19:45',c:[{n:2,t:'💳 Cajas en camino: un envío ya PAGADO en ML que no salió (para usar en la próxima caja) se ve arriba de todo en azul, "💳 PAGADO · ⏸️ EN PAUSA", con su número y para qué es. No cuenta como caja en camino.'}]},
   {v:'28.235',f:'18/11',h:'16:40',c:[{n:2,t:'⚡ Inicio: la barra del día ahora es de NEÓN. Cada tramo es un tubo de su color: apagado se ve vacío, lo ganado se prende y brilla, y cuando un tramo se completa se enciende con el parpadeo de un neón. Si el puntaje pasa de 10, el tubo de la punta parpadea fuerte y tira chispas para adelante (más puntos, más chispas). Se fue lo de vidrio y líquido.'}]},
   {v:'28.234',f:'18/11',h:'16:10',c:[{n:1,t:'🫙 Inicio: los tubitos de la barra del día ahora son de vidrio con líquido adentro (brillo y un reflejo que corre). Cuando el puntaje pasa de 10, el último tubo se raja en la punta y el líquido se sale para adelante: chorro, gotas y un charquito (más cuanto más pasa de 10).'}]},
@@ -9508,6 +9509,10 @@ function renderOfiCaja(){
     const _tog=`onclick="cajaToggleDet(${JSON.stringify(_kAb).replace(/"/g,'&quot;')})"`;
     const _resum=sug.filter(s=>s.mandar>0).map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;margin-right:12px">
         <span class="pi-prov">${s.cuenta}</span><strong style="font-family:'Syne',sans-serif;font-size:1rem">mandar ${s.mandar} u.</strong>
+        ${(()=>{const _en=(cajaAct[_ck(f.p.id,f.variante)]||0)>0,_n=(armando?uCaja:0)+(_en?0:s.mandar),_pe=_cajaPctEnvio(f.p,_n);if(!_pe)return '';
+          const _c=x=>x<35?'var(--red)':'var(--green)';
+          return `<span style="font-size:.66rem;color:var(--muted);white-space:normal" title="Sin envío: lo que deja cada unidad sobre su costo. Envío: ${fmt(costoCaja())} de la caja repartido entre ${_pe.n} u. (las cargadas${_en?'':' + éstas'}). Con envío: lo que deja después de pagar su parte.">
+            <b style="color:${_c(_pe.sin)}">${Math.round(_pe.sin)}%</b> sin envío · envío ${fmt(Math.round(_pe.envU))} c/u (${_pe.n} u.) · <b style="color:${_c(_pe.con)}">${Math.round(_pe.con)}%</b> con envío</span>`;})()}
         ${s.etiq?`<span title="Código de la etiqueta de Full en ${s.cuenta} (no es el MLA)." style="font-family:'DM Mono',monospace;font-size:.7rem;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:5px;padding:2px 6px;letter-spacing:.04em">${s.etiq}</span>`:'<span style="font-size:.62rem;color:var(--muted)">sin código</span>'}${(r=>r&&r.tipo==='REPLENISH'&&r.sug!=null?`<span title="Lo que recomienda mandar ML (lo lee el robot una vez por día). No decide: es para comparar." style="font-size:.6rem;color:${['THIS_WEEK','NEXT_WEEK','IN_TWO_WEEKS'].includes(r.plazo)?'var(--amber)':'var(--muted)'}">ML ${r.sug}${r.ben?' 🎁':''}${r.estrella?' ⭐':''}${r.restr?' ⛔':''}</span>`:'')(fullRecoDe(f.p.id,s.cuenta,f.variante||''))}</span>`).join('');
     const _hayAviso=sug.some(s=>s.sinPub)||!!f.sinContarPorAroma||!!f.sinPublicar;
     return `<div style="padding:12px 14px;background:var(--surface);border:1px solid ${enCaja>0?'var(--accent2)':'var(--border)'};border-radius:var(--r);margin-bottom:8px">
@@ -11261,6 +11266,15 @@ const CAJA_VALE_LA_PENA=10;   // si lleva 10 veces el costo del envío, va igual
 // últimos 90 días (precio por unidad) · a cuánto se puede vender contra la competencia (`cyc/techofull`, el más barato con Full ×0,99
 // o sin Full +10%, lo mide el robot de noche; más viejo de 4 días no cuenta). Otro precio que el de hoy: comisión con
 // `comisionEnPrecio` y el envío del lado de la barrera de ESE precio (igual que `maxCompraDe`). Sin publicación o sin margen, nada.
+// 📦 % CON Y SIN EL ENVÍO DE LA CAJA, EN VIVO (19/11/2026, él: "poneme el % de ganancia sin el envío, el costo del envío por cada unidad
+// (teniendo en cuenta en vivo las unidades puestas en la caja) y el % de ganancia después de cargar el costo del envío"): la misma cuenta
+// que `pctCaja` (ganancia sin el envío+embalaje de la ficha, sobre el costo sin ese envío) por producto, con el envío de ESTA caja
+// (`costoCaja()`) repartido entre las unidades que lleva (`nCaja`, las cargadas + este renglón si todavía no está cargado).
+function _cajaPctEnvio(p,nCaja){try{
+  const g=gananciaUnidad(p),m=margenMLDe(p);if(g==null||!m||!(m.costoBase>0))return null;
+  const sh=(parseFloat(p.shipUSD)||0)*curTC(),gp=g+sh,cp=m.costoBase-sh;if(!(cp>0))return null;
+  const n=Math.max(1,Number(nCaja)||1),envU=costoCaja()/n;
+  return{sin:gp/cp*100,envU,n,con:(gp-envU)/(cp+envU)*100};}catch(_){return null;}}
 function _cajaPct35(p){try{
   const r=margenMLDe(p);if(!r||r.margen==null||!(r.costo>0)||!(r.precio>0)||r.sinCosto)return null;
   const precio=Math.round(r.precio),gest=Number(r.gest)||0,comHoy=precio-(Number(r.neto)||0)-gest,merc=costFullP(p),impPct=(Number(r.mlExtra)||0)/precio;
