@@ -58011,7 +58011,20 @@ async function main() {
       const GO = /(^|;)go$/.test(_raw) && !DRY;
       const cuerpo = _raw.replace(/(^|;)go$/, '');
       const _cab = (cuerpo.split('|')[0] || '');
-      const track = _cab.split('@')[0].replace(/\D/g, '');
+      let track = _cab.split('@')[0].replace(/\D/g, '');
+      // 19/11/2026 (él con la caja de chicos de Luciana: "lo que está en la caja de ML es lo correcto"): `cajaitems:cuenta=<cuenta>|…` agarra la
+      // caja NO llegada más nueva de esa cuenta que tiene TODOS los productos nombrados (el seguimiento no se imprime en el registro público).
+      const _mCta = _cab.match(/^cuenta=(\w+)$/i);
+      if (_mCta) {
+        const nrm0 = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+        const pals = cuerpo.split('|').slice(1).join('|').split(';').map((x) => nrm0(String(x).split(/[@=]/)[0].replace(/^=/, ''))).filter(Boolean);
+        const envs0 = (await db.get('cyc/envios_full')) || {}; const cand = [];
+        for (const [id, e] of Object.entries(envs0)) { if (!e || nrm0(e.cuenta) !== nrm0(_mCta[1])) continue; (e.cajasDet || []).forEach((c, j) => { if (c && !c.recibida && c.track && pals.every((w) => (c.items || []).some((it) => nrm0(it.nombre).includes(w)))) cand.push({ t: String(c.track).replace(/\D/g, ''), ts: Number(e.ts) || 0 }); }); }
+        cand.sort((a, b) => b.ts - a.ts);
+        if (!cand.length) { console.log(`❌ No hay una caja sin llegar de ${_mCta[1]} con todos esos productos. No escribo nada.`); return; }
+        if (cand.length > 1 && cand[0].ts === cand[1].ts) { console.log('❌ Hay dos cajas iguales de esa cuenta: usá el seguimiento. No escribo nada.'); return; }
+        track = cand[0].t; console.log(`(caja encontrada por cuenta y productos: seguimiento …${track.slice(-3)})`);
+      }
       const _ctaNueva = (_cab.split('@')[1] || '').trim();
       const pares = cuerpo.split('|').slice(1).join('|').split(';').map((x) => x.trim()).filter(Boolean);
       if (!track || !pares.length) { console.log('Usá: cajaitems:<seguimiento>|<palabra>[@<variante>]=<u>;…;go'); return; }
@@ -58049,7 +58062,7 @@ async function main() {
       if (problemas.length) { console.log('❌ NO ESCRIBO NADA:'); problemas.forEach((x) => console.log('   ' + x)); return; }
       const OFI = sid('Oficina Mati'); const kTot = (pid) => pid + '__' + OFI; const kVar = (pid, v) => kTot(pid) + '__v__' + sid(v);
       const inv = (await db.get('cyc/inventory')) || {};
-      console.log(`=== ${_nueva ? 'CAJA NUEVA' : 'CORREGIR LA CAJA'} ${track} (${env.cuenta}, ${env.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
+      console.log(`=== ${_nueva ? 'CAJA NUEVA' : 'CORREGIR LA CAJA'} ${_mCta ? '…' + track.slice(-3) : track} (${env.cuenta}, ${env.fecha}) ${GO ? '' : '(PRUEBA — no escribo nada)'} ===`);
       const upd = {}; const get = (k) => (k in upd ? (upd[k] || 0) : (parseInt(inv[k]) || 0));
       for (const o of ops) {
         const j = items.findIndex((it) => it && it.prodId === o.p.id && String(it.variante || '') === String(o.va || ''));
