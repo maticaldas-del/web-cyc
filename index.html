@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.249';
+const APP_VERSION='28.250';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.250',f:'20/11',h:'15:05',c:[{n:2,t:'Gastos del mes: se sacó el renglón "Intereses financieros" suelto. El único interés que se paga es el de Tito (Intereses · Papá); pedir dos hacía cargar el mismo dos veces.'}]},
   {v:'28.249',f:'20/11',h:'14:30',c:[{n:2,t:'Gastos del mes: se sacó la casilla para cargar un gasto a mano (se duplicaban con los que cargo yo). Los gastos se pasan por el chat y los cargo yo.'}]},
   {v:'28.248',f:'20/11',h:'14:15',c:[{n:3,t:'📊 Métricas → 💰 Ganancia: las tarjetas de arriba (total y cada cuenta) también muestran lo que queda después de los gastos, igual que la línea. El % de ganancia de cada cuenta sigue siendo el de las ventas.'}]},
   {v:'28.247',f:'20/11',h:'13:55',c:[{n:2,t:'📊 Métricas → 💰 Ganancia: al pasar el dedo ya no sale el detalle de cada gasto; sale lo gastado hasta ese día contra el mes anterior a la misma altura (el último día = el mes entero). Lo que falta pagar se estima sólo para lo que todavía no se cargó este mes: lo que se gastó de menos ya cuenta.'}]},
@@ -29593,8 +29594,8 @@ const GASTOS_DEL_MES=[
   // marcas viejas y del «⚠️ VENDE» que saltaba en todos.
   // 13a del 08/11/2026 (él): el interés del préstamo de Tito (US$ 8.800 al 1% mensual, desde el 02/11) va en SU renglón: con uno solo,
   // cargar el de Tito pintaba verde el de intereses y no se veía si faltaba el otro (o al revés). Se reconoce por "papá"/"tito" en la descripción.
-  {n:'Intereses financieros',  cat:'Intereses financieros', no:['papá','papa','tito'],
-   nota:'el interés del capital en dólares de los socios ya NO se paga (19/09/2026): queda sólo el otro (el préstamo de Tito va en el renglón de abajo)'},
+  // 20/11/2026 (él: "me lo pide y ya está cargado"): se sacó el renglón "Intereses financieros" suelto: desde el 19/09 el único interés que se
+  // paga es el de Tito (renglón de abajo) y pedir otro hacía cargar el mismo dos veces (octubre y noviembre quedaron con dos).
   {n:'Intereses · Papá',  cat:'Intereses financieros', pal:['papá','papa','tito'], interesPapa:true,
    nota:'el 1% de lo que Tito tiene en CYC al EMPEZAR el mes ("Dólares Tito" del cierre del mes anterior, al dólar de ese cierre)'},
   {n:'Cargos de Full de ML (las 4 cuentas)', cat:'Envios', pal:['almacenamiento','full','stock antiguo','retiro'], auto:true,   // revisión etapa 2 (05/11/2026): sin casilla: un monto escrito acá dejaba al robot creer que ya estaba cargado y nunca entraban los cargos reales
