@@ -24223,6 +24223,21 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=borrargasto:<clave>[;go] (20/11/2026, él con los intereses de noviembre: "mi viejo este mes cobró uno solo 124.800")
+    // → SACA UN GASTO CARGADO DE MÁS (la clave sale de `vergastos`). Sin `;go` sólo muestra. Se relee de la base.
+    if (/^borrargasto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('borrargasto:'.length); const GOb = /;go$/.test(_r) && !DRY;
+      const CL = _r.replace(/;go$/, '').trim();
+      if (!/^[A-Za-z0-9_-]+$/.test(CL)) { console.log('Usá: borrargasto:<clave de vergastos>[;go]'); process.exitCode = 1; return; }
+      const g = await db.get('cyc/compras/' + CL);
+      if (!g) { console.log(`No hay ningún gasto con la clave ${CL}.`); process.exitCode = 1; return; }
+      if (g.tipo && g.tipo !== 'gasto') { console.log(`${CL} no es un gasto (es ${g.tipo || '?'}): no lo toco.`); process.exitCode = 1; return; }
+      console.log(`=== SACAR GASTO ${GOb ? '' : '(PRUEBA)'} ===\n  ${g.dayKey} · ${money(Math.round(g.monto || 0))} · ${g.cat || '?'} · ${String(g.desc || '').slice(0, 80)}`);
+      if (!GOb) { console.log('PRUEBA: agregá ;go para sacarlo.'); return; }
+      await db.set('cyc/compras/' + CL, null);
+      console.log((await db.get('cyc/compras/' + CL)) ? '✗ NO se borró (releído)' : '✓ Sacado y releído de la base.');
+      return;
+    }
     // BILLING_PROBE=cargargasto:<AAAA_MM_DD>|<monto>|<categoría>|<descripción>[|prov=..][|fact=..][|cae=..][|go]
     // → CARGA UN GASTO, GUARDANDO EL RESPALDO.
     //
