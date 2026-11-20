@@ -893,3 +893,8 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 6. **Lanzamientos que casi nadie ve**: Emeet S600 (MLA4119990928, 1 visita en 7 días), Lexar SDXC 64 GB (MLA4127754030, 12 visitas en 12 días), Lexar SD 64 GB UHS-II (MLA4151293622, 8 en 5), Emeet 4K Duel (MLA4151294470, 6 en 6). (a) sugerida: revisar título y fotos en ML · (b) arrancar igual la escalera de lanzamiento.
 - **Aviso (no es pregunta):** con el dólar nuevo (1.585) el descuento del VS Bare Vanilla quedó en 28 del peor caso (piso 30) y el del Muserose en 33 (pediste 35). Al renovarlos (VS el 24/11, Muserose el 23/11) se ponen al piso de ese día, no al mismo precio.
 - **Pedido de Filtros de agua:** el pedido pedía 162 como pedido de Navidad adelantado; lo dejé en 0 hasta que contestes la 8 del 19/11 (si ese proveedor sirve para reponer). Hay 175.
+
+## 20/11 · Vuelta de las 11:52 · preguntas de compradores que no sé sin duda (se ven en ML)
+1. **Sombra Idi Make Up HD** (Luciana, MLA4173332214): dos preguntas sobre cómo es el color de los tonos (q13695020008 y q13693949285). Si me decís cómo son, las contesto con `contesto`.
+2. **Sábanas 2 plazas y media** (Luciana, MLA2655470590): preguntan si van para un sommier de 2 plazas y media (q13693944075). Necesito la medida exacta del juego para contestar sin duda.
+3. **Waflera Atma Disney** (Ayelen, MLA4087803354): preguntan por otro diseño de personaje (q13694614080). La publicación es la roja de la línea Disney; ¿qué diseño trae la que tenemos?
