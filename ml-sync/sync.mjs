@@ -24223,6 +24223,26 @@ async function main() {
       return;
     }
 
+    // BILLING_PROBE=interesesmes (20/11/2026, SOLO LEE; él: "en gastos los meses anteriores me dice que faltan los intereses de papá… teniendo en
+    // cuenta los dólares que él tenía en ese mes al hacer el arqueo y hubo meses que yo también cobraba"): por cada cierre, los dólares de Tito y
+    // de Mati, el dólar del cierre y el 1% de cada uno (lo que tocaría el mes SIGUIENTE), y los gastos de intereses cargados en cada mes.
+    if (/^interesesmes$/.test(String(process.env.BILLING_PROBE || '').trim())) {
+      const sn = (await db.get('cyc/snapshots')) || {}; const comp = (await db.get('cyc/compras')) || {};
+      const sig = (k) => { const [y, m] = k.split('_').map(Number); return m === 12 ? (y + 1) + '_01' : y + '_' + String(m + 1).padStart(2, '0'); };
+      console.log('=== INTERESES DE LOS SOCIOS POR MES (sólo lee) ===');
+      const meses = new Set(); Object.keys(sn).forEach((k) => /^\d{4}_\d{2}$/.test(k) && meses.add(sig(k)));
+      Object.values(comp).forEach((x) => { if (x && x.tipo !== 'compra' && /inter/i.test(String(x.cat || '') + ' ' + String(x.desc || ''))) meses.add(String(x.dayKey || '').slice(0, 7)); });
+      for (const ym of [...meses].filter((x) => /^\d{4}_\d{2}$/.test(x)).sort()) {
+        const [y, m] = ym.split('_').map(Number); const pk = m === 1 ? (y - 1) + '_12' : y + '_' + String(m - 1).padStart(2, '0');
+        const s2 = sn[pk]; const f = (s2 && s2.finanzas) || {}; const tc = Number(s2 && s2.tipoCambio) || 0;
+        const ti = Math.abs(parseFloat(f.dolares_tito) || 0), ma = Math.abs(parseFloat(f.dolares_mati) || 0);
+        const g = Object.values(comp).filter((x) => x && x.tipo !== 'compra' && String(x.dayKey || '').startsWith(ym) && /inter/i.test(String(x.cat || '') + ' ' + String(x.desc || '')));
+        console.log(`\n${ym}: cierre ${pk} ${s2 ? `· Tito US$ ${Math.round(ti)} · Mati US$ ${Math.round(ma)} · dólar ${tc ? Math.round(tc) : '?'} → 1% Tito ${money(Math.round(ti * tc * 0.01))} · 1% Mati ${money(Math.round(ma * tc * 0.01))}` : '· sin cierre'}`);
+        for (const x of g) console.log(`   cargado ${x.dayKey} · ${money(Math.round(x.monto || 0))} · ${String(x.desc || '(sin descripción)').slice(0, 60)}`);
+        if (!g.length) console.log('   (ningún interés cargado)');
+      }
+      return;
+    }
     // BILLING_PROBE=borrargasto:<clave>[;go] (20/11/2026, él con los intereses de noviembre: "mi viejo este mes cobró uno solo 124.800")
     // → SACA UN GASTO CARGADO DE MÁS (la clave sale de `vergastos`). Sin `;go` sólo muestra. Se relee de la base.
     if (/^borrargasto:/.test(String(process.env.BILLING_PROBE || ''))) {
