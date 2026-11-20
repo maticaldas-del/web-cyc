@@ -1,0 +1,294 @@
+[
+ {
+  "n": 1,
+  "grupo": "noche",
+  "tit": "💵 Tus intereses de octubre",
+  "txt": "En octubre CYC te debía US$ 1.000 (arqueo de septiembre). El 1% serían $15.350 y no hay nada cargado.",
+  "a": {
+   "t": "No cobraste: queda así"
+  },
+  "b": {
+   "t": "Cobraste: lo cargo como gasto de octubre"
+  }
+ },
+ {
+  "n": 2,
+  "grupo": "noche",
+  "tit": "🛍️ Rubios Totales y Virulana a la perfumería",
+  "txt": "Fueron por error (2 Rubios y 4 Virulana). Cobrarlos con el 25%: $68.097 ($65.012 + $3.085). ¿A qué perfumería fueron?",
+  "a": {
+   "t": "Soares (si es otra, escribila en el chat)"
+  },
+  "b": {
+   "t": "No cobrarlos todavía"
+  }
+ },
+ {
+  "n": 3,
+  "grupo": "noche",
+  "tit": "🧔 Leyton (Paulvic hombre, 4 en Full)",
+  "txt": "33 días sin vender; la prueba del mes a $32.990 lleva 17 sin vender. Choca la liquidación con dejar los Paulvic hasta Navidad (la pasada no vendió más). Techo en $32.990 con 17 días.",
+  "a": {
+   "t": "Primer escalón como descuento a $28.090 en las dos (sigue arriba del 35%)"
+  },
+  "b": {
+   "t": "Dejarlo a $32.990 hasta después de Navidad"
+  }
+ },
+ {
+  "n": 4,
+  "grupo": "noche",
+  "tit": "🌸 Paulvic Dream Way (29 en Full)",
+  "txt": "La tanda más vieja paga stock antiguo cerca del 18/12; vende 2 por mes. Choca con dejar los Paulvic a $21.990 hasta Navidad.",
+  "a": {
+   "t": "Desde el 03/12, escalera hasta ganar la caja (sin bajar de 0%)"
+  },
+  "b": {
+   "t": "Dejarlo a $21.990 y pagar el stock antiguo"
+  }
+ },
+ {
+  "n": 5,
+  "grupo": "noche",
+  "tit": "⌚ Smartwatch Blackview R30 Max (Luciana)",
+  "txt": "Activado a $78.990 con costo sin probar ($35.853). Nadie lo vende con Full; los 7 sin Full arrancan en $87.511. Con el dólar nuevo queda en 34% del peor caso.",
+  "a": {
+   "t": "Confirmás el costo y lo relanzo a $103.990"
+  },
+  "b": {
+   "t": "Lo dejo de lanzamiento y sólo sube al 35% ($79.990)"
+  },
+  "mla": "MLA2265067899"
+ },
+ {
+  "n": 6,
+  "grupo": "noche",
+  "tit": "🖱️ Mouse Lenovo Essential USB (Luciana)",
+  "txt": "Activado a $49.990 con costo sin probar ($13.076). El único otro vendedor está a $52.786.",
+  "a": {
+   "t": "Mirás catálogo y factura; si costo o precio están mal se corrige con tu OK"
+  },
+  "b": {
+   "t": "Lo dejo de lanzamiento y decide el techo"
+  },
+  "mla": "MLA2255402891"
+ },
+ {
+  "n": 7,
+  "grupo": "noche",
+  "tit": "💄 Labial Idi 19 Sandy (Luciana)",
+  "txt": "El 08/11 dijiste $13.990 y se activó a $19.990. Con el costo de la ficha ($6.449, lista Dai Nippon, sin ticket) $13.990 da cerca del 35%. Seguridad de techo: 0%.",
+  "a": {
+   "t": "Confirmás el costo y lo bajo a $13.990 (con tu autorizo)"
+  },
+  "b": {
+   "t": "Dejarlo a $19.990"
+  },
+  "mla": "MLA4173403900"
+ },
+ {
+  "n": 8,
+  "grupo": "noche",
+  "tit": "☎️ Teléfono Panasonic KX-TS880 (Luciana)",
+  "txt": "Activado a $416.990 copiando al único otro vendedor (sin Full). Ganamos la caja. Sin días medidos.",
+  "a": {
+   "t": "Dejar el lanzamiento; escalera si en 10 días con visitas no vende"
+  },
+  "b": {
+   "t": "Si sabés a cuánto se vende, lo corrijo (con tu autorizo)"
+  },
+  "mla": "MLA2265105181"
+ },
+ {
+  "n": 9,
+  "grupo": "noche",
+  "tit": "👀 Publicaciones que casi nadie ve",
+  "txt": "GoPro Handler (0 visitas en 10 días), Emeet S600 (1 en 7), Lexar SDXC 64 GB (12 en 12), Lexar SD UHS-II (8 en 5), Emeet 4K Duel (6 en 6), Powerbank Baseus (0 en 10) y routers con la ficha técnica incompleta. Bajar el precio no lo arregla.",
+  "a": {
+   "t": "Revisar título, fotos y ficha técnica en ML (vos o el chat local)"
+  },
+  "b": {
+   "t": "Arrancar igual la escalera de lanzamiento"
+  }
+ },
+ {
+  "n": 10,
+  "grupo": "noche",
+  "tit": "💧 Filtro de agua (Matías)",
+  "txt": "El 14/11 entraron 126 a la oficina y volvió a $4.790. Pedidos pedía 162 para Navidad; lo dejé en 0 hasta que contestes.",
+  "a": {
+   "t": "Ese proveedor sirve para reponer: Pedidos lo repone normal"
+  },
+  "b": {
+   "t": "Fue una compra de una vez"
+  }
+ },
+ {
+  "n": 11,
+  "grupo": "noche",
+  "tit": "🧴 Doree Crema Oxidante Vol 20 (Luciana, $3.990)",
+  "txt": "La ficha dice costo $1.077 y la lista de Dai Nippon decía $703. Con $1.077 deja ~$620 por unidad; para $1.000 habría que ir a ~$4.790, 37% arriba de los otros con Full ($3.500).",
+  "a": {
+   "t": "Confirmame el costo; si es $1.077 lo subo a $4.790"
+  },
+  "b": {
+   "t": "Dejarlo a $3.990"
+  }
+ },
+ {
+  "n": 12,
+  "grupo": "noche",
+  "tit": "🥣 Batidor Blanco (Luciana)",
+  "txt": "ML le marca experiencia de compra Mala: 2 reclamos en 20 ventas por accesorios faltantes y caja vacía.",
+  "a": {
+   "t": "Revisar las unidades de la oficina y de la próxima caja, y que la descripción diga qué incluye"
+  },
+  "b": {
+   "t": "Dejarlo así"
+  }
+ },
+ {
+  "n": 13,
+  "grupo": "noche",
+  "tit": "🥤 Licuadora Ninja (Luciana, 1 en Full)",
+  "txt": "ML la frenó pidiendo la factura de compra (quedan 28 días). No está en el panel.",
+  "a": {
+   "t": "Mandarle a ML la factura desde la cuenta de Luciana (decime de dónde salió y la cargo)"
+  },
+  "b": {
+   "t": "Si no se libera en 7 días, retirarla a la oficina"
+  }
+ },
+ {
+  "n": 14,
+  "grupo": "noche",
+  "tit": "🔔 Avisos callados desde el 18/11",
+  "txt": "Una cuenta que pierde el permiso de ML (deja de leer ventas y precios) y ML moviendo la barrera de $33.000 hoy no salen por el canal privado.",
+  "a": {
+   "t": "Esas dos salen como urgentes; lo demás va al informe"
+  },
+  "b": {
+   "t": "Todo al informe"
+  }
+ },
+ {
+  "n": 15,
+  "grupo": "noche",
+  "tit": "🚨 Venta fuera de Full y códigos de lo que llega",
+  "txt": "Los sumé el 18/11 al canal privado; no lo pediste vos.",
+  "a": {
+   "t": "Siguen saliendo (son plata o algo que llega)"
+  },
+  "b": {
+   "t": "Se callan: te los paso a las 12:30"
+  }
+ },
+ {
+  "n": 16,
+  "grupo": "noche",
+  "tit": "🌐 Tienda y ABEL viejas (del 05/11)",
+  "txt": "La página que ve la gente no se actualiza: falta el permiso para subirla. El cartel de Navidad vence el 6/12.",
+  "a": {
+   "t": "Lo creás vos (2 minutos, te paso los pasos)"
+  },
+  "b": {
+   "t": "Dejarla así"
+  }
+ },
+ {
+  "n": 17,
+  "grupo": "noche",
+  "tit": "🌸 ABEL con pocos perfumes mirados",
+  "txt": "Si dos días no se copia Nissei, queda la lista vieja con precios.",
+  "a": {
+   "t": "Sacar ese freno (ya saca sola lo de más de 2 días) y avisar si baja más de 25%"
+  },
+  "b": {
+   "t": "Dejar el freno y sólo avisar"
+  }
+ },
+ {
+  "n": 18,
+  "grupo": "noche",
+  "tit": "🎨 Perfumería: varios colores del mismo producto",
+  "txt": "Hoy se guarda uno por producto (ej. 3 Diva y 2 Persea: el segundo se niega).",
+  "a": {
+   "t": "Guardar cada color aparte"
+  },
+  "b": {
+   "t": "Seguir con uno por producto"
+  }
+ },
+ {
+  "n": 19,
+  "grupo": "noche",
+  "tit": "🏬 Lo de Tienda que llega de Paraguay",
+  "txt": "No queda en ninguna oficina hasta cargar la venta; si se olvida, su costo desaparece del patrimonio.",
+  "a": {
+   "t": "Que entre a la Oficina Local y salga al dárselo"
+  },
+  "b": {
+   "t": "Como hoy, con un aviso de lo llegado sin venta cargada"
+  }
+ },
+ {
+  "n": 20,
+  "grupo": "noche",
+  "tit": "✏️ Editar una deuda en la web",
+  "txt": "Cambia lo que se debe sin avisar (24 cuotas a 12 bajó $148.000 sin pago).",
+  "a": {
+   "t": "La web no deja cambiar total ni cuotas de una deuda con pagos (se hace por acá)"
+  },
+  "b": {
+   "t": "Que el robot avise los cambios hechos en la web"
+  }
+ },
+ {
+  "n": 21,
+  "grupo": "noche",
+  "tit": "🧾 Mensaje de deudas sin 'quedan N cuotas'",
+  "txt": "Lo pediste el 10/11 y el formato corto lo perdió.",
+  "a": {
+   "t": "Agregarlo en la línea de la persona"
+  },
+  "b": {
+   "t": "Dejarlo así"
+  }
+ },
+ {
+  "n": 22,
+  "grupo": "noche",
+  "tit": "📅 Venta a una persona cargada tarde",
+  "txt": "Con fecha de un mes cerrado suma su ganancia al cobro del mes siguiente (lo dejado a la perfumería no).",
+  "a": {
+   "t": "Igual que lo dejado: va a 'lo viejo cargado tarde'"
+  },
+  "b": {
+   "t": "Dejarlo"
+  }
+ },
+ {
+  "n": 23,
+  "grupo": "noche",
+  "tit": "🗓️ Cerrar noviembre el 30/11",
+  "txt": "Lo cargado después de cerrar con fecha del 30 queda como 'viejo' y su ganancia no se cobra nunca.",
+  "a": {
+   "t": "Lo cargado después de cerrar va al cobro de diciembre"
+  },
+  "b": {
+   "t": "Dejarlo y cerrar el 01/12"
+  }
+ },
+ {
+  "n": 24,
+  "grupo": "noche",
+  "tit": "💸 ¿Cierra el mes? y el retiro",
+  "txt": "Cuenta el retiro entero aunque un socio no lo haya sacado (sale 'Sobra'); el cobro ya usa sólo los ✅.",
+  "a": {
+   "t": "Desde noviembre, ¿Cierra el mes? también sólo lo ✅"
+  },
+  "b": {
+   "t": "Dejarlo"
+  }
+ }
+]
