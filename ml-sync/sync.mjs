@@ -26965,7 +26965,8 @@ async function main() {
       const cambios = [], problemas = [];
       for (const p of pares) {
         const q = nrmP(p.busca);
-        const hits = vivos.filter(([, c]) => nrmP(c.nombre).includes(q));
+        // 20/11: el código exacto del candidato (c…p…) agarra sólo ése (la Batería NP-FW50 y el cargador "para Batería NP-FW50" chocaban).
+        const hits = (cands[p.busca] && cands[p.busca].nombre && !cands[p.busca].prodId) ? [[p.busca, cands[p.busca]]] : vivos.filter(([, c]) => nrmP(c.nombre).includes(q));
         if (!hits.length) { problemas.push(`"${p.busca}" → no encontré ningún candidato con eso`); continue; }
         // Poner en CERO no puede cargar nada equivocado: si la palabra agarra varios (el caso real
         // del 01/10, dos fichas "Blue Iconic", una duplicada y descartada), se ponen en cero todos

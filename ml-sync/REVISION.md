@@ -2368,6 +2368,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 - **13/11 · 💬 Claude te escribe en Inicio** (él, por el buzón: no puede entrar a Claude). `paramati:<texto>;go` (ml-consulta, `cyc/paramati/<ts>`), `paramati:leido=<ts>;go`; web `renderHomeClaude` (`#home-claude`, arriba de Inicio, ✅ Leído), `paramati` en CYC_KEYS. Qué chequear: que el texto no lleve nada privado (pasa por el registro público); que se vea en el teléfono sin cortarse.
 
+- **`pedir:` acepta el código exacto del candidato (20/11)** · qué: `pedir:c1792236915711p0=1;go` agarra sólo ése (la Batería Sony NP-FW50 chocaba con un cargador "para Batería Sony NP-FW50") · dónde: `sync.mjs`, bloque `pedir` · chequear: con un código que no existe sigue buscando por palabras.
+
 ## 4 · CHOQUES Y FALLAS MUDAS (jueves · junta las viejas 4 y 5)
 ### 🔎 Revisión del 19/11/2026 (4 revisores en máximo: comandos que se pisan, fallas leídas como dato, horarios y avisos, web contra robot)
 **Medido y bien:** workflows sin opciones repetidas ni `always()`; ninguna parte de `cyc/` que la web lea llega vacía (todo en `CYC_KEYS`/`CYC_LAZY`); `mllinks`, `envios_full`, `debencuotas`, `compraspy`, `pedidospv` protegidos; `cajallego`, `abrircaja`, `compray`, `pvped:llego`, `entrarpromo` aguantan un corte.
