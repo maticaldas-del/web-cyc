@@ -21417,7 +21417,7 @@ async function main() {
             const faltan = prev && prev.faltan ? [...prev.faltan] : [];
             for (const falta of faltas) {
               const cand = (c.items || []).filter((it) => it && it.prodId && falta.pals.every((w) => _nrm(((pIdx[it.prodId] || {}).name || '') + ' ' + (it.variante || '')).includes(w)));
-              if (cand.length !== 1) { console.log(`── ${busca}: "${falta.pals.join(' ')}" agarra ${cand.length} renglones (tiene que ser 1). No se toca.`); malo(); return; }
+              if (cand.length !== 1) { console.log(`── ${busca}: "${falta.pals.join(' ')}" agarra ${cand.length} renglones (tiene que ser 1). No se toca.${cand.length ? '' : ' Renglones de la caja: ' + (c.items || []).filter((it) => it && it.prodId).map((it) => ((pIdx[it.prodId] || {}).name || it.prodId).slice(0, 35) + (it.variante ? ' @' + it.variante : '')).join(' | ')}`); malo(); return; }
               const it = cand[0];
               if (!(falta.u > 0 && falta.u <= (Number(it.u) || 0))) { console.log(`── ${busca}: faltante de ${falta.u} u. no cabe en el renglón (${it.u} u.). No se toca.`); malo(); return; }
               if (faltan.some((f) => f.prodId === it.prodId && (f.variante || '') === (it.variante || ''))) { console.log(`── ${busca}: dos faltantes para el mismo renglón (${(pIdx[it.prodId] || {}).name || it.prodId}${it.variante ? ' · ' + it.variante : ''}). No se toca.`); malo(); return; }
