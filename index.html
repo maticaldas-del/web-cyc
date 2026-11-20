@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.248';
+const APP_VERSION='28.249';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.249',f:'20/11',h:'14:30',c:[{n:2,t:'Gastos del mes: se sacó la casilla para cargar un gasto a mano (se duplicaban con los que cargo yo). Los gastos se pasan por el chat y los cargo yo.'}]},
   {v:'28.248',f:'20/11',h:'14:15',c:[{n:3,t:'📊 Métricas → 💰 Ganancia: las tarjetas de arriba (total y cada cuenta) también muestran lo que queda después de los gastos, igual que la línea. El % de ganancia de cada cuenta sigue siendo el de las ventas.'}]},
   {v:'28.247',f:'20/11',h:'13:55',c:[{n:2,t:'📊 Métricas → 💰 Ganancia: al pasar el dedo ya no sale el detalle de cada gasto; sale lo gastado hasta ese día contra el mes anterior a la misma altura (el último día = el mes entero). Lo que falta pagar se estima sólo para lo que todavía no se cargó este mes: lo que se gastó de menos ya cuenta.'}]},
   {v:'28.246',f:'20/11',h:'13:40',c:[{n:3,t:'📊 Métricas → 💰 Ganancia: la línea ahora resta los gastos, repartidos parejo entre todos los días del mes (no todo el día que se pagan). El mes en curso usa lo gastado el mes anterior hasta que lo cargado lo pase, así no parece que le ganamos por mucho al principio. La barra verde sigue siendo la ganancia de las ventas y la roja, la parte de gastos de cada día.'}]},
@@ -29775,7 +29776,7 @@ function renderComprasChecklist(){
       ${f.hay||!f.g.interesPapa?'':`<span style="font-size:.62rem;color:var(--muted);flex-basis:100%">${(()=>{const ip=_interesPapa(ymL);return ip?`<b>${fmt(ip.monto)}</b> (1% de US$ ${fmtN(Math.round(ip.usd))} × $${fmtN(Math.round(ip.tc))}, ${ip.de})`:'falta cargar "Dólares Tito" en el Arqueo';})()}</span>`}
       <span style="font-size:.62rem;flex-basis:100%;padding-left:28px">${(()=>{const a=_filasAnt.find(x=>x.g.n===f.g.n);const am=a?a.monto:0;/* 14/11 (él): si todavía no se cargó (y no es 'este mes no va') no se descuenta: sólo se muestra el del mes anterior */return (!f.hay&&!f.noVa)?(am>0?`<span style="color:var(--muted)">el mes anterior ${fmt(Math.round(am))} · todavía no se pagó</span>`:''):_vsAnt(f.monto||0,am);})()}</span>
       ${_mpPagadoHTML(ymL,f.g)}
-      ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;display:flex;gap:6px;align-items:center;margin-top:4px"><input class="fin-input money" type="text" inputmode="numeric" placeholder="monto" id="gr_${_gnvKey(f.g.n)}"${(()=>{const ip=f.g.interesPapa&&_interesPapa(ymL);return ip?` value="${fmtN(ip.monto)}" title="1% de US$ ${fmtN(Math.round(ip.usd))} × $${fmtN(Math.round(ip.tc))} (${ip.de})"`:'';})()} style="width:130px;font-size:.74rem" onkeydown="if(event.key==='Enter')gastoRapido('${ymL}',${filas.indexOf(f)})"><button class="vbtn gm-b" style="" onclick="gastoRapido('${ymL}',${filas.indexOf(f)})">💾 Cargar</button></span>`}
+      ${(f.hay||f.noVa||f.g&&f.g.auto)?'':`<span style="flex-basis:100%;font-size:.62rem;color:var(--muted);margin-top:4px">💬 pasámelo por el chat y lo cargo yo${(()=>{const ip=f.g.interesPapa&&_interesPapa(ymL);return ip?' · este mes da '+fmt(ip.monto)+' (1% de US$ '+fmtN(Math.round(ip.usd))+')':'';})()}</span>`}
     </div>`).join('')}
     ${filasRet.map(f=>`<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 0;border-top:1px solid var(--border)">
       <span style="font-size:.9rem;flex-shrink:0">${f.hay?'✅':'❌'}</span>
