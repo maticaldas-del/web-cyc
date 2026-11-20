@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.244';
+const APP_VERSION='28.245';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.245',f:'20/11',h:'13:10',c:[{n:1,t:'🧾 Pedido del momento (Paraguay): cada probado dice cuánto stock tenemos (Full + en camino + Oficina ML). Al pasar el mouse (o mantener apretado) dice dónde está cada unidad, cuenta por cuenta.'}]},
   {v:'28.244',f:'20/11',h:'11:50',c:[{n:1,t:'🧾 Pedido del momento (Paraguay): arriba dice el total (productos · unidades · US$) y cada bloque sus unidades. Cada renglón queda con nombre, precio c/u, unidades y subtotal; el código, las ventas y las reseñas van adentro al tocarlo.'}]},
   {v:'28.243',f:'20/11',h:'04:35',c:[{n:2,t:'🔍 ¿Cierra el mes?: lo viejo cargado tarde ya no se lee como "Sobra" (se resta de lo que creció, como en el cobro).'}]},
   {v:'28.242',f:'19/11',h:'20:46',c:[{n:2,t:'🗳️ Inicio: cada tanda de decisiones dice su hora y el mensaje a Claude la lleva; si llega una tanda nueva, lo que tocaste y no mandaste se manda solo antes (Choques 1a).'},{n:2,t:'📦 Armar caja: una caja que cargó el robot y retocás a mano sigue siendo del robot (la puede volver a cargar o vaciar) (Choques 2a).'}]},
@@ -20979,9 +20980,18 @@ function pedidoMomentoHTML(g){
   const _ganT=A.reduce((t,x)=>{const gg=_k.gan(x,false);return t+(gg!=null&&isFinite(gg)?gg*x.u:0);},0)+(Number(N.ganancia)||0);
   // Un renglón por COLOR cuando se cargó por color (20/10/2026 · etapa 3): su casilla cambia sólo ese color.
   const _vjTag=t=>{const d=(t.match(/hace (\d+) días/)||[])[1];return ` <span style="color:var(--red);font-size:.7rem;font-weight:700;white-space:nowrap" title="${t}. No se puede pedir hasta volver a mirarlo.">⛔ ${d?'mirado hace '+d+' d':'sin fecha'}</span>`;};
+  // 📦 STOCK DE CADA PROBADO (20/11/2026, él: "en la tarjeta que me indique stock y al pasar por arriba el mouse que aparezcan unidades
+  // en detalle en dónde están"): el total (Full de las 4 cuentas + en camino a Full + Oficina ML) y, en el globito, cuenta por cuenta.
+  const _trSt=(()=>{try{return enTransito();}catch(e){return {};}})();
+  const _stockChip=(pr,color)=>{if(!pr)return '';const q=(l)=>Math.max(0,color?getQV(pr.id,l,color):getQ(pr.id,l));
+    const full=ML_LOCS.map(l=>[l,q(l)]).filter(([,n])=>n>0);const cam=ML_LOCS.map(l=>[l,transitoDe(_trSt,pr.id,l,color||'')]).filter(([,n])=>n>0);
+    const ofi=Math.max(0,color?getQV(pr.id,OFI,color):stockOficina(pr));
+    const tF=full.reduce((a,[,n])=>a+n,0),tC=cam.reduce((a,[,n])=>a+n,0),tot=tF+tC+ofi;
+    const tip=[full.length?'En Full: '+full.map(([l,n])=>l+' '+n).join(', '):'En Full: 0',tC?'En camino a Full: '+cam.map(([l,n])=>l+' '+n).join(', '):'',ofi?'En la Oficina ML: '+ofi:''].filter(Boolean).join('\n');
+    return ` <span title="${escHtml(tip)}" style="font-size:.7rem;font-weight:600;color:${tot>0?'var(--accent2)':'var(--red)'};cursor:help;white-space:nowrap">📦 ${tot} en stock</span>`;};
   const filasA=As.map(f=>{const ft=f.pr?fotoDeProducto(f.pr,f.color||''):null;const _vj=pyProbViejo(f.pr);
     const on=f.key?`pyArmSetVar('${f.pid}','${f.key}',this.value)`:`pyArmSet('${f.pid}',this.value)`, qu=f.key?`pyArmSetVar('${f.pid}','${f.key}',0)`:`pyArmSet('${f.pid}',0)`;
-    return fila(f.nom+(f.color?` <span style="color:#a78bfa;font-size:.74rem">· ${f.color}</span>`:'')+(_vj?_vjTag(_vj.txt):''),f.cod,f.u,f.usd,on,qu,
+    return fila(f.nom+(f.color?` <span style="color:#a78bfa;font-size:.74rem">· ${f.color}</span>`:'')+_stockChip(f.pr,f.color)+(_vj?_vjTag(_vj.txt):''),f.cod,f.u,f.usd,on,qu,
     (_vj?`<div style="color:var(--red);font-weight:700">⛔ ${_vj.txt}: no se puede pedir hasta volver a mirarlo (o sacalo del pedido)</div>`:'')+(f.sinHoy?'<span style="color:var(--amber)">sin precio de hoy: es lo que pagaste</span>':'precio de '+pyProvNom()+' de hoy'+(f.color&&!f.codFicha?' del '+f.color:''))
     +(f.maxWeb!=null?` · <span style="color:${f.caro?'var(--red)':'var(--green)'}">máx ${u2(f.maxWeb)}${f.caro?' · 🔴 a este precio no da':' · ✅ da'}</span>`:'')
     +(f.codFicha&&f.color?`<div style="color:var(--amber)">⚠️ el ${f.color} no tiene código propio de ${pyProvNom()}: va el de la ficha (cargalo con pyprecio:…#${f.color})</div>`:'')

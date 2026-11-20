@@ -2783,6 +2783,8 @@ aparezca la foto de ML, el precio de la lista, el precio máximo a pagar y las u
 
 ## 7 · DISEÑO (domingo)
 
+- **20/11 · Stock en cada probado del pedido del momento** (`_stockChip`): total Full + camino + Oficina ML, globito con el desglose por cuenta. **Chequear:** que coincida con Contar lo que hay; en celular el globito sale manteniendo apretado.
+
 - **20/11 · Pedido del momento más resumido** (él: *"más resumido todo y cuántas unidades tengo en total"*): total arriba (productos · unidades · US$), unidades por bloque, renglón con precio c/u y subtotal; código/ventas/reseñas en el detalle (`fila` y `tit` del pedido del momento). **Chequear:** a 390 px que nada se corte.
 ### ➖ Sin "Nuevo movimiento a mano" en Gastos (14/11/2026, él: "todos los movimientos los hacés vos")
 - `index.html` `#cmp-nuevo` oculto (v28.210). Chequear que Gastos no tenga otro formulario de carga a mano visible.
