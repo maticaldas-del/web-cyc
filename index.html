@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.245';
+const APP_VERSION='28.246';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.246',f:'20/11',h:'13:40',c:[{n:3,t:'📊 Métricas → 💰 Ganancia: la línea ahora resta los gastos, repartidos parejo entre todos los días del mes (no todo el día que se pagan). El mes en curso usa lo gastado el mes anterior hasta que lo cargado lo pase, así no parece que le ganamos por mucho al principio. La barra verde sigue siendo la ganancia de las ventas y la roja, la parte de gastos de cada día.'}]},
   {v:'28.245',f:'20/11',h:'13:10',c:[{n:1,t:'🧾 Pedido del momento (Paraguay): cada probado dice cuánto stock tenemos (Full + en camino + Oficina ML). Al pasar el mouse (o mantener apretado) dice dónde está cada unidad, cuenta por cuenta.'}]},
   {v:'28.244',f:'20/11',h:'11:50',c:[{n:1,t:'🧾 Pedido del momento (Paraguay): arriba dice el total (productos · unidades · US$) y cada bloque sus unidades. Cada renglón queda con nombre, precio c/u, unidades y subtotal; el código, las ventas y las reseñas van adentro al tocarlo.'}]},
   {v:'28.243',f:'20/11',h:'04:35',c:[{n:2,t:'🔍 ¿Cierra el mes?: lo viejo cargado tarde ya no se lee como "Sobra" (se resta de lo que creció, como en el cobro).'}]},
@@ -26305,6 +26306,20 @@ function _cargosDiaDet(ym){
   }
   _cargosDiaDetMemo[ym]={_v:_cargosDiaMemo,d:out};return out;
 }
+// 💰 GASTOS PAREJOS POR DÍA (20/11/2026, él): la línea de 💰 Ganancia resta cada día gastos del mes ÷ días del mes, repartido entre las
+// cuentas por el neto del mes. El mes EN CURSO usa el mayor entre lo cargado y lo del mes anterior (lo que falta pagar no hace que parezca
+// que le ganamos por mucho al principio); al cerrarse, lo real. 🏢 Ganancia CYC sigue igual (todo el primer día, con el retiro).
+function _ymAnt(ym){const [y,m]=ym.split('_').map(Number);return m===1?(y-1)+'_12':y+'_'+String(m-1).padStart(2,'0');}
+function _gastoMesParejo(ym){const real=_gastosMes(ym);const cur=dateToKey(new Date()).substring(0,7);
+  if(ym!==cur)return {tot:real,real,est:0};const ant=_gastosMes(_ymAnt(ym));return {tot:Math.max(real,ant),real,est:Math.max(0,ant-real)};}
+function _diasMesYm(ym){const [y,m]=ym.split('_').map(Number);return new Date(y,m,0).getDate()||30;}
+function _shareCtaMes(ym,acct){if(acct==='ml')return 1;if(!MET_ACCTS.includes(acct))return 0;const md=_netoMesData(ym);return md.tot>0?(md.per[acct]||0)/md.tot:1/MET_ACCTS.length;}
+function _gastoDiaCta(key,acct){const ym=String(key).substring(0,7);const sh=_shareCtaMes(ym,acct);if(!sh)return 0;return _gastoMesParejo(ym).tot/_diasMesYm(ym)*sh;}
+// Detalle de la barra roja de ese día (sólo las cuentas elegidas): cada gasto del mes ÷ días + lo estimado que falta cargar.
+function _gastoDiaDet(key){const ym=String(key).substring(0,7);const sh=metAccts().reduce((t,a)=>t+_shareCtaMes(ym,a),0);if(!sh)return [];
+  const dm=_diasMesYm(ym),out=[];Object.values(state.compras||{}).forEach(x=>{if(getCompraTipo(x)!=='gasto'||!(x.dayKey||'').startsWith(ym))return;
+    out.push({t:(x.cat||'Gasto')+(x.desc?' · '+String(x.desc).slice(0,40):''),m:(x.monto||0)/dm*sh});});
+  const g=_gastoMesParejo(ym);if(g.est>0)out.push({t:'Lo que falta cargar este mes (estimado con lo del mes anterior)',m:g.est/dm*sh});return out;}
 function _gastosMes(ym){
   if(ym in _gastoMesMemo)return _gastoMesMemo[ym];
   let g=0;
@@ -27633,7 +27648,10 @@ function renderLineChartFromScope(scope){
   const {labels,buckets,bucketsPrev,bucketsYear,title,sinPrev}=metScopeBuckets(scope);
   const t=document.getElementById('chart-mes-title');if(t)t.textContent=title+(metChartAccum?' · acumulativo':'');
   // Total (todas las cuentas) para una lista de buckets, con el campo indicado (total/neto/ganancia…).
-  const totOf=(bkts,field)=>bkts.map(keys=>{let s=0;keys.forEach(k=>metAccts().forEach(a=>s+=metGetValDay(k,a,field||metViewField)));return s;});
+  // 💰 GANANCIA = LO QUE QUEDA SACANDO LOS GASTOS (20/11/2026, él: "es lo real que queda sacando gastos… el mes pasado yo habría pagado todo
+  // y este no… al principio de mes parece que le vamos a ganar por mucho y después se va achicando"): cada día resta su parte PAREJA de los
+  // gastos del mes (`_gastoDiaCta`; el mes en curso con lo del mes anterior mientras falte cargar). `crudo` = sólo ventas (barra verde).
+  const totOf=(bkts,field,crudo)=>bkts.map(keys=>{let s=0;const f=field||metViewField;const resta=!crudo&&f==='ganancia'&&!_vLoc();keys.forEach(k=>metAccts().forEach(a=>{s+=metGetValDay(k,a,f);if(resta)s-=_gastoDiaCta(k,a);}));return s;});
   // Varias métricas prendidas → una línea por cada una, TODAS EN EL MISMO EJE.
   // Antes cada métrica tenía su propio eje y cada eje se autoescalaba para llenar el alto del
   // gráfico: Total llegaba a $4.500k y Ganancia CYC a $1.830k, pero las dos se estiraban hasta
@@ -27670,12 +27688,12 @@ function renderLineChartFromScope(scope){
   // sólo del período actual: la comparación queda en las líneas.
   let barDet=null;
   if(!multi&&metChartLineView==='general'&&!_vLoc()){   // el local no tiene gastos de CYC
-    const ganB=totOf(buckets,'ganancia');
+    const ganB=totOf(buckets,'ganancia',true);
     // EL RETIRO NO ES UN GASTO DE LA GANANCIA (27/10/2026, él: "en ganancia creo que suma como gasto los retiros nuestros. para mí no debería
     // ir… ingresos − gastos (sin retiros)"): en 💰 Ganancia la barra roja muestra sólo los gastos; el retiro de los dueños aparece sólo en
     // 🏢 Ganancia CYC, que es la que dice cuánto le quedó a CYC después de cobrar.
     const _conRetiro=metViewField==='gananciaCYC';
-    barDet=buckets.map(keys=>{const it={};(keys||[]).forEach(k=>{(_cargosDiaDet(k.substring(0,7))[k]||[]).forEach(x=>{if(!_conRetiro&&x.t==='Retiro de los dueños')return;it[x.t]=(it[x.t]||0)+x.m;});});
+    barDet=buckets.map(keys=>{const it={};(keys||[]).forEach(k=>{if(!_conRetiro){_gastoDiaDet(k).forEach(x=>{it[x.t]=(it[x.t]||0)+x.m;});return;}(_cargosDiaDet(k.substring(0,7))[k]||[]).forEach(x=>{it[x.t]=(it[x.t]||0)+x.m;});});
       return Object.entries(it).map(([t,m])=>({t,m})).sort((a,b)=>b.m-a.m);});
     const gasB=barDet.map(a=>-a.reduce((s,x)=>s+x.m,0));
     datasets.forEach(ds=>{ds.order=0;});
@@ -27688,7 +27706,7 @@ function renderLineChartFromScope(scope){
   // siendo el total (Período actual), así la comparación con el anterior, el año pasado y la proyección no cambian.
   if(metSrc==='todo'&&!multi){
     const _cum=arr=>{let t=0;return arr.map(v=>t+=(v||0));};
-    const serie=a=>{const r=buckets.map(keys=>keys.reduce((t,k)=>t+metGetValDay(k,a,metViewField),0));return metChartAccum?_cum(r):r;};
+    const serie=a=>{const r=buckets.map(keys=>keys.reduce((t,k)=>t+metGetValDay(k,a,metViewField)-(metViewField==='ganancia'&&a==='ml'?_gastoDiaCta(k,'ml'):0),0));return metChartAccum?_cum(r):r;};
     // 🔀 TODO EN TRES CAPAS (30/10/2026 a la noche, él: "local ya no existe más… separados todos"): abajo 📦 ML (azul), en el medio 🛍️ Perfumería
     // (rosa) y arriba 🏬 Tienda (violeta), apiladas hasta el total. Cada capa guarda lo suyo en `_real` y el total del punto en `_tot`.
     const sML=serie('ml'),sPe=serie('loc_perf'),sTi=serie('loc_tienda');
