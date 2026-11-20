@@ -16120,14 +16120,14 @@ async function colaParaRobot(db, labels) {
         for (const x of its) { if (x.pmp != null) pf = { mp: x.pmp, me: x.pme }; else if (x.sal != null && !/perfumer/i.test(x.nom)) qued.set(x.nom, x.sal); }
         const fin = [...qued.entries()].map(([n2, sl]) => sl < 0 ? `A ${escB(n2)} le debemos ${money(-sl)}` : `${escB(n2)} debe ${money(sl)}`);
         if (pf) { const tP = pf.mp + pf.me; fin.push(tP < 0 ? `A la perfumería le debemos ${money(-tP)}` : `Perfumería debe ${money(tP)}${pf.mp ? ` (MercadoPago ${money(pf.mp)} · Mercadería ${money(pf.me)})` : ''}`); }
-        txt = out.join('\n\n') + (fin.length ? '\n\n<b>' + fin.join('\n') + '</b>' : '');
+        txt = out.join('\n\n') + (fin.length ? '\n\n' + fin.map((l2) => '<b>' + l2 + '</b>').join('\n') : '');   // revisión etapa 9 (20/11): un <b> por renglón (el corte de 3.800 caía adentro de una negrita de varios renglones)
       } else txt = (its.length > 1 ? `📨 <b>${its.length} movimientos</b>\n\n` : '') + its.map((x) => x.head).join('\n\n')
         + '\n\n' + Object.entries(ultQueda).map(([n, q]) => (Object.keys(ultQueda).length > 1 || its.length > 1 ? n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + ': ' : '') + q).join('\n') + (perf ? '\n\n' + perf : '');
       // Revisión etapa 4 (19/11): cortar a 3.900 a ciegas dejaba un <b> abierto → Telegram lo rechazaba y la cola reintentaba para siempre.
       // Se parte por renglones en mensajes de hasta 3.800 (los saldos van en el último) y se borra la cola sólo si salieron todos.
       const partes = []; let cur = ''; for (const ln of txt.split('\n')) { if ((cur + '\n' + ln).length > 3800 && cur) { partes.push(cur); cur = ln; } else cur = cur ? cur + '\n' + ln : ln; } if (cur) partes.push(cur);
       let ok = true; for (const pz of partes) { const r1 = await sendTelegram(pz, 'resumen'); if (!r1) { ok = false; break; } }
-      if (ok) for (const k of ks) await db.set('mlapi/avisomovcola/' + k, null);
+      if (ok) await db.patch('mlapi/avisomovcola', Object.fromEntries(ks.map((k) => [k, null])));   // revisión etapa 9 (20/11): todo de una vez (de a uno, un corte en el medio repetía lo que ya salió)
       console.log(ok ? `📨 ${its.length} movimiento(s) de deudas mandados juntos al Telegram de los socios` : '⚠️ los movimientos de deudas NO salieron por Telegram (se reintenta)');
     }
   } catch (e) { console.log('⚠️ cola de movimientos: ' + String((e && e.message) || e).slice(0, 80)); }
@@ -45562,6 +45562,15 @@ async function main() {
     // el total de "Lo que nos deben" al abrirse. OJO: "deuda de CYC A la perfumería" es lo contrario (lo que debemos), NO va acá.
     // Sin nada: lista las deudas con su saldo. La deuda: el id exacto o palabras que agarren UNA sola. Sin ;go sólo muestra.
     if (/^debenmov(:|$)/.test(String(process.env.BILLING_PROBE || ''))) {
+      // Revisión etapa 9 (20/11/2026): la marca contra repetidos (24a) se graba recién con la PRIMERA escritura de verdad. Antes se grababa al
+      // principio: un comando que se negaba (sin stock en la oficina, falta de=…) y se mandaba otra vez corregido contestaba "ya se cargó" y no
+      // cargaba nada. Todo el bloque corre con un `db` que marca al escribir.
+      let _marcaDM = null, _marcadoDM = false; const _db0 = db;
+      const _marcarDM = async () => { if (_marcaDM && !_marcadoDM) { _marcadoDM = true; await _db0.patch('cyc/debenmovult', _marcaDM); } };
+      const _dbDM = { ..._db0, set: async (p0, v0) => { const r0 = await _db0.set(p0, v0); await _marcarDM(); return r0; },
+        patch: async (p0, v0) => { const r0 = await _db0.patch(p0, v0); await _marcarDM(); return r0; },
+        setSi: async (p0, v0, e0) => { const r0 = await _db0.setSi(p0, v0, e0); if (r0) await _marcarDM(); return r0; } };
+      await (async (db) => {
       // El registro de GitHub es PÚBLICO (29/10/2026): el nombre de un deudor (una persona) no se imprime; sólo la inicial y el id.
       // Las fijas del negocio (Mercadería / Deuda Perfumería) sí, son de CYC.
       // Revisión etapa 9, 30/10/2026: se muestra entero SÓLO lo que se llama "perfumería" (las dos del negocio). Antes alcanzaba con `fija`, y
@@ -45645,7 +45654,7 @@ async function main() {
         const ventDM = /del extracto, solo/i.test(cuerpo) ? 864e5 : 10 * 60e3;
         if (tU && Date.now() - tU < ventDM) { console.log(`❌ Este mismo movimiento (misma deuda, mismo monto, misma nota) ya se cargó hace ${Math.max(1, Math.round((Date.now() - tU) / 60e3))} min: no lo cargo dos veces (24a del 14/11). Si de verdad es OTRO igual, mandalo con la palabra "otra" en la nota. No escribo nada ni mando Telegram.`); return; }
         const updDM = { [hDM]: Date.now() }; for (const [k, t] of Object.entries(ultDM)) if (Date.now() - (Number(t) || 0) > 864e5) updDM[k] = null;
-        await db.patch('cyc/debenmovult', updDM);
+        _marcaDM = updDM;   // se graba con la primera escritura (arriba)
       }
       // DEUDA NUEVA CON CUOTAS (29/10/2026, él: "agregar una deuda nueva… Germán. Le vendimos una Play 5 y un joystick… 24 cuotas semanales,
       // la primera el 15, la segunda el 22, paga 74 mil por cuota"): `debenmov:nueva=<quién>|det=<qué se llevó>|cuotas=<n>|cuota=<pesos>
@@ -45663,9 +45672,10 @@ async function main() {
         // 🔤 28a del 14/11/2026 (él: "a"): el texto del comando queda en el registro PÚBLICO: a una persona va sólo la INICIAL (ej. `nueva=G|…`) y
         // el nombre se completa en la web (✏️ Editar; la deuda sale con "✏️ completá el nombre"). Dos o más palabras de 3+ letras = nombre y
         // apellido: se niega. Una sola palabra larga pasa con aviso.
+        // 19/11 (él): a una persona va su NOMBRE DE PILA, una sola palabra. Revisión etapa 9 (20/11): se cuenta TODA palabra (antes sólo las de
+        // 3+ letras y "G Pérez" pasaba con el apellido al registro público).
         const palL = String(nom).split(/[\s.,]+/).filter((w) => w.replace(/[^\p{L}]/gu, '').length > 2);
-        if (palL.length > 1 && !/perfumer/i.test(nom)) { console.log('❌ En el comando va sólo la INICIAL de la persona (ej. nueva=G|det=…): el texto queda en el registro público. El nombre se completa después en la web (✏️ Editar deuda). No escribo nada.'); return; }
-        if (palL.length === 1 && !/perfumer/i.test(nom)) console.log('⚠️ Mejor sólo la inicial (el texto del comando es público); el nombre se completa en la web.');
+        if (String(nom).split(/[\s.,]+/).filter((w) => /\p{L}/u.test(w)).length > 1 && !/perfumer/i.test(nom)) { console.log('❌ A una persona va su NOMBRE DE PILA, una sola palabra (ej. nueva=Julieta|det=…): el texto queda en el registro público. No escribo nada.'); return; }
         const nomIni = !palL.length;
         let yaN = lista.find(([, d]) => _n(d.nom) === _n(nom));
         if (yaN && nomIni) { let k = 2; while (lista.find(([, d]) => _n(d.nom) === _n(nom + ' ' + k))) k++; nom = nom + ' ' + k; yaN = null; console.log(`  (ya había otra deuda con esa inicial: ésta queda "${_tapaNom({ nom })} ${k}" hasta que completes el nombre en la web)`); }
@@ -45787,7 +45797,8 @@ async function main() {
         const [id, d] = cand1[0]; const campo = mnd[1].toLowerCase() === 'nombre' ? 'nom' : 'det';
         const val = mnd[2].trim() === '-' && campo === 'det' ? null : mnd[2].trim().slice(0, campo === 'nom' ? 80 : 160);
         // 28a del 14/11/2026: el nombre completo de una persona no va por el comando (registro público): se completa en la web.
-        if (campo === 'nom' && !/perfumer/i.test(String(val || '')) && String(val || '').split(/[\s.,]+/).filter((w) => w.replace(/[^\p{L}]/gu, '').length > 2).length > 1) { console.log('❌ El nombre completo de una persona no va en el comando (queda en el registro público): completalo en la web (✏️ Editar deuda). No escribo nada.'); return; }
+        // Revisión etapa 9 (20/11): UNA sola palabra (antes contaba sólo las de 3+ letras y "G Pérez" pasaba con el apellido).
+        if (campo === 'nom' && !/perfumer/i.test(String(val || '')) && String(val || '').split(/[\s.,]+/).filter((w) => /\p{L}/u.test(w)).length > 1) { console.log('❌ A una persona va su NOMBRE DE PILA, una sola palabra (19/11): el texto queda en el registro público. No escribo nada.'); return; }
         console.log(`=== ${campo === 'nom' ? 'NOMBRE' : 'QUÉ SE LLEVÓ'} DE "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===\n  ${campo === 'nom' ? _tapaNom(d) : (d[campo] ? '(texto de ' + String(d[campo]).length + ' letras)' : '—')} → ${campo === 'nom' ? _tapaNom({ nom: val }) : (val ? '(texto de ' + val.length + ' letras)' : '—')}`);   // revisión etapa 9 (06/11): "qué se llevó" puede traer nombres: no va al registro   // revisión etapa 9, 30/10/2026: el nombre nuevo con la misma regla (antes `!d.fija`)
         if (!GO) { console.log('No se guardó nada (falta ;go).'); return; }
         await db.patch(`cyc/debencuotas/${id}`, { [campo]: val, ...(campo === 'nom' ? { nomCompletar: null } : {}) });
@@ -45874,8 +45885,11 @@ async function main() {
         // de más queda a favor.
         const fifoD = deudaFifoBot(dD); void fifoD;
         const ab = Object.entries(dD.movs || {}).filter(([k, x]) => x && Number(x.m) > 0 && x.prod === pD.id && x.local === locD && Number(x.u) > 0).sort((a, b) => String(b[1].f || '').localeCompare(String(a[1].f || '')) || (parseInt(String(b[0]).slice(0, 13), 10) || 0) - (parseInt(String(a[0]).slice(0, 13), 10) || 0));   // etapa 9 (13/11): por fecha y los 13 dígitos del momento (las claves del reparto tienen uno más y las de =repartir no son número)   // revisión etapa 9 (06/11): del ÚLTIMO dejado al primero (el que vuelve es el que no se vendió; la plata paga del más viejo)
+        // Revisión etapa 9 (20/11): con |color= sólo los renglones de ese aroma (el renglón guarda "<producto> · <color>"). Antes achicaba el
+        // primero que encontraba, de otro aroma, y la deuda quedaba con el aroma cambiado.
+        if (extra.color) { const cD = _n(extra.color); for (let i3 = ab.length - 1; i3 >= 0; i3--) { const pn = String(ab[i3][1].prodNom || ''); const cR = pn.includes(' · ') ? _n(pn.split(' · ').pop()) : ''; if (cR !== cD) ab.splice(i3, 1); } }
         const hay = ab.reduce((t, [, x]) => t + Number(x.u), 0);
-        if (hay < uD) { console.log(`❌ en ${locD} hay ${hay} sin pagar de ${pD.name}${hay ? '' : ' (de ese producto en esa perfumería)'}; pidió devolver ${uD}. No escribo nada.`); return; }
+        if (hay < uD) { console.log(`❌ en ${locD} hay ${hay}${extra.color ? ' de ' + extra.color : ''} sin pagar de ${pD.name}${hay ? '' : ' (de ese producto en esa perfumería)'}; pidió devolver ${uD}. No escribo nada.`); return; }
         console.log(`=== DEVOLUCIÓN EN "${_tapaNom(dD)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
         let falta = uD, bajaM = 0, bajaG = 0; const cambios = [];
         for (const [k, x] of ab) { if (!falta) break; const uX = Number(x.u), q = Math.min(falta, uX), pu = Number(x.pu) > 0 ? Number(x.pu) : Number(x.m) / uX;
@@ -46191,6 +46205,8 @@ async function main() {
             if (r2 > 0) await db.patch('cyc/pedperf/' + prodF.id, { u: r2, ts: Date.now() }); else await db.set('cyc/pedperf/' + prodF.id, null);
             console.log(`  🛍️ lo que pidió la perfumería: ${pp.u} → ${r2}${r2 ? '' : ' (cumplido, sale de Pedidos)'}`);
             if (!(extra.de && /cyc|local|mati|ml|ningun|nada/i.test(extra.de))) console.log(`  ⚠️ OBLIGATORIO · no dice de qué oficina salió y estas ${u} estaban apartadas para la perfumería en la Oficina ML: si salieron de ahí, ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync) YA; si salieron de la Oficina Local, oficyc:${prodF.id}=-${u};go; si de otro lado, que lo diga Matías. Hasta restarlo, Armar caja las cuenta para mandar a Full.`); } } }
+      return;
+      })(_dbDM);
       return;
     }
     // BILLING_PROBE=oficyc[:<palabras o id>[@<color>]=<+N|-N|N>;…|listo|amano][;go] · LA OFICINA LOCAL POR UNIDADES (29/10/2026, él: "stock del local
@@ -58558,7 +58574,7 @@ async function main() {
       const d = await db.get('cyc/debencuotas/' + id); if (!d) { console.log('❌ no existe esa deuda'); return; }
       const movs = d.movs || {}; const sacar = String(kv.sacar || '').split(',').map((x) => x.trim()).filter(Boolean);
       const malos = sacar.filter((t) => !movs[t]); if (malos.length) { console.log('❌ no existen esos movimientos: ' + malos.join(', ')); return; }
-      const monto = kv.monto != null ? Math.round(Number(kv.monto)) : Number(d.monto) || 0, n = kv.n != null ? parseInt(kv.n, 10) : Number(d.n) || 1;
+      const monto = kv.monto != null ? Math.round(pesosArg(kv.monto)) : Number(d.monto) || 0, n = kv.n != null ? parseInt(kv.n, 10) : Number(d.n) || 1;
       const pag = kv.pagadas != null ? parseInt(kv.pagadas, 10) : Number(d.pagadas) || 0;
       if (!(monto >= 0) || !(n >= 1)) { console.log('❌ monto o cuotas inválidos'); return; }
       console.log(`=== ARREGLO DE LA DEUDA ${id} (${String(d.nom || '?').slice(0, 1)}···) ${GOx ? '· APLICANDO' : '· PRUEBA (agregá ;go)'} ===`);
@@ -58577,7 +58593,15 @@ async function main() {
         const escF = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const nF = Math.max(1, Number(r.n) || 1), mF = Number(r.monto) || 0, sF = Math.round(mF - Math.min(nF, Number(r.pagadas) || 0) * (mF / nF) + Object.values(r.movs || {}).reduce((t, x) => t + (Number(x && x.m) || 0), 0));
         const ren = [Number(d.monto) !== monto ? `total ${money(Number(d.monto) || 0)} → ${money(monto)}` : '', (Number(d.n) || 1) !== n ? `cuotas ${Number(d.n) || 1} → ${n}` : '', (Number(d.pagadas) || 0) !== pag ? `cuotas pagadas ${Number(d.pagadas) || 0} → ${pag}` : '', sacar.length ? `se sacaron ${sacar.length} movimiento(s) mal cargado(s)` : ''].filter(Boolean);
-        await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head: `✏️ <b>Corrección de la deuda</b>\n<b>${escF(r.nom || '?')}</b>\n` + ren.map((x) => '· ' + escF(x)).join('\n'), nom: String(r.nom || '?'), queda: sF < 0 ? 'Le debemos ' + money(-sF) : '<b>Queda debiendo: ' + money(sF) + '</b>', perf: '', ts: Date.now() });
+        // Revisión etapa 9 (20/11): con los números sueltos (t, ren, sal y, si es de la perfumería, pmp/pme) como avisoMov: sin ellos toda la tanda
+        // salía en el formato largo viejo con saldos viejos. Sin cambios, no se manda nada.
+        if (!ren.length) { console.log('  (sin cambios: no mando aviso)'); return; }
+        const sldF = (x) => { const n2 = Math.max(1, Number(x.n) || 1), m2 = Number(x.monto) || 0; return m2 - Math.min(n2, Number(x.pagadas) || 0) * (m2 / n2) + Object.values(x.movs || {}).reduce((t, y) => t + (Number(y && y.m) || 0), 0); };
+        const _nF = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        let pmpF = null, pmeF = null; if (/perfumer/.test(_nF(r.nom))) { const dsF = Object.values((await db.get('cyc/debencuotas')) || {}).filter((x) => x && /perfumer/.test(_nF(x.nom)));
+          pmpF = Math.round(dsF.filter((x) => !/mercader/.test(_nF(x.nom))).reduce((t, x) => t + sldF(x), 0)); pmeF = Math.round(dsF.filter((x) => /mercader/.test(_nF(x.nom))).reduce((t, x) => t + sldF(x), 0)); }
+        await db.set('mlapi/avisomovcola/' + Date.now() + '_' + Math.floor(Math.random() * 1e4), { head: `✏️ <b>Corrección de la deuda</b>\n<b>${escF(r.nom || '?')}</b>\n` + ren.map((x) => '· ' + escF(x)).join('\n'), nom: String(r.nom || '?'), queda: sF < 0 ? 'Le debemos ' + money(-sF) : '<b>Queda debiendo: ' + money(sF) + '</b>', perf: '', ts: Date.now(),
+          t: '✏️ Corrección de la deuda', ren: ren.slice(0, 4), sal: sF, ...(pmpF != null ? { pmp: pmpF, pme: pmeF } : {}) });
         console.log('  ✓ corrección en la cola: sale al Telegram de los socios junto con los demás movimientos (3-5 min)');
       } catch (e) { console.log('  ⚠️ la corrección NO salió por Telegram: ' + String(e.message || e).slice(0, 90)); } }
       return;
