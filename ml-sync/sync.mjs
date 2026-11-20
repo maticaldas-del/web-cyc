@@ -21397,11 +21397,18 @@ async function main() {
           faltas.push({ pals: mm[1].split('+').map(_nrm).map((x) => x.trim()).filter(Boolean), u: parseInt(mm[2]) });
         }
         let found = 0;
+        // 20/11: los últimos 4-6 números (como los muestra `cajasmirar` y el chat de Chrome: "envío …7915") sirven si agarran UNA sola caja.
+        let _sufijo = false;
+        if (/^\d{4,6}$/.test(busca)) {
+          const _n = Object.entries(envios).reduce((t, [id2, e2]) => t + (Array.isArray(e2 && e2.cajasDet) ? e2.cajasDet : []).filter((c2) => c2 && (id2 === busca || String(c2.track || '') === busca)).length, 0);
+          if (!_n) { const _m = Object.entries(envios).reduce((t, [id2, e2]) => t + (Array.isArray(e2 && e2.cajasDet) ? e2.cajasDet : []).filter((c2) => c2 && String(c2.track || id2).endsWith(busca)).length, 0);
+            if (_m === 1) _sufijo = true; else if (_m > 1) console.log(`── ${busca}: los últimos números agarran ${_m} cajas: poné el seguimiento entero.`); }
+        }
         for (const [id, e] of Object.entries(envios)) {
           const cajas = Array.isArray(e && e.cajasDet) ? e.cajasDet : [];
           cajas.forEach((c, i) => {
             if (!c) return;
-            if (id !== busca && String(c.track || '') !== busca) return;
+            if (id !== busca && String(c.track || '') !== busca && !(_sufijo && String(c.track || id).endsWith(busca))) return;
             found++;
             const kC = id + '#' + i, prev = porCaja.get(kC);
             const malo = () => { if (prev) prev.mal = true; else porCaja.set(kC, { mal: true }); };
@@ -21422,10 +21429,10 @@ async function main() {
         }
         if (!found) console.log(`── ${busca}: ninguna caja con ese seguimiento o id.`);
       }
-      for (let k = hits.length - 1; k >= 0; k--) if (hits[k].mal) { console.log(`── ${hits[k].c.track || hits[k].id}: uno de sus faltantes no se entendió: esa caja no se toca.`); hits.splice(k, 1); }
+      for (let k = hits.length - 1; k >= 0; k--) if (hits[k].mal) { console.log(`── …${String(hits[k].c.track || hits[k].id).slice(-4)}: uno de sus faltantes no se entendió: esa caja no se toca.`); hits.splice(k, 1); }
       for (const h of hits) {
         const u = (h.c.items || []).reduce((a, x) => a + (Number(x && x.u) || 0), 0);
-        console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · seguimiento ${h.c.track || '—'} · ${u} u. · hoy: ${h.c.recibida ? 'marcada con ' + faltaDeC(h.c) + ' u. faltantes' : 'abierta'}`);
+        console.log(`── ${h.e.fecha || '?'} · ${h.e.cuenta || '?'} · seguimiento …${String(h.c.track || '—').slice(-4)} · ${u} u. · hoy: ${h.c.recibida ? 'marcada con ' + faltaDeC(h.c) + ' u. faltantes' : 'abierta'}`);
         console.log(h.faltan ? `   → queda llegada con ${sumaF(h.faltan)} u. faltantes: ${h.faltan.map((f) => `${f.pide - f.llego} de ${f.nombre}${f.variante ? ' · ' + f.variante : ''}`).join(' · ')}` : '   → queda llegada COMPLETA');
       }
       if (!hits.length) return;
@@ -21434,7 +21441,7 @@ async function main() {
       const porEnvio = {};
       for (const h of hits) (porEnvio[h.id] = porEnvio[h.id] || []).push(h);
       for (const [id, hs] of Object.entries(porEnvio)) {
-        if (CORTAR) { console.log(`   ✋ envío ${id}: no se escribió (cancelaron la corrida)`); continue; }
+        if (CORTAR) { console.log(`   ✋ envío …${String(id).slice(-4)}: no se escribió (cancelaron la corrida)`); continue; }
         // Etapa 4 (30/09/2026): sobre la lista RELEÍDA (no la del arranque), buscando cada caja por
         // seguimiento + contenido: una marca del robot o de la web en el medio no se pisa.
         const fresca = await db.get('cyc/envios_full/' + id + '/cajasDet');
@@ -21442,7 +21449,7 @@ async function main() {
         let cambio = 0;
         for (const h of hs) {
           const j = _ubicarCajaFresca(cajas, h.c, h.i);
-          if (j < 0) { console.log(`   ✗ ${h.c.track || id}: la caja cambió mientras corría (o no la encuentro igual): no la toco`); continue; }
+          if (j < 0) { console.log(`   ✗ …${String(h.c.track || id).slice(-4)}: la caja cambió mientras corría (o no la encuentro igual): no la toco`); continue; }
           const c = cajas[j];
           // La lista de cajas se guarda ENTERA: un patch parcial la rompe (mismo cuidado que la web).
           // Etapa 3 (29/09): las entradas que el robot le había anotado (recUsadas) se borran: si no, lo que
