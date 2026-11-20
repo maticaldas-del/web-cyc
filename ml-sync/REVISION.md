@@ -1242,6 +1242,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **(20/11) Inicio → 🛒 Gastos con el total y la diferencia** · qué: total del mes (`_gastosMes`) y ▼/▲ contra el mes anterior con %, arriba de "todo cargado"/"N sin cargar" · dónde: `_vivosDatos`/`_homeVivos` en `index.html` · chequear: noviembre ≈ $872.693, ▼ $504.238 · 37% menos que octubre.
 - **(20/11) Intereses de los socios de jun-oct con su nombre** · qué: estaban cargados sin descripción y Gastos del mes los daba por faltantes; `interesesmes` (sólo lee: 1% de Tito y de Mati de cada cierre contra lo cargado) + `editargasto:<clave>|desc=…;go` (ml-sync): los grandes → "Intereses · Papá", los chicos → "Intereses · Mati"; se sacó el repetido de oct (10/10, $127.000) · chequear: jun-nov sin ❌ en el renglón de Papá.
 - **(20/11) % de ganancia: los primeros 6 días del mes suaves** · qué: en promedio corriendo y con buckets de a un día, los días 1-6 usan los últimos 7 días (con el final del mes anterior); el día 7 coincide con el promedio del mes (sin salto) · dónde: `_pre6`/`runAvgSuave` en `renderPctChartFromScope` · chequear: día 1 de noviembre sin el pico de 160%, del 7 en adelante igual que antes.
+- **(20/11) Inicio → 📊 Métricas en vivo** · qué: ganancia del mes hasta hoy (ML + perfumería + tienda, menos la parte pareja de los gastos, `_gastoDiaCta`) y ▲/▼ contra el mes anterior al mismo día · dónde: `out.met` en `_homeVivos`, `hv-met` · chequear: al día 20 ≈ lo que muestra 🔀 Todo acumulativo ese día.
+
 
 
 

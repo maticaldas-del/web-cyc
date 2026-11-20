@@ -1505,7 +1505,7 @@ setTimeout(function _ldVigia(){try{
     <div class="nav-card nc4 ht" onclick="goPage('metricas')" title="Métricas de ML y del local. Gráficos y análisis mensual.">
       <span class="nc-icon">📊</span>
       <div class="nc-title">Métricas</div>
-      <div class="nc-desc">gráficos</div>
+      <div class="ht-vivo" id="hv-met"><span class="nc-desc">gráficos</span></div>
       <span class="nc-arrow">→</span>
     </div>
     <div class="nav-card nc5 ht ht-fac" onclick="goPage('facturas')" title="Las facturas que emitió ML por cada cuenta, y si alguna venta quedó sin facturar.">
@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.252';
+const APP_VERSION='28.253';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.253',f:'20/11',h:'15:55',c:[{n:2,t:'Inicio → 📊 Métricas: muestra la ganancia del mes hasta hoy (ML + perfumería + tienda, ya restados los gastos) y la diferencia contra el mes anterior al mismo día.'}]},
   {v:'28.252',f:'20/11',h:'15:40',c:[{n:2,t:'📊 Métricas → % de ganancia (promedio corriendo): los primeros 6 días del mes ya no saltan; miran los últimos 7 días (con el final del mes anterior). Desde el día 7 es el promedio del mes como siempre.'}]},
   {v:'28.251',f:'20/11',h:'15:15',c:[{n:2,t:'Inicio → 🛒 Gastos: muestra cuánto se gastó en el mes y la diferencia con el mes anterior (verde si es menos), además de lo que falta cargar.'}]},
   {v:'28.250',f:'20/11',h:'15:05',c:[{n:2,t:'Gastos del mes: se sacó el renglón "Intereses financieros" suelto. El único interés que se paga es el de Tito (Intereses · Papá); pedir dos hacía cargar el mismo dos veces.'}]},
@@ -28988,6 +28989,15 @@ function _homeVivos(d){
     let se=0;try{(state.products||[]).forEach(p=>{if(stockOficina(p)>0)se+=sinEtiqProd(p);});}catch(_){}
     const top=ca.length?`<span class="g" style="font-weight:700">📦 ${ca.length} caja${ca.length===1?'':'s'} lista${ca.length===1?'':'s'}</span><br><span style="font-size:.85em">${ca.map(([c,u])=>`<span role="button" onclick="irACaja('${c}',event)" style="text-decoration:underline dotted;cursor:pointer">${c} ${fmtN(u)} u.</span>`).join(' · ')}</span>`:'<span style="color:var(--muted)">no hay cajas cargadas</span>';
     out.ofi=top+`<br><span style="color:var(--muted);font-size:.85em">🏠 ${fmtN(d.casa||0)} u. en la oficina${se?` · <span style="color:var(--amber)">🏷️ ${fmtN(se)} sin etiqueta</span>`:''}</span>`;}
+  // 20/11/2026 (él: "que muestre la diferencia de ganancia vs al mes pasado hasta hoy en vivo. teniendo en cuenta los gastos todo"):
+  // la ganancia del mes hasta hoy (ML + perfumería + tienda, con la parte pareja de los gastos de cada día, la misma cuenta que 🔀 Todo en
+  // Métricas) contra el mes anterior hasta el mismo día.
+  try{const hoy=new Date(),ym=dateToKey(hoy).slice(0,7),ya=_ymAnt(ym),dH=hoy.getDate(),dmA=_diasMesYm(ya);
+    const gan=(ymX,hasta)=>{let t=0;for(let i=1;i<=hasta;i++){const k=ymX+'_'+String(i).padStart(2,'0');
+      t+=metGetValDay(k,'ml','ganancia')-_gastoDiaCta(k,'ml');['loc_perf','loc_tienda'].forEach(a=>{try{t+=metGetValDay(k,a,'ganancia');}catch(_){}});}return t;};
+    const g=gan(ym,dH),p=gan(ya,Math.min(dH,dmA)),df=g-p,pc=p>0?Math.round(Math.abs(df)/p*100):null;
+    out.met=`<span style="font-weight:700;font-size:1.15em" class="${g>=0?'g':'r'}">${fmt(Math.round(g))}</span> <span style="font-size:.8em;color:var(--muted)">al ${dH}, ya restados los gastos</span>`
+      +(p>0?`<br><span class="${df>=0?'g':'r'}" style="font-size:.85em">${df>=0?'▲':'▼'} ${fmt(Math.round(Math.abs(df)))} · ${pc}% ${df>=0?'más':'menos'} que ${_MESES_L[Number(ya.slice(5,7))-1]} al ${Math.min(dH,dmA)}</span>`:'');}catch(e){}
   if(d.gastosFaltan!=null){const est=d.gastosFaltan?`<span class="a">${d.gastosFaltan} sin cargar</span>`:'<span class="g">✓ todo cargado</span>';
     let top='';if(d.gasMes!=null){const df=d.gasMes-(d.gasAnt||0),pc=d.gasAnt>0?Math.round(Math.abs(df)/d.gasAnt*100):null;
       top=`<span style="font-weight:700;font-size:1.15em">${fmt(d.gasMes)}</span>`+(d.gasAnt>0?`<br><span class="${df<=0?'g':'r'}" style="font-size:.85em">${df<=0?'▼':'▲'} ${fmt(Math.abs(df))} · ${pc}% ${df<=0?'menos':'más'} que ${d.gasAntMes}</span>`:'')+'<br>';}
@@ -28996,7 +29006,7 @@ function _homeVivos(d){
 }
 function renderHomeVivos(soloNums){
   const _d=_vivosDatos(),v=_homeVivos(_d);
-  [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
+  [['hv-ventas','ventas'],['hv-ped','ped'],['hv-ofi','ofi'],['hv-gastos','gastos'],['hv-met','met']].forEach(([id,k])=>{const el=document.getElementById(id);if(el&&v[k]!=null)el.innerHTML=v[k];});
   // DISEÑO 5 DEL 31/10: la tarjeta Pedidos lleva una 🔴 con cuántos pedidos están en rojo (la misma cuenta del semáforo, `_pedSem`).
   try{const r=document.getElementById('hv-ven-nuevas');if(r){const n=0;   // 16/11/2026 (él: "sacá ese número"): sin el numerito azul
     r.textContent=n?String(n):'';r.title=n?`${n} venta${n===1?' nueva':'s nuevas'} desde que miraste Ventas`:'';r.style.display=n?'':'none';}}catch(e){}
