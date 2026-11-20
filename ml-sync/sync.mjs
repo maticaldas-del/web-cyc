@@ -44360,6 +44360,7 @@ async function main() {
       const cw = await armarCostoWeb(db, vp);
       const compras = (await db.get('cyc/compras')) || {};
       const retM = (await db.get('cyc/retiro_mes')) || {};
+      const corrM = (await db.get('cyc/cobro_corr')) || {};   // revisión etapa 9 (20/11): lo viejo cargado tarde no es crecimiento del mes
       const debC = (await db.get('cyc/debencuotas')) || {};
       const $ = (n) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('es-AR');
       const u = (n) => (n < 0 ? '−US$ ' : 'US$ ') + Math.abs(Math.round(n)).toLocaleString('es-AR');
@@ -44414,7 +44415,9 @@ async function main() {
         const _hC = (t) => new Date(t - 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ');
         console.log(`■ ${k1} (contra ${k0}) · dólar ${tc}${tc0 && tc0 !== tc ? ` (el anterior ${tc0})` : ''}${cA ? ` · desde el cierre de ${k0} (${_hC(cA)})` : ''}${cB ? ` · hasta su cierre (${_hC(cB)}): lo de después cuenta en el mes siguiente` : ''}`);
         console.log(`   el negocio generó ${$(genera)} (neto ${$(neto)} − costo ${$(costo)} − gastos ${$(gastos)} en ${nG}${ganLoc ? ` + local ${$(ganLoc)}` : ''}) · retiro ${ret == null ? 'SIN CARGAR' : $(ret)} → debería crecer ${$(esperado)}`);
-        console.log(`   creció el patrimonio ${$(crecio)} (${u(crecioU)}) · DIFERENCIA ${$(crecio - esperado)} (${u((crecio - esperado) / (tc || 1))})${canc ? ` · ${canc} canceladas afuera` : ''}${sinC ? ` · ${sinC} ventas sin costo` : ''}`);
+        const corrK = Number((corrM[k1] || {}).ars) || 0;
+        if (corrK) console.log(`   lo viejo cargado tarde (cobro_corr) ${$(corrK)}: no es de este mes, se resta de lo que creció`);
+        console.log(`   creció el patrimonio ${$(crecio)} (${u(crecioU)}) · DIFERENCIA ${$(crecio - corrK - esperado)} (${u((crecio - corrK - esperado) / (tc || 1))})${canc ? ` · ${canc} canceladas afuera` : ''}${sinC ? ` · ${sinC} ventas sin costo` : ''}`);
         const d = (a, b) => u(b - a);
         // Revisión Plata 27/10/2026: las partes tienen que sumar lo que creció. Lo vendido sin reporte (`vsrUSD`) es plata, la
         // deuda de proveedores (`pvUSD`) es deuda, y la oficina de Mati (`of_mia`) ya está en el stock cuando se cuenta por unidades (`stockLocal`), como en Comparar.
@@ -45951,7 +45954,9 @@ async function main() {
         let snapsP = null; try { snapsP = (await db.get('cyc/snapshots')) || {}; } catch { snapsP = null; }
         if (!snapsP) { console.log('❌ no pude leer los cierres (cyc/snapshots): no sé si hay renglones de un mes cerrado. No escribo nada.'); return; }
         const ymDe = (f) => String(f || '').slice(0, 7).replace('-', '_');
-        const renC = ren.filter(([, x]) => { const sn = snapsP[ymDe(x.f)]; return sn && sn.total != null; });
+        // Revisión etapa 9 (20/11): "cerrado" con `_mesCerrado` (el día contra la hora del cierre, 17/11), no sólo "el mes tiene cierre": con un
+        // cierre adelantado, lo dejado después del cierre ya entró al cobro del mes siguiente y su corrección no es "viejo".
+        const renC = []; for (const r3 of ren) { const c3 = await _mesCerrado(r3[1].f); if (c3 === null) { console.log('❌ no pude leer si el mes está cerrado: no escribo nada.'); return; } if (c3) renC.push(r3); }
         const deltaC = renC.reduce((t, [, x]) => t + pu * Number(x.u) - Number(x.m), 0);
         if (renC.length) console.log(`  📅 ${renC.length} renglón(es) de un mes ya cerrado (${[...new Set(renC.map(([, x]) => ymDe(x.f).replace('_', '/')))].join(', ')}): ${deltaC >= 0 ? '+' : ''}${money(Math.round(deltaC))} van a lo viejo cargado tarde, no al cobro`);
         if (!GO) { if (renC.length) await _corrCobro(deltaC, 'precio corregido de lo dejado en la perfumería'); console.log('No se guardó nada (falta ;go).'); return; }
@@ -46069,6 +46074,8 @@ async function main() {
       // Un "+N" suelto quedaba sin costo, sin unidades y sin perfumería (lo "sin costo cargado" de Ver deudas, que Métricas Local no ve).
       // La otra (Deuda Perfumería = MercadoPago) sigue con +N solo.
       const esMercPerf = /perfumer/.test(_n(d.nom)) && /mercader/.test(_n(d.nom));
+      // Revisión etapa 9 (20/11): lo dejado con producto en la Deuda Perfumería (MercadoPago) no lo ve ninguna pestaña de Métricas: va a Mercadería.
+      if (signo > 0 && prodF && /perfumer/.test(_n(d.nom)) && !esMercPerf) { console.log(`❌ ${_tapaNom(d)} es la de MercadoPago: lo dejado con producto va a "mercaderia perfumeria". No escribo nada.`); return; }
       if (signo > 0 && esMercPerf && (!prodF || (!local && !sinLocal) || !extra.u)) { console.log(`❌ en ${_tapaNom(d)} lo que se deja va con |prod=<ficha>|local=<soares|sarmiento|ceballos>|u=<unidades>:${!prodF ? ' falta prod=' : ''}${!local ? ' falta local=' : ''}${!extra.u ? ' falta u=' : ''}. No escribo nada.`); return; }
       console.log(`=== MOVIMIENTO EN "${_tapaNom(d)}" ${GO ? '· APLICANDO' : '· PRUEBA'} ===`);
       console.log(`  ${signo > 0 ? '➕ nos debe más' : '➖ devolvió'} ${money(monto)} · ${f}${nota ? ' · ' + nota : ''}`);
@@ -46147,6 +46154,9 @@ async function main() {
         console.log(relR && Number(relR.u) > 0 ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
       } else {
         await db.set(`cyc/debencuotas/${id}/movs/${k}`, mv);
+        // Revisión etapa 9 (20/11): un producto con costo en una deuda marcada "sin ganancia" le saca la marca (como =costo e =inicial): si no,
+        // Ver deudas mostraba la ganancia y Métricas, ¿Cierra el mes? y cierrevs no.
+        if (d.sinGan && mv.gan != null) { await db.patch(`cyc/debencuotas/${id}`, { sinGan: null }); console.log('  (la deuda estaba marcada "sin ganancia": ahora cuenta la ganancia de lo dejado)'); }
         const rel = await db.get(`cyc/debencuotas/${id}/movs/${k}`);
         console.log(rel && Number(rel.m) === mv.m ? '  ✓ guardado y releído (el total de "Lo que nos deben" se rehace al abrir la web)' : '  ⚠️ no lo pude releer');
       }
@@ -46157,7 +46167,7 @@ async function main() {
           [prodF ? `${u} × ${String(prodF.name).slice(0, 70)}${extra.color ? ' · ' + extra.color : ''} a ${money(Math.round(montoU))} c/u` : '',
            prodF && costoU != null ? `costo ${money(Math.round(costoU))} c/u · ganancia ${money(Math.round((montoU - costoU) * u))}` : '',
            local ? 'perfumería: ' + local : (sinLocal && prodF ? 'repartido entre las tres perfumerías' : ''), nota ? 'nota: ' + nota : ''],
-          signo > 0 && prodF ? { loc: local ? local.charAt(0).toUpperCase() + local.slice(1) : (sinLocal ? 'Perfumería (repartido)' : String(d.nom || '?')), f, prod: String(prodF.name).slice(0, 60), color: extra.color || '', u, m: Math.round(monto), g: costoU != null ? Math.round((montoU - costoU) * u) : null } : null); }
+          signo > 0 && prodF ? { persona: !esPerfD, loc: local ? local.charAt(0).toUpperCase() + local.slice(1) : (sinLocal ? 'Perfumería (repartido)' : String(d.nom || '?')), f, prod: String(prodF.name).slice(0, 60), color: extra.color || '', u, m: Math.round(monto), g: costoU != null ? Math.round((montoU - costoU) * u) : null } : null); }
       // `|de=cyc` (29/10/2026): salió de la Oficina CYC → se resta de `cyc/oficyc` (sin color: del total; si sólo hay colores, avisa).
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de)) { const x = (await db.get('cyc/oficyc/' + prodF.id)) || null;
         const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
