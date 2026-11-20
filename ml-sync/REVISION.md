@@ -1235,6 +1235,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - 30/10 (1a, él: *"los pedidos de paraguay el recargo en % se suman los descuentos hechos"*): el recargo real se mide contra lo PAGADO del ticket (`ticket.usdPagado`) en `recargoRealPedido` (sync.mjs) y `pyRecargoReal`/`pyBaseUSD` (index.html); el estimado ya no se lleva de la web a lo pagado (`_recEst`, `pyRecargoEstimado` = RECARGO_PAR directo). El descuento de Nissei se ve aparte (🎁) en los gastos del pedido. Chequear: el promedio de `paramcompra` sube (antes ~16-19%); fichas iguales que antes (ya usaban lo pagado); la Tienda toma el más alto.
 
 - **(20/11) 💰 Ganancia de Métricas resta los gastos parejo por día** (él: *"es lo real que queda sacando gastos… al principio de mes parece que le vamos a ganar por mucho"*) · qué: cada día resta gastos del mes ÷ días del mes (por cuenta según el neto del mes); el mes en curso usa max(lo cargado, lo del mes anterior); 🏢 Ganancia CYC no cambió · dónde: `index.html` `_gastoMesParejo`/`_gastoDiaCta`/`_gastoDiaDet`, `totOf` de `renderMetChart` · chequear: la línea de noviembre contra la de octubre a la misma altura, la barra roja de cada día, la proyección y 🔀 Todo.
+- **(20/11, 2ª vuelta) 💰 Ganancia: tooltip "gastos hasta acá" y estimado por categoría** (él: *"sacar tanto detalle… lo gastado hasta ese día… este mes gasté 300.000 menos, no hizo mucha diferencia"*) · qué: `_metGastoHastaTip` (último día = mes entero contra el anterior entero); lo que falta = sólo categorías sin gasto este mes, con lo del mes anterior (`_gastosCatMes`) · chequear: al pasar el dedo el día 30 da el total de noviembre contra octubre.
+
 
 ## 3 · MERCADERÍA (miércoles)
 
