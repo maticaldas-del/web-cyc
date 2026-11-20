@@ -24238,9 +24238,22 @@ async function main() {
         const ti = Math.abs(parseFloat(f.dolares_tito) || 0), ma = Math.abs(parseFloat(f.dolares_mati) || 0);
         const g = Object.values(comp).filter((x) => x && x.tipo !== 'compra' && String(x.dayKey || '').startsWith(ym) && /inter/i.test(String(x.cat || '') + ' ' + String(x.desc || '')));
         console.log(`\n${ym}: cierre ${pk} ${s2 ? `· Tito US$ ${Math.round(ti)} · Mati US$ ${Math.round(ma)} · dólar ${tc ? Math.round(tc) : '?'} → 1% Tito ${money(Math.round(ti * tc * 0.01))} · 1% Mati ${money(Math.round(ma * tc * 0.01))}` : '· sin cierre'}`);
-        for (const x of g) console.log(`   cargado ${x.dayKey} · ${money(Math.round(x.monto || 0))} · ${String(x.desc || '(sin descripción)').slice(0, 60)}`);
+        for (const [k2, x] of Object.entries(comp).filter(([, x]) => g.includes(x))) console.log(`   cargado ${x.dayKey} · ${money(Math.round(x.monto || 0))} · ${String(x.desc || '(sin descripción)').slice(0, 60)} · clave ${k2}`);
         if (!g.length) console.log('   (ningún interés cargado)');
       }
+      return;
+    }
+    // BILLING_PROBE=editargasto:<clave>|desc=<texto>[;go] (20/11/2026): le cambia la descripción a un gasto (el monto y la fecha no se tocan).
+    if (/^editargasto:/.test(String(process.env.BILLING_PROBE || ''))) {
+      const _r = String(process.env.BILLING_PROBE).slice('editargasto:'.length); const GOe = /;go$/.test(_r) && !DRY;
+      const m = _r.replace(/;go$/, '').match(/^([A-Za-z0-9_-]+)\|desc=(.{1,120})$/);
+      if (!m) { console.log('Usá: editargasto:<clave>|desc=<texto>[;go]'); process.exitCode = 1; return; }
+      const g = await db.get('cyc/compras/' + m[1]);
+      if (!g || (g.tipo && g.tipo !== 'gasto')) { console.log(`No hay ningún gasto con la clave ${m[1]}.`); process.exitCode = 1; return; }
+      console.log(`${g.dayKey} · ${money(Math.round(g.monto || 0))} · "${String(g.desc || '')}" → "${m[2]}"`);
+      if (!GOe) { console.log('PRUEBA: agregá ;go'); return; }
+      await db.patch('cyc/compras/' + m[1], { desc: m[2] });
+      console.log(String(((await db.get('cyc/compras/' + m[1])) || {}).desc) === m[2] ? '✓ guardado y releído' : '✗ no quedó');
       return;
     }
     // BILLING_PROBE=borrargasto:<clave>[;go] (20/11/2026, él con los intereses de noviembre: "mi viejo este mes cobró uno solo 124.800")
