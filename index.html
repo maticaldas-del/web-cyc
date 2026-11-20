@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.247';
+const APP_VERSION='28.248';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.248',f:'20/11',h:'14:15',c:[{n:3,t:'📊 Métricas → 💰 Ganancia: las tarjetas de arriba (total y cada cuenta) también muestran lo que queda después de los gastos, igual que la línea. El % de ganancia de cada cuenta sigue siendo el de las ventas.'}]},
   {v:'28.247',f:'20/11',h:'13:55',c:[{n:2,t:'📊 Métricas → 💰 Ganancia: al pasar el dedo ya no sale el detalle de cada gasto; sale lo gastado hasta ese día contra el mes anterior a la misma altura (el último día = el mes entero). Lo que falta pagar se estima sólo para lo que todavía no se cargó este mes: lo que se gastó de menos ya cuenta.'}]},
   {v:'28.246',f:'20/11',h:'13:40',c:[{n:3,t:'📊 Métricas → 💰 Ganancia: la línea ahora resta los gastos, repartidos parejo entre todos los días del mes (no todo el día que se pagan). El mes en curso usa lo gastado el mes anterior hasta que lo cargado lo pase, así no parece que le ganamos por mucho al principio. La barra verde sigue siendo la ganancia de las ventas y la roja, la parte de gastos de cada día.'}]},
   {v:'28.245',f:'20/11',h:'13:10',c:[{n:1,t:'🧾 Pedido del momento (Paraguay): cada probado dice cuánto stock tenemos (Full + en camino + Oficina ML). Al pasar el mouse (o mantener apretado) dice dónde está cada unidad, cuenta por cuenta.'}]},
@@ -26469,7 +26470,10 @@ function _metLocalDia(){
 // Suma los valores de todos los keys para todas las cuentas.
 function sumMetFields(keys,field){
   const t={};metAccts().forEach(a=>t[a]=0);
-  keys.forEach(k=>{metAccts().forEach(a=>{t[a]+=metGetValDay(k,a,field);});});
+  // 💰 Ganancia = lo real que queda (20/11, él: "¿no te dije que en ganancia muestre la ganancia real que queda?"): las tarjetas de arriba
+  // restan la parte pareja de los gastos de cada día ya pasado (`_gastoDiaCta`), igual que la línea. El % de ganancia sigue siendo el de las ventas.
+  const hoy=dateToKey(new Date()),resta=field==='ganancia'&&!_vLoc();
+  keys.forEach(k=>{metAccts().forEach(a=>{t[a]+=metGetValDay(k,a,field)-(resta&&k<=hoy?_gastoDiaCta(k,a):0);});});
   return t;
 }
 
@@ -27504,7 +27508,7 @@ function renderMetricas(){
   const cur=sumMetFields(curKeys,metViewField),prev=sumMetFields(prevKeys,metViewField);
   const curTotal=metAccts().reduce((s,a)=>s+cur[a],0),prevTotal=metAccts().reduce((s,a)=>s+prev[a],0);
   const lbl=getMetScopeLabel(metScopeMode),prevLbl=getPrevMetLabel(metScopeMode);
-  const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?'💰 Ganancia':metViewField==='gananciaCYC'?'🏢 Ganancia CYC':'💵 Total';
+  const fieldLbl=metViewField==='neto'?'💚 Neto':metViewField==='ganancia'?(_vLoc()?'💰 Ganancia':'💰 Ganancia (ya restados los gastos)'):metViewField==='gananciaCYC'?'🏢 Ganancia CYC':'💵 Total';
   const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   // Aviso de meses sin gastos: sólo en Ganancia CYC, que es la única vista que los resta.
   let avisoG='';
