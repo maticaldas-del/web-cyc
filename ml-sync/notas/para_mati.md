@@ -898,3 +898,7 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 1. **Sombra Idi Make Up HD** (Luciana, MLA4173332214): dos preguntas sobre cómo es el color de los tonos (q13695020008 y q13693949285). Si me decís cómo son, las contesto con `contesto`.
 2. **Sábanas 2 plazas y media** (Luciana, MLA2655470590): preguntan si van para un sommier de 2 plazas y media (q13693944075). Necesito la medida exacta del juego para contestar sin duda.
 3. **Waflera Atma Disney** (Ayelen, MLA4087803354): preguntan por otro diseño de personaje (q13694614080). La publicación es la roja de la línea Disney; ¿qué diseño trae la que tenemos?
+
+## 20/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1 intereses Mati octubre · 2 Rubios/Virulana a la perfumería · 3 Leyton · 4 Dream Way · 5 Blackview R30 · 6 Mouse Lenovo Essential · 7 Labial Idi · 8 Panasonic · 9 publicaciones sin visitas · 10 Filtro de agua · 11 Doree Vol 20 · 12 Batidor · 13 Licuadora Ninja · 14-15 avisos (Choques 3 y 4) · 16-24 revisión del Local del 20/11 (sin la 6: el nombre de pila ya lo decidió él el 19/11).
+- Resueltas por mí hoy: pedido Paraguay resto (#1016, ticket, fotos y pago cargados), intereses jun-oct con su nombre y el de oct repetido sacado, gastos sólo por el chat, caja Luciana …7915 (faltantes = mercadería que fue a la perfumería).
