@@ -540,11 +540,14 @@ footer { color: var(--ink2); font-size: 12px; text-align: center; padding: 8px 0
   // El balde se calcula igual que en el robot (`tiendaBalde` de sync.mjs): si se cambia uno, cambiar los dos.
   function waBtn(p) {
     if (!WA || WA.length < 8) return "";
-    var t = "Hola! Quiero consultar por este perfume:\n" + p.n + (p.k ? "\nCódigo: " + p.k : "") + (p.p > 0 && !VIEJO ? "\nPrecio en efectivo: " + pesos(p.p) + (p.pt > 0 ? "\nCon tarjeta, QR o transferencia: " + pesos(p.pt) : "") : "");
+    var t = "Hola! Quiero consultar por este perfume:\n" + p.n + (p.k ? "\nCódigo: " + p.k : "") + (p.p > 0 && !VIEJO && !abelViejo(p) ? "\nPrecio en efectivo: " + pesos(p.p) + (p.pt > 0 ? "\nCon tarjeta, QR o transferencia: " + pesos(p.pt) : "") : "");
     return '<a class="wa-abel" target="_blank" rel="noopener" href="https://wa.me/' + WA + '?text=' + encodeURIComponent(t) + '">Consultar por WhatsApp</a>';
   }
+  function abelViejo(p) {   // revisión etapa 9 (20/11/2026): cada perfume con su día de mirado (v): más de 2 días = consultar
+    if (!p.v) return false; var d = Date.parse(p.v + "T12:00:00-03:00"); return d > 0 && (Date.now() - d) > 2.5 * 864e5;
+  }
   function abelPrecio(p) {
-    if (p.cp || VIEJO || !(p.p > 0)) return "Consultar precio";   // 08/11/2026: lista de más de 3 días = consultar, como en la Tienda
+    if (p.cp || VIEJO || abelViejo(p) || !(p.p > 0)) return "Consultar precio";   // 08/11/2026: lista de más de 3 días = consultar, como en la Tienda
     return '<span class="pe-abel">' + esc(pesos(p.p)) + '<small> en efectivo</small></span>' + (p.pt > 0 ? '<span class="pt-abel">' + esc(pesos(p.pt)) + ' con tarjeta, QR, transferencia u otro medio</span>' : '');
   }
   // 🔎 FILTROS DE ABEL (idea 19, él eligió 19a el 08/11/2026): Ella / Él / Unisex (lo que dice el nombre: "mujer", "hombre", "unisex"…; sin

@@ -449,10 +449,12 @@ async function oficycSumarBot(db, p, va, delta) {
   const vs = Array.isArray(p.variantes) ? p.variantes : Object.values(p.variantes || {});
   const color = va && vs.length ? (vs.find((v) => sid(v) === sid(va)) || null) : null;
   if (va && vs.length && !color) return null;
-  const x0 = await db.get('cyc/oficyc/' + p.id); const x = x0 && typeof x0 === 'object' ? x0 : { t: parseInt(x0) || 0 };
-  const antes = color ? parseInt((x.v || {})[sid(color)]) || 0 : parseInt(x.t) || 0;
-  if (color) { x.v = x.v || {}; x.v[sid(color)] = antes + delta; } else x.t = antes + delta;
-  await db.set('cyc/oficyc/' + p.id, x);
+  // Revisión etapa 9 (20/11): con `casEscribir` (relee con su huella y reintenta): dos sumas a la vez no se pisan.
+  let antes = 0;
+  const rc = await casEscribir(db, 'cyc/oficyc/' + p.id, (x0) => { const x = x0 && typeof x0 === 'object' ? JSON.parse(JSON.stringify(x0)) : { t: parseInt(x0) || 0 };
+    antes = color ? parseInt((x.v || {})[sid(color)]) || 0 : parseInt(x.t) || 0;
+    if (color) { x.v = x.v || {}; x.v[sid(color)] = antes + delta; } else x.t = antes + delta; return x; });
+  if (!rc.ok) return null;
   try { if (!(await db.get('cyc/oficycdesde/' + p.id))) await db.set('cyc/oficycdesde/' + p.id, { ts: Date.now() }); } catch { /* sólo la fecha de entrada */ }
   let arq = '';
   if ((await db.get('cyc/mlconfig/oficycPorUnidades')) !== true) {
@@ -14456,7 +14458,7 @@ const TIENDA_USADO = /\b(tester|recondicionad[oa]s?|reacondicionad[oa]s?|refurbi
 const TIENDA_MARCAS = /\b(sony|playstation|ps5|ps4|dualsense|nintendo|xbox|apple|iphone|ipad|airpods|macbook|imac|samsung|galaxy|jbl|bose|beats|garmin|amazfit|huawei|xiaomi|redmi|poco\s+[a-z]?\d+[a-z]*|motorola|moto\s+g|honor\s+([a-z]?\d+[a-z]*|magic)|oneplus|realme|google\s+pixel|pixel\s*\d+[a-z]*|nothing\s+(phone|ear)|logitech|razer|steelseries|hyperx|corsair|anker|soundcore|dji|gopro|insta360|canon|nikon|fujifilm|instax|kindle|lenovo|asus|acer|dell|hp|msi|microsoft|meta\s+quest|oculus|philips|braun|oral-?b|dyson|sonos|marshall|sennheiser|audio-?technica|shure|rode|skullcandy|ultimate\s+ears|harman|seagate|sandisk|kingston|western\s+digital|wd|carolina\s+herrera|dior|chanel|paco\s+rabanne|rabanne|versace|lattafa|armani|hugo\s+boss|calvin\s+klein|lanc[oô]me|givenchy|azzaro|jean\s+paul\s+gaultier|montblanc|bvlgari|ralph\s+lauren|tommy|victoria\W?s?\s+secret|ifi|haylou)\b/i;
 // Palabras en PORTUGUÉS que delatan el origen (30/10/2026, revisión de privacidad): un nombre de ML que las tiene no entra (se probó contra
 // los 545 nombres del 30/10: saca los portugueses y ningún castellano; "masculino" es igual en castellano y "Tom" sólo con número de tono).
-const TIENDA_PT = /[ãõ]|ç[ãõo]|\b(batom|unissex|mecânic[oa]|m[ãa]e|com|cor|sem|lapela|fones?|carregador|caixa|garrafa|caneta|estojo|capinha|rel[óo]gio|pret[oa]|branc[oa]|cinza|vermelh[oa]|amarel[oa]|roxo|dourad[oa]|polegadas|bivolt|feminino|brinquedo|boneca|carrinho|aparelho|barbeador|cabelo|escova|chapinha|c[âê]mera|edi[çc][ãa]o|vers[ãa]o|cole[çc][ãa]o|ouvido|sabonete|corpo|roteador|sinal|curitiba)\b|\btom\s+\d/i;
+const TIENDA_PT = /[ãõ]|ç[ãõo]|\b(homens?|mulher(es)?|produto|banho|pacote|jogos|ampolas|interativ[oa]|colecionavel|batom|unissex|mecânic[oa]|m[ãa]e|com|cor|sem|lapela|fones?|carregador|caixa|garrafa|caneta|estojo|capinha|rel[óo]gio|pret[oa]|branc[oa]|cinza|vermelh[oa]|amarel[oa]|roxo|dourad[oa]|polegadas|bivolt|feminino|brinquedo|boneca|carrinho|aparelho|barbeador|cabelo|escova|chapinha|c[âê]mera|edi[çc][ãa]o|vers[ãa]o|cole[çc][ãa]o|ouvido|sabonete|corpo|roteador|sinal|curitiba)\b|\btom\s+\d/i;
 // Nombres de OTROS vendedores que algunos catálogos de ML traen pegados (30/10/2026): se saca la palabra, no el producto.
 function tiendaLimpiarNombre(n) {
   const s = String(n || '')
@@ -34386,7 +34388,7 @@ async function main() {
       // publica precio nuevo: la Tienda y ABEL quedan como ayer y se le avisa una vez por día.
       { let ref = null; try { ref = await db.get('cyc/mlconfig/dolarRef'); } catch { ref = null; }
         const viejo = !!ref && (!(Number(ref.v) > 0) || Date.now() - Number(ref.ts || 0) > 30 * 3600e3);   // sin referencia todavía (el primer día): no frena
-        const lejos = !!ref && !viejo && Math.abs(tc / Number(ref.v) - 1) > 0.015;
+        const lejos = !!ref && !viejo && Math.abs(Number(ref.v) / tc - 1) * 100 >= DOLAR_UMBRAL_PCT;   // revisión etapa 9 (20/11): la misma cuenta que la carga del dólar (antes al revés: entre 1,48% y 1,5% ni cargaba ni dejaba publicar)
         if (viejo || lejos) {
           const txt = viejo ? 'el dólar no se pudo leer en más de un día' : `el dólar cargado ($${Math.round(tc)}) se aleja más de 1,5% del de hoy ($${Math.round(Number(ref.v))})`;
           negar(`⛔ Tienda y ABEL: ${txt}. No publico precios nuevos: quedan los de ayer.`);
@@ -34818,7 +34820,7 @@ async function main() {
       const ABEL_SI = /\b(perfume|perfum|eau\s+de\s+(parfum|toilette|cologne)|edp|edt|parfum|extrait|colonia|fragancia)\b/i;
       // Control del 01/11: "Aqua Kiss Shimmer Victoria's Secret 250 ml" (en el proveedor "Colônia") es una bruma, no un perfume.
       const ABEL_MIST = /\bshimmer\b|col[oô]nia\s+(victoria|bath)|(victoria.?s\s+secret|bath\s*(&|and)?\s*body)[^]{0,80}\b2(36|50)\s*ml/i;
-      const ABEL_NO = /\b(body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
+      const ABEL_NO = /\b(after\s*shave|p[oó]s[- ]?barba|body\s*(mist|splash|lotion)|crema|cream|loci[oó]n|lotion|desodorante|deo\b|antitranspirante|shower|gel|jab[oó]n|shampoo|vela|difusor|ambientador|aromatizador|home\s*spray|auto|tester|miniatura|decant|para\s+autos?|capilar|hair)\b|mist|bruma|reloj|watch|sombra|tran[cç]as|maquillaje|labial/i;
       // Ayudas de ABEL (6a del 08/11/2026): las mismas reglas para lo que viene de la tienda, de un catálogo seguro sacado por precio y de Nissei solo.
       const abelKeys = new Set(), abelFueraKeys = new Set(), abelPorCod = {};
       // 9a y 12a de la revisión del Local (08/11/2026, él): sin colonias ni body splash de 200/250 ml (Stella Dustin, Joli Joli, Icandy, Lattafa,
@@ -34997,7 +34999,7 @@ async function main() {
       { // 🌸 ABEL: su propio archivo (abel/productos.json), ordenado por nombre. 01/11/2026 (él: "hoy no tienen forma de comunicarse"): lleva el WhatsApp para consultar cada perfume.
         outAbel.sort((a, b) => a.n.localeCompare(b.n, 'es'));
         const waA = String(waRaw || '').replace(/\D/g, ''); const jA = JSON.stringify({ act: diaAR, wa: waA.length >= 8 ? waA : '', productos: outAbel });
-        if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.');
+        if (prohibido(jA.replace(/https:\/\/[^"]+/g, ''))) { console.log('⚠️ ABEL: el archivo tiene una palabra que no puede salir: no lo escribo.'); try { await sendAlerta('⚠️ ABEL no se actualizó: el archivo tenía una palabra que no puede salir (queda la página de ayer). Mirarlo con tienda.', { info: true }); } catch { /* queda en el registro */ } }
         else if (outAbel.length < 20) {
           // 14a de la revisión del Local (08/11/2026, él): con menos de 20 perfumes al día la página dice "actualizando" (no queda la lista vieja
           // con precios de hace días) y se avisa. `actualizando: 1` lo lee tienda/abel/index.html.
@@ -45898,13 +45900,11 @@ async function main() {
         console.log(rD && Number(rD.u) === cambios[0][1].u ? '  ✓ guardado y releído' : '  ⚠️ no lo pude releer');
         if (rD && corrD) await _corrCobro(corrD, `devuelto el ${fD} (mes cerrado) cargado tarde`);
         if (rD) await avisoMov(idD, `↩️ <b>Devolvieron sin vender</b> (${String(fD).split('-').reverse().join('/')})`, [`${uD} × ${String(pD.name).slice(0, 70)} · vuelve a la Oficina ${aD === 'local' ? 'Local' : 'ML'}`, `debe ${money(Math.round(bajaM))} menos · sale ${money(Math.round(bajaG))} de ganancia`, locD ? 'perfumería: ' + locD : '']);
-        if (aD === 'local') { const x = (await db.get('cyc/oficyc/' + pD.id)) || null; const obj = x && typeof x === 'object' ? x : { t: parseInt(x) || 0 }; const ant = parseInt(obj.t) || 0;
-          obj.t = ant + uD; await db.set('cyc/oficyc/' + pD.id, obj); console.log(`  🏪 Oficina Local: ${pD.name} ${ant} → ${ant + uD} (sin color; si tiene color, corregilo con oficyc:${pD.id}@<color>=…;go)`);
-          // 2a (30/10/2026): lo mismo al revés: sin contar por unidades, lo que vuelve sube el valor a mano (`of_viejo`) en lo que costó.
-          if ((await db.get('cyc/mlconfig/oficycPorUnidades')) !== true) { const tcV = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
-            const cuV = Number(costoPesos(pD, 1, tcV).costBaseUSD) || 0, vAnt = parseFloat(await db.get('cyc/finanzas/of_viejo')) || 0;
-            if (cuV > 0) { const vNu = Math.round((vAnt + cuV * uD) * 100) / 100; await db.set('cyc/finanzas/of_viejo', vNu); console.log(`  🏪 Arqueo · Oficina Local (a mano, todavía sin contar): US$ ${vAnt.toFixed(2)} → US$ ${vNu.toFixed(2)}`); }
-            else console.log(`  ⚠️ ${pD.name} sin costo en dólares: el valor a mano de la Oficina Local NO subió. Subilo a mano en el Arqueo.`); }
+        // Revisión etapa 9 (20/11): vuelve con su color (|color=) por `oficycSumarBot` (antes sumaba siempre "sin color" y el color quedaba mal),
+        // que además anota la fecha de entrada y, sin contar por unidades, sube el valor a mano (2a del 30/10).
+        if (aD === 'local') { let rL2 = null; try { rL2 = await oficycSumarBot(db, pD, extra.color || '', uD); } catch (eL) { console.log(`  ⚠️ no pude sumar a la Oficina Local (${String(eL.message || eL).slice(0, 60)})`); }
+          if (rL2) console.log(`  🏪 Oficina Local: ${pD.name}${rL2.color ? ' · ' + rL2.color : ' (sin color)'} ${rL2.antes} → ${rL2.ahora}${rL2.arq || ''}`);
+          else console.log(`  ⚠️ OBLIGATORIO · vuelve a la Oficina Local: sumalo YA con oficyc:${pD.id}${extra.color ? '@<color exacto>' : ''}=+${uD};go${extra.color ? ` (el color "${extra.color}" no es de la ficha)` : ''}`);
           if ((await db.get('cyc/mlconfig/oficycPorUnidades')) === true) { const OCa = (await db.get('cyc/oficyc')) || {}; const tcA = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
             let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
             await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
@@ -46092,9 +46092,22 @@ async function main() {
       }
       // Revisión etapa 9 (13/11): `de=local` mira la Oficina Local ANTES de anotar la deuda (como `de=ml` desde el 08/11). Antes se anotaba y,
       // si ahí no había (ya contada por unidades), quedaba la deuda con su costo y la oficina sin restar: patrimonio y cobro de más.
+      // Revisión etapa 9 (20/11): `de=local` con |color= resta ESE color de la Oficina Local (antes sólo lo "sin color" y pedía un oficyc: aparte,
+      // que si se olvidaba dejaba la unidad en la oficina y en la deuda). Un color que el producto no tiene se niega.
+      let colL = null;
+      if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de) && extra.color) { const vsL = Array.isArray(prodF.variantes) ? prodF.variantes.map(String) : [];
+        colL = vsL.find((v) => _n(v) === _n(extra.color)) || null;
+        if (vsL.length && !colL) { console.log(`❌ color "${extra.color}" en ${prodF.name}: no está (tiene: ${vsL.slice(0, 10).join(', ')}). No escribo nada.`); return; } }
       if (signo > 0 && prodF && extra.de && /cyc|local/i.test(extra.de) && (await db.get('cyc/mlconfig/oficycPorUnidades')) === true) {
         const xL = (await db.get('cyc/oficyc/' + prodF.id)) || {}; const tL = parseInt(xL.t) || 0, vL = Object.values(xL.v || {}).reduce((t2, q2) => t2 + (parseInt(q2) || 0), 0);
-        if (tL < u) { console.log(`❌ en la Oficina Local hay ${tL} de ${prodF.name} sin color${vL ? ` (y ${vL} contadas por color, que esta resta no toca: cargalo con |de=ninguna y restá el color con oficyc:)` : ''}: no alcanzan para ${u}. Si salió de la Oficina ML usá |de=ml; si de ningún lado, |de=ninguna. No escribo nada.`); return; } }
+        const dL = colL ? parseInt((xL.v || {})[sid(colL)]) || 0 : tL;
+        if (dL < u) { console.log(`❌ en la Oficina Local hay ${dL} de ${prodF.name}${colL ? ' · ' + colL : ' sin color'}${!colL && vL ? ` (y ${vL} contadas por color: decí cuál con |color=<color>)` : ''}: no alcanzan para ${u}. Si salió de la Oficina ML usá |de=ml; si de ningún lado, |de=ninguna. No escribo nada.`); return; } }
+      // Revisión etapa 9 (20/11): `de=ninguna` con unidades del producto en alguna oficina se avisa (no frena): si salió de ahí, va con de=ml/de=local.
+      if (signo > 0 && prodF && extra.de && /ningun|nada/i.test(extra.de)) { try {
+        const invN = (await db.get('cyc/inventory')) || {}, kN = prodF.id + '__Oficina_Mati'; const nML = parseInt(invN[kN]) || 0;
+        const xN = (await db.get('cyc/oficyc/' + prodF.id)) || {}; const nL = typeof xN === 'object' ? (parseInt(xN.t) || 0) + Object.values(xN.v || {}).reduce((t2, q2) => t2 + (parseInt(q2) || 0), 0) : (parseInt(xN) || 0);
+        if (nML > 0 || nL > 0) console.log(`  ⚠️ dice de=ninguna pero hay ${nML} en la Oficina ML y ${nL} en la Local de ${prodF.name}: si salió de ahí, va con |de=ml o |de=local (si no, la unidad queda en la oficina y en la deuda).`);
+      } catch { console.log('  ⚠️ no pude mirar las oficinas para avisar si había de este producto'); } }
       // 30a del 14/11: lo dejado con fecha de un mes cerrado → lo que sube el patrimonio va a "lo viejo cargado tarde" y no al cobro de este mes.
       // 6a de la revisión de Plata (18/11/2026, él): va SÓLO LA GANANCIA también con de=ninguna (Tienda de Paraguay, Paulvic: su costo ya se pagó
       // en el pedido); el monto entero sólo si no tiene costo. Antes con de=ninguna iba el monto entero (6 Paulvic: $82.500 en vez de $16.500).
@@ -46143,16 +46156,23 @@ async function main() {
           if (!(cuV > 0)) console.log(`  ⚠️ ${prodF.name} sin costo en dólares: el valor a mano de la Oficina Local (US$ ${vAnt.toFixed(2)}) NO bajó. Bajalo a mano en el Arqueo.`);
           else { const vNu = Math.round(Math.max(0, vAnt - cuV * u) * 100) / 100; await db.set('cyc/finanzas/of_viejo', vNu);
             console.log(`  🏪 Arqueo · Oficina Local (a mano, todavía sin contar): US$ ${vAnt.toFixed(2)} → US$ ${vNu.toFixed(2)} (${u} × US$ ${cuV.toFixed(2)})${vAnt < cuV * u ? '  ⚠️ el valor a mano era menor: quedó en 0' : ''}`); } }
-        if (ant >= u) { obj.t = ant - u; await db.set('cyc/oficyc/' + prodF.id, obj); console.log(`  🏪 Oficina Local: ${prodF.name} ${ant} → ${ant - u}`);
+        // Revisión etapa 9 (20/11): se escribe con `casEscribir` (relee con su huella y reintenta): dos debenmov a la vez perdían una resta.
+        let antL = colL ? parseInt((obj.v || {})[sid(colL)]) || 0 : ant;
+        const rCL = antL >= u ? await casEscribir(db, 'cyc/oficyc/' + prodF.id, (x2) => { const o2 = x2 && typeof x2 === 'object' ? JSON.parse(JSON.stringify(x2)) : { t: parseInt(x2) || 0 };
+          const a2 = colL ? parseInt((o2.v || {})[sid(colL)]) || 0 : parseInt(o2.t) || 0; antL = a2; if (a2 < u) return null; if (colL) { o2.v = o2.v || {}; o2.v[sid(colL)] = a2 - u; } else o2.t = a2 - u; return o2; }) : { ok: false };
+        if (antL >= u && !rCL.ok) console.log(`  ⚠️ Oficina Local: no pude restar ${u} de ${prodF.name}${colL ? ' · ' + colL : ''} (cambió en el medio o ya no alcanzan: hay ${antL}). Restalo con oficyc:${prodF.id}${colL ? '@' + colL : ''}=-${u};go`);
+        if (rCL.ok) { console.log(`  🏪 Oficina Local: ${prodF.name}${colL ? ' · ' + colL : ''} ${antL} → ${antL - u}`);
           if ((await db.get('cyc/mlconfig/oficycPorUnidades')) === true) { const OCa = (await db.get('cyc/oficyc')) || {}; const tcA = parseFloat(await db.get('cyc/finanzas/tipo_cambio')) || 0;
             let tot = 0; for (const [k, y] of Object.entries(OCa)) { const pp = products.find((z) => z.id === k); if (!pp) continue; const uu = y && typeof y === 'object' ? Object.values(y.v || {}).reduce((a2, b2) => a2 + (parseInt(b2) || 0), 0) + (parseInt(y.t) || 0) : (parseInt(y) || 0); tot += uu * (Number(costoPesos(pp, 1, tcA).costBaseUSD) || 0); }
             await db.set('cyc/finanzas/of_viejo', Math.round(tot * 100) / 100); console.log(`  🏪 Arqueo · Oficina Local = US$ ${tot.toFixed(2)}`); } }
-        else console.log(ant === 0 && !Object.values(obj.v || {}).some((q) => parseInt(q) > 0) ? `  🏪 ${prodF.name} todavía no está contado en la Oficina Local: al contarlo, contá lo que quedó (sin estas ${u})` : `  ⚠️ en la Oficina Local hay ${ant} sin color de ${prodF.name}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
-      else if (ofiML) { const fr = (await db.get('cyc/inventory')) || {}; const upd = {};   // 12a del 08/11: se resta solo (se relee justo antes)
-        for (const [v, n] of Object.entries(ofiML.saca)) { const a = parseInt(fr[ofiML.kV(v)]) || 0; upd[ofiML.kV(v)] = Math.max(0, a - n) || null; }
-        const tA = parseInt(fr[ofiML.kT]) || 0, tN = Math.max(0, tA - u); upd[ofiML.kT] = tN || null;
-        await db.patch('cyc/inventory', upd); const rr = parseInt(await db.get('cyc/inventory/' + ofiML.kT)) || 0;
-        console.log(rr === tN ? `  📦 Oficina ML: ${prodF.name} ${tA} → ${tN} ✓ restado y releído` : `  ⚠️ Oficina ML: no lo pude releer (quedó ${rr}, esperaba ${tN}): mirarlo con ofi`); }
+        else if (antL < u) console.log(ant === 0 && !Object.values(obj.v || {}).some((q) => parseInt(q) > 0) ? `  🏪 ${prodF.name} todavía no está contado en la Oficina Local: al contarlo, contá lo que quedó (sin estas ${u})` : `  ⚠️ en la Oficina Local hay ${antL} de ${prodF.name}${colL ? ' · ' + colL : ' sin color'}: no resté nada, restalo con oficyc:${prodF.id}[@color]=-${u};go`); }
+      else if (ofiML) {   // 12a del 08/11: se resta solo. Revisión etapa 9 (20/11): cada número con `casEscribir` (relee con su huella y
+        // reintenta): dos debenmov del mismo producto a la vez leían el mismo número y uno pisaba la resta del otro.
+        let okC = true;
+        for (const [v, n] of Object.entries(ofiML.saca)) { const rv = await casEscribir(db, 'cyc/inventory/' + ofiML.kV(v), (a) => Math.max(0, (parseInt(a) || 0) - n)); if (!rv.ok) okC = false; }
+        const rt = await casEscribir(db, 'cyc/inventory/' + ofiML.kT, (a) => Math.max(0, (parseInt(a) || 0) - u));
+        if (!rt.ok) okC = false;
+        console.log(okC ? `  📦 Oficina ML: ${prodF.name} ${parseInt(rt.ant) || 0} → ${rt.val} ✓ restado` : `  ⚠️ Oficina ML: no pude restar todo (alguien la cambiaba a la vez): mirarlo con ofi y restar lo que falte`); }
       else if (signo > 0 && prodF && extra.de && /mati|ml/i.test(extra.de)) console.log(`  ⚠️ OBLIGATORIO · salió de la Oficina ML: restalo YA con ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync; ofi no acepta el número de ficha). Hasta restarlo, Armar caja lo cuenta para mandar a Full.`);
       // Lo que se le dejó a la perfumería baja lo que ella había pedido (`cyc/pedperf`, 29/10/2026): ya no hay que comprarlo para ella.
       // Revisión etapa 9, 30/10/2026: sólo con la deuda de la perfumería (o con `local=`): antes bajaba con CUALQUIER deuda con `prod=` (lo que se
@@ -46161,11 +46181,16 @@ async function main() {
       if (signo > 0 && prodF && esPerfD) { let pp = null, ppOk = true; try { pp = await db.get('cyc/pedperf/' + prodF.id); } catch { ppOk = false; }
         if (!ppOk) console.log(`  ⚠️ NO LEÍ cyc/pedperf: lo que pidió la perfumería de ${prodF.name} NO bajó. Bajalo con pedperf:${prodF.id}=<lo que falta>;go`);
         else if (pp && Number(pp.u) > 0) {
+          // Revisión etapa 9 (20/11): baja sólo si se dejó el color pedido (antes 2 Azul cumplían un pedido de 2 Rojo y las Rojo apartadas
+          // quedaban libres para Full).
+          const vsP = Array.isArray(prodF.variantes) ? prodF.variantes.map(String).filter(Boolean) : [];
+          const colDej = (ofiML && Object.keys(ofiML.saca || {}).length === 1 ? Object.keys(ofiML.saca)[0] : '') || colL || extra.color || (vsP.length === 1 ? vsP[0] : '');
           if (pp.local && pp.local !== local) console.log(`  🛍️ lo pidió ${pp.local} y esto ${local ? 'se dejó en ' + local : 'no dice en qué perfumería quedó (|local=…)'}: lo que pidió (${pp.u}) no lo toco`);
+          else if (pp.va && vsP.length > 1 && _n(colDej) !== _n(pp.va)) console.log(`  🛍️ lo que pidió la perfumería es ${pp.va} y esto ${colDej ? 'es ' + colDej : 'no dice el color (|color=…)'}: lo que pidió (${pp.u}) no lo toco${colDej ? '' : `; si era ${pp.va}, bajalo con pedperf:${prodF.id}@${pp.va}=${Math.max(0, Number(pp.u) - u)};go`}`);
           else { const r2 = Math.max(0, Number(pp.u) - u);
             if (r2 > 0) await db.patch('cyc/pedperf/' + prodF.id, { u: r2, ts: Date.now() }); else await db.set('cyc/pedperf/' + prodF.id, null);
             console.log(`  🛍️ lo que pidió la perfumería: ${pp.u} → ${r2}${r2 ? '' : ' (cumplido, sale de Pedidos)'}`);
-            if (!(extra.de && /cyc|local|mati|ml/i.test(extra.de))) console.log(`  ⚠️ OBLIGATORIO · no dice de qué oficina salió y estas ${u} estaban apartadas para la perfumería en la Oficina ML: si salieron de ahí, ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync) YA; si salieron de la Oficina Local, oficyc:${prodF.id}=-${u};go; si de otro lado, que lo diga Matías. Hasta restarlo, Armar caja las cuenta para mandar a Full.`); } } }
+            if (!(extra.de && /cyc|local|mati|ml|ningun|nada/i.test(extra.de))) console.log(`  ⚠️ OBLIGATORIO · no dice de qué oficina salió y estas ${u} estaban apartadas para la perfumería en la Oficina ML: si salieron de ahí, ofi:<palabras del nombre: ${String(prodF.name).slice(0, 50)}>=-${u};go (ml-sync) YA; si salieron de la Oficina Local, oficyc:${prodF.id}=-${u};go; si de otro lado, que lo diga Matías. Hasta restarlo, Armar caja las cuenta para mandar a Full.`); } } }
       return;
     }
     // BILLING_PROBE=oficyc[:<palabras o id>[@<color>]=<+N|-N|N>;…|listo|amano][;go] · LA OFICINA LOCAL POR UNIDADES (29/10/2026, él: "stock del local
@@ -46280,6 +46305,11 @@ async function main() {
           if (vs.length === 1) va = vs[0]; }
         ops.push({ P, u, va, local, nota: nota.join(' ').slice(0, 120) });
       }
+      // Revisión etapa 9 (20/11): se guarda UN pedido por producto. Un segundo color mientras el primero sigue pendiente se niega (antes lo
+      // pisaba: "Diva 3" y después "Persea 2" dejaba sólo Persea 2). Dos colores del mismo producto en un mismo comando, también.
+      { const visto = {}; for (const o of ops) { if (!(o.u > 0)) continue; const ant = PP[o.P.id];
+        if (ant && Number(ant.u) > 0 && (ant.va || '') !== (o.va || '') && !ops.some((z) => z.P.id === o.P.id && !(z.u > 0))) malos.push(`${o.P.name}: ya pidió ${ant.u} de ${ant.va || 'sin color'} (pendiente). Se guarda un color por producto: el otro, cuando se cumpla ése (o sacalo con =0 antes)`);
+        if (visto[o.P.id] != null && visto[o.P.id] !== (o.va || '')) malos.push(`${o.P.name}: dos colores en el mismo comando (se guarda uno por producto)`); visto[o.P.id] = o.va || ''; } }
       if (malos.length) { console.log('❌ NO ESCRIBO NADA:\n   ' + malos.join('\n   ')); return; }
       console.log(`=== 🛍️ LO QUE PIDE LA PERFUMERÍA · ${GO ? 'APLICANDO' : 'PRUEBA'} ===`);
       for (const o of ops) { const ant = PP[o.P.id]; console.log(`  · ${o.P.name}${o.va ? ' #' + o.va : ''}: ${ant ? ant.u : 0} → ${o.u} u.${o.local ? ' · ' + o.local : ''}${o.P.origen === 'py' ? '  ⚠️ es de Paraguay (esto es para Bs As: igual se anota)' : ''}`); }

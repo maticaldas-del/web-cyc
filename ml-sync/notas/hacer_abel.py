@@ -40,7 +40,7 @@ rep('<div id="verCant"></div>', '<div id="verCant"></div><div id="verWa"></div>'
 rep('$("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id);', '$("verCant").dataset.id = id; $("verCant").innerHTML = cantHtml(id); $("verWa").innerHTML = waBtn(p);')
 rep('  var DET = {};', '''  function waBtn(p) {
     if (!WA || WA.length < 8) return "";
-    var t = "Hola! Quiero consultar por este perfume:\\n" + p.n + (p.k ? "\\nCódigo: " + p.k : "") + (p.p > 0 && !VIEJO ? "\\nPrecio en efectivo: " + pesos(p.p) + (p.pt > 0 ? "\\nCon tarjeta, QR o transferencia: " + pesos(p.pt) : "") : "");
+    var t = "Hola! Quiero consultar por este perfume:\\n" + p.n + (p.k ? "\\nCódigo: " + p.k : "") + (p.p > 0 && !VIEJO && !abelViejo(p) ? "\\nPrecio en efectivo: " + pesos(p.p) + (p.pt > 0 ? "\\nCon tarjeta, QR o transferencia: " + pesos(p.pt) : "") : "");
     return '<a class="wa-abel" target="_blank" rel="noopener" href="https://wa.me/' + WA + '?text=' + encodeURIComponent(t) + '">Consultar por WhatsApp</a>';
   }
   var DET = {};''')
@@ -50,8 +50,11 @@ rep('</style>', '''.wa-abel { display: block; text-align: center; margin-top: 8p
 # 💵 EFECTIVO Y CUALQUIER OTRO MEDIO (02/11/2026, él: "el verde es sólo EFECTIVO. el otro precio más caro es cualquier otro método de pago"; él: "que aparezca el precio en efectivo grande en verde y el de tarjeta más chico en gris abajo").
 rep("""<div class="precio">' + (p.cp || VIEJO ? "Consultar precio" : pesos(p.p)) + '</div>""", """<div class="precio">' + abelPrecio(p) + '</div>""")
 rep("""$("verPrecio").innerHTML = p.cp || VIEJO ? "Consultar precio" : esc(pesos(p.p)) + (p.ml ? '<span class="enml">En Mercado Libre <s>' + esc(pesos(p.ml)) + "</s></span>" : "");""", """$("verPrecio").innerHTML = abelPrecio(p);""")
-rep('  var DET = {};', """  function abelPrecio(p) {
-    if (p.cp || VIEJO || !(p.p > 0)) return "Consultar precio";   // 08/11/2026: lista de más de 3 días = consultar, como en la Tienda
+rep('  var DET = {};', """  function abelViejo(p) {   // revisión etapa 9 (20/11/2026): cada perfume con su día de mirado (v): más de 2 días = consultar
+    if (!p.v) return false; var d = Date.parse(p.v + "T12:00:00-03:00"); return d > 0 && (Date.now() - d) > 2.5 * 864e5;
+  }
+  function abelPrecio(p) {
+    if (p.cp || VIEJO || abelViejo(p) || !(p.p > 0)) return "Consultar precio";   // 08/11/2026: lista de más de 3 días = consultar, como en la Tienda
     return '<span class="pe-abel">' + esc(pesos(p.p)) + '<small> en efectivo</small></span>' + (p.pt > 0 ? '<span class="pt-abel">' + esc(pesos(p.pt)) + ' con tarjeta, QR, transferencia u otro medio</span>' : '');
   }
   var DET = {};""")
