@@ -1239,6 +1239,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **(20/11, 3ª) 💰 Ganancia: las tarjetas de arriba también restan los gastos** (él: *"¿no te dije que en ganancia muestre la ganancia real que queda?"*) · qué: `sumMetFields` resta `_gastoDiaCta` de los días ya pasados cuando el campo es ganancia (fuera de perfumería/tienda); el % sigue siendo de ventas · chequear: tarjeta total de noviembre ≈ ganancia de ventas − gastos hasta hoy. **+ `borrargasto:<clave>[;go]`** (ml-sync) saca un gasto cargado de más.
 - **(20/11) Gastos sólo por el chat** · qué: Gastos del mes ya no tiene casilla ni 💾 Cargar (dice "pasámelo por el chat" y, en el interés de Tito, cuánto da) · dónde: `index.html` renglón de cada gasto que falta · chequear: que no quede otra forma de cargar un gasto desde la web.
 - **(20/11) Gastos del mes sin el renglón "Intereses financieros" suelto** · qué: el único interés es el de Tito; el renglón genérico pedía otro y se cargó dos veces (oct y nov) · dónde: `GASTOS_DEL_MES` en `index.html` · chequear: noviembre ya no pide intereses de más y el de Papá compara contra el de octubre.
+- **(20/11) Inicio → 🛒 Gastos con el total y la diferencia** · qué: total del mes (`_gastosMes`) y ▼/▲ contra el mes anterior con %, arriba de "todo cargado"/"N sin cargar" · dónde: `_vivosDatos`/`_homeVivos` en `index.html` · chequear: noviembre ≈ $872.693, ▼ $504.238 · 37% menos que octubre.
+
 
 
 
