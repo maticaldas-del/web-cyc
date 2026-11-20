@@ -3753,7 +3753,7 @@ function backupDesdeAjustes(){
 // y dos números escritos a mano es cuestión de tiempo hasta que uno quede viejo y la pantalla
 // mienta sobre qué versión estás usando — justo lo contrario de para qué se puso.
 // Se escribe ACÁ y los dos lugares lo leen de acá.
-const APP_VERSION='28.251';
+const APP_VERSION='28.252';
 // Versión del traductor de nombres de las listas: la MISMA que `LISTA_NOMBRE_VER` de sync.mjs (si se cambia una, la otra).
 const LISTA_NOMBRE_VER=1;
 // LOS ÚLTIMOS CAMBIOS, arriba del puntaje (25/09/2026). Pedido suyo: "quiero que arriba del puntaje
@@ -3766,6 +3766,7 @@ const LISTA_NOMBRE_VER=1;
 // n: 1 leve (cómo se ve algo) · 2 mediano (cambia un número o una lista que se mira) ·
 //    3 importante (toca plata, precios, stock o patrimonio).
 const APP_CAMBIOS=[
+  {v:'28.252',f:'20/11',h:'15:40',c:[{n:2,t:'📊 Métricas → % de ganancia (promedio corriendo): los primeros 6 días del mes ya no saltan; miran los últimos 7 días (con el final del mes anterior). Desde el día 7 es el promedio del mes como siempre.'}]},
   {v:'28.251',f:'20/11',h:'15:15',c:[{n:2,t:'Inicio → 🛒 Gastos: muestra cuánto se gastó en el mes y la diferencia con el mes anterior (verde si es menos), además de lo que falta cargar.'}]},
   {v:'28.250',f:'20/11',h:'15:05',c:[{n:2,t:'Gastos del mes: se sacó el renglón "Intereses financieros" suelto. El único interés que se paga es el de Tito (Intereses · Papá); pedir dos hacía cargar el mismo dos veces.'}]},
   {v:'28.249',f:'20/11',h:'14:30',c:[{n:2,t:'Gastos del mes: se sacó la casilla para cargar un gasto a mano (se duplicaban con los que cargo yo). Los gastos se pasan por el chat y los cargo yo.'}]},
@@ -28012,7 +28013,16 @@ function renderPctChartFromScope(scope){
   const runAvg=(g,c)=>{let sg=0,sc=0;return g.map((gg,i)=>{sg+=(gg||0);sc+=(c[i]||0);return sc>0?+(sg/sc*100).toFixed(1):null;});};
   // g y c por bucket (todas las cuentas juntas).
   const gcSeries=(bkts)=>{const g=[],c=[];bkts.forEach(keys=>{let gg=0,cc=0;keys.forEach(k=>metAccts().forEach(a=>{gg+=metGetValDay(k,a,'ganancia');cc+=metCostoPctDay(k,a);}));g.push(gg);c.push(cc);});return{g,c};};
-  const serie=(bkts)=>{const{g,c}=gcSeries(bkts);return metPctMode==='promedio'?runAvg(g,c):g.map((gg,i)=>pct(gg,c[i]));};
+  // 20/11/2026 (él: "el primer día de los meses como no tiene más para el promedio toma ese, entonces queda altísimo o muy bajo"): con
+  // buckets de a un día, los primeros 6 días del promedio miran los últimos 7 días (con los del mes anterior); el día 7 ya es el
+  // promedio del mes y sigue igual que siempre (en el 7 las dos cuentas dan lo mismo, así que no hay salto).
+  const _pre6=(bkts)=>{const k0=bkts&&bkts[0]&&bkts[0][0];if(!k0||!bkts.every(b=>(b||[]).length===1))return null;
+    const [y,m,d]=String(k0).split('_').map(Number);const out=[];for(let i=6;i>=1;i--){const x=new Date(y,m-1,d-i);out.push(dateToKey(x));}
+    const g=[],c=[];out.forEach(k=>{let gg=0,cc=0;metAccts().forEach(a=>{gg+=metGetValDay(k,a,'ganancia');cc+=metCostoPctDay(k,a);});g.push(gg);c.push(cc);});return{g,c};};
+  const runAvgSuave=(g,c,pre)=>{if(!pre)return runAvg(g,c);let sg=0,sc=0;return g.map((gg,i)=>{sg+=(gg||0);sc+=(c[i]||0);
+    if(i<6){let pg=0,pc=0;for(let j=i;j<6;j++){pg+=pre.g[j]||0;pc+=pre.c[j]||0;}const tc=sc+pc;return tc>0?+((sg+pg)/tc*100).toFixed(1):null;}
+    return sc>0?+(sg/sc*100).toFixed(1):null;});};
+  const serie=(bkts)=>{const{g,c}=gcSeries(bkts);return metPctMode==='promedio'?runAvgSuave(g,c,_pre6(bkts)):g.map((gg,i)=>pct(gg,c[i]));};
   let datasets;
   if(metPctLineView==='general'){
     datasets=[
