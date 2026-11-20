@@ -798,7 +798,7 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 - **Para que sepas:** Pendrive 32 hace hoy el escalón a 21.390 en la vuelta de las 9:52 (antes lo frena el plazo de 48 horas). Cabotine 30: el 17/11 desde las 05:00 conviene pasarlo a la promo de ML "Potencia tus ventas" a 72.643 (ML pone 4,1 por ciento y nos queda como 76.287, más que con el descuento de hoy).
 
 ## 16/11 · Noche
-1. **Balanzas en las perfumerías:** ¿la que se vendió al precio anterior estaba en Soares o en Ceballos? (también en Inicio como tarjeta)
+1. **Balanzas en las perfumerías:** RESUELTA el 17/11 (era de Soares: 1 a $4.433, 6 de Soares y 3 de Ceballos a $5.000)
 
 - 💵 16/11: compró 103,14 USDT a 1.706,44 con los $176.000 de la perfumería. Ese es el dólar del próximo pedido de Paraguay pagado con esos USDT (regla del 15/11).
 
@@ -808,6 +808,47 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 32. Centímetro Rosa (Luciana, MLA3559540968, 79 en Full) a 5.190: en los 10 días de prueba vendió 2 (unos 350 por día) con 9 visitas por día y ganando la caja. A 17.490 había dejado unos 2.100 por día (1 compra de 2). Bajar no trajo las ventas de octubre, igual que en las Blancas que esperan tu respuesta. (a) subirla a 10.190, el medio (ahí vendió 2 en su único día), y decidir las Blancas con el mismo criterio (sugerida) (b) dejarla a 5.190.
 33. Switch TP-Link (Ayelen, MLA4087791306), tu escalera en descuento a 177.990 hasta el 24/11 (33 a 34 del peor caso): ML ofrece su promo Potencia tus ventas, el comprador lo vería a 172.650 (gana la caja, ML la pide a 174.312) y a nosotros nos queda como 179.622, más que hoy (34,5 del peor caso). Seguridad de techo: 95 (25 días sin vender a 177.990 o más). (a) cambiar el descuento por esa promo (sugerida) (b) seguir con el descuento hasta el 24/11.
 - Centímetro Blanco (MLA1699834745 y MLA3112784736): siguen esperando tus autorizaciones 6YRC y XR3R (volver a 5.190).
+
+## 17/11 · Revisión de Plata (8 decisiones) — RESUELTAS el 18/11 (1a 2a 3a 4a 5a 6: Paulvic CON aroma siempre · 7a · 8: se sacaron los botones de pago de la web) y 13a (Telegram privado): en el código, v28.231
+1. **Un mes en que CYC achica:** hoy se cobra 0 y la pérdida no se descuenta después. Ejemplo: noviembre −$1.360.000 (se cobra 0) y diciembre +$6.000.000 ($2.000.000 c/u); juntos darían $1.500.000 c/u. (a) sugerida: pasar lo negativo al cobro siguiente · (b) dejarlo así (la pérdida la pone CYC).
+2. **Algo dejado con `de=ninguna` (Tienda de Paraguay, Paulvic TODOS) cargado después de cerrar su mes:** hoy va el monto entero a "lo viejo cargado tarde", no la ganancia. Ejemplo: 6 Paulvic, se corrige $82.500 cuando lo que cambió fue $16.500 (diciembre cobra $22.000 menos c/u). (a) sugerida: la ganancia (el monto entero sólo si no tiene costo) · (b) dejarlo así.
+3. **Cerrar el mes con Binance o el efectivo sin actualizar** (ej. USDT usados para pagar Paraguay que siguen sumando en Binance): (a) sugerida: que "Cerrar el mes" avise si se cargaron hace más de 2 días · (b) nada.
+4. **El % de cada producto dentro de un carrito** (lo nuevo de hoy): sale con la comisión fija repartida, así 4 mazos de $4.290 dicen +60% cuando el mazo solo deja 16%. (a) sugerida: cada renglón con su % vendido solo y el ahorro del carrito en un renglón aparte · (b) dejarlo así.
+5. **El envío real de la caja cambia la ganancia de días que ya pasaron** (también de mayo a septiembre, que están cerrados pero no congelados). (a) sugerida: congelar mayo a septiembre como octubre y que cada venta use el envío del día en que se vendió · (b) dejarlo así.
+6. **Paulvic a la perfumería sin aroma:** hoy son dos comandos (la deuda y restar el aroma de la oficina); si se olvida el segundo queda en los dos lados. (a) sugerida: uno solo que dice "Paulvic TODOS" en la deuda y resta el aroma que salió · (b) como hoy.
+7. **Correcciones de una deuda (precio, inicial) no avisan al grupo** y el próximo "queda" salta sin explicación. (a) sugerida: avisarlas también · (b) como hoy.
+8. **El ✅ Pagó de la web en un producto de Mercadería** paga Mercadería aunque MercadoPago deba. (a) que cubra primero MercadoPago, como el robot · (b) como hoy (apretarlo quiere decir que el pago es de mercadería).
+(Revisá vos en Ver deudas → PERFUMERÍA · MercadoPago si del 13 al 15/11 algún día tiene "peajes" dos veces: uno a mano y otro "del extracto, solo". Si es así, uno sobra y lo saco.)
+
+## 17/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1-4 = las 30-33 de la completa · 5-12 = Revisión de Plata 1-8 · 13 = Telegram privado (sólo lo que llega hoy con código, frenos de ML y denuncias)
+
+## 18/11 · Revisión de Mercadería (8 decisiones; para las 12:30 y la noche)
+1. **Del 03/12 al 24/12 el pico de Navidad se cuenta dos veces en Pedidos** (el ritmo ya trae diciembre y además se multiplica). Ejemplo: perfume de regalo que vende 15/mes, pedido del 17/12: 49 u. (contando el pico una vez serían 31). (a) sugerida: esos días salen del ritmo y el pico lo pone sólo el multiplicador · (b) dejarlo (queda más stock para enero).
+2. **Redondeo por color:** hoy se redondea para arriba el total. Paulvic del 08/11: 26 u.; redondeando cada aroma serían 29, y un aroma que necesita 0,5 hoy queda en 0. (a) cada color para arriba · (b) como está (con 30 aromas de 1 venta pedía 30).
+3. **Si el envío de la caja saca un producto, su lugar en el cupo queda vacío** aunque otro haya quedado recortado. (a) sugerida: ese lugar va a lo recortado, por plata · (b) dejarlo.
+4. **Pirineo sin IVA:** hoy se cargó a mano y si alguien repite el descuento le vuelve a sacar 17%. (a) sugerida: anotar "Pirineo se paga sin IVA" y que la lista lo aplique sola al cargarla · (b) cargarla siempre a mano sin IVA.
+5. **Pedido de Paraguay automático: probados de hoy contra nuevos de ayer.** Hoy los nuevos que cargó ayer el robot se quedan y el tope recorta los probados (un Joystick probado salió). (a) sugerida: cada día primero los probados y los nuevos vuelven a competir por ⭐ · (b) como hoy.
+6. **Lo que sacás a mano del pedido de Paraguay vuelve al día siguiente.** (a) sugerida: lo que sacás queda afuera hasta la próxima decisión, y lo que cargás a mano cuenta como tuyo · (b) manda el robot.
+7. **Probados en el pedido de Paraguay:** hoy salen si no dan 35% contra el más barato de ML, aunque Pedidos haya decidido reponerlos con su regla. (a) sugerida: los probados con la regla de Pedidos, los nuevos contra el más barato · (b) como hoy.
+8. **El ticket de Paraguay y la guía de Via Cargo quedan enteros en el registro público** (el texto del comando). (a) sugerida: pasarlos cerrados, como el saldo de Binance · (b) aceptarlo.
+
+## 18/11 · Black Friday de ML (25/11 al 03/12) — para la lista de las 12:30 (informativo)
+- ML no pone plata en el Black Friday "común" en ninguna de las 4 cuentas: entrar sería bajar por bajar → no entro en ninguna (pendrives, cartas, enchufes, infusores, termómetro, centímetros, Paulvic).
+- "Ofertas Compartidas BF" (ML pone 1-3%): sólo los Victoria's Secret de Adriana, y todos quedan abajo del 35% (entre −29% y 29% en el peor caso) → no.
+- Única que da: Pendrive 8GB (Matías) en "Potencia tus ventas" (no es BF): $33.090 → $31.436, ML pone 2,8%, nos queda como $32.362 y cruza abajo de la barrera (el envío lo paga el comprador): 136% en el peor caso. Falta el 🤔 de sobra para entrar.
+
+## 18/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1-8 = Revisión de Mercadería del 18/11 · 9 = prueba de vender lo de Nissei por pedido (ejemplos ya pasados en el chat).
+
+## 19/11 · Revisión de Choques y fallas mudas (7 decisiones; para las 12:30 y la noche)
+1. **Las tarjetas de decisiones del panel:** una tanda nueva del mismo día borra lo que tocaste (a)/(b) y no mandaste, y puede pisar los números de la tanda anterior. (a) sugerida: lo tocado y no mandado se manda solo al buzón antes de cargar la nueva, y cada tanda lleva su hora · (b) dejarlo (hay que apretar Mandar antes de la próxima).
+2. **Una caja armada por el robot que retocás a mano** queda como "armada a mano" y el robot ya no la vuelve a tocar (ni a vaciar). (a) sugerida: que siga siendo del robot aunque la retoques · (b) como hoy.
+3. **Avisos que quedaron callados con la regla del 18/11** ("sólo 4 cosas"): una cuenta que pierde el permiso de ML (deja de leer ventas y precios) y ML moviendo la barrera de $33.000. (a) sugerida: esas dos salen como urgentes; lo demás (lo que le falta a la run, pasos de la noche que fallaron) al informe · (b) todo al informe.
+4. **Venta que no sale por Full y códigos de lo que llega** (los sumé el 18/11 a las 4 cosas). (a) sugerida: siguen saliendo (son plata o algo que llega) y corrijo el texto de la regla · (b) se callan.
+5. **Comandos que escriben con una lectura fallida:** hoy el aviso "datos incompletos" sale al final, cuando ya escribieron. (a) sugerida: todo comando que escribe mira si falló alguna lectura antes de escribir, y si falló no escribe · (b) arreglar caso por caso.
+6. **Dos cobros de la perfumería o dos sumas a Binance a la vez** pueden pisarse (se pierde una suma). (a) sugerida: que la base no deje escribir si alguien cambió el saldo en el medio (y se reintente) · (b) sólo la regla de mandarlos de a uno.
+7. **Los textos de las tareas automáticas tienen reglas viejas** (techo a 30 días, decisiones de caja en el código, `pregunto:` de decisiones) y la de las 12:30 no mira lo que pasó a la tarde. (a) sugerida: los actualizo · (b) dejarlos.
 
 ## 19/11 · Completa (para las 12:30 y la noche)
 1. **Leyton (Paulvic de hombre, las 2 publicaciones del mismo stock, 4 en Full):** 33 días sin vender y la prueba del mes a 32.990 lleva 17 días sin vender. Choca la liquidación de 30 días con tu regla de dejar los Paulvic hasta Navidad (y en la Navidad pasada no vendió más). (a) sugerida: primer escalón como descuento a 28.090 en las dos (sigue arriba de 21.990 y del 35%) · (b) dejarlo a 32.990 hasta después de Navidad. Seguridad de techo: techo en 32.990 con 17 días, techo95 lo da seguro recién a los 30.
@@ -819,3 +860,36 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 7. **GoPro The Handler (Ayelen, 139.990):** 0 visitas en 10 días (igual que la Emeet C980, que ya estaba en la lista). (a) sugerida: revisar título y fotos en ML · (b) arrancar igual la escalera de lanzamiento.
 8. **Filtro de agua (Matías):** el 14/11 entraron 126 a la oficina, así que dejó de ser "sin reposición" y hoy volvió a 4.790 (su precio de más plata). ¿Ese proveedor sirve para reponer? (a) sí, Pedidos lo repone normal · (b) fue una compra de una vez.
 9. **Aer Berry Rush:** el 12/11 subió a 49.490 por una venta a 32.990 que no existe (la última fue a 24.990 cerca del 30/10). La vuelta del punto medio llega sola el 22/11. (a) sugerida: dejar que vuelva el 22/11 · (b) volverlo ya a 24.990 (salida tuya, precio mal puesto).
+
+## 19/11 · Para la lista de las 12:30 (informativo)
+- 🧇 Waflera Atma Disney (Ayelen): el vendedor de $115.000 sin Full ya no gana la caja. La Clásica MLA4087803354 la GANA a $269.990 (162% en el peor caso; vendió 2, la última el 26/10). La Premium MLA4121580528 a $329.990 la pierde (para ganar haría falta $297.780, 146%); queda como está (las Premium se quedan aunque no vendan). Nada que decidir. Quedan 4 en Full y 0 en la oficina (2 se dejaron en Soares y Ceballos a $90.000).
+
+### ✅ Contestó la lista del 19/11 a las 12:30: 1a 2a 3a 4a 5b 6b 7a 8a ("que lo podamos ver de la web, si no dejalo así") 9a 10a 11a 12a 13b
+- Hecho por mí: 9a (la completa del 19/11 ya armó Ayelen sin las trabas del 14/11: Lupa 90 8, Espejo redondo 7, Lupa 100 4, Cinta 5M 4, Cortapelo 2, Lupa 60 1) · 12a (cajafijo esponja@luciana=4; precio de lanzamiento 3.990, 115% peor caso) · 5b y 6b quedan como hoy · 13b no se hace la venta por pedido.
+- En curso (código): 1a 2a 3a 4a 7a 8a 10a 11a.
+
+## 19/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
+- 1 = Choques 3 · 2 = Choques 4 · 3 = Leyton · 4 = Dream Way · 5 = Licuadora Ninja · 6 = Routers/Baseus · 7 = GoPro Handler · 8 = Filtro de agua · 9 = Doree Vol 20 (la 30 del 17/11)
+- Resueltas por mí: Choques 1 2 5 6 7 en (a) (internas, chicas, se vuelven atrás; como el 09/11) · Infusores por regla (stock antiguo 15 días antes y liquidación de 30 días) · Cable Beats sigue el lanzamiento · Aer Berry Rush vuelve solo el 22/11 · Metatarso, Centímetro Rosa y Switch del 17/11 ya resueltos el 18-19/11.
+
+### 20/11 · Revisión del Local (etapa 9) — 10 para elegir (contestá "1a 2b…")
+1. **La página de la Tienda y ABEL que ve la gente es la del 05/11** (sin el cartel de Navidad, y muestra precios aunque la lista tenga días): falta el permiso para subirla (la 22a del 14/11). Ahora la noche avisa cada día que no se subió. (a) sugerida: lo creás vos (2 minutos, te paso los pasos; el cartel de Navidad vence el 6/12) · (b) dejarla así.
+2. **ABEL con pocos perfumes mirados:** hoy, si la lista se achica mucho (dos días sin copiar Nissei) se queda la vieja con precios. (a) sugerida: en ABEL sacar ese freno (ya saca sola lo mirado hace más de 2 días) y avisar si baja más de 25% · (b) dejar el freno y sólo avisar.
+3. **Lo que pide la perfumería, varios colores del mismo producto** (ej. 3 Diva y 2 Persea de Paulvic): hoy se guarda uno por producto (el segundo se niega hasta que se cumpla el primero). (a) sugerida: guardar cada color aparte · (b) seguir con uno por producto.
+4. **Lo de 🏬 Tienda que llega de Paraguay** no queda en ninguna oficina hasta que se carga la venta (si se olvida, su costo desaparece del patrimonio sin aviso). (a) sugerida: que entre a la Oficina Local (sin etiqueta) y salga con `de=local` al dárselo · (b) como hoy, más un renglón en el informe con lo llegado sin venta cargada.
+5. **✏️ Editar una deuda en la web** todavía cambia lo que se debe sin avisar (pasar 24 cuotas a 12 bajó $148.000 sin que nadie pagara). (a) sugerida: la web no deja cambiar el total ni las cuotas de una deuda con pagos; eso se hace por acá, que avisa · (b) que el robot avise los cambios hechos en la web.
+6. **El nombre de pila en el comando queda para siempre en el registro público** (choca con la regla de privacidad). (a) sugerida: en el comando va la inicial y el nombre se completa en la web; el aviso del grupo lo toma de ahí · (b) seguir con el nombre de pila.
+7. **El mensaje corto de deudas perdió "quedan N cuotas"** (lo pediste el 10/11). (a) sugerida: agregarlo en la línea de la persona · (b) dejarlo así.
+8. **Una venta a una persona cargada tarde con fecha de un mes cerrado** (`nueva=…|fecha=`) suma su ganancia al cobro del mes siguiente (lo dejado a la perfumería no). (a) sugerida: igual que lo dejado: la ganancia va a "lo viejo cargado tarde" · (b) dejarlo.
+9. **Cerrar noviembre el mismo 30/11:** lo que se cargue después del cierre con fecha de ese día queda como "viejo" y su ganancia no se cobra nunca. (a) sugerida: lo cargado después de cerrar va al cobro de diciembre · (b) dejarlo y cerrar el 01/12 (o cargar todo lo del 30 antes de cerrar).
+10. **¿Cierra el mes? cuenta el retiro entero** aunque un socio no lo haya sacado (sale "Sobra"); el cobro ya usa sólo los marcados ✅. (a) sugerida: desde noviembre, ¿Cierra el mes? también sólo lo ✅ · (b) dejarlo.
+
+## 20/11 · Completa de la madrugada (nuevas, para "resolvamos")
+1. **Smartwatch Blackview R30 Max** (Luciana, MLA2265067899): se activó a 78.990 con el costo sin probar (35.853). Nadie lo vende con Full y los 7 sin Full arrancan en 87.511: estamos más baratos que todos y con el dólar nuevo queda en 34 del peor caso. (a) sugerida: confirmás el costo y lo relanzo a 103.990 · (b) lo dejo de lanzamiento y sólo sube al piso del 35 (79.990). No es una baja.
+2. **Mouse Lenovo Essential USB** (Luciana, MLA2255402891): activado a 49.990 con costo sin probar (13.076). El único otro vendedor está a 52.786. (a) sugerida: mirás catálogo y factura y si costo o precio están mal se corrige con tu OK · (b) lo dejo de lanzamiento y decide techo95. No es una baja.
+3. **Batidor Blanco** (Luciana, MLA1807593513 y MLA3932382684): ML le marca experiencia de compra Mala y tiene 2 reclamos en 20 ventas por accesorios faltantes y caja vacía. (a) sugerida: revisar las unidades de la oficina y de la próxima caja y que la descripción diga qué incluye · (b) dejarlo así.
+4. **Labial Idi 19 Sandy** (Luciana, MLA4173403900): el 08/11 dijiste 13.990 y se activó a 19.990. Con el costo de la ficha (6.449, lista Dai Nippon, sin ticket) 13.990 da cerca del 35. (a) sugerida: confirmás el costo y lo bajo a 13.990 (va con tu autorizo) · (b) dejarlo a 19.990 y que decida techo95. Seguridad de techo: 0 por ciento.
+5. **Teléfono Panasonic KX-TS880** (Luciana, MLA2265105181): activado a 416.990 copiando al único otro vendedor (sin Full); un solo vendedor no vale como precio. Ganamos la caja. (a) sugerida: dejar el lanzamiento y escalera si en 10 días con visitas no vende · (b) si sabés a cuánto se vende, lo corrijo (con tu autorizo). Seguridad de techo: sin días medidos.
+6. **Lanzamientos que casi nadie ve**: Emeet S600 (MLA4119990928, 1 visita en 7 días), Lexar SDXC 64 GB (MLA4127754030, 12 visitas en 12 días), Lexar SD 64 GB UHS-II (MLA4151293622, 8 en 5), Emeet 4K Duel (MLA4151294470, 6 en 6). (a) sugerida: revisar título y fotos en ML · (b) arrancar igual la escalera de lanzamiento.
+- **Aviso (no es pregunta):** con el dólar nuevo (1.585) el descuento del VS Bare Vanilla quedó en 28 del peor caso (piso 30) y el del Muserose en 33 (pediste 35). Al renovarlos (VS el 24/11, Muserose el 23/11) se ponen al piso de ese día, no al mismo precio.
+- **Pedido de Filtros de agua:** el pedido pedía 162 como pedido de Navidad adelantado; lo dejé en 0 hasta que contestes la 8 del 19/11 (si ese proveedor sirve para reponer). Hay 175.
