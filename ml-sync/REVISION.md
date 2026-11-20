@@ -1240,6 +1240,8 @@ guardara como gasto, Resumen y Puntaje lo restarían dos veces. Vacío = sin car
 - **(20/11) Gastos sólo por el chat** · qué: Gastos del mes ya no tiene casilla ni 💾 Cargar (dice "pasámelo por el chat" y, en el interés de Tito, cuánto da) · dónde: `index.html` renglón de cada gasto que falta · chequear: que no quede otra forma de cargar un gasto desde la web.
 - **(20/11) Gastos del mes sin el renglón "Intereses financieros" suelto** · qué: el único interés es el de Tito; el renglón genérico pedía otro y se cargó dos veces (oct y nov) · dónde: `GASTOS_DEL_MES` en `index.html` · chequear: noviembre ya no pide intereses de más y el de Papá compara contra el de octubre.
 - **(20/11) Inicio → 🛒 Gastos con el total y la diferencia** · qué: total del mes (`_gastosMes`) y ▼/▲ contra el mes anterior con %, arriba de "todo cargado"/"N sin cargar" · dónde: `_vivosDatos`/`_homeVivos` en `index.html` · chequear: noviembre ≈ $872.693, ▼ $504.238 · 37% menos que octubre.
+- **(20/11) Intereses de los socios de jun-oct con su nombre** · qué: estaban cargados sin descripción y Gastos del mes los daba por faltantes; `interesesmes` (sólo lee: 1% de Tito y de Mati de cada cierre contra lo cargado) + `editargasto:<clave>|desc=…;go` (ml-sync): los grandes → "Intereses · Papá", los chicos → "Intereses · Mati"; se sacó el repetido de oct (10/10, $127.000) · chequear: jun-nov sin ❌ en el renglón de Papá.
+
 
 
 
