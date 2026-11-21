@@ -902,3 +902,6 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 ## 20/11 · Noche (pasadas a las 20:41, también como tarjetas en Inicio)
 - 1 intereses Mati octubre · 2 Rubios/Virulana a la perfumería · 3 Leyton · 4 Dream Way · 5 Blackview R30 · 6 Mouse Lenovo Essential · 7 Labial Idi · 8 Panasonic · 9 publicaciones sin visitas · 10 Filtro de agua · 11 Doree Vol 20 · 12 Batidor · 13 Licuadora Ninja · 14-15 avisos (Choques 3 y 4) · 16-24 revisión del Local del 20/11 (sin la 6: el nombre de pila ya lo decidió él el 19/11).
 - Resueltas por mí hoy: pedido Paraguay resto (#1016, ticket, fotos y pago cargados), intereses jun-oct con su nombre y el de oct repetido sacado, gastos sólo por el chat, caja Luciana …7915 (faltantes = mercadería que fue a la perfumería).
+
+## 21/11 · Control de las 21 (nueva, para "resolvamos")
+1. **Paulvic a 14.990 con el costo nuevo** (caso: 1.4 W Mujer, Adriana, MLA1680268031): con el costo de hoy (7.195) vendió y dejó 27 por ciento, y en el peor caso unos 24, abajo del 32 o 33 que aceptaste el 14/11. Antes de decidir reviso que el costo no haya subido sólo por el dólar (Paulvic se paga en pesos). (a) sugerida: si el costo está bien, subirlos aroma por aroma al precio que deja 35 en el peor caso (el 1.4 W a unos 18.490) · (b) dejarlos a 14.990 igual.
