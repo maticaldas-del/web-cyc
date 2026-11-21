@@ -34,6 +34,8 @@ rep('</style>', '''
 .sub-abel { color: var(--ink2); font-size: 13px; margin: 6px 0 0; }
 </style>''')
 rep('<main class="wrap">', '<main class="wrap">\n  <p class="sub-abel">Perfumes importados por encargo · llega en 7 días hábiles · consultá en tu perfumería ABEL</p>')
+# Revisión etapa 10 (21/11/2026): "Menor precio" deja al final también los perfumes mirados hace más de 2 días ("Consultar precio").
+rep('var sinP = function (p) { return p.p > 0 ? 0 : 1; };', 'var sinP = function (p) { return p.p > 0 && !abelViejo(p) ? 0 : 1; };')
 # 💬 WhatsApp por perfume (01/11/2026).
 rep("<div class=\"slot\">' + cantHtml(p.id) + '</div></div></article>'", "<div class=\"slot\">' + cantHtml(p.id) + '</div>' + waBtn(p) + '</div></article>'")
 rep('<div id="verCant"></div>', '<div id="verCant"></div><div id="verWa"></div>')
@@ -107,7 +109,7 @@ rep('  var DET = {};', '''  // 🔎 FILTROS DE ABEL (idea 19, él eligió 19a el
   function abelFiltra(p) {
     if (fGen && abelGen(p) !== fGen) return false;
     if (fMarca && abelMarca(p) !== fMarca) return false;
-    if (fPrecio) { var r = fPrecio.split("-"), a = +r[0], b = +r[1]; if (!(p.p > 0) || p.p < a || (b && p.p > b)) return false; }
+    if (fPrecio) { var r = fPrecio.split("-"), a = +r[0], b = +r[1]; if (!(p.p > 0) || abelViejo(p) || p.p < a || (b && p.p > b)) return false; }
     return true;
   }
   function abelFiltrosInit() {

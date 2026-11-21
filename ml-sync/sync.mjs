@@ -14454,7 +14454,9 @@ function tiendaDetalle(p, prohibido) {
     if (!nn || !vv || /^(undefined|null|n\/a|-|\.)$/i.test(vv) || NO.test(nn) || vistos.has(nn) || !ok(nn + ' ' + vv) || vv.length > 80) continue;
     vistos.add(nn); a.push([nn.slice(0, 50), vv]); if (a.length >= 16) break;
   }
-  let sd = limpio(p.short_description && p.short_description.content); if (!ok(sd)) sd = ''; if (sd.length > 900) sd = sd.slice(0, 897).replace(/\s+\S*$/, '') + '…';
+  let sd = limpio(p.short_description && p.short_description.content); if (!ok(sd)) sd = '';
+  // Revisión etapa 10 (21/11): sin las oraciones de OTRO vendedor ("viene con factura", "envíos a todo el país", "hacerme preguntas", "nuestros expertos").
+  if (sd) sd = sd.split(/(?<=[.!?])\s+/).filter((o2) => !/factura|env[ií]os?\b|nuestr[oa]s?\b|hacerme|consult[aáe]/i.test(o2)).join(' ').trim(); if (sd.length > 900) sd = sd.slice(0, 897).replace(/\s+\S*$/, '') + '…';
   if (!t.length && !a.length && !sd) return null;
   return { ...(t.length ? { t } : {}), ...(a.length ? { a } : {}), ...(sd ? { s: sd } : {}) };
 }
