@@ -34734,19 +34734,24 @@ async function main() {
       // compararla con nuestras 3 cuotas vale ×1,08 (lo que cuesta dar 3 cuotas); una Premium ya las da: ×1. Memoria `Q_<cat>` = {eq, raw, t, ts}
       // por TM_DIAS días. `eq` es contra lo que se compara la tienda; `raw`, el precio que se muestra como "En ML".
       const CUOTAS_CLASICA = 1.08; let qLeidos = 0, qSin = 0;
-      const catsQ = [...new Set([...grupos.values()].flat().filter((x) => x.cat && /^MLA\d+$/i.test(String(x.cat)) && !x.ficha).map((x) => String(x.cat).toUpperCase()))];
+      const catsQ = [...new Set([...grupos.values()].flat().filter((x) => x.cat && /^MLA\d+$/i.test(String(x.cat))).map((x) => String(x.cat).toUpperCase()))];
       const qLeer = catsQ.filter((c) => { const q = tmCache['Q_' + c]; return !(q && hoy - Number(q.ts || 0) < dispersa('Q_' + c, TM_DIAS)); });
       for (let i = 0; i < qLeer.length && hayCupo(); i += 5) {
         await Promise.all(qLeer.slice(i, i + 5).map(async (c) => {
           try { const it = await leer404('/products/' + c + '/items?limit=30'); const xs = ((it && it.results) || []).filter((y) => y && Number(y.price) > 0 && !esOfertaDeAfuera(y));   // revisión etapa 10 (07/11): sin las de afuera (también por el envío y el modo internacional, como el resto del robot)
             if (!xs.length) { qSin++; await anotar('Q_' + c, { ts: hoy, no: 1 }); return; }
-            let best = null; for (const y of xs) { const eq = Number(y.price) * (y.listing_type_id === 'gold_pro' ? 1 : CUOTAS_CLASICA); if (!best || eq < best.eq) best = { eq: Math.round(eq), raw: Math.round(Number(y.price)), t: y.listing_type_id === 'gold_pro' ? 'p' : 'c' }; }
+            // Revisión etapa 10 (21/11): una Clásica con cuotas sin interés de campaña (pcj, 3 o 6) también las da: ×1 (sólo "interés bajo" sigue ×1,08).
+            let best = null; for (const y of xs) { const ci = cuotasInfoDeOferta(y), sinInt = y.listing_type_id === 'gold_pro' || (ci.n >= 3 && ci.tipo !== 'interés bajo');
+              const eq = Number(y.price) * (sinInt ? 1 : CUOTAS_CLASICA); if (!best || eq < best.eq) best = { eq: Math.round(eq), raw: Math.round(Number(y.price)), t: sinInt ? 'p' : 'c' }; }
             qLeidos++; await anotar('Q_' + c, { ...best, ts: hoy });
           } catch { /* queda lo guardado */ }
         }));
       }
       await guardarMemoria(true);
-      for (const x of [...grupos.values()].flat()) { if (!x.cat || x.ficha) continue; const q = tmCache['Q_' + String(x.cat).toUpperCase()]; if (q && q.eq > 0) { x.mpRef = q.eq; x.mlRaw = q.raw; x.mlTipo = q.t; } else if (q && q.no) { x.mpRef = null; } }
+      // Revisión etapa 10 (21/11): lo que ya vendemos en ML (ficha) también se compara con la más barata del catálogo (antes quedaba sin referencia
+      // o contra nuestra propia publicación, que puede estar cara buscando techo, y salía 30% arriba de ML). "En ML" sigue apagado en las fichas (13a:
+      // la más barata puede ser la nuestra).
+      for (const x of [...grupos.values()].flat()) { if (!x.cat) continue; const q = tmCache['Q_' + String(x.cat).toUpperCase()]; if (q && q.eq > 0) { x.mpRef = q.eq; if (!x.ficha) { x.mlRaw = q.raw; x.mlTipo = q.t; } } else if (q && q.no && !x.ficha) { x.mpRef = null; } }
       nv.cuotasML = { leidos: qLeidos, sinVendedores: qSin };
       for (const [c, xs] of porCat) { const m = tmCache['C_' + c];
         for (const x of xs) { if (m && m.mn) { x.nombre = m.mn; x.fotos = m.f || []; if (!x.mpRef && Number(m.mp) > 0) { x.mpRef = Number(m.mp); x.mlCatRef = x.mpRef; } } else { x.nombre = String(x.titRes || ''); x.fotos = x.fotoRes ? fotosDe([{ url: x.fotoRes }]) : []; } } }
