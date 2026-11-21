@@ -898,3 +898,6 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 1. **Sombra Idi Make Up HD** (Luciana, MLA4173332214): dos preguntas sobre cómo es el color de los tonos (q13695020008 y q13693949285). Si me decís cómo son, las contesto con `contesto`.
 2. **Sábanas 2 plazas y media** (Luciana, MLA2655470590): preguntan si van para un sommier de 2 plazas y media (q13693944075). Necesito la medida exacta del juego para contestar sin duda.
 3. **Waflera Atma Disney** (Ayelen, MLA4087803354): preguntan por otro diseño de personaje (q13694614080). La publicación es la roja de la línea Disney; ¿qué diseño trae la que tenemos?
+
+## 21/11 · Control de las 21 (nueva, para "resolvamos")
+1. **Paulvic a 14.990 con el costo nuevo** (caso: 1.4 W Mujer, Adriana, MLA1680268031): con el costo de hoy (7.195) vendió y dejó 27 por ciento, y en el peor caso unos 24, abajo del 32 o 33 que aceptaste el 14/11. Antes de decidir reviso que el costo no haya subido sólo por el dólar (Paulvic se paga en pesos). (a) sugerida: si el costo está bien, subirlos aroma por aroma al precio que deja 35 en el peor caso (el 1.4 W a unos 18.490) · (b) dejarlos a 14.990 igual.
