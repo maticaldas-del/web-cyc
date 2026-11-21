@@ -78,6 +78,10 @@ de la api de ml NADA MÁS. Todo el resto te encargás vos"*.
   por `informe`/`alertas` y no a Telegram; que las cajas que ML da por entradas las marque Claude y no queden contadas dos veces.
 
 ## 1 · PRECIOS (lunes)
+### ⏱️ Punto medio: los días sin stock no cuentan como horas a ese precio (21/11/2026, completa)
+- **Qué es:** `subaConfirmada` (la que decide si la próxima +50% de una 📈/🆕 ya puede ir) contaba todas las horas desde la suba, también los días agotado en Full. El Aer x6 Limón (MLA1821814267) vendió 7 a 20.990 en 9 días con stock y lo frenó 5 veces ("319 h, se esperaban 19,9"). Ahora se restan los días ENTEROS sin stock (los de los bordes y los del Black Friday quedan como antes).
+- **Dónde vive:** `ml-sync/sync.mjs`, `subaConfirmada` (lo usan `decido` con !vendio y el detector `errores`).
+- **Qué chequear:** que el Aer x6 Limón pase con su `decido` a 31.490; que algo que estuvo días agotado no suba con "esperadas" que dan menos de 3 sin llegar a 3 ventas (la regla de las 3 ventas sigue igual).
 ### 🧪 Prueba barata y cara del mismo producto (16/11/2026)
 - **`catoptin:<MLA común>=<MLA catálogo>|precio=<p>[|go]`:** le pide a ML la versión de catálogo de una publicación común (`POST /items/catalog_listings`, mismo stock), le pone el precio, la relee y la vincula a la misma ficha con `pruebaDe`. Lo usé porque crear una nueva desde cero en esa categoría ML la rechaza (pide atributos).
 - **Qué es:** `publicar` acepta `|!segunda` (otra publicación de la misma ficha en la misma cuenta, sólo si él lo pidió) y `|u=<n>` (el cupo se mide con las que se mandan, no con toda la oficina). Primer uso: Centímetro Blanco de catálogo a ~$5.190 con stock de la oficina, al lado de la común a $17.490. `unapub` ahora dice si es de catálogo y cuál.

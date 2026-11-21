@@ -6309,7 +6309,7 @@ const PUNTO_MEDIO_ESPERADAS = 3;  // se juzga con ~3 ventas esperadas al ritmo d
 // 15a del 14/11/2026 (él: "a"): las ventas y las horas del Black Friday (25-30/11) NO confirman una suba (como ya no cuentan en la vuelta):
 // el ritmo de antes se mide sin esos días y las ventas del evento no suman.
 async function subaConfirmada(db, mla, links, prods, desde, viejo, ahora = Date.now()) {
-  const horas = Math.max(0, (ahora - desde) / 36e5 - horasBF(desde, ahora));
+  let horas = Math.max(0, (ahora - desde) / 36e5 - horasBF(desde, ahora));
   if (horas < PUNTO_MEDIO_MIN_H) return { ok: false, txt: `lleva ${Math.round(horas)} h a este precio: se juzga con 24 h como mínimo (él, 02/11)` };
   let lin = null; try { lin = (await db.get('mlapi/linea/' + mla)) || {}; } catch { return null; }
   const J = await lineaJuntaStock(links, prods || {}, mla, lin, async (m) => { try { return (await db.get('mlapi/linea/' + m)) || {}; } catch { return null; } });
@@ -6322,6 +6322,12 @@ async function subaConfirmada(db, mla, links, prods, desde, viejo, ahora = Date.
     if (cc) { const ch = Object.values(cc).filter((r) => r && String(r.mla) === String(mla) && r.por !== 'errores' && Number(r.ts) < desde - 60e3 && Number(r.ts) > desde - 60 * 864e5).sort((x, y) => Number(y.ts) - Number(x.ts));
       for (const c of ch) { if (!(Number(c.a) > Number(c.de) * 1.02)) break; const R2 = ritmoAPrecioLin(J.d, Number(c.de), Number(c.ts) - 60 * 864e5, Number(c.ts), true); if (R2 && R2.dias >= 2 && R2.r > 0) { R = R2; break; } } } }
   const uds = await ventasGrupoEntre(db, mla, links, prods, desde, ahora, viejo, true); if (uds == null) return null;
+  // Completa 21/11/2026: los días enteros SIN STOCK en Full no cuentan como horas a este precio (el Aer x6 Limón vendió 7 a $20.990 en 9 días
+  // con stock y el freno contaba 319 h con 5 días agotado adentro: "19,9 esperadas" → frenado 5 veces). Sólo días enteros entre el primero y
+  // el último (los de los bordes se cuentan como antes) y sin los del Black Friday (ya descontados en `horas`).
+  { const kD = dayKeyFromISO(desde), kA = dayKeyFromISO(ahora); let hSin = 0;
+    for (const [k, x] of Object.entries(J.d || {})) { if (!/^\d{4}_\d{2}_\d{2}$/.test(k) || k <= kD || k >= kA || !x || typeof x !== 'object' || diaConStock(x) || diaEnBF(k)) continue; hSin += 24; }
+    if (hSin > 0) horas = Math.max(0, horas - hSin); }
   // 13a del 03/11/2026 (él: "a" = los lanzamientos piden 3 ventas, como el resto): sin un ritmo de antes medible (un 🆕 que arranca, o una
   // cadena de subas sin escalón medido) una venta sola ya no confirma: hacen falta 3 ventas a este precio (antes alcanzaba 1).
   if (!R || R.dias < 2 || !(R.r > 0)) return uds >= PUNTO_MEDIO_ESPERADAS ? { ok: true, txt: `vendió ${uds} en ${Math.round(horas)} h (sin ritmo de antes medible: con 3 ventas se confirma)` } : { ok: false, txt: uds ? `vendió ${uds} en ${Math.round(horas)} h y no hay ritmo de antes medible: la próxima +50% espera a 3 ventas a este precio (13a del 03/11)` : 'no vendió a este precio' };
