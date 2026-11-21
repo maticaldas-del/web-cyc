@@ -114,6 +114,12 @@ for L in listas:
         if fs: p['f'] = fs; quedan.append(p)
     sacados[id(L)] = len(L['productos']) - len(quedan); L['productos'] = quedan
 usadas = {u.rsplit('/', 1)[1] for L in listas for p in L['productos'] for u in p['f'] if u.startswith('/fotos/')}
+# Revisión etapa 10 (21/11/2026): si esta noche no vino una de las dos listas (ABEL con una palabra prohibida), queda la publicada: sus fotos
+# no se borran (se borraban todas y ~60 perfumes quedaban sin foto).
+for falta, ruta in ((tienda, 'productos.json'), (abel, os.path.join('abel', 'productos.json'))):
+    if not (falta and isinstance(falta.get('productos'), list)):
+        pub = leer(os.path.join(DEST, ruta), {}) or {}
+        usadas |= {u.rsplit('/', 1)[1] for p in (pub.get('productos') or []) for u in (p.get('f') or []) if isinstance(u, str) and u.startswith('/fotos/')}
 borradas = 0
 for n in (set() if FRENO else hay - usadas):   # con freno, la lista publicada vieja sigue usando sus fotos
     os.remove(os.path.join(FOTOS, n)); borradas += 1

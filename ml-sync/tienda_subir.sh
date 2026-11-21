@@ -35,4 +35,6 @@ if [ -f .github/workflows/traer.yml ]; then echo "traer=si" >> "$OUT"; else echo
 echo "directo=ok" >> "$OUT"
 # Lo mismo (con las fotos propias) a la carpeta del robot: si el paso viejo sigue, la rama de la web lleva la MISMA lista.
 cp productos.json "$ARCHIVO"; [ -s abel/productos.json ] && mkdir -p "$ORIG/abel" && cp abel/productos.json "$ORIG/abel/productos.json"
+# Revisión etapa 10 (21/11/2026): también los detalles (con el freno del 75%, la rama de la web llevaba la lista vieja con los detalles nuevos).
+[ -d detalles ] && rm -rf "$ORIG/detalles" && cp -r detalles "$ORIG/detalles"
 exit 0

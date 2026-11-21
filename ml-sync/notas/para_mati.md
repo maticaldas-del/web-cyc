@@ -905,3 +905,13 @@ Ya arreglado (en el robot, ninguna regla cambió): un producto nuevo de Paraguay
 
 ## 21/11 · Control de las 21 (nueva, para "resolvamos")
 1. **Paulvic a 14.990 con el costo nuevo** (caso: 1.4 W Mujer, Adriana, MLA1680268031): con el costo de hoy (7.195) vendió y dejó 27 por ciento, y en el peor caso unos 24, abajo del 32 o 33 que aceptaste el 14/11. Antes de decidir reviso que el costo no haya subido sólo por el dólar (Paulvic se paga en pesos). (a) sugerida: si el costo está bien, subirlos aroma por aroma al precio que deja 35 en el peor caso (el 1.4 W a unos 18.490) · (b) dejarlos a 14.990 igual.
+
+### 21/11 · Revisión de la Tienda (etapa 10) — 8 para elegir (contestá "1a 2b…")
+1. **Lo de Apple con "Consultar precio"** igual se cae de la Tienda si en ML está más de 10% más barato (aunque no mostramos precio). Hoy son 5 AirPods. (a) sugerida: a lo de Apple sin precio no aplicarle ese tope (sí el 1,6× y el máximo del monotributo) · (b) como hoy.
+2. **Un producto que en ML cuesta más del doble que el nuestro** entra igual con su precio (o es otro producto o es una ganga; el 13/11 eran ~100). (a) sugerida: que salgan con "Consultar precio" · (b) como hoy.
+3. **Redondeo de $10.000 a $20.000** (369 productos): el salto de a $1.000 sube hasta 9,8%. (a) sugerida: dejarlo, es poco · (b) redondear de a $100 (terminado en 90).
+4. **El mismo perfume sale ~5% más barato en la Tienda que en ABEL en efectivo** (y la Tienda da 3 cuotas). (a) sugerida: dejarlo (otro público, la Tienda deja 25%) · (b) que en perfumes la Tienda no quede abajo del efectivo de ABEL.
+5. **Precio viejo en la Tienda:** hoy pasa a "Consultar precio" cuando la lista entera tiene 3 días; si el robot se frena se puede pedir un precio de ~5 días. (a) sugerida: igual que ABEL, cada producto a los 2 días de mirado · (b) como hoy.
+6. **48 termos y conservadoras "Nativo" con nombres en guaraní** (Kambuchi, Mitareko, Mbatovi…): delatan Paraguay. (a) sugerida: sacar la palabra en guaraní del nombre · (b) sacar esos productos.
+7. **Lo grande que pasa:** 5 conservadoras/heladeras de 35 a 46 litros ($555.000-$698.000) y una máquina de hielo de 30 kg. (a) sugerida: afuera · (b) quedan.
+8. **Lo sacado a mano vuelve** si ML le cambia el catálogo (entra con código nuevo). (a) sugerida: sacarlo también por el código del proveedor · (b) dejarlo (si se sacó por mal emparejado y se arregló la regla, vuelve bien).
